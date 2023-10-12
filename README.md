@@ -56,7 +56,7 @@ We are excited to announce initial support for performant LLM inference in DeepS
 
 Install (requires Linux):
 ```bash
-pip install -U deepsparse-nightly[transformers]==1.6.0.20231007
+pip install -U deepsparse-nightly[llm]
 ```
 
 Run inference:

@@ -23,7 +23,7 @@ This user guide explains how to run inference of text generation models with Dee
 DeepSparse support for LLMs is available on DeepSparse's nightly build on PyPi:
 
 ```bash
-pip install -U deepsparse-nightly[transformers]==1.6.0.20231007
+pip install -U deepsparse-nightly[llm]
 ```
 
 #### **System Requirements**

@@ -43,7 +43,7 @@ While GSM is a "toy" math dataset, it serves as an example of how LLMs can be ad
 Install the DeepSparse Nightly build (requires Linux):
 
 ```bash
-pip install deepsparse-nightly[transformers]==1.6.0.20231007
+pip install -U deepsparse-nightly[llm]
 ```
 
 The models generated in the paper are hosted on [SparseZoo](https://sparsezoo.neuralmagic.com/?ungrouped=true&sort=null&datasets=gsm8k&architectures=mpt) and [Hugging Face](https://huggingface.co/collections/neuralmagic/sparse-finetuning-mpt-65241d875b29204d6d42697d). 
