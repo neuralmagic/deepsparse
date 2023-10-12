@@ -56,7 +56,6 @@ DeepSparse is optimized for performant inference of LLMs with:
 - Optimized sparse quantized CPU kernels
 - Efficient usage of cached attention keys and values for minimal memory movement
 - Compressed memory using sparse weights
-- Local or cloud deployments on Linux (Mac coming soon!)
 
 > [Check out our `TextGeneration` documentation for  usage details.](https://github.com/neuralmagic/deepsparse/blob/main/docs/llms/text-generation-pipeline.md)
 
