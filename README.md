@@ -52,14 +52,15 @@ prompt="""
 Below is an instruction that describes a task. Write a response that appropriately completes the request. ### Instruction: what is sparsity? ### Response:
 """
 print(pipeline(prompt, max_new_tokens=75).generations[0].text)
+
 # Sparsity is the property of a matrix or other data structure in which a large number of elements are zero, and a smaller number of elements are non-zero. In the context of machine learning, sparsity can be used to improve the efficiency of training and prediction.
 ```
 
-> [Check out our `TextGeneration` documentation for  usage details.](https://github.com/neuralmagic/deepsparse/blob/main/docs/llms/text-generation-pipeline.md)
+> [Check out the `TextGeneration` documentation for usage details.](https://github.com/neuralmagic/deepsparse/blob/main/docs/llms/text-generation-pipeline.md)
 
 ### Sparsity :handshake: Performance
 
-Developed in collaboration with IST Austria, [our recent paper](https://arxiv.org/abs/2310.06927) details a new technique called **Sparse Finetuning**, which allows us to prune MPT-7B to 60% sparsity during finetuning without drop in accuracy relative to the dense baseline. With our support for LLMs, DeepSparse accelerates the sparse-quantized model ***~7x*** over the dense baseline:
+Developed in collaboration with IST Austria, [our recent paper](https://arxiv.org/abs/2310.06927) details a new technique called **Sparse Finetuning**, which allows us to prune MPT-7B to 60% sparsity during finetuning without drop in accuracy relative to the dense baseline. With our new support for LLMs, DeepSparse accelerates the sparse-quantized MPT-7b ***~7x*** over the dense baseline:
 
 <div align="center">
     <img src="https://github.com/neuralmagic/deepsparse/assets/3195154/8687401c-f479-4999-ba6b-e01c747dace9" width="50%"/>
@@ -81,7 +82,7 @@ In addition to LLMs, DeepSparse supports transformer models like BERT and CNN mo
 
 ### Installation
 
-Install via PyPI. [See the installation page for optional dependencies](https://github.com/neuralmagic/deepsparse/tree/main/docs/user-guide/installation.md).
+Install via PyPI ([optional dependencies](https://github.com/neuralmagic/deepsparse/tree/main/docs/user-guide/installation.md)):
 
 ```bash
 pip install deepsparse
