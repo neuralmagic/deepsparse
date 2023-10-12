@@ -31,10 +31,7 @@ DeepSparse is a CPU inference runtime that takes advantage of sparsity to accele
 
 ## ✨NEW✨ DeepSparse LLMs
 
-We are pleased to announce support for LLMs, starting with MPT-7B. DeepSparse is optimized for performant text generation with:
-- Custom sparse quantized CPU kernels
-- Efficient usage of cached attention keys and values for minimal memory movement
-- Low memory utilization with sparse-quantized weights and quantized activations
+We are pleased to announce support for LLMs, starting with MPT-7B.
 
 ### Try It Now
 
@@ -54,6 +51,12 @@ Below is an instruction that describes a task. Write a response that appropriate
 print(pipeline(prompt, max_new_tokens=75).generations[0].text)
 # Sparsity is the property of a matrix or other data structure in which a large number of elements are zero, and a smaller number of elements are non-zero. In the context of machine learning, sparsity can be used to improve the efficiency of training and prediction.
 ```
+
+DeepSparse is optimized for performant text generation inference on CPUs with:
+- Sparse kernels for speedups from unstructured sparse weights
+- 8-bit weight and activation integer quantization support
+- Efficient usage of cached attention keys and values for minimal memory movement
+- Low memory utilization with sparse-quantized weights and quantized KV-caches
 
 > [Check out our `TextGeneration` documentation for  usage details.](https://github.com/neuralmagic/deepsparse/blob/main/docs/llms/text-generation-pipeline.md)
 
