@@ -31,7 +31,10 @@ DeepSparse is a CPU inference runtime that takes advantage of sparsity to accele
 
 ## ✨NEW✨ DeepSparse LLMs
 
-We are pleased to announce DeepSparse support for LLMs, starting with MPT-7B.
+We are pleased to announce initial support for performant LLM inference in DeepSparse with:
+- Sparse kernels for speedups and memory savings from unstructured sparse weights
+- 8-bit weight and activation quantization support
+- Efficient usage of cached attention keys and values for minimal memory movement
 
 ### Try It Now
 
@@ -52,17 +55,11 @@ print(pipeline(prompt, max_new_tokens=75).generations[0].text)
 # Sparsity is the property of a matrix or other data structure in which a large number of elements are zero, and a smaller number of elements are non-zero. In the context of machine learning, sparsity can be used to improve the efficiency of training and prediction.
 ```
 
-DeepSparse is optimized for performant text generation inference on CPUs with:
-- Sparse kernels for speedups from unstructured sparse weights
-- 8-bit weight and activation integer quantization support
-- Efficient usage of cached attention keys and values for minimal memory movement
-- Low memory utilization with sparse-quantized weights and quantized KV-caches
-
 > [Check out our `TextGeneration` documentation for  usage details.](https://github.com/neuralmagic/deepsparse/blob/main/docs/llms/text-generation-pipeline.md)
 
 ### Sparsity :handshake: Performance
 
-Developed in collaboration with IST Austria, [our recent paper](https://arxiv.org/abs/2310.06927) details a new technique called **Sparse Finetuning**, which allows us to prune MPT-7B to 60% sparsity during finetuning without drop in accuracy relative to the dense baseline. With our support for LLMs, DeepSparse accelerates the 60% sparse-INT8 model ***~7x*** over the dense baseline:
+Developed in collaboration with IST Austria, [our recent paper](https://arxiv.org/abs/2310.06927) details a new technique called **Sparse Finetuning**, which allows us to prune MPT-7B to 60% sparsity during finetuning without drop in accuracy relative to the dense baseline. With our support for LLMs, DeepSparse accelerates the sparse-quantized model ***~7x*** over the dense baseline:
 
 <div align="center">
     <img src="https://github.com/neuralmagic/deepsparse/assets/3195154/8687401c-f479-4999-ba6b-e01c747dace9" width="50%"/>
