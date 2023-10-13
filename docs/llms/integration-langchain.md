@@ -64,7 +64,7 @@ print(llm(prompt))
 In physics, the term "quantization" refers to the process of transforming a continuous variable into a set of discrete values. In the context of quantum mechanics, this process is used to describe the restriction of the degrees of freedom of a system to a set of discrete values. In other words, it is the process of transforming the continuous spectrum of a physical quantity into a set of discrete, or "quantized", values.
 """
 ```
-You can also do all the other things you are used to doing in LangChain such as using `PromptTemplete`s and parsing outputs:
+You can also do all the other things you are used to in LangChain such as using `PromptTemplate`s and parsing outputs:
 ```python
 from langchain import PromptTemplate
 from langchain.output_parsers import CommaSeparatedListOutputParser
