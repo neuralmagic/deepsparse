@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Any, Dict, List
+from typing import Any, Dict
 
 import numpy
 
@@ -26,14 +26,13 @@ SEQUENCE_LENGTH_AXIS = 2
 
 
 class DecoderKVCache:
-    def __init__(self, use_deepsparse_cache: bool = False):
+    def __init__(self, internal_kv_cache: bool = False):
         """
         The goal this object is to handle the manipulation
         of the key value cache.
 
-        :param use_deepsparse_cache: If set to True, the
-            `kv_cache` object from the deepsparse.LIB will
-            be loaded as an engine_internal_cache attribute.
+        :param internal_kv_cache: If set to True, the `kv_cache` object
+            from the deepsparse.LIB will be loaded as an attribute.
             This object is used to handle the manipulation of the
             key/value buffers on the DeepSparse engine side.
         """
@@ -42,15 +41,13 @@ class DecoderKVCache:
         # assuming that kv cache arrays are of shape
         # [batch_size, num_heads, sequence_length, hidden_size]
         self._sequence_len_axis = SEQUENCE_LENGTH_AXIS
-        self._use_deepsparse_cache = use_deepsparse_cache
-        self._session_id = None
+        self._internal_kv_cache = internal_kv_cache
         self._freeze_first_position = None
         self._state = None
         self.engine_internal_cache = None
 
     def setup(
         self,
-        session_id: str,
         state: Dict[str, Any],
         num_processed_tokens: int = 0,
         freeze_first_position: bool = False,
@@ -59,8 +56,6 @@ class DecoderKVCache:
         Setup the session - a level of abstraction that allocates
         the resources to store and manipulate the kv cache.
 
-        :param session_id: The session id to use for the current
-            session. Used to identify the kv cache state
         :param state: The state of the cache. This is a dictionary
             that maps the name of the cache array to the cache array.
             The cache tensor is a numpy array of shape
@@ -75,12 +70,11 @@ class DecoderKVCache:
             that corresponds to the BOS token in the sequence.
             By default, is set to False.
         """
-        self._session_id = session_id
         self._state = state
         self._freeze_first_position = freeze_first_position
         self.total_num_processed_tokens = num_processed_tokens
 
-        if self._use_deepsparse_cache:
+        if self._internal_kv_cache:
             prev_num_tokens = self.total_num_processed_tokens
             num_frozen_tokens = int(self._freeze_first_position)
             self.engine_internal_cache = LIB.kv_cache(
@@ -91,6 +85,7 @@ class DecoderKVCache:
         self,
         state: Dict[str, Any],
         input_ids_len: int,
+        increment_total_num_processed_tokens: int = True,
     ):
         """
         Updating the session is identical with taking the kv cache
@@ -104,8 +99,12 @@ class DecoderKVCache:
         :param input_ids_len: The number of input ids in the current
             input batch: (batch_size, length).
             Corresponds to `input_ids.shape[1]`
+        :param increment_total_num_processed_tokens: If set to True,
+            the total number of processed tokens will be incremented
+            by the input_ids_len.
         """
-        self.total_num_processed_tokens += input_ids_len
+        if increment_total_num_processed_tokens:
+            self.total_num_processed_tokens += input_ids_len
 
         input_state_capacity = state[list(state.keys())[0]].shape[
             self._sequence_len_axis
@@ -132,7 +131,7 @@ class DecoderKVCache:
                 )
             if num_non_padded_entries_to_delete:
                 cache_array = self.remove_non_padded_entries(
-                    cache_array, num_entries_to_delete
+                    cache_array, num_non_padded_entries_to_delete
                 )
             state[name] = numpy.ascontiguousarray(cache_array)
 
@@ -168,7 +167,7 @@ class DecoderKVCache:
         new_cache_array = cache_array[
             :,
             :,
-            bool(self._freeze_first_position) + num_non_padded_entries_to_delete :,
+            int(self._freeze_first_position) + num_non_padded_entries_to_delete :,
             :,
         ]
         if self._freeze_first_position:
@@ -199,49 +198,31 @@ class DecoderKVCache:
         state = self.cached_inputs
 
         if capacity_difference > 0:
-            raise NotImplementedError(
-                "The scenario when capacity"
-                "needs to be expanded is not yet"
-                "supported."
+            self.update(
+                state,
+                input_ids_len=capacity_difference,
+                increment_total_num_processed_tokens=False,
             )
 
         elif capacity_difference < 0:
-            indices = [0] * abs(capacity_difference)
-            state = self._add_entries(state, indices=indices)
-
+            state = self._expand_capacity(
+                state, num_additional_entries=abs(capacity_difference)
+            )
+            self._state = state
         else:
-            return
+            pass
 
-        self._state = state
+        return
 
-    def _add_entries(
-        self, state: Dict[str, Any], indices: List[int], padding_value: int = 0
+    def _expand_capacity(
+        self, state: Dict[str, Any], num_additional_entries: int, padding_value: int = 0
     ) -> Dict[str, Any]:
         for key, value in state.items():
-            # required to make sure that both
-            # quantized and non quantized caches
-            # are supported
-            state_dtype = value.dtype
-            # change padding_value dtype to match the state dtype
-            padding_value = numpy.array(padding_value, dtype=state_dtype)
-
-            state[key] = numpy.insert(
-                value, indices, padding_value, axis=self._sequence_len_axis
+            zeros = numpy.zeros_like(
+                (value[:, :, :num_additional_entries, :]), dtype=value.dtype
             )
+            state[key] = numpy.concatenate([zeros, value], axis=self._sequence_len_axis)
         return state
-
-    @property
-    def id(self):
-        if self._session_id is None:
-            raise ValueError("Attempted to access session_id before setting up session")
-        return self._session_id
-
-    @property
-    def num_non_blank_entries(self):
-        """
-        :return: the number of non-blank entries in the kv cache
-        """
-        return min(self.capacity, self.total_num_processed_tokens)
 
     @property
     def capacity(self) -> int:
@@ -256,10 +237,6 @@ class DecoderKVCache:
         return self.cached_inputs[list(self.cached_inputs.keys())[0]].shape[
             self._sequence_len_axis
         ]
-
-    @id.setter
-    def id(self, session_id: str):
-        self._session_id = session_id
 
     @property
     def cached_inputs(self):

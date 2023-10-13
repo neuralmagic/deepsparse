@@ -17,11 +17,11 @@ Benchmarking script for ONNX models with the DeepSparse engine.
 
 ##########
 Command help:
-usage: deepsparse.benchmark [-h] [-b BATCH_SIZE] [-seq_len SEQUENCE_LENGTH]
+usage: deepsparse.benchmark [-h] [-b BATCH_SIZE] [-i INPUT_SHAPES]
+                            [-ncores NUM_CORES] [-s {async,sync,elastic}]
+                            [-t TIME] [-w WARMUP_TIME] [-nstreams NUM_STREAMS]
+                            [-seq_len SEQUENCE_LENGTH]
                             [-input_ids_len INPUT_IDS_LENGTH]
-                            [-i INPUT_SHAPES] [-ncores NUM_CORES]
-                            [-s {async,sync,elastic}] [-t TIME]
-                            [-w WARMUP_TIME] [-nstreams NUM_STREAMS]
                             [-pin {none,core,numa}] [-e ENGINE] [-q]
                             [-x EXPORT_PATH]
                             model_path
@@ -36,14 +36,6 @@ optional arguments:
   -b BATCH_SIZE, --batch_size BATCH_SIZE
                         The batch size to run the analysis for. Must be
                         greater than 0
-  -seq_len SEQUENCE_LENGTH, --sequence_length SEQUENCE_LENGTH
-                        The sequence length to run the KV cache supported
-                        model benchmarks for. Must be greater than 0, default
-                        is 2048
-  -input_ids_len INPUT_IDS_LENGTH, --input_ids_length INPUT_IDS_LENGTH
-                        The input ids length to run the KV cache supported
-                        model benchmarks for. Must be greater than 0, default
-                        is 1
   -i INPUT_SHAPES, -shapes INPUT_SHAPES, --input_shapes INPUT_SHAPES
                         Override the shapes of the inputs, i.e. -shapes
                         "[1,2,3],[4,5,6],[7,8,9]" results in input0=[1,2,3]
@@ -68,6 +60,14 @@ optional arguments:
                         parallel using async scenario. Default is
                         automatically determined for given hardware and may be
                         sub-optimal.
+  -seq_len SEQUENCE_LENGTH, --sequence_length SEQUENCE_LENGTH
+                        The sequence length to run the KV cache supported
+                        model benchmarks for. Must be seq_len >= 1, default is
+                        None
+  -input_ids_len INPUT_IDS_LENGTH, --input_ids_length INPUT_IDS_LENGTH
+                        The input ids length to run the KV cache supported
+                        model benchmarks for. Must be 1 <= input_ids_len <=
+                        seq_len, default is 1
   -pin {none,core,numa}, --thread_pinning {none,core,numa}
                         Enable binding threads to cores ('core' the default),
                         threads to cores on sockets ('numa'), or disable
@@ -116,9 +116,9 @@ import argparse
 import importlib
 import json
 import logging
-from typing import Dict
+from typing import Dict, Optional
 
-from deepsparse import __version__, compile_model
+from deepsparse import Engine, __version__
 from deepsparse.benchmark.helpers import (
     decide_thread_pinning,
     parse_num_streams,
@@ -134,7 +134,7 @@ from deepsparse.utils import (
     has_model_kv_cache,
     model_to_path,
     override_onnx_input_shapes,
-    overwrite_cache_model_inputs,
+    overwrite_onnx_model_inputs_for_kv_cache_models,
     parse_input_shapes,
 )
 
@@ -165,22 +165,6 @@ def parse_args():
         type=int,
         default=1,
         help="The batch size to run the analysis for. Must be greater than 0",
-    )
-    parser.add_argument(
-        "-seq_len",
-        "--sequence_length",
-        type=int,
-        default=512,
-        help="The sequence length to run the KV cache supported model "
-        "benchmarks for. Must be 1 <= seq_len, default is 512",
-    )
-    parser.add_argument(
-        "-input_ids_len",
-        "--input_ids_length",
-        type=int,
-        default=1,
-        help="The input ids length to run the KV cache supported model "
-        "benchmarks for. Must be 1 <= input_ids_len <= seq_len, default is 1",
     )
     parser.add_argument(
         "-i",
@@ -244,6 +228,22 @@ def parse_args():
         ),
     )
     parser.add_argument(
+        "-seq_len",
+        "--sequence_length",
+        type=int,
+        default=None,
+        help="The sequence length to run the KV cache supported model "
+        "benchmarks for. Must be seq_len >= 1, default is None",
+    )
+    parser.add_argument(
+        "-input_ids_len",
+        "--input_ids_length",
+        type=int,
+        default=1,
+        help="The input ids length to run the KV cache supported model "
+        "benchmarks for. Must be 1 <= input_ids_len <= seq_len, default is 1",
+    )
+    parser.add_argument(
         "-pin",
         "--thread_pinning",
         type=str,
@@ -266,6 +266,17 @@ def parse_args():
             "following format <path to python script>:<Engine Class name>. This "
             "engine class will be dynamically imported during runtime"
         ),
+    )
+    parser.add_argument(
+        "--internal-kv-cache",
+        "--internal_kv_cache",
+        help=(
+            "DeepSparse engine only - If True, and a model with KV cache, "
+            "KV Cache state will be managed within the compiled deepsparse "
+            "model. This is preferred when applicable for best performance"
+        ),
+        action="store_true",
+        default=False,
     )
     parser.add_argument(
         "-q",
@@ -304,18 +315,19 @@ def load_custom_engine(custom_engine_identifier: str):
 def benchmark_model(
     model_path: str,
     batch_size: int = 1,
-    sequence_length: int = 2048,
-    input_ids_length: int = 1,
     input_shapes: str = "",
-    num_cores: int = None,
+    num_cores: Optional[int] = None,
     scenario: str = "sync",
     time: int = 10,
     warmup_time: int = 2,
-    num_streams: int = None,
+    num_streams: Optional[int] = None,
+    sequence_length: Optional[int] = None,
+    input_ids_length: Optional[int] = 1,
     thread_pinning: str = "core",
     engine: str = DEEPSPARSE_ENGINE,
+    internal_kv_cache: bool = False,
     quiet: bool = False,
-    export_path: str = None,
+    export_path: Optional[str] = None,
 ) -> Dict:
     if quiet:
         set_logging_level(logging.WARN)
@@ -332,12 +344,12 @@ def benchmark_model(
     orig_model_path = model_path
     model_path = model_to_path(model_path)
 
-    if has_model_kv_cache(model_path):
-        if batch_size != 1:
+    cached_outputs = None
+    if sequence_length and input_ids_length and has_model_kv_cache(model_path):
+        if input_ids_length > sequence_length:
             raise ValueError(
-                "Unable to run models with KV cache support "
-                "for batch size different than one."
-                "Please set batch size to 1 and try again"
+                f"input_ids_length: {input_ids_length} "
+                f"must be less than sequence_length: {sequence_length}"
             )
 
         _LOGGER.info(
@@ -347,23 +359,34 @@ def benchmark_model(
             f"sequence length: {sequence_length}."
         )
 
-        model_path, _, _ = overwrite_cache_model_inputs(
-            model_path=model_path,
+        model_path, cached_outs, _ = overwrite_onnx_model_inputs_for_kv_cache_models(
+            onnx_file_path=model_path,
             input_ids_length=input_ids_length,
             sequence_length=sequence_length,
+            batch_size=batch_size,
         )
+
+        if internal_kv_cache:
+            _LOGGER.info(
+                "Benchmarking DeepSparse Engine with internal KV Cache management"
+            )
+            cached_outputs = cached_outs
+    else:
+        input_ids_length = None
+        sequence_length = None
 
     num_streams = parse_num_streams(num_streams, num_cores, scenario)
 
     # Compile the ONNX into a runnable model
     if engine == DEEPSPARSE_ENGINE:
-        model = compile_model(
+        model = Engine(
             model=model_path,
             batch_size=batch_size,
             num_cores=num_cores,
             num_streams=num_streams,
             scheduler=scheduler,
             input_shapes=input_shapes,
+            cached_outputs=cached_outputs,
         )
     elif engine == ORT_ENGINE:
         model = ORTEngine(
@@ -406,16 +429,14 @@ def benchmark_model(
         seconds_to_run=time,
         seconds_to_warmup=warmup_time,
         num_streams=num_streams,
+        internal_kv_cache=cached_outputs,
     )
-
     export_dict = {
         "engine": str(model),
         "version": __version__,
         "orig_model_path": orig_model_path,
         "model_path": model_path,
         "batch_size": batch_size,
-        "sequence_length": sequence_length,
-        "input_ids_length": input_ids_length,
         "input_shapes": input_shapes,
         "num_cores": num_cores,
         "scenario": scenario,
@@ -425,24 +446,23 @@ def benchmark_model(
         "benchmark_result": benchmark_result,
         "fraction_of_supported_ops": getattr(model, "fraction_of_supported_ops", None),
     }
+    if sequence_length and input_ids_length:
+        export_dict["sequence_length"] = sequence_length
+        export_dict["input_ids_length"] = input_ids_length
 
     # Export results
     if export_path:
         _LOGGER.info("Saving benchmark results to JSON file at {}".format(export_path))
         with open(export_path, "w") as out:
             json.dump(export_dict, out, indent=2)
-
     return export_dict
 
 
 def main():
-
     args = parse_args()
 
     result = benchmark_model(
         model_path=args.model_path,
-        sequence_length=args.sequence_length,
-        input_ids_length=args.input_ids_length,
         batch_size=args.batch_size,
         input_shapes=args.input_shapes,
         num_cores=args.num_cores,
@@ -450,8 +470,11 @@ def main():
         time=args.time,
         warmup_time=args.warmup_time,
         num_streams=args.num_streams,
+        sequence_length=args.sequence_length,
+        input_ids_length=args.input_ids_length,
         thread_pinning=args.thread_pinning,
         engine=args.engine,
+        internal_kv_cache=args.internal_kv_cache,
         quiet=args.quiet,
         export_path=args.export_path,
     )
@@ -459,9 +482,8 @@ def main():
     # Results summary
     print("Original Model Path: {}".format(args.model_path))
     print("Batch Size: {}".format(args.batch_size))
-    if args.sequence_length is not None:
+    if args.sequence_length:
         print("Sequence Length: {}".format(args.sequence_length))
-    if args.input_ids_length is not None:
         print("Input IDs Length: {}".format(args.input_ids_length))
     print("Scenario: {}".format(args.scenario))
     print(

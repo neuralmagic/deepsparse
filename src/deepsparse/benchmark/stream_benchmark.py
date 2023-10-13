@@ -15,19 +15,41 @@
 import queue
 import threading
 import time
-from typing import Dict, List
+from typing import Any, Dict, List, NamedTuple
 
 import numpy
 
 from deepsparse import Engine
 
 
+try:
+    # flake8: noqa
+    from deepsparse.lib import init_deepsparse_lib
+except ImportError:
+    raise ImportError(
+        "Unable to import deepsparse python apis. "
+        "Please contact support@neuralmagic.com"
+    )
+
+
 __all__ = ["model_stream_benchmark"]
+
+
+LIB = init_deepsparse_lib()
+
+
+class _InputAndCache(NamedTuple):
+    input: List[numpy.ndarray]
+    kv_cache: Any
 
 
 def iteration(model: Engine, input: List[numpy.ndarray]):
     start = time.perf_counter()
-    output = model.run(input, val_inp=False)
+    if not isinstance(input, _InputAndCache):
+        output = model.run(input, val_inp=False)
+    else:
+        # run with internal kv cache object
+        output = model._eng_net.execute_list_out(input.input, input.kv_cache)
     end = time.perf_counter()
     return output, start, end
 
@@ -96,7 +118,15 @@ def model_stream_benchmark(
     seconds_to_run: float,
     seconds_to_warmup: float,
     num_streams: int,
+    internal_kv_cache: bool = False,
 ) -> Dict:
+
+    if internal_kv_cache:
+        kv_cache = LIB.kv_cache(0, 0)  # fake KV cache object
+        input_list = _adjust_input_list_for_internal_kv_cache(
+            input_list, model.input_names
+        )
+        input_list = _InputAndCache(input=input_list, kv_cache=kv_cache)
 
     # Run the benchmark scenario and collect batch times. The engine will be warmed up
     # for a few seconds first using "seconds_to_warmup"
@@ -131,8 +161,8 @@ def model_stream_benchmark(
     # given amount of wallclock time. This calculation as-is includes the test overhead
     # such as saving timing results for each iteration so it isn't a best-case but is a
     # realistic case.
-    first_start_time = min([b[0] for b in batch_times])
-    last_end_time = max([b[1] for b in batch_times])
+    first_start_time = min(b[0] for b in batch_times)
+    last_end_time = max(b[1] for b in batch_times)
     total_time_executing = last_end_time - first_start_time
 
     items_per_sec = (model.batch_size * len(batch_times)) / total_time_executing
@@ -153,3 +183,15 @@ def model_stream_benchmark(
         **percentiles_dict,
     }
     return benchmark_dict
+
+
+def _adjust_input_list_for_internal_kv_cache(input_list, input_names):
+    # if detecting a cached input (using 'past_key_values'),
+    # set the sample input size to effective 0 for internal cache benchmarking
+    updated_inputs = []
+    for name, inputs in zip(input_names, input_list):
+        if name.startswith("past_key_values"):
+            # set batch dim to 0 to match pipeline execution
+            inputs = numpy.zeros_like(inputs, shape=(0, *inputs.shape[1:]))
+        updated_inputs.append(inputs)
+    return updated_inputs

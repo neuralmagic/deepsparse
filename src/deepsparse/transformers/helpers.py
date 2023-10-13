@@ -28,13 +28,13 @@ import onnx
 from onnx import ModelProto
 
 from deepsparse.log import get_main_logger
-from deepsparse.utils.onnx import truncate_onnx_model
+from deepsparse.utils.onnx import _MODEL_DIR_ONNX_NAME, truncate_onnx_model
 from sparsezoo import Model
 from sparsezoo.utils import save_onnx
 
 
 __all__ = [
-    "get_onnx_path_and_configs",
+    "get_deployment_path",
     "overwrite_transformer_onnx_model_inputs",
     "fix_numpy_types",
     "get_transformer_layer_init_names",
@@ -43,34 +43,22 @@ __all__ = [
 
 _LOGGER = get_main_logger()
 
-_MODEL_DIR_ONNX_NAME = "model.onnx"
-_MODEL_DIR_CONFIG_NAME = "config.json"
-_MODEL_DIR_TOKENIZER_NAME = "tokenizer.json"
-_MODEL_DIR_TOKENIZER_CONFIG_NAME = "tokenizer_config.json"
 
-
-def get_onnx_path_and_configs(
-    model_path: str,
-    require_configs: bool = False,
-) -> Tuple[str, Optional[str], Optional[str]]:
+def get_deployment_path(model_path: str) -> Tuple[str, str]:
     """
-    :param model_path: path to onnx file, transformers sparsezoo stub,
-        or directory containing `model.onnx`, `config.json`, and/or
-        `tokenizer.json` files. If no `model.onnx` file is found in
-        a model directory, an exception will be raised
-    :param require_configs: if True, model_path must be a directory containing
-        `model.onnx`, `config.json`, and `tokenizer.json` files. Will raise
-        an exception otherwise
-    :return: tuple of ONNX file path, parent directory of config file
-        if it exists, and parent directory of tokenizer config file if it
-        exists. (Parent directories returned instead of absolute path
-        for compatibility with transformers .from_pretrained() method)
-    """
-    if os.path.isfile(model_path) and not require_configs:
-        return model_path, None, None
+    Returns the path to the deployment directory
+    for the given model path and the path to the mandatory
+    ONNX model that should reside in the deployment directory.
+    The deployment directory contains all the necessary files
+    for running the transformers model in the deepsparse pipeline
 
-    config_path = None
-    tokenizer_path = None
+    :param model_path: path to model directory, sparsezoo stub, or ONNX file
+    :return: path to the deployment directory and path to the ONNX file inside
+        the deployment directory
+    """
+    if os.path.isfile(model_path):
+        # return the parent directory of the ONNX file
+        return os.path.dirname(model_path), model_path
 
     if os.path.isdir(model_path):
         model_files = os.listdir(model_path)
@@ -81,57 +69,31 @@ def get_onnx_path_and_configs(
                 f"{model_path}. Be sure that an export of the model is written to "
                 f"{os.path.join(model_path, _MODEL_DIR_ONNX_NAME)}"
             )
-        onnx_path = os.path.join(model_path, _MODEL_DIR_ONNX_NAME)
-
-        # attempt to read config and tokenizer from sparsezoo-like framework directory
-        framework_dir = None
-        if "framework" in model_files:
-            framework_dir = os.path.join(model_path, "framework")
-        if "pytorch" in model_files:
-            framework_dir = os.path.join(model_path, "pytorch")
-        if framework_dir and os.path.isdir(framework_dir):
-            framework_files = os.listdir(framework_dir)
-            if _MODEL_DIR_CONFIG_NAME in framework_files:
-                config_path = framework_dir
-            if (
-                _MODEL_DIR_TOKENIZER_NAME
-                or _MODEL_DIR_TOKENIZER_CONFIG_NAME in framework_files
-            ):
-                tokenizer_path = framework_dir
-
-        # prefer config and tokenizer files in same directory as model.onnx
-        if _MODEL_DIR_CONFIG_NAME in model_files:
-            config_path = model_path
-        if _MODEL_DIR_TOKENIZER_NAME or _MODEL_DIR_TOKENIZER_CONFIG_NAME in model_files:
-            tokenizer_path = model_path
+        return model_path, os.path.join(model_path, _MODEL_DIR_ONNX_NAME)
 
     elif model_path.startswith("zoo:"):
         zoo_model = Model(model_path)
-        onnx_path = zoo_model.onnx_model.path
-        config_path = _get_file_parent(
-            zoo_model.deployment.default.get_file(_MODEL_DIR_CONFIG_NAME).path
-        )
-        tokenizer_path = _get_file_parent(
-            zoo_model.deployment.default.get_file(_MODEL_DIR_TOKENIZER_NAME).path
-        )
-        tokenizer_config_path = zoo_model.deployment.default.get_file(
-            _MODEL_DIR_TOKENIZER_CONFIG_NAME
-        )
-        if tokenizer_config_path is not None:
-            tokenizer_config_path.path  # trigger download of tokenizer_config
-    elif require_configs and (config_path is None or tokenizer_path is None):
-        raise RuntimeError(
-            f"Unable to find model and tokenizer config for model_path {model_path}. "
-            f"model_path must be a directory containing model.onnx, config.json, and "
-            f"tokenizer.json files. Found config and tokenizer paths: {config_path}, "
-            f"{tokenizer_path}"
-        )
+        deployment_path = zoo_model.deployment.path
+        for deployment_file in zoo_model.deployment.files:
+            # force download of any missing files in deployment directory
+            deployment_file.path
+        return deployment_path, os.path.join(deployment_path, _MODEL_DIR_ONNX_NAME)
+    elif model_path.startswith("hf:"):
+        from huggingface_hub import snapshot_download
+
+        deployment_path = snapshot_download(repo_id=model_path.replace("hf:", "", 1))
+        onnx_path = os.path.join(deployment_path, _MODEL_DIR_ONNX_NAME)
+        if not os.path.isfile(onnx_path):
+            raise ValueError(
+                f"{_MODEL_DIR_ONNX_NAME} not found in transformers model directory "
+                f"{deployment_path}. Be sure that an export of the model is written to "
+                f"{onnx_path}"
+            )
+        return deployment_path, onnx_path
     else:
         raise ValueError(
             f"model_path {model_path} is not a valid file, directory, or zoo stub"
         )
-
-    return onnx_path, config_path, tokenizer_path
 
 
 def overwrite_transformer_onnx_model_inputs(

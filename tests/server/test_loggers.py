@@ -24,8 +24,8 @@ from deepsparse.server.config import (
     ServerConfig,
     ServerSystemLoggingConfig,
 )
+from deepsparse.server.deepsparse_server import DeepsparseServer
 from deepsparse.server.helpers import server_logger_from_config
-from deepsparse.server.server import _build_app
 from fastapi.testclient import TestClient
 from flaky import flaky
 from tests.deepsparse.loggers.helpers import fetch_leaf_logger
@@ -35,9 +35,10 @@ from tests.utils import mock_engine
 
 
 logger_identifier = "tests/deepsparse/loggers/helpers.py:ListLogger"
-stub = "zoo:nlp/sentiment_analysis/bert-base/pytorch/huggingface/sst2/12layer_pruned80_quant-none-vnni"  # noqa E501
+stub = "zoo:distilbert-sst2_wikipedia_bookcorpus-pruned90"  # noqa E501
 task = "text-classification"
 name = "endpoint_name"
+endpoint_path = f"/v2/models/{name}/infer"
 
 
 def _test_logger_contents(leaf_logger, expected_logs):
@@ -57,11 +58,12 @@ def test_default_logger():
     with mock.patch(
         "deepsparse.server.server.server_logger_from_config", return_value=server_logger
     ), mock_engine(rng_seed=0):
-        app = _build_app(server_config)
+        server = DeepsparseServer(server_config)
+        app = server._build_app()
     client = TestClient(app)
 
     for _ in range(2):
-        client.post("/predict", json={"sequences": "today is great"})
+        client.post(endpoint_path, json={"sequences": "today is great"})
     assert isinstance(fetch_leaf_logger(server_logger), PythonLogger)
 
 
@@ -81,10 +83,11 @@ def test_data_logging_from_predefined():
     with mock.patch(
         "deepsparse.server.server.server_logger_from_config", return_value=server_logger
     ), mock_engine(rng_seed=0):
-        app = _build_app(server_config)
+        server = DeepsparseServer(server_config)
+        app = server._build_app()
     client = TestClient(app)
     client.post(
-        "/predict",
+        "/v2/models/text_classification/infer",
         json={
             "sequences": [["Fun for adults and children.", "Fun for only children."]]
         },
@@ -110,11 +113,12 @@ def test_logging_only_system_info():
     with mock.patch(
         "deepsparse.server.server.server_logger_from_config", return_value=server_logger
     ), mock_engine(rng_seed=0):
-        app = _build_app(server_config)
+        server = DeepsparseServer(server_config)
+        app = server._build_app()
     client = TestClient(app)
 
     for _ in range(2):
-        client.post("/predict", json={"sequences": "today is great"})
+        client.post(endpoint_path, json={"sequences": "today is great"})
     _test_logger_contents(
         fetch_leaf_logger(server_logger),
         {"prediction_latency": 8},
@@ -139,11 +143,12 @@ def test_regex_target_logging():
     with mock.patch(
         "deepsparse.server.server.server_logger_from_config", return_value=server_logger
     ), mock_engine(rng_seed=0):
-        app = _build_app(server_config)
+        server = DeepsparseServer(server_config)
+        app = server._build_app()
     client = TestClient(app)
 
     for _ in range(2):
-        client.post("/predict", json={"sequences": "today is great"})
+        client.post(endpoint_path, json={"sequences": "today is great"})
     _test_logger_contents(
         fetch_leaf_logger(server_logger),
         {"pipeline_inputs__identity": 2, "pipeline_outputs__identity": 2},
@@ -171,11 +176,12 @@ def test_multiple_targets_logging():
     with mock.patch(
         "deepsparse.server.server.server_logger_from_config", return_value=server_logger
     ), mock_engine(rng_seed=0):
-        app = _build_app(server_config)
+        server = DeepsparseServer(server_config)
+        app = server._build_app()
     client = TestClient(app)
 
     for _ in range(2):
-        client.post("/predict", json={"sequences": "today is great"})
+        client.post(endpoint_path, json={"sequences": "today is great"})
     _test_logger_contents(
         fetch_leaf_logger(server_logger),
         {
@@ -213,11 +219,12 @@ def test_function_metric_with_target_loggers():
     with mock.patch(
         "deepsparse.server.server.server_logger_from_config", return_value=server_logger
     ), mock_engine(rng_seed=0):
-        app = _build_app(server_config)
+        server = DeepsparseServer(server_config)
+        app = server._build_app()
     client = TestClient(app)
 
     for _ in range(2):
-        client.post("/predict", json={"sequences": "today is great"})
+        client.post(endpoint_path, json={"sequences": "today is great"})
 
     _test_logger_contents(
         server_logger.logger.loggers[1].logger.loggers[0],
@@ -239,21 +246,25 @@ def test_function_metric_with_target_loggers():
 
 @mock_engine(rng_seed=0)
 def test_instantiate_prometheus(mock_engine, tmp_path):
-    client = TestClient(
-        _build_app(
-            ServerConfig(
-                endpoints=[EndpointConfig(task="text_classification", model="default")],
-                loggers=dict(
-                    prometheus={
-                        "port": find_free_port(),
-                        "text_log_save_dir": tmp_path.name,
-                        "text_log_save_frequency": 30,
-                    }
-                ),
-            )
+    server = DeepsparseServer(
+        ServerConfig(
+            endpoints=[
+                EndpointConfig(
+                    task="text_classification", model="default", name="test_name"
+                )
+            ],
+            loggers=dict(
+                prometheus={
+                    "port": find_free_port(),
+                    "text_log_save_dir": tmp_path.name,
+                    "text_log_save_frequency": 30,
+                }
+            ),
         )
     )
-    r = client.post("/predict", json=dict(sequences="asdf"))
+    app = server._build_app()
+    client = TestClient(app)
+    r = client.post("/v2/models/test_name/infer", json=dict(sequences="asdf"))
     assert r.status_code == 200
     shutil.rmtree(tmp_path.name, ignore_errors=True)
 
@@ -274,16 +285,7 @@ def test_endpoint_system_logging(mock_engine):
                     inference_details=SystemLoggingGroup(enable=True),
                     prediction_latency=SystemLoggingGroup(enable=True),
                 ),
-            ),
-            EndpointConfig(
-                task="question_answering",
-                model="default",
-                route="/predict_question_answering",
-                logging_config=PipelineSystemLoggingConfig(
-                    inference_details=SystemLoggingGroup(enable=True),
-                    prediction_latency=SystemLoggingGroup(enable=True),
-                ),
-            ),
+            )
         ],
         loggers={"logger_1": {"path": logger_identifier}},
     )
@@ -291,14 +293,16 @@ def test_endpoint_system_logging(mock_engine):
     with mock.patch(
         "deepsparse.server.server.server_logger_from_config", return_value=server_logger
     ), mock_engine:
-        app = _build_app(server_config)
+        server = DeepsparseServer(server_config)
+        app = server._build_app()
     client = TestClient(app)
-    client.post("/predict_text_classification", json=dict(sequences="asdf"))
     client.post(
-        "/predict_text_classification", json=dict(question="asdf", context="asdf")
+        "/v2/models/predict_text_classification/infer", json=dict(sequences="asdf")
+    )
+    client.post(
+        "/v2/models/predict_text_classification/infer", json=dict(sequences="asdf")
     )
     calls = server_logger.logger.loggers[0].logger.loggers[0].calls
 
     c = Counter([call.split(",")[0] for call in calls])
-
     assert c == SAMPLE_LOGS_DICT

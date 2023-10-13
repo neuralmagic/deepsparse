@@ -96,7 +96,7 @@ class Perplexity:
                 list(compress(sequence, attn_mask))
                 for (sequence, attn_mask) in zip(encoded_batch, attention_mask)
             ]
-            max_sequence_len = max([len(sequence) for sequence in encoded_batch])
+            max_sequence_len = max(len(sequence) for sequence in encoded_batch)
 
             encoded_batch = [
                 pad_to_fixed_length(numpy.array(sequence), max_sequence_len)

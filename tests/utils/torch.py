@@ -12,9 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-import re
-from typing import Optional
 
 import torchvision.models as models
 
@@ -26,14 +23,6 @@ try:
 except Exception as torch_import_err:
     torch_import_error = torch_import_err
     torch = None
-
-
-def find_file_with_pattern(folder_path: str, pattern: str) -> Optional[str]:
-    folder_path = os.path.expanduser(folder_path)
-    for root, dirs, files in os.walk(folder_path):
-        for file in files:
-            if re.match(pattern, file):
-                return os.path.join(root, file)
 
 
 def save_pth_to_pt(model_path_pth: str, model_name: str = "resnet50") -> None:

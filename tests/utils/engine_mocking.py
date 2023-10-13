@@ -103,7 +103,9 @@ class _FakeDeepsparseLibEngine:
         with override_onnx_batch_size(
             model_path, batch_size, inplace=True
         ) as batched_model_path:
-            session = ort.InferenceSession(batched_model_path)
+            session = ort.InferenceSession(
+                batched_model_path, providers=["CPUExecutionProvider"]
+            )
             self.input_descriptors = list(map(_to_descriptor, session.get_inputs()))
             self.output_descriptors = list(map(_to_descriptor, session.get_outputs()))
 

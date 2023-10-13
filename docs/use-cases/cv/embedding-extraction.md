@@ -106,3 +106,31 @@ print(len(result["embeddings"][0][0]))
 
 ### Cross Use Case Functionality
 Check out the [Server User Guide](../../user-guide/deepsparse-server.md) for more details on configuring the Server.
+
+## Using a Custom ONNX File 
+Apart from using models from the SparseZoo, DeepSparse allows you to define custom ONNX files for embedding extraction. 
+
+The first step is to obtain the ONNX model. You can obtain the file by converting your model to ONNX after training. 
+
+Download the [ResNet-50 - ImageNet](https://sparsezoo.neuralmagic.com/models/cv%2Fclassification%2Fresnet_v1-50%2Fpytorch%2Fsparseml%2Fimagenet%2Fpruned95_uniform_quant-none) ONNX model for demonstration:
+
+```bash
+sparsezoo.download zoo:cv/classification/resnet_v1-50/pytorch/sparseml/imagenet/pruned95_uniform_quant-none --save-dir ./embedding-extraction
+```
+Use the ResNet-50 ONNX model for embedding extraction:
+```python
+from deepsparse import Pipeline
+
+# this step removes the projection head before compiling the model
+rn50_embedding_pipeline = Pipeline.create(
+    task="embedding-extraction",
+    base_task="image-classification", # tells the pipeline to expect images and normalize input with ImageNet means/stds
+    model_path="embedding-extraction/model.onnx",
+    emb_extraction_layer=-3, # extracts last layer before projection head and softmax
+)
+
+# this step runs pre-processing, inference and returns an embedding
+embedding = rn50_embedding_pipeline(images="lion.jpeg")
+print(len(embedding.embeddings[0][0]))
+# 2048
+```
