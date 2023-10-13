@@ -44,6 +44,7 @@ from optimum.deepsparse import DeepSparseModelForFeatureExtraction
 logger = logging.getLogger(__name__)
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 DEFAULT_MODEL_NAME = "zeroshot/bge-small-en-v1.5-quant"
 
 
@@ -81,11 +82,17 @@ class SentenceTransformer:
         self._max_seq_length = max_seq_length
 =======
 DEFAULT_MODEL_NAME = "zeroshot/oneshot-minilm"
+=======
+DEFAULT_MODEL_NAME = "zeroshot/bge-small-en-v1.5-quant"
+>>>>>>> 7a4cc1d5 (Update)
 
 
 class SentenceTransformer:
     def __init__(
-        self, model_name_or_path: str = DEFAULT_MODEL_NAME, export: bool = False
+        self,
+        model_name_or_path: str = DEFAULT_MODEL_NAME,
+        export: bool = False,
+        max_seq_length: int = 512,
     ):
 
         self.model_name_or_path = model_name_or_path
@@ -94,7 +101,7 @@ class SentenceTransformer:
         )
         self.tokenizer = get_preprocessor(model_name_or_path)
 
-        self._max_seq_length = 512
+        self._max_seq_length = max_seq_length
         self._batch_size = 1
 >>>>>>> b750add0 (Support for SentenceTransformer with `deepsparse.sentence_transformers.SentenceTransformer`)
 
@@ -108,6 +115,7 @@ class SentenceTransformer:
         convert_to_tensor: bool = False,
         normalize_embeddings: bool = False,
     ) -> Union[List[torch.Tensor], np.ndarray, torch.Tensor]:
+<<<<<<< HEAD
         """
         Computes sentence embeddings
 
@@ -130,6 +138,11 @@ class SentenceTransformer:
            a stacked tensor is returned. If convert_to_numpy, a numpy matrix
            is returned.
         """
+=======
+
+        # TODO: support executing with batch size > 1
+        batch_size = 1
+>>>>>>> 7a4cc1d5 (Update)
 
         if show_progress_bar is None:
             show_progress_bar = logger.getEffectiveLevel() in (
@@ -197,13 +210,19 @@ class SentenceTransformer:
                         last_mask_id -= 1
 
                     embeddings.append(token_emb[0 : last_mask_id + 1])
-            elif output_value is None:  # Return all outputs
+            elif output_value is None:
+                # Return all outputs
                 embeddings = []
                 for sent_idx in range(len(out_features["sentence_embedding"])):
                     row = {name: out_features[name][sent_idx] for name in out_features}
                     embeddings.append(row)
+<<<<<<< HEAD
             else:  # Sentence embeddings
 >>>>>>> b750add0 (Support for SentenceTransformer with `deepsparse.sentence_transformers.SentenceTransformer`)
+=======
+            else:
+                # Sentence embeddings
+>>>>>>> 7a4cc1d5 (Update)
                 embeddings = out_features[output_value]
                 if normalize_embeddings:
                     embeddings = torch.nn.functional.normalize(embeddings, p=2, dim=1)
@@ -223,6 +242,7 @@ class SentenceTransformer:
         return all_embeddings
 
 <<<<<<< HEAD
+<<<<<<< HEAD
     def get_max_seq_length(self) -> int:
         """
         Returns the maximal sequence length for input the model accepts.
@@ -233,14 +253,21 @@ class SentenceTransformer:
     def _text_length(self, text: Union[List[int], List[List[int]]]) -> int:
 =======
     def get_max_seq_length(self):
+=======
+    def get_max_seq_length(self) -> int:
+>>>>>>> 7a4cc1d5 (Update)
         """
         Returns the maximal sequence length for input the model accepts.
         Longer inputs will be truncated
         """
         return self._max_seq_length
 
+<<<<<<< HEAD
     def _text_length(self, text: Union[List[int], List[List[int]]]):
 >>>>>>> b750add0 (Support for SentenceTransformer with `deepsparse.sentence_transformers.SentenceTransformer`)
+=======
+    def _text_length(self, text: Union[List[int], List[List[int]]]) -> int:
+>>>>>>> 7a4cc1d5 (Update)
         """
         Help function to get the length for the input text. Text can be either
         a list of ints (which means a single text as input), or a tuple of list of ints
@@ -263,6 +290,7 @@ class SentenceTransformer:
         return self.tokenizer(texts, padding=True, truncation=True, return_tensors="pt")
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 
     def mean_pooling(
         self, model_output: torch.Tensor, attention_mask: torch.Tensor
@@ -276,6 +304,12 @@ class SentenceTransformer:
 
     def mean_pooling(self, model_output: torch.Tensor, attention_mask: torch.Tensor):
 >>>>>>> b750add0 (Support for SentenceTransformer with `deepsparse.sentence_transformers.SentenceTransformer`)
+=======
+
+    def mean_pooling(
+        self, model_output: torch.Tensor, attention_mask: torch.Tensor
+    ) -> torch.Tensor:
+>>>>>>> 7a4cc1d5 (Update)
         """
         Compute mean pooling of token embeddings weighted by attention mask.
         Args:
