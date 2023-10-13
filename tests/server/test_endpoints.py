@@ -38,8 +38,8 @@ class StrSchema(BaseModel):
     value: str
 
 
-def parse(v: StrSchema) -> int:
-    return int(v.value)
+def parse(value) -> int:
+    return int(value)
 
 
 class TestStatusEndpoints:
@@ -106,7 +106,7 @@ class TestMockEndpoints:
     ):
         mock_pipeline = Mock(
             side_effect=parse,
-            input_schema=StrSchema,
+            input_schema=str,
             output_schema=int,
             logger=MultiLogger([]),
         )
@@ -146,6 +146,7 @@ class TestMockEndpoints:
         assert app.routes[-1].path == "/v2/models/predict/parse_int/infer/from_files"
         assert app.routes[-1].endpoint.func.__annotations__ == {
             "proxy_pipeline": ProxyPipeline,
+            "system_logging_config": SystemLoggingConfig,
             "request": List[UploadFile],
         }
         assert app.routes[-1].response_model is int
@@ -159,9 +160,12 @@ class TestMockEndpoints:
             pipeline=Mock(input_schema=FromFilesSchema, output_schema=int),
         )
         assert len(app.routes) == num_routes + 1
-        assert app.routes[-1].path == "/invocations/predict/parse_int/infer"
+        num_routes = len(app.routes)
+
+        assert app.routes[-1].path == "/invocations/predict/parse_int/infer/from_files"
         assert app.routes[-1].endpoint.func.__annotations__ == {
             "proxy_pipeline": ProxyPipeline,
+            "system_logging_config": SystemLoggingConfig,
             "request": List[UploadFile],
         }
 
@@ -174,7 +178,8 @@ class TestMockEndpoints:
         assert app.routes[-1].path == "/invocations/predict/parse_int/infer"
         assert app.routes[-1].endpoint.func.__annotations__ == {
             "proxy_pipeline": ProxyPipeline,
-            "request": List[UploadFile],
+            "system_logging_config": SystemLoggingConfig,
+            "raw_request": Request,
         }
 
     def test_add_endpoint_with_no_route_specified(self, server, app):

@@ -57,11 +57,25 @@ class SagemakerServer(DeepsparseServer):
 
         if hasattr(pipeline.input_schema, "from_files"):
             routes_and_fns.append(
-                (route, partial(Server.predict_from_files, ProxyPipeline(pipeline)))
+                (
+                    route + "/from_files",
+                    partial(
+                        Server.predict_from_files,
+                        ProxyPipeline(pipeline),
+                        self.server_config.system_logging,
+                    ),
+                )
             )
         else:
             routes_and_fns.append(
-                (route, partial(Server.predict, ProxyPipeline(pipeline)))
+                (
+                    route,
+                    partial(
+                        Server.predict,
+                        ProxyPipeline(pipeline),
+                        self.server_config.system_logging,
+                    ),
+                )
             )
 
         self._update_routes(

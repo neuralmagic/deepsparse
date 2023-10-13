@@ -16,7 +16,7 @@ limitations under the License.
 
 # Developing DeepSparse
 
-The DeepSparse Python API is developed and tested using Python 3.8-3.10.
+The DeepSparse Python API is developed and tested using Python 3.8-3.11.
 To develop the Python API, you will also need the development dependencies and to follow the styling guidelines.
 
 Here's some details to get started.
