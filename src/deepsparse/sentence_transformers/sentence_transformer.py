@@ -25,12 +25,15 @@ from optimum.deepsparse import DeepSparseModelForFeatureExtraction
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_MODEL_NAME = "zeroshot/oneshot-minilm"
+DEFAULT_MODEL_NAME = "zeroshot/bge-small-en-v1.5-quant"
 
 
 class SentenceTransformer:
     def __init__(
-        self, model_name_or_path: str = DEFAULT_MODEL_NAME, export: bool = False
+        self,
+        model_name_or_path: str = DEFAULT_MODEL_NAME,
+        export: bool = False,
+        max_seq_length: int = 512,
     ):
 
         self.model_name_or_path = model_name_or_path
@@ -39,7 +42,7 @@ class SentenceTransformer:
         )
         self.tokenizer = get_preprocessor(model_name_or_path)
 
-        self._max_seq_length = 512
+        self._max_seq_length = max_seq_length
         self._batch_size = 1
 
     def encode(
@@ -52,11 +55,9 @@ class SentenceTransformer:
         convert_to_tensor: bool = False,
         normalize_embeddings: bool = False,
     ) -> Union[List[torch.Tensor], np.ndarray, torch.Tensor]:
+
+        # TODO: support executing with batch size > 1
         batch_size = 1
-        # if batch_size != self._batch_size:
-        #     self._batch_size = batch_size
-        #     self.model.reshape(input_shapes=f"[{self._batch_size},{self.get_max_seq_length()}]")
-        #     self.model.compile(batch_size=self._batch_size)
 
         if show_progress_bar is None:
             show_progress_bar = (
@@ -105,12 +106,14 @@ class SentenceTransformer:
                         last_mask_id -= 1
 
                     embeddings.append(token_emb[0 : last_mask_id + 1])
-            elif output_value is None:  # Return all outputs
+            elif output_value is None:
+                # Return all outputs
                 embeddings = []
                 for sent_idx in range(len(out_features["sentence_embedding"])):
                     row = {name: out_features[name][sent_idx] for name in out_features}
                     embeddings.append(row)
-            else:  # Sentence embeddings
+            else:
+                # Sentence embeddings
                 embeddings = out_features[output_value]
                 if normalize_embeddings:
                     embeddings = torch.nn.functional.normalize(embeddings, p=2, dim=1)
@@ -129,14 +132,14 @@ class SentenceTransformer:
 
         return all_embeddings
 
-    def get_max_seq_length(self):
+    def get_max_seq_length(self) -> int:
         """
         Returns the maximal sequence length for input the model accepts.
         Longer inputs will be truncated
         """
         return self._max_seq_length
 
-    def _text_length(self, text: Union[List[int], List[List[int]]]):
+    def _text_length(self, text: Union[List[int], List[List[int]]]) -> int:
         """
         Help function to get the length for the input text. Text can be either
         a list of ints (which means a single text as input), or a tuple of list of ints
@@ -157,10 +160,10 @@ class SentenceTransformer:
         Tokenizes the texts
         """
         return self.tokenizer(texts, padding=True, truncation=True, return_tensors="pt")
-        # return self.tokenizer(texts, padding='max_length', truncation=True,
-        #  max_length=self.get_max_seq_length(), return_tensors="pt")
 
-    def mean_pooling(self, model_output: torch.Tensor, attention_mask: torch.Tensor):
+    def mean_pooling(
+        self, model_output: torch.Tensor, attention_mask: torch.Tensor
+    ) -> torch.Tensor:
         """
         Compute mean pooling of token embeddings weighted by attention mask.
         Args:
