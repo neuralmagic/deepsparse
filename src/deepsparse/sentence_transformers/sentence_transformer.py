@@ -88,16 +88,32 @@ DEFAULT_MODEL_NAME = "zeroshot/bge-small-en-v1.5-quant"
 
 
 class SentenceTransformer:
+    """
+    Loads or creates a SentenceTransformer-compatible model that can be used to map
+    text to embeddings.
+
+    :param model_name_or_path: If it is a filepath on disc, it loads the model from
+        that path. If it is not a path, it first tries to download and export a model
+        from a HuggingFace models repository with that name.
+    :param export: To load a PyTorch checkpoint and convert it to the DeepSparse
+        format on-the-fly, you can set `export=True` when loading your model.
+    :param max_seq_length: Sets a limit on the maxmimum sequence length allowed,
+        this should be set to 512 for most models. Any text that exceeds this
+        token length will be truncated.
+    :param use_auth_token: HuggingFace authentication token to download private models.
+    """
+
     def __init__(
         self,
         model_name_or_path: str = DEFAULT_MODEL_NAME,
         export: bool = False,
         max_seq_length: int = 512,
+        use_auth_token: Union[bool, str, None] = None,
     ):
 
         self.model_name_or_path = model_name_or_path
         self.model = DeepSparseModelForFeatureExtraction.from_pretrained(
-            model_name_or_path, export=export
+            model_name_or_path, export=export, use_auth_token=use_auth_token
         )
         self.tokenizer = get_preprocessor(model_name_or_path)
 
@@ -116,6 +132,9 @@ class SentenceTransformer:
         normalize_embeddings: bool = False,
     ) -> Union[List[torch.Tensor], np.ndarray, torch.Tensor]:
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 5936830a (Address comments)
         """
         Computes sentence embeddings
 
@@ -138,9 +157,12 @@ class SentenceTransformer:
            a stacked tensor is returned. If convert_to_numpy, a numpy matrix
            is returned.
         """
+<<<<<<< HEAD
 =======
+=======
+>>>>>>> 5936830a (Address comments)
 
-        # TODO: support executing with batch size > 1
+        # TODO: support faster execution with batch size > 1
         batch_size = 1
 >>>>>>> 7a4cc1d5 (Update)
 
@@ -182,6 +204,7 @@ class SentenceTransformer:
             )
 
 <<<<<<< HEAD
+<<<<<<< HEAD
             embeddings = []
             if output_value == "token_embeddings":
                 for token_emb, attention in zip(
@@ -200,19 +223,20 @@ class SentenceTransformer:
             else:
                 # Sentence embeddings
 =======
+=======
+            embeddings = []
+>>>>>>> 5936830a (Address comments)
             if output_value == "token_embeddings":
-                embeddings = []
                 for token_emb, attention in zip(
                     out_features[output_value], out_features["attention_mask"]
                 ):
-                    last_mask_id = len(attention) - 1
-                    while last_mask_id > 0 and attention[last_mask_id].item() == 0:
-                        last_mask_id -= 1
-
-                    embeddings.append(token_emb[0 : last_mask_id + 1])
+                    # Apply the attention mask to remove embeddings for padding tokens
+                    # Count non-zero values in the attention mask
+                    actual_tokens_count = attention.sum().item()
+                    # Slice the embeddings using this count
+                    embeddings.append(token_emb[:actual_tokens_count])
             elif output_value is None:
                 # Return all outputs
-                embeddings = []
                 for sent_idx in range(len(out_features["sentence_embedding"])):
                     row = {name: out_features[name][sent_idx] for name in out_features}
                     embeddings.append(row)
