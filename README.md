@@ -52,6 +52,8 @@ We are excited to announce initial support for performant LLM inference in DeepS
 - 8-bit weight and activation quantization support
 - Efficient usage of cached attention keys and values for minimal memory movement
 
+![mpt-chat-comparison](https://github.com/neuralmagic/deepsparse/assets/3195154/ccf39323-4603-4489-8462-7b103872aeb3)
+
 ### Try It Now
 
 Install (requires Linux):
@@ -111,7 +113,7 @@ To experiment with the latest features, there is a nightly build available using
 #### System Requirements
 - Hardware: [x86 AVX2, AVX512, AVX512-VNNI and ARM v8.2+](https://github.com/neuralmagic/deepsparse/tree/main/docs/user-guide/hardware-support.md)
 - Operating System: Linux
-- Python: 3.8-3.10
+- Python: 3.8-3.11
 - ONNX versions 1.5.0-1.15.0, ONNX opset version 11 or higher
 
 For those using Mac or Windows, we recommend using Linux Containers with Docker.
