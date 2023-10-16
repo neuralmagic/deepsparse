@@ -58,7 +58,7 @@ model_name = "TaylorAI/bge-micro-v2"
 
 # DeepSparse Model Evaluation
 import deepsparse
-model = deepsparse.sentence_transformers.SentenceTransformer(model_name_or_path=model_name, export=True)
+model = deepsparse.sentence_transformers.SentenceTransformer(model_name, export=True)
 evaluation = MTEB(tasks=["Banking77Classification"])
 results_ds = evaluation.run(model, output_folder=f"results/ds-{model_name}")
 print(results_ds)
@@ -81,6 +81,6 @@ This script performs a comparative analysis between the DeepSparse-optimized mod
 
 ---
 
-This documentation is based on the original README from `SentenceTransformers <https://www.sbert.net/>`_. It extends the original functionalities with the optimizations provided by the `DeepSparse Engine <https://github.com/neuralmagic/deepsparse>`_.
+This documentation is based on the original README from [SentenceTransformers](https://www.sbert.net/). It extends the original functionalities with the optimizations provided by [DeepSparse](https://github.com/neuralmagic/deepsparse).
 
 **Note**: The example usage is designed for the DeepSparse-enhanced version of SentenceTransformers. Make sure to follow the specific installation instructions for full compatibility. Performance optimizations with batching and other advanced features will be part of future updates.
