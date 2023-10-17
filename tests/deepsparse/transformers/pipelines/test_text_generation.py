@@ -332,7 +332,7 @@ class TestTextGenerationPipeline:
         )
 
     def test_deepsparse_generation_after_kv_cache_has_been_filled(self, setup):
-        # Test the deepsparse that uses deepsparse engine. The test covers the
+        # Test the pipeline that uses deepsparse engine. The test covers the
         # following scenario:
         # 1. Prompt preprocessing is performed by multi-token engine
         # 2. The KV Cache is filled up (old entries are removed)
