@@ -18,6 +18,7 @@ from typing import Dict, List, Union
 from deepsparse.v2.operators import Operator
 from deepsparse.v2.routers import Router
 from deepsparse.v2.schedulers import OperatorScheduler, SchedulerGroup
+from deepsparse.v2.utils import Context
 
 
 __all__ = ["Pipeline"]
@@ -63,8 +64,6 @@ class Pipeline(Operator):
 
         :param inp: input to the operator. expected to be of any type that is
         expected by the operator.
-        :param context: context to store the current the inputs, outputs, and operator
-        for each step of the router.
 
         """
         next_step = self.router.START_ROUTE
