@@ -13,61 +13,67 @@
 # limitations under the License.
 
 
-from typing import List, Tuple, Union
+from abc import abstractmethod
+from typing import Dict, List, Union
 
 from deepsparse.v2.operators import Operator
-from deepsparse.v2.schedulers import OperatorScheduler
-from deepsparse.v2.utils import Context, OperatorSchema
 
 
-__all__ = ["Router"]
+__all__ = ["Router", "LinearRouter"]
 
 
 class Router:
     """
-    Routers must implement a run method which runs a series of operators
-    for a pipeline for a given input. Base Router runs operators linearly
-    in a series
+    Routers dicate the next operator to run. Each Router must implement a next function,
+    which dicates the index or key of the next operator to run.
+
+    :param start_route: the start index or key of the router
+    :param end_route: the end index or key of the router
+
     """
 
-    @staticmethod
-    def run(
-        inp: OperatorSchema,
-        operators: List[Operator],
-        scheduler: OperatorScheduler,
-    ) -> Tuple[OperatorSchema, Context]:
+    def __init__(self, end_route: Union[str, int], start_route: Union[str, int]):
+        self.START_ROUTE = start_route
+        self.END_ROUTE = end_route
+
+    @abstractmethod
+    def next(
+        self, past: Union[str, int], ops: Union[List[Operator], Dict[str, Operator]]
+    ) -> Union[str, int]:
         """
-        :param inp: input to the first operator of the series
-        :param operators: list of operators to run
-        :param scheduler: scheudler to submit operators to
-        :return: final output of the operators
+        Determines the index or dictionary key for the next operator which should run.
+
+        :param past: the previous index or key. This should uniquely determine the next
+        operator to run
+        :param ops: list or dictionary of operators
+        :returns: the next index or dictionary key for the next operator to run
         """
-        context = Context()
+        raise NotImplementedError
 
-        # run operators linearly
-        operator_input = inp
-        for operator in operators:
-            output_future = scheduler.submit(
-                operator=operator, operator_input=operator_input, context=context
-            )
+    def yaml(self):
+        pass
 
-            # wait for future to resolve
-            operator_output = output_future.result()
+    def json(self):
+        pass
 
-            # update context
-            context.update(
-                operator=operator,
-                input=operator_input,
-                output=operator_output,
-            )
 
-            # previous output becomes next input
-            operator_input = operator_output
+class LinearRouter(Router):
+    """
+    LinearRouterruns a list of Operators in sequential order. end_route should
+    be the length of the list and the start_route should be the start index.
+    """
 
-        return operator_output, context
+    def __init__(self, end_route: int, start_route: int = 0):
+        super().__init__(end_route=end_route, start_route=start_route)
+
+    def next(self, past: int, ops: List[Operator]) -> int:
+        new_index = past + 1
+        if new_index < self.END_ROUTE:
+            return new_index
+        return self.END_ROUTE
 
     @staticmethod
-    def validate(operators: List[Operator]) -> Union[bool, str]:
+    def validate(operators: List[Operator]) -> bool:
         """
         :param operators: operators that this Router could potentially run over
         :return: True if this Router can run this series of operators. Base Router
@@ -76,7 +82,8 @@ class Router:
             returned
         """
         if len(operators) < 1:
-            return "No operators found"
+            # TODO: log
+            return False
 
         for idx in range(len(operators) - 1):
             current_output_schema = operators[idx].output_schema
@@ -88,8 +95,13 @@ class Router:
                 continue
 
             if current_output_schema != next_input_schema:
+                # TODO: Log error message below
+                """
                 return (
                     f"Operator at idx {idx}: {type(operators[idx])} has invalid "
                     f"output schema {current_output_schema} for next operator "
                     f"{type(operators[idx + 1])} which requires {next_input_schema}"
                 )
+                """
+                return False
+        return True
