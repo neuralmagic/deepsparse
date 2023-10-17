@@ -12,10 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import List, Tuple
+import functools
+import os
+from typing import Dict, List, Optional, Tuple, Union
 
 import numpy
+import yaml
 from transformers import AutoModelForCausalLM, AutoTokenizer
+
+import pytest
 
 
 class TorchGroundTruthSource:
@@ -82,3 +87,45 @@ class TorchGroundTruthSource:
             tokenizer.pad_token = tokenizer.eos_token
 
         return tokenizer
+
+
+def parse_params(config_path: str) -> Tuple[Optional[Dict], Optional[str]]:
+    # parses the config file provided
+    assert os.path.isfile(config_path), f"config_path {config_path} is not a file"
+    # reads the yaml file
+    with open(config_path, "r") as f:
+        config = yaml.safe_load(f)
+
+    cadence = os.environ.get("CADENCE", "commit")
+    if cadence == config["cadence"]:
+        return config, None
+    return None, "Skipping test for cadence: {}".format(config["cadence"])
+
+
+def validate_cache_management_type(
+    internal_kv_cache, cache_management_type: Union[str, List[str]]
+) -> bool:
+    if internal_kv_cache and "internal" not in cache_management_type:
+        pytest.skip(
+            "The tests for running the pipeline with "
+            "internal kv cache management are disabled."
+        )
+    if not internal_kv_cache and "external" not in cache_management_type:
+        pytest.skip(
+            "The tests for running the pipeline with "
+            "external kv cache management are disabled."
+        )
+    return internal_kv_cache
+
+
+def helper_test(test_method):
+    @functools.wraps(test_method)
+    def wrapper(self, setup):
+        if not self.run_helper_tests:
+            raise pytest.skip(
+                "Skipping the helper test. Set run_helper_tests to True to run it."
+            )
+
+        return test_method(self, setup)
+
+    return wrapper

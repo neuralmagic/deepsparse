@@ -1,0 +1,13 @@
+model_path: "hf:mgoin/TinyStories-1M-deepsparse"
+model_name: "roneneldan/TinyStories-1M"
+pipeline_type: ["text-generation", "chat"]
+num_tokens_generate: 128
+prompt: "Didn't know what time it was, the lights were low\n I leaned back on my radio\n Some cat was layin' down some rock 'n' roll\n \"Lotta soul,\" he said\n Then the loud sound did seem to fade\n Came back like a slow voice on a wave of phase\n That weren't no DJ, that was hazy cosmic jive"
+has_bos_token: False
+logits_threshold: 24.7
+precision: 0.001
+cache_management_type:
+    - "internal"
+    - "external"
+run_helper_tests: True
+cadence: "commit"
