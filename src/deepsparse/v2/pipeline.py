@@ -18,6 +18,7 @@ from typing import Dict, List, Union
 from deepsparse.v2.operators import Operator
 from deepsparse.v2.routers import Router
 from deepsparse.v2.schedulers import OperatorScheduler, SchedulerGroup
+from deepsparse.v2.utils import Context
 
 
 __all__ = ["Pipeline"]
@@ -39,7 +40,7 @@ class Pipeline(Operator):
     :param schedulers: A list of schedulers to run operators.
 
     """
-
+    
     def __init__(
         self,
         ops: Union[Dict[str, Operator], List[Operator]],
