@@ -41,7 +41,7 @@ class Pipeline(Operator):
     :param pipeline_state: pipeline_state created during pipeline initialization
 
     """
-
+    
     def __init__(
         self,
         ops: Union[Dict[str, Operator], List[Operator]],

@@ -14,6 +14,7 @@
 
 
 from concurrent.futures import Future, ThreadPoolExecutor
+from typing import Any
 
 from deepsparse.v2.operators import Operator
 
