@@ -12,7 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-A sample config file requires the following arguments:
+This test suite consumes config files to test the text generation pipeline
+for various scenerios.
+
+A sample config file is a yaml that requires the following fields:
     model_path: The path to the model to be tested
                 (sparsezoo stub/hf model path/local_path)
     model_name: The name of the hugging face model
@@ -35,10 +38,11 @@ A sample config file requires the following arguments:
                            The available options are: "internal" and "external".
     run_helper_tests: Whether to run the helper test for the pipeline. Helper tests
                      check functionalities of the pipeline that are not directly
-                     on the hot path.
+                     on the hot path. They are decorated with @helper_test.
     cadence: The cadence of the tests. The available options are:
               "nightly" and "commit". By default, only the tests that have cadence
-              "commit" will be run in GHA.
+              "commit" will be run in GHA. This parameter can be both a string
+            or a list of strings.
 """
 import inspect
 from typing import List, Optional, Tuple
@@ -52,6 +56,7 @@ from deepsparse.transformers.pipelines.text_generation import TextGenerationOutp
 from deepsparse.transformers.utils.helpers import prepends_bos_token
 from tests.deepsparse.transformers.pipelines.helpers import (
     TorchGroundTruthSource,
+    find_closest_number_divisible_by_four,
     helper_test,
     parse_params,
     validate_cache_management_type,
@@ -59,8 +64,7 @@ from tests.deepsparse.transformers.pipelines.helpers import (
 
 
 # the user can specify the config file to be used for the tests
-# TODO: add more configs
-# TODO: add explanation
+# TODO: add more configs once the PRs is reviewed
 AVAILABLE_CONFIGS = [
     "tests/deepsparse/transformers/pipelines/configs/gpt_neo.yaml",
     # "tests/deepsparse/transformers/pipelines/configs/text_generation_opt.yaml",
@@ -150,8 +154,8 @@ class TestTextGenerationPipeline:
         # set the params_dict as the class attributes
         for key, value in params_dict.items():
             setattr(self, key, value)
-        # check whether the internal kv cache is supported for testing
-        # (skip if not supported)
+        # check whether the specified cache management type
+        # is supported for testing (skip if not supported)
         self.internal_kv_cache: bool = validate_cache_management_type(
             internal_kv_cache, self.cache_management_type
         )
@@ -178,11 +182,17 @@ class TestTextGenerationPipeline:
 
         # prompt_sequence_length used for the multi-token prefill scenario
         self.prompt_sequence_length = prompt_length // 4
+        # TODO: Per @tlrmchlsmth, the prompt_sequence_length must be divisible by 4
+        # to be changed soon
+        # (at least for now)
+        self.prompt_sequence_length = find_closest_number_divisible_by_four(
+            self.prompt_sequence_length
+        )
         assert self.prompt_sequence_length < prompt_length, (
             "The prompt processing sequence length "
             "must be smaller than the prompt length"
         )
-
+        # specify the default pipeline kwargs
         self.default_pipeline_kwargs = dict(
             task=pipeline_type,
             model_path=self.model_path,
@@ -237,7 +247,10 @@ class TestTextGenerationPipeline:
         pipeline._debug = True
         output = self.run_pipeline(pipeline)
 
-        assert output.total_num_processed_tokens[0] < self.sequence_length
+        assert output.total_num_processed_tokens[0] < self.sequence_length, (
+            "The total number of processed tokens must be smaller than the "
+            "sequence length"
+        )
         self._test_output(
             output=output,
             torch_ground_truth=self.torch_ground_truth,
@@ -341,6 +354,7 @@ class TestTextGenerationPipeline:
             output=output,
             torch_ground_truth=self.torch_ground_truth,
             logits_threshold=self.logits_threshold,
+            # disable kv cache validation if using internal kv cache
             run_kv_cache_validation=not self.internal_kv_cache,
         )
 

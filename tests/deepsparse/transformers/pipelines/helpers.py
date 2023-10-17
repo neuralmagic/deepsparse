@@ -97,7 +97,11 @@ def parse_params(config_path: str) -> Tuple[Optional[Dict], Optional[str]]:
         config = yaml.safe_load(f)
 
     cadence = os.environ.get("CADENCE", "commit")
-    if cadence == config["cadence"]:
+    expected_cadence = config["cadence"]
+
+    if not isinstance(expected_cadence, list):
+        expected_cadence = [expected_cadence]
+    if cadence in expected_cadence:
         return config, None
     return None, "Skipping test for cadence: {}".format(config["cadence"])
 
@@ -129,3 +133,7 @@ def helper_test(test_method):
         return test_method(self, setup)
 
     return wrapper
+
+
+def find_closest_number_divisible_by_four(number):
+    return number - (number % 4)
