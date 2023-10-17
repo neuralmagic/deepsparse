@@ -14,11 +14,11 @@
 
 
 from concurrent.futures import Future
-from typing import List
+from typing import Any, List
 
 from deepsparse.v2.operators import Operator
 from deepsparse.v2.schedulers.scheduler import OperatorScheduler
-from deepsparse.v2.utils import Context, OperatorSchema
+from deepsparse.v2.utils import Context
 
 
 __all__ = ["SchedulerGroup"]
@@ -38,7 +38,7 @@ class SchedulerGroup(OperatorScheduler):
     def submit(
         self,
         operator: Operator,
-        operator_input: OperatorSchema,
+        operator_input: Any,
         context: Context,
     ) -> Future:
         """
@@ -51,7 +51,7 @@ class SchedulerGroup(OperatorScheduler):
             if scheduler.can_process(operator, operator_input):
                 return scheduler.submit(operator, operator_input, context)
 
-    def can_process(self, operator: Operator, operator_input: OperatorSchema) -> bool:
+    def can_process(self, operator: Operator, operator_input: Any) -> bool:
         """
         :param operator: operator to check
         :param operator_input: operator_input to check

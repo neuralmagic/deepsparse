@@ -13,11 +13,11 @@
 # limitations under the License.
 
 from abc import ABC, abstractmethod
-from typing import Optional, Type
+from typing import Any, Optional, Type
 
 from pydantic import BaseModel
 
-from deepsparse.v2.utils import Context, OperatorSchema
+from deepsparse.v2.utils import Context
 
 
 __all__ = ["Operator"]
@@ -25,27 +25,22 @@ __all__ = ["Operator"]
 
 class Operator(ABC):
     """
-    Base operator class - can represent any part of an ML pipeline
+    Base operator class - an operator should be defined for each functional part of the
+    pipeline.
     """
 
     # expected structured input and output types, to be defined by child classes
-    input_schema: Optional[Type[OperatorSchema]] = None
-    output_schema: Optional[Type[OperatorSchema]] = None
-
-    @abstractmethod
-    def run(self, inp: OperatorSchema, context: Context) -> OperatorSchema:
-        """
-        :param inp: operator input, as the defined input schema if applicable
-        :param context: pipeline context of already run operators
-        :return: result of this operator as the defined output schema if applicable
-        """
-        raise NotImplementedError
+    input_schema: Optional[Type[BaseModel]] = None
+    output_schema: Optional[Type[BaseModel]] = None
 
     @classmethod
     def has_input_schema(cls) -> bool:
         """
         :return: True if this class has a defined pydantic input schema
         """
+        if not cls.input_schema:
+            return False
+
         return issubclass(cls.input_schema, BaseModel)
 
     @classmethod
@@ -53,6 +48,9 @@ class Operator(ABC):
         """
         :return: True if this class has a defined pydantic input schema
         """
+        if not cls.output_schema:
+            return False
+
         return issubclass(cls.output_schema, BaseModel)
 
     def __call__(
@@ -60,12 +58,12 @@ class Operator(ABC):
         *args,
         context: Optional[Context] = None,
         **kwargs,
-    ) -> OperatorSchema:
+    ) -> Any:
         """
         Parses inputs to this Operator and runs the run() method of this operator
 
-        :param args: an unnamed arg may only be provided
-            if it is of the type of the input_schema
+        :param args: an unnamed arg may only be provided if it is of the type of the
+            input_schema
         :param context: pipeline context to pass to operator
         :param kwargs: kwargs when not initializing from an instantiated schema
         :return: operator output
@@ -76,7 +74,11 @@ class Operator(ABC):
             )
 
         if len(args) == 1:
-            if self.input_schema is not None and isinstance(args[0], self.input_schema):
+            if self.input_schema is None:
+                inference_input = args[0]
+            elif self.input_schema is not None and isinstance(
+                args[0], self.input_schema
+            ):
                 inference_input = args[0]
             else:
                 raise ValueError(
@@ -87,4 +89,36 @@ class Operator(ABC):
             inference_input = self.input_schema(**kwargs)
         else:
             inference_input = kwargs
-        return self.run(inference_input, context=context)
+
+        run_output = self.run(inp=inference_input, context=context)
+
+        if self.has_output_schema():
+            return self.output_schema(**run_output)
+        return run_output
+
+    @abstractmethod
+    def run(self, inp: Any, context: Optional[Context]) -> Any:
+        """
+        :param inp: operator input, as the defined input schema if applicable
+        :param context: pipeline context of already run operators
+        :return: result of this operator as the defined output schema if applicable
+        """
+        raise NotImplementedError
+
+    def expand_inputs(self, **kwargs):
+        """
+        Generic function to handle expanding values.
+        """
+        raise NotImplementedError
+
+    def condense_inputs(self, **kwargs):
+        """
+        Generic function to handle condensing values.
+        """
+        raise NotImplementedError
+
+    def yaml(self):
+        pass
+
+    def json(self):
+        pass
