@@ -33,9 +33,43 @@ __all__ = [
     "override_config",
     "process_generation_config",
     "validate_session_ids",
+    "set_generated_length",
 ]
 
 _LOGGER = logging.getLogger(__name__)
+
+
+def set_generated_length(
+    max_length: int,
+    prompt_tokens_length: int,
+    sequence_length: int,
+    prompt_sequence_length: int,
+    max_new_tokens: Union[int, None],
+):
+    """
+    Determine the length of the generated tokens. The maxmimum number of tokens
+    is the sequence_length - prompt_sequence_length. If this value is smaller than the
+    max_length or max_new_tokens provided input by the user, use this value to cap
+    the number of tokens generated. Otherwise, use max_length or max_new_tokens
+    if provided.
+
+    :param max_length: max_length attribtue, provided as input during inference
+    :param prompt_tokens_length: the number of prompt tokens used as part of the
+    generated output
+    :param sequence_length: the sequence length used for the pipeline
+    :param prompt_sequence_length: the prompt sequence length used for the pipeline
+    :param max_new_tokens: the max_new_tokens attribute, which may be provided
+    as part of the input during inference
+
+    """
+    max_generated_length = sequence_length - prompt_sequence_length
+
+    if max_new_tokens:
+        max_tokens = max_new_tokens + prompt_tokens_length
+    else:
+        max_tokens = max_length
+
+    return min(max_generated_length, max_tokens)
 
 
 def validate_session_ids(
