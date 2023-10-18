@@ -154,29 +154,28 @@ class NLDecoderEngine:
 
         :return: The output of the engine
         """
-        if kv_cache is not None:
-            # run the engine assuming kv cache support
-            if bool(kv_cache.engine_internal_cache):
-                # run the engine assuming internal kv cache
-                # management. In this case the LIB.kv_cache
-                # class object will be passed to the engine
-                # call as well
-                # conventionally, before dispatching
-                # inputs to the engine, we validate them
-                # if val_inp=True. However, in this case
-                # we want to pass the empty kv cache inputs
-                # (batch_size=0) to the engine. Therefore,
-                # we skip the validation
-                return self.engine._eng_net.execute_list_out(
-                    inputs, kv_cache.engine_internal_cache
-                )
-            else:
-                # run the engine assuming external kv cache
-                # management.
-                return self.engine.run(inputs, val_inp, kv_cache)
-        else:
+        if kv_cache is None:
             # run the engine without the kv cache support
             return self.engine.run(inputs, val_inp)
+
+        if bool(kv_cache.engine_internal_cache):
+            # run the engine assuming internal kv cache
+            # management. In this case the LIB.kv_cache
+            # class object will be passed to the engine
+            # call as well
+            # conventionally, before dispatching
+            # inputs to the engine, we validate them
+            # if val_inp=True. However, in this case
+            # we want to pass the empty kv cache inputs
+            # (batch_size=0) to the engine. Therefore,
+            # we skip the validation
+            return self.engine._eng_net.execute_list_out(
+                inputs, kv_cache.engine_internal_cache
+            )
+        else:
+            # run the engine assuming external kv cache
+            # management.
+            return self.engine.run(inputs, val_inp, kv_cache)
 
     def __call__(
         self,
