@@ -21,6 +21,12 @@ jobs:
     runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v2
+        with:
+          repository: "neuralmagic/sparsezoo"
+          path: "sparsezoo"
+      - name: "⚙️ Install sparsezoo dependencies"
+        run: pip install sparsezoo/
+      - uses: actions/checkout@v2
       - name: "⚙️ Install local deepsparse"
         run: pip3 install .
       - name: "deepsparse.benchmark"
@@ -28,6 +34,12 @@ jobs:
   local-develop-test:
     runs-on: ubuntu-20.04
     steps:
+      - uses: actions/checkout@v2
+        with:
+          repository: "neuralmagic/sparsezoo"
+          path: "sparsezoo"
+      - name: "⚙️ Install sparsezoo dependencies"
+        run: pip install sparsezoo/
       - uses: actions/checkout@v2
       - name: "⚙️ Install local develop deepsparse"
         run: |
