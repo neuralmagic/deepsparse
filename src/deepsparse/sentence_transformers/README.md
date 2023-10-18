@@ -57,8 +57,8 @@ from mteb import MTEB
 model_name = "TaylorAI/bge-micro-v2"
 
 # DeepSparse Model Evaluation
-import deepsparse
-model = deepsparse.sentence_transformers.SentenceTransformer(model_name, export=True)
+from deepsparse.sentence_transformers import SentenceTransformer
+model = SentenceTransformer(model_name, export=True)
 evaluation = MTEB(tasks=["Banking77Classification"])
 results_ds = evaluation.run(model, output_folder=f"results/ds-{model_name}")
 print(results_ds)
