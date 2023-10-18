@@ -55,12 +55,11 @@ def set_generated_length(
 
     :param max_length: max_length attribtue, provided as input during inference
     :param prompt_tokens_length: the number of prompt tokens used as part of the
-    generated output
+        generated output
     :param sequence_length: the sequence length used for the pipeline
     :param prompt_sequence_length: the prompt sequence length used for the pipeline
     :param max_new_tokens: the max_new_tokens attribute, which may be provided
     as part of the input during inference
-
     """
     max_generated_length = sequence_length - prompt_sequence_length
 
