@@ -72,7 +72,7 @@ class MnliTextClassificationConfig(BaseModel):
     )
     multi_class: bool = Field(
         description="Whether or not multiple candidate labels can be true. "
-        "If `False`, If `False`, the scores are normalized as the softmax of entailment"
+        "If `False`, the scores are normalized as the softmax of entailment"
         " score. If `True`, the labels are considered independent and probabilities "
         "are normalized for each candidate by doing a softmax of the entailment score "
         "vs. the contradiction score. Default is `False`.",
