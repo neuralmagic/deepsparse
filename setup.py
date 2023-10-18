@@ -152,9 +152,7 @@ _transformers_integration_deps = [
     "scikit-learn",
     "seqeval",
 ]
-_sentence_transformers_integration_deps = [
-    "optimum-deepsparse @ git://github.com/neuralmagic/optimum-deepsparse.git"
-] + _torch_deps
+_sentence_transformers_integration_deps = ["optimum-deepsparse"] + _torch_deps
 
 # haystack dependencies are installed from a requirements file to avoid
 # conflicting versions with NM's deepsparse/transformers
