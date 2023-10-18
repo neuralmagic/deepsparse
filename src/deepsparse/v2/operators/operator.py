@@ -56,7 +56,7 @@ class Operator(ABC):
     def __call__(
         self,
         *args,
-        context: Optional[Context] = None,
+        context: Context,
         **kwargs,
     ) -> Any:
         """

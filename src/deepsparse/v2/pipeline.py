@@ -13,7 +13,7 @@
 # limitations under the License.
 
 
-from typing import Any, Dict, List, Union
+from typing import Any, Dict, List, Optional, Union
 
 from deepsparse.v2.operators import Operator
 from deepsparse.v2.routers import Router
@@ -51,13 +51,13 @@ class Pipeline(Operator):
         # SchedulerGroup handles running all schedulers in order of priority
         self._scheduler_group = SchedulerGroup(self.schedulers)
 
-    def run(self, op_input: Any, context: Context):
+    def run(self, inp: Any, context: Optional[Context]):
         """
         Run through the operators using the provided router and scheduler. Update the
         context to reflect each step of the router. The input to a given operator is the
         output of the previous operator.
 
-        :param op_input: input to the operator. expected to be of any type that is
+        :param inp: input to the operator. expected to be of any type that is
         expected by the operator.
         :param context: context to store the current the inputs, outputs, and operator
         for each step of the router.
@@ -69,7 +69,7 @@ class Pipeline(Operator):
             operator = self.ops[next_step]
 
             output_future = self._scheduler_group.submit(
-                operator=operator, operator_input=op_input, context=context
+                operator=operator, operator_input=inp, context=context
             )
 
             # wait for future to resolve
@@ -78,12 +78,12 @@ class Pipeline(Operator):
             # update context
             context.update(
                 operator=operator,
-                input=op_input,
+                input=inp,
                 output=operator_output,
             )
 
             next_step = self.router.next(next_step, self.ops)
-            op_input = operator_output
+            inp = operator_output
         return operator_output, context
 
     def __call__(self, *args, return_context: bool = False, **kwargs):
@@ -104,8 +104,7 @@ class Pipeline(Operator):
             )
 
         pipeline_input = kwargs or args[0]
-        context = Context()
-        pipeline_output, context = self.run(op_input=pipeline_input, context=context)
+        pipeline_output, context = self.run(inp=pipeline_input, context=Context())
 
         if return_context:
             return pipeline_output, context
