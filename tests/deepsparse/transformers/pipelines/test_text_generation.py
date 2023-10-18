@@ -45,6 +45,7 @@ A sample config file is a yaml that requires the following fields:
             or a list of strings.
 """
 import inspect
+import os
 from typing import List, Optional, Tuple
 
 import numpy
@@ -68,7 +69,7 @@ from tests.deepsparse.transformers.pipelines.helpers import (
 AVAILABLE_CONFIGS = [
     "tests/deepsparse/transformers/pipelines/configs/gpt_neo.yaml",
     # "tests/deepsparse/transformers/pipelines/configs/text_generation_opt.yaml",
-    # "tests/deepsparse/transformers/pipelines/configs/text_generation_codegen.yaml",
+    "tests/deepsparse/transformers/pipelines/configs/codegen.yaml",
 ]
 
 
@@ -128,10 +129,11 @@ class TestTextGenerationPipeline:
         num_return_sequences = kwargs.get("num_return_sequences", 1)
         do_sample = kwargs.get("do_sample", False)
         streaming = kwargs.get("streaming", False)
+        max_length = kwargs.get("max_length", self.num_tokens_generate)
 
         config = GenerationConfig(
             output_scores=True,
-            max_length=self.num_tokens_generate,
+            max_length=max_length,
             top_k=0,
             top_p=0.0,
             num_return_sequences=num_return_sequences,
@@ -173,22 +175,22 @@ class TestTextGenerationPipeline:
         )
         # create torch ground truth
         self.torch_ground_truth = torch_source(self.prompt)
-        prompt_length = self.torch_ground_truth[1].shape[1]
+        self.prompt_length = self.torch_ground_truth[1].shape[1]
 
         # sequence_length that assures that the KV cache will not be filled up
-        self.sequence_length = 2 * prompt_length + self.num_tokens_generate
+        self.sequence_length = 2 * self.prompt_length + self.num_tokens_generate
         # sequence_length that assures that the KV cache will be filled up
         self.sequence_length_short = self.num_tokens_generate
 
         # prompt_sequence_length used for the multi-token prefill scenario
-        self.prompt_sequence_length = prompt_length // 4
+        self.prompt_sequence_length = self.prompt_length // 4
         # TODO: Per @tlrmchlsmth, the prompt_sequence_length must be divisible by 4
         # to be changed soon
         # (at least for now)
         self.prompt_sequence_length = find_closest_number_divisible_by_four(
             self.prompt_sequence_length
         )
-        assert self.prompt_sequence_length < prompt_length, (
+        assert self.prompt_sequence_length < self.prompt_length, (
             "The prompt processing sequence length "
             "must be smaller than the prompt length"
         )
@@ -448,6 +450,51 @@ class TestTextGenerationPipeline:
             for response in response_generator
         ), "Pipeline should return a generator of output_schema \
                objects in streaming mode"
+
+    @helper_test
+    def test_inference_no_kv_cache_deepsparse(self, setup):
+        self._test_inference_no_kv_cache()
+
+    @helper_test
+    def test_inference_no_kv_cache_ort(self, setup):
+        self._test_inference_no_kv_cache(engine_type="onnxruntime")
+
+    def _test_inference_no_kv_cache(self, **kwargs):
+        engine_type = kwargs.get("engine_type", "deepsparse")
+        model_path_no_cache = self._get_model_path_no_cache()
+        pipeline = self.get_pipeline(
+            model_path=model_path_no_cache, engine_type=engine_type
+        )
+        assert not pipeline.cache_support_enabled, (
+            "This pipeline test inference using non-kv cache "
+            "model and thus should not support kv cache"
+        )
+        output = self.run_pipeline(pipeline, max_length=1)
+        # prompt logits + one logit for the new generated token
+        logits = output.generations[0].score[-(self.prompt_length + 1) :, :]
+        generated_logits, prompt_logits, *_ = self.torch_ground_truth
+        logits_gt = numpy.concatenate(
+            [prompt_logits[0], generated_logits[0, :1, :]], axis=0
+        )
+        assert numpy.allclose(logits, logits_gt, atol=self.precision)
+
+    def _get_model_path_no_cache(self):
+        from sparsezoo import Model
+
+        if not self.model_path.startswith("zoo:"):
+            pytest.skip("For this test, for now only the zoo model is supported")
+        training_dir_path = Model(self.model_path).training.path
+        if "model.onnx" in os.listdir(training_dir_path):
+            return training_dir_path
+        assert "model_nocache.onnx" in os.listdir(
+            training_dir_path
+        ), "model_nocache.onnx expected in the training directory"
+        # rename the model_nocache.onnx to model.onnx
+        os.rename(
+            os.path.join(training_dir_path, "model_nocache.onnx"),
+            os.path.join(training_dir_path, "model.onnx"),
+        )
+        return training_dir_path
 
     def _test_output(
         self,

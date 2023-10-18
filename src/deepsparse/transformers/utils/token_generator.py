@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import List
+from typing import List, Optional
 
 import numpy
 
@@ -29,7 +29,7 @@ class TokenGenerator:
     def __init__(
         self,
         logits_shape: int,
-        tokens: List[int] = [],
+        tokens: Optional[List[int]] = None,
         deterministic: bool = True,
         sampling_temperature: float = 1.0,
         top_k: int = 0,
@@ -61,7 +61,7 @@ class TokenGenerator:
         self.top_p = top_p
         self.frequency_penalty = frequency_penalty
         self.presence_penalty = presence_penalty
-        self.tokens = tokens
+        self.tokens = [] if tokens is None else tokens
 
         self._initialize_token_frequencies()
 
@@ -168,5 +168,5 @@ class TokenGenerator:
 
     def _initialize_token_frequencies(self):
         unique_tokens, frequencies = numpy.unique(self.tokens, return_counts=True)
-        for token, frequnecies in zip(unique_tokens, frequencies):
-            self.token_frequencies[token] += frequnecies
+        for token, freq in zip(unique_tokens, frequencies):
+            self.token_frequencies[token] += freq

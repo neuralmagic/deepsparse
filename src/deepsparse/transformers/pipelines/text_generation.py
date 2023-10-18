@@ -686,7 +686,10 @@ class TextGenerationPipeline(TransformersPipeline):
                 )
                 for prompt_logit in prompt_logits:
                     token_generator.generate(prompt_logit)
-                return numpy.array([self.tokens]), prompt_logits
+                yield numpy.array([token_generator.tokens]), prompt_logits, [
+                    FinishReason.LENGTH
+                ]
+                return
 
             else:
                 # run the prompt through
@@ -1095,7 +1098,7 @@ class TextGenerationPipeline(TransformersPipeline):
         )
         if not is_causal_mask_input:
             _LOGGER.warning(
-                "This ONNX graph does not support processing the prompt"
+                "This ONNX graph does not support processing the prompt "
                 "with processing length > 1"
             )
 
