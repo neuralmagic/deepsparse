@@ -34,15 +34,11 @@ jobs:
   local-develop-test:
     runs-on: ubuntu-20.04
     steps:
-      - name: "⚙️ Create and activate venv"
-        run: |
-          python3.8 -m venv venv-dev
-          source venv-dev/bin/activate
+      - uses: actions/checkout@v2
       - uses: actions/checkout@v2
         with:
           repository: "neuralmagic/sparsezoo"
           path: "sparsezoo"
-      - uses: actions/checkout@v2
       - name: "⚙️ Install local develop deepsparse"
         run: |
           python3.8 -m venv venv-dev
