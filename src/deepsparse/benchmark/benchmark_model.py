@@ -301,7 +301,6 @@ def parse_args():
             "If set, deepsparse.benchmark will not alter the model "
             "with kv cache overrides"
         ),
-        type=bool,
         action="store_true",
         default=False,
     )
