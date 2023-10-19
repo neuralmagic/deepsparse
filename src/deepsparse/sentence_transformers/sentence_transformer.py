@@ -112,14 +112,40 @@ class SentenceTransformer:
     ):
 
         self.model_name_or_path = model_name_or_path
-        self.model = DeepSparseModelForFeatureExtraction.from_pretrained(
-            model_name_or_path, export=export, use_auth_token=use_auth_token
-        )
         self.tokenizer = get_preprocessor(model_name_or_path)
-
         self._max_seq_length = max_seq_length
+<<<<<<< HEAD
         self._batch_size = 1
 >>>>>>> b750add0 (Support for SentenceTransformer with `deepsparse.sentence_transformers.SentenceTransformer`)
+=======
+        # TODO: support faster bulk execution with batch size > 1
+        self._batch_size = 1 
+
+        # Define the buckets
+        self.buckets = [int(self._max_seq_length / 4 * i) for i in range(1, 5)]
+        self.models = {}
+
+        # Initialize a model for each bucket
+        for bucket in self.buckets:
+            self.models[bucket] = DeepSparseModelForFeatureExtraction.from_pretrained(
+                model_name_or_path,
+                export=export,
+                use_auth_token=use_auth_token,
+                input_shapes=f"[{self._batch_size},{bucket}]"
+            )
+            self.models[bucket].compile(batch_size=self._batch_size)
+
+    def _select_bucket(self, seq_length: int) -> int:
+        """
+        Selects the appropriate model based on the input sequence length.
+        """
+        for bucket in self.buckets:
+            if seq_length <= bucket:
+                return bucket
+        # default to the maximum if seq_length exceeds all buckets
+        return self._max_seq_length
+
+>>>>>>> df63c36d (Add bucketing to SentenceTransformer)
 
     def encode(
         self,
@@ -162,9 +188,13 @@ class SentenceTransformer:
 =======
 >>>>>>> 5936830a (Address comments)
 
+<<<<<<< HEAD
         # TODO: support faster execution with batch size > 1
         batch_size = 1
 >>>>>>> 7a4cc1d5 (Update)
+=======
+        batch_size = self._batch_size
+>>>>>>> df63c36d (Add bucketing to SentenceTransformer)
 
         if show_progress_bar is None:
             show_progress_bar = logger.getEffectiveLevel() in (
@@ -195,8 +225,16 @@ class SentenceTransformer:
         ):
             sentences_batch = sentences_sorted[start_index : start_index + batch_size]
 
-            model_inputs = self.tokenize(sentences_batch)
-            model_output = self.model(**model_inputs)
+            # Select the model based on the bucketing logic
+            # TODO: tokenize ahead of time and simply add padding
+            seq_length = max([self._text_length(sen) for sen in sentences_batch])
+            selected_bucket = self._select_bucket(seq_length)
+            model = self.models[selected_bucket]
+
+            # Tokenize using the selected bucket size
+            model_inputs = self.tokenize(sentences_batch, target_length=selected_bucket)
+
+            model_output = model(**model_inputs)
 
             out_features = {}
             out_features["sentence_embedding"] = self.mean_pooling(
@@ -307,10 +345,15 @@ class SentenceTransformer:
         else:
             return sum([len(t) for t in text])  # Sum of length of individual strings
 
-    def tokenize(self, texts: Union[List[str], List[Dict], List[Tuple[str, str]]]):
+    def tokenize(
+        self, 
+        texts: Union[List[str], List[Dict], List[Tuple[str, str]]], 
+        target_length: Optional[int] = None
+    ) -> List[torch.Tensor]:
         """
         Tokenizes the texts
         """
+<<<<<<< HEAD
         return self.tokenizer(texts, padding=True, truncation=True, return_tensors="pt")
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -329,6 +372,25 @@ class SentenceTransformer:
     def mean_pooling(self, model_output: torch.Tensor, attention_mask: torch.Tensor):
 >>>>>>> b750add0 (Support for SentenceTransformer with `deepsparse.sentence_transformers.SentenceTransformer`)
 =======
+=======
+        if target_length:
+            # Make sure to pad the tokens to the specified length
+            return self.tokenizer(
+                texts, 
+                max_length=target_length, 
+                padding='max_length', 
+                truncation=True, 
+                return_tensors="pt",
+            )
+        else:
+            # No padding needed
+            return self.tokenizer(
+                texts, 
+                padding=True, 
+                truncation=True, 
+                return_tensors="pt"
+            )
+>>>>>>> df63c36d (Add bucketing to SentenceTransformer)
 
     def mean_pooling(
         self, model_output: torch.Tensor, attention_mask: torch.Tensor
