@@ -252,6 +252,15 @@ class TextGenerationPipeline(TransformersPipeline):
             if "WAND_OPT_FLAGS" not in os.environ:
                 os.environ["WAND_OPT_FLAGS"] = "default,~pyramids"
 
+        # the current requirement on the deepsparse engine
+        # is that prompt_sequence_length
+        # must be 1 or a multiple of four.
+        # for simplicity let's extend this requirement to all engines
+        if (prompt_sequence_length % 4 != 0) and (prompt_sequence_length != 1):
+            raise ValueError(
+                f"prompt_sequence_length must be 1 or multiple of 4. "
+                f"prompt_sequence_length is {prompt_sequence_length}"
+            )
         self.prompt_sequence_length = prompt_sequence_length
         self.force_max_tokens = force_max_tokens
         self.internal_kv_cache = internal_kv_cache
@@ -686,7 +695,10 @@ class TextGenerationPipeline(TransformersPipeline):
                 )
                 for prompt_logit in prompt_logits:
                     token_generator.generate(prompt_logit)
-                return numpy.array([self.tokens]), prompt_logits
+                yield numpy.array([token_generator.tokens]), prompt_logits, [
+                    FinishReason.LENGTH
+                ]
+                return
 
             else:
                 # run the prompt through
