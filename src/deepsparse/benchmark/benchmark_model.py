@@ -132,6 +132,7 @@ from deepsparse.log import set_logging_level
 from deepsparse.utils import (
     generate_random_inputs,
     has_model_kv_cache,
+    infer_sequence_length,
     model_to_path,
     override_onnx_input_shapes,
     overwrite_onnx_model_inputs_for_kv_cache_models,
@@ -346,7 +347,9 @@ def benchmark_model(
     model_path = model_to_path(model_path)
 
     cached_outputs = None
-    if sequence_length and input_ids_length and has_model_kv_cache(model_path):
+    if has_model_kv_cache(model_path):
+        if not sequence_length:
+            sequence_length = infer_sequence_length(model_path)
         if input_ids_length > sequence_length:
             raise ValueError(
                 f"input_ids_length: {input_ids_length} "
