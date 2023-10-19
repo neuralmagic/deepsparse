@@ -302,6 +302,7 @@ def parse_args():
             "with kv cache overrides"
         ),
         type=bool,
+        action="store_true",
         default=False,
     )
 
