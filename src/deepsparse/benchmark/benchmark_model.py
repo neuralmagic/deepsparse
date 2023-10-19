@@ -306,10 +306,7 @@ def parse_args():
     parser.add_argument(
         "--disable-kv-cache-overrides",
         "--disable_kv_cache_overrides",
-        help=(
-            "If set, it will not alter the model "
-            "with kv cache overrides"
-        ),
+        help=("If set, it will not alter the model with kv cache overrides"),
         action="store_true",
         default=False,
     )
