@@ -380,7 +380,7 @@ def main():
 
     batch_size = args.batch_size
 
-    if not args.disable_kv_cache_override and has_model_kv_cache(model_path):
+    if not args.disable_kv_cache_overrides and has_model_kv_cache(model_path):
         if not args.sequence_length:
             args.sequence_length = infer_sequence_length(model_path)
         if args.input_ids_length > args.sequence_length:
