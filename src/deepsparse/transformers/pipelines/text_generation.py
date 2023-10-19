@@ -692,7 +692,10 @@ class TextGenerationPipeline(TransformersPipeline):
                 )
                 for prompt_logit in prompt_logits:
                     token_generator.generate(prompt_logit)
-                return numpy.array([self.tokens]), prompt_logits
+                yield numpy.array([token_generator.tokens]), prompt_logits, [
+                    FinishReason.LENGTH
+                ]
+                return
 
             else:
                 # run the prompt through
