@@ -268,12 +268,13 @@ def parse_args():
         ),
     )
     parser.add_argument(
-        "--internal-kv-cache",
-        "--internal_kv_cache",
+        "--no-internal-kv-cache",
+        "--no-internal_kv_cache",
         help=(
-            "DeepSparse engine only - If True, and a model with KV cache, "
+            "DeepSparse engine only - If not present, and model has KV cache, "
             "KV Cache state will be managed within the compiled deepsparse "
-            "model. This is preferred when applicable for best performance"
+            "model. This is preferred when applicable for best performance. Set "
+            "flag to disable"
         ),
         action="store_true",
         default=False,
@@ -474,7 +475,7 @@ def main():
         input_ids_length=args.input_ids_length,
         thread_pinning=args.thread_pinning,
         engine=args.engine,
-        internal_kv_cache=args.internal_kv_cache,
+        internal_kv_cache=not args.no_internal_kv_cache,
         quiet=args.quiet,
         export_path=args.export_path,
     )
