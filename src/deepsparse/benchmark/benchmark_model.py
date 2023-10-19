@@ -366,11 +366,19 @@ def benchmark_model(
             batch_size=batch_size,
         )
 
+        # by default, use the internal KV cache management
+        internal_kv_cache = internal_kv_cache or True
+
         if internal_kv_cache:
             _LOGGER.info(
-                "Benchmarking DeepSparse Engine with internal KV Cache management"
+                "Benchmarking DeepSparse Engine with internal KV Cache management."
+                "To use external KV Cache management, set --internal-kv-cache to False"
             )
             cached_outputs = cached_outs
+        else:
+            _LOGGER.info(
+                "Benchmarking DeepSparse Engine with external KV Cache management."
+            )
     else:
         input_ids_length = None
         sequence_length = None
