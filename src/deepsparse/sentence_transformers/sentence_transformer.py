@@ -56,10 +56,10 @@ class SentenceTransformer:
         self.model = DeepSparseModelForFeatureExtraction.from_pretrained(
             model_name_or_path, export=export, use_auth_token=use_auth_token
         )
+        self.model.compile(batch_size=0)
         self.tokenizer = get_preprocessor(model_name_or_path)
 
         self._max_seq_length = max_seq_length
-        self._batch_size = 1
 
     def encode(
         self,
@@ -93,9 +93,6 @@ class SentenceTransformer:
            a stacked tensor is returned. If convert_to_numpy, a numpy matrix
            is returned.
         """
-
-        # TODO: support faster execution with batch size > 1
-        batch_size = 1
 
         if show_progress_bar is None:
             show_progress_bar = logger.getEffectiveLevel() in (
