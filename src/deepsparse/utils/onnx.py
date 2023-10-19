@@ -52,6 +52,7 @@ __all__ = [
     "truncate_onnx_embedding_model",
     "overwrite_onnx_model_inputs_for_kv_cache_models",
     "default_cached_outputs",
+    "infer_sequence_length",
     "has_model_kv_cache",
     "CACHE_INPUT_PREFIX",
     "CACHE_OUTPUT_PREFIX",
@@ -592,3 +593,24 @@ def has_model_kv_cache(model: Union[str, ModelProto]) -> bool:
     :return True if the model has a KV cache support, False otherwise.
     """
     return bool(any(default_cached_outputs(model)))
+
+
+def infer_sequence_length(model: Union[str, ModelProto]) -> int:
+    """
+    :param model: model
+    :return: inferred sequence length of the model
+    """
+    if not isinstance(model, ModelProto):
+        model = onnx.load(model, load_external_data=False)
+
+    # try to find attention mask dim, default to 0
+    target_input_idx = 0
+    for idx, inp in enumerate(model.graph.input):
+        if inp.name == "attention_mask":
+            target_input_idx = idx
+    try:
+        # return shape of second dim if possible
+        target_input = model.graph.input[target_input_idx]
+        return target_input.type.tensor_type.shape.dim[1].dim_value
+    except Exception:
+        return 0  # unable to infer seq len
