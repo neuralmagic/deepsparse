@@ -329,7 +329,6 @@ class TextGenerationPipeline(TransformersPipeline):
         if (
             self.cache_support_enabled and self.enable_multitoken_prefill
         ) or not self.cache_support_enabled:
-
             # input_ids_length for the multitoken engine is either:
             # - the prompt_sequence_length if the cache support is enabled
             #   (the prompt is processed sequentially at predefined processing length)

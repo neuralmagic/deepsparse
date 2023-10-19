@@ -71,7 +71,11 @@ class MnliTextClassificationConfig(BaseModel):
         description="Index of mnli model outputs which denotes contradiction", default=2
     )
     multi_class: bool = Field(
-        description="True if class probabilities are independent, default False",
+        description="Whether or not multiple candidate labels can be true. "
+        "If `False`, the scores are normalized as the softmax of entailment"
+        " score. If `True`, the labels are considered independent and probabilities "
+        "are normalized for each candidate by doing a softmax of the entailment score "
+        "vs. the contradiction score. Default is `False`.",
         default=False,
     )
 
@@ -95,8 +99,12 @@ class MnliTextClassificationInput(ZeroShotTextClassificationInputBase):
         default=None,
     )
     multi_class: Optional[bool] = Field(
-        description="True if class probabilities are independent, default False. "
-        "If provided, overrides the multi_class value in the config.",
+        description="Whether or not multiple candidate labels can be true. "
+        "If `False`, the scores are normalized as the softmax of entailment score. "
+        "If `True`, the labels are considered independent and probabilities are "
+        "normalized for each candidate by doing a softmax of the entailment score "
+        "vs. the contradiction score. Default is `False`. If provided, overrides "
+        "the multi_class value in the config.",
         default=None,
     )
 

@@ -146,9 +146,8 @@ _openpifpaf_integration_deps = [
 ]
 _yolov8_integration_deps = _yolo_integration_deps + ["ultralytics==8.0.124"]
 _transformers_integration_deps = [
-    f"{'nm-transformers' if is_release else 'nm-transformers-nightly'}"
-    f"~={version_base}",
-    "datasets<=2.11",
+    "transformers<4.35",
+    "datasets<2.13",
     "scikit-learn",
     "seqeval",
 ]
@@ -168,7 +167,7 @@ _haystack_integration_deps = _parse_requirements_file(_haystack_requirements_fil
 _clip_deps = [
     "open_clip_torch==2.20.0",
     "scipy<1.9.2,>=1.8",
-    f"{'nm-transformers' if is_release else 'nm-transformers-nightly'}",
+    "transformers<4.35",
 ]
 
 
@@ -202,7 +201,7 @@ def _check_supported_system():
 
 def _check_supported_python_version():
     supported_major = 3
-    supported_minor = [8, 9, 10]
+    supported_minor = [8, 9, 10, 11]
 
     if (
         sys.version_info[0] != supported_major
