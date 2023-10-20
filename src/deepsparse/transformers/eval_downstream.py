@@ -69,12 +69,10 @@ from pstats import Stats
 import numpy
 from tqdm.auto import tqdm
 
+from datasets import load_dataset, load_metric
 from deepsparse import DEEPSPARSE_ENGINE, ORT_ENGINE, Pipeline
 from deepsparse.transformers.metrics import Perplexity, PrecisionRecallF1
 from deepsparse.transformers.utils.eval_helpers import process_concatenated_datasets
-
-
-from datasets import load_dataset, load_metric
 
 
 _LOGGER = logging.getLogger(__name__)
