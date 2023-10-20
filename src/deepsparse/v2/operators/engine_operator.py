@@ -39,6 +39,7 @@ class EngineOperator(Operator):
         scheduler: Scheduler = None,
         input_shapes: List[List[int]] = None,
         engine_context: Optional[Context] = None,
+        engine_kwargs: Dict = None,
     ):
 
         self._batch_size = batch_size
@@ -61,6 +62,8 @@ class EngineOperator(Operator):
         if engine_type.lower() == DEEPSPARSE_ENGINE:
             engine_args["scheduler"] = scheduler
             engine_args["num_streams"] = num_streams
+
+        engine_args.updated(engine_kwargs)
 
         self.engine = self._create_engine(model_path, engine_type, engine_args)
 
