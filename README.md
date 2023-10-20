@@ -42,7 +42,7 @@ limitations under the License.
 [DeepSparse](https://github.com/neuralmagic/deepsparse) is a CPU inference runtime that takes advantage of sparsity to accelerate neural network inference. Coupled with [SparseML](https://github.com/neuralmagic/sparseml), our optimization library for pruning and quantizing your models, DeepSparse delivers exceptional inference performance on CPU hardware.
 
 <p align="center">
-   <img alt="NM Flow" src="https://github.com/neuralmagic/deepsparse/blob/7ee5e60f13b1fd321c5282c91e2873b3363ec911/docs/neural-magic-workflow.png" width="60%" />
+   <img alt="NM Flow" src="https://github.com/neuralmagic/deepsparse/assets/3195154/51e62fe7-9d9a-4fa5-a774-877158da1e29" width="60%" />
 </p>
 
 ## ✨NEW✨ DeepSparse LLMs
