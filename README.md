@@ -45,7 +45,6 @@ limitations under the License.
    <img alt="NM Flow" src="https://github.com/neuralmagic/deepsparse/assets/3195154/51e62fe7-9d9a-4fa5-a774-877158da1e29" width="60%" />
 </p>
 
-
 ## ✨NEW✨ DeepSparse LLMs
 
 We are excited to announce initial support for performant LLM inference in DeepSparse with:
