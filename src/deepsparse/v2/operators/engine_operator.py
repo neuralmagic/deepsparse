@@ -60,6 +60,7 @@ class EngineOperator(Operator):
         scheduler: Scheduler = None,
         input_shapes: List[List[int]] = None,
         engine_context: Optional[Context] = None,
+        engine_kwargs: Dict = None,
     ):
 
         self._batch_size = batch_size
@@ -87,7 +88,7 @@ class EngineOperator(Operator):
         self._engine_args = engine_args
         self._engine_type = engine_type
 
-        self.engine = self.create_engine()
+        self.engine = self.create_engine(**engine_kwargs)
 
     @property
     def batch_size(self) -> int:
