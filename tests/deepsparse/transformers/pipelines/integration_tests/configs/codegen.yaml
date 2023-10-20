@@ -1,7 +1,7 @@
-cadence: "commit"
+cadence: "nightly"
 model_path: "zoo:nlg/text_generation/codegen_mono-350m/pytorch/huggingface/bigpython_bigquery_thepile/base-none"
 torch_model_name: "salesforce/codegen-350m-mono"
-task: ["text-generation", "chat"]
+task: ["text-generation"]#, "chat"]
 prompt: "\ndef Fibonacci(n):\n    # Check if input is 0 then it will\n    # print incorrect input"
 has_bos_token: False
 precision: 0.0001

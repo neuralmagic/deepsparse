@@ -110,8 +110,8 @@ def parse_params(configs_directory: str) -> List[Dict[str, Any]]:
             if cadence in expected_cadence:
                 config_dicts.append(config)
             else:
-                logging.logging(
-                    f"Skipping testing model: {config['model_name']} "
+                logging.info(
+                    f"Skipping testing model: {config['model_path']} "
                     f"for cadence: {config['cadence']}"
                 )
         else:
@@ -140,7 +140,7 @@ def validate_internal_kv_cache(
 def validate_task(task: str, available_tasks: Union[str, List[str]]) -> bool:
     if task not in available_tasks:
         pytest.skip(
-            f"The tests for running the pipeline with task: {task} are disabled."
+            f"The tests for running the pipeline with task: {task} are disabled. "
             f"The available tasks, as specified in the config are: {available_tasks}"
         )
     return task
