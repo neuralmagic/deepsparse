@@ -26,8 +26,9 @@ def install_reqs():
             "-m",
             "pip",
             "install",
-            "-r",
-            "examples/twitter-nlp/requirements.txt",
+            "git+https://github.com/twintproject/"
+            "twint@e7c8a0c764f6879188e5c21e25fb6f1f856a7221#egg=twint",
+            "rich>=12.2.0",
         ]
     )
 

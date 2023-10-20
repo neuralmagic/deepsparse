@@ -30,7 +30,7 @@ pip install -U deepsparse-nightly[llm]
 
 - Hardware: x86 AVX2, AVX512, AVX512-VNNI and ARM v8.2+.
 - Operating System: Linux (MacOS will be supported soon)
-- Python: v3.8-3.10
+- Python: v3.8-3.11
 
 For those using MacOS or Windows, we suggest using Linux containers with Docker to run DeepSparse.
 
