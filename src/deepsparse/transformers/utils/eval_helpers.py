@@ -12,10 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from transformers import AutoTokenizer, PreTrainedTokenizerFast
-from datasets import load_dataset
+from typing import List, Mapping, Union
+
 import numpy
-from typing import Mapping, List, Union
+from transformers import AutoTokenizer, PreTrainedTokenizerFast
+
+from datasets import load_dataset
+
 
 CONCATENATED_DATSETS = ["wikitext2", "c4"]
 
