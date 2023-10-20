@@ -36,7 +36,8 @@ class Perplexity:
         Class for computing perplexity.
 
         Each batch is processed via the "add_batches" method.
-        At the end the data is reduced to a single perplexity metric via the "compute" method.
+        At the end the data is reduced to a single perplexity
+        metric via the "compute" method.
 
         Example:
         metric = Perplexity()
@@ -76,8 +77,8 @@ class Perplexity:
         """
 
         if self._accumulate:
-            # If accumulate is True, every token from the batch contributes equally to the
-            # negative log-likelihood.
+            # If accumulate is True, every token from the batch contributes
+            # equally to the negative log-likelihood.
             # Thus, merge batch and sequence length dimensions and compute negative
             # log-likelihood for all tokens, and accumulate to total
             predictions = numpy.reshape(predictions, (-1, predictions.shape[-1]))
@@ -91,9 +92,10 @@ class Perplexity:
             # Track number of tokens processed
             self._number_tokens += predictions.shape[0]
         else:
-            # If accumulate is False, compute perplexity for each sample individually.
-            # We assume that sequence length is uniform within a batch, but may vary from batch
-            # to batch.
+            # If accumulate is False, compute perplexity for
+            # each sample individually.
+            # We assume that sequence length is uniform within a batch,
+            # but may vary from batch to batch.
 
             # Create batch dimension if it doesn't exist
             if targets.ndim == 1:

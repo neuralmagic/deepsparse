@@ -34,13 +34,17 @@ def process_concatenated_datasets(
     tokenization, have size "max_sequence_length" tokens.
 
     Args:
-        dataset_name (str): The name of the dataset to process. Options: "wikitext2" or "c4".
+        dataset_name (str): The name of the dataset to process.
+            Options: "wikitext2" or "c4".
         model_path (str): The path to a pretrained transformer model for tokenization.
         max_sequence_length (int): The maximum number of tokens in each sequence.
         kwargs (mapping): Additional keyword arguments.
-            - eos (str, optional): The end-of-sentence token. Default is "\n\n" for wikitext2 and "" for c4.
-            - bos (str, optional): The beginning-of-sentence token. Default is "".
-            - raw_samples (int, optional): The number of raw samples to use. Default is None.
+            - eos (str, optional): The end-of-sentence token.
+                Default is "\n\n" for wikitext2 and "" for c4.
+            - bos (str, optional): The beginning-of-sentence token.
+                Default is "".
+            - raw_samples (int, optional): The number of raw samples to use.
+                Default is None.
             - data_file (int, optional): The index of the data file to use for dataset.
                 Not used in wikitext2. Default is 0 for c4.
             - max_text_length (int, optional): The maximum length of text to consider.
@@ -109,7 +113,8 @@ def _split_text_by_tokens(
     max_text_length: Union[None, int],
 ) -> List[str]:
     """
-    Tokenizes and splits a list of concatenated text samples into sections of specified maximum token length.
+    Tokenizes and splits a list of concatenated text samples into
+    sections of specified maximum token length.
 
     Args:
         text (List[str]): List of concatenated text samples to be tokenized and split.
@@ -120,10 +125,12 @@ def _split_text_by_tokens(
         max_text_length (Union[None, int]): The maximum length of text to consider.
             - If None, the entire text is tokenized and split.
             - If -1, each sample is tokenized separately.
-            - If a positive integer, the text is split into sections of this length before tokenization.
+            - If a positive integer, the text is split into sections of this
+                length before tokenization.
 
     Returns:
-        List[str]: A list of sections where each section contains a maximum of "sequence_length" tokens.
+        List[str]: A list of sections where each section contains a
+            maximum of "sequence_length" tokens.
     """
 
     text = [bos + sample + eos for sample in text]
