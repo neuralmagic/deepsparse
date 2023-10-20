@@ -126,7 +126,6 @@ class TestsIntegrationLLMsPipelines:
         )
         self.default_pipeline = None
         self.max_new_tokens = max_new_tokens
-        self.model_path_no_cache = self._get_model_path_no_cache()
 
     def test_ort_single_token_prefill(self, setup):
         # Test the pipeline that uses ORT engine. The test covers the
@@ -239,8 +238,9 @@ class TestsIntegrationLLMsPipelines:
         self._test_inference_no_kv_cache(engine_type="onnxruntime")
 
     def _test_inference_no_kv_cache(self, engine_type):
+        model_path_no_cache = self._get_model_path_no_cache()
         pipeline = self.get_pipeline(
-            model_path=self.model_path_no_cache, engine_type=engine_type
+            model_path=model_path_no_cache, engine_type=engine_type
         )
         assert not pipeline.cache_support_enabled, (
             "This pipeline test inference using non-kv cache "
@@ -329,8 +329,10 @@ class TestsIntegrationLLMsPipelines:
             for file in model.training.files
             if file.name.endswith(".onnx")
         ][0]
-        # check if 'training' directory exists
-        if training_directory._path is None:
+
+        # check if 'training' exists,
+        # if not, download the files
+        if "training" not in os.listdir(model._path):
             for filename in required_file_names:
                 # download the files to a training directory
                 if filename.endswith(".data"):
