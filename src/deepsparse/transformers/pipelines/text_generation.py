@@ -65,7 +65,7 @@ __all__ = ["TextGenerationPipeline"]
 class GenerationDefaults:
     num_return_sequences = 1
     max_length = None
-    max_new_tokens = None
+    max_new_tokens = 100
     output_scores = False
     top_k = 0
     top_p = 0.0
@@ -79,6 +79,8 @@ class FinishReason(Enum):
     LENGTH = "length"
     TIME = "time"
     CALLBACK = "callback"
+    CAPACITY = "capacity"
+    MAX_NEW_TOKENS = "max_new_tokens"
 
 
 class TextGenerationInput(BaseModel):
@@ -451,12 +453,6 @@ class TextGenerationPipeline(TransformersPipeline):
         )
 
         generation_config = override_config(inputs.generation_kwargs, generation_config)
-        # If set to default, max_length is initially None. Update based on sequence
-        # length and prompt_sequence_length
-        if generation_config.max_length is None:
-            generation_config.max_length = (
-                self.sequence_length - self.prompt_sequence_length
-            )
 
         self.streaming = inputs.streaming
         if not self.cache_support_enabled and generation_config.max_length > 1:
@@ -720,12 +716,13 @@ class TextGenerationPipeline(TransformersPipeline):
             callback = context.get("callback")
             stop = context.get("stop")
 
-            max_tokens = set_generated_length(
+            max_tokens, length_finish_reason = set_generated_length(
                 max_length=generation_config.max_length,
                 prompt_tokens_length=len(generated_tokens),
                 max_new_tokens=generation_config.max_new_tokens,
                 sequence_length=self.sequence_length,
                 prompt_sequence_length=self.prompt_sequence_length,
+                finish_reason_choices=FinishReason,
             )
 
             with timer.time(TextGenerationTimings.TOKEN_GENERATION):
@@ -771,7 +768,7 @@ class TextGenerationPipeline(TransformersPipeline):
                         break
 
                     if len(generated_tokens) == max_tokens:
-                        finished_reason.append(FinishReason.LENGTH)
+                        finished_reason.append(length_finish_reason)
                         break
 
                     if streaming:
