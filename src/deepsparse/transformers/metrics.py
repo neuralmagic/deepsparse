@@ -192,9 +192,9 @@ class PrecisionRecallF1:
 
 
 def _cross_entropy(
-        predictions: numpy.ndarray,
-        targets: numpy.ndarray,
-        reduction: str = "mean",
+    predictions: numpy.ndarray,
+    targets: numpy.ndarray,
+    reduction: str = "mean",
 ) -> float:
     """
     Calculate the cross-entropy loss between predicted probabilities and target labels.

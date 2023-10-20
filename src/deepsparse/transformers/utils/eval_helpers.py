@@ -19,11 +19,12 @@ from typing import Mapping, List, Union
 
 CONCATENATED_DATSETS = ["wikitext2", "c4"]
 
+
 def process_concatenated_datasets(
-        dataset_name: str,
-        model_path: str,
-        max_sequence_length: int,
-        kwargs: Mapping,
+    dataset_name: str,
+    model_path: str,
+    max_sequence_length: int,
+    kwargs: Mapping,
 ) -> list:
     """
     Concatenate text datasets and split them into chunks text that, after
@@ -68,7 +69,9 @@ def process_concatenated_datasets(
             raw_dataset = load_dataset(
                 "allenai/c4",
                 "allenai--c4",
-                data_files={"validation": f"en/c4-validation.{data_file:05d}-of-00008.json.gz"},
+                data_files={
+                    "validation": f"en/c4-validation.{data_file:05d}-of-00008.json.gz"
+                },
                 split="validation",
             )
         else:
@@ -85,17 +88,22 @@ def process_concatenated_datasets(
     # To split the dataset, first tokenize text
     tokenizer = AutoTokenizer.from_pretrained(model_path)
     return _split_text_by_tokens(
-        raw_text, eos, bos, tokenizer, max_sequence_length, kwargs.get("max_text_length", None)
+        raw_text,
+        eos,
+        bos,
+        tokenizer,
+        max_sequence_length,
+        kwargs.get("max_text_length", None),
     )
 
 
 def _split_text_by_tokens(
-        text: List[str],
-        eos: str,
-        bos: str,
-        tokenizer: PreTrainedTokenizerFast,
-        sequence_length: int,
-        max_text_length: Union[None, int],
+    text: List[str],
+    eos: str,
+    bos: str,
+    tokenizer: PreTrainedTokenizerFast,
+    sequence_length: int,
+    max_text_length: Union[None, int],
 ) -> List[str]:
     """
     Tokenizes and splits a list of concatenated text samples into sections of specified maximum token length.
@@ -119,26 +127,23 @@ def _split_text_by_tokens(
 
     if max_text_length is None:
         text = "".join(text)
-        input_tokens = tokenizer(text, return_tensors="np")[
-            "input_ids"
-        ][0]
-    elif max_text_length == -1: #per sample tokenization
+        input_tokens = tokenizer(text, return_tensors="np")["input_ids"][0]
+    elif max_text_length == -1:  # per sample tokenization
         input_tokens = []
         for slice in text:
-            input_tokens.append(tokenizer(slice, return_tensors="np")[
-                "input_ids"
-            ][0])
+            input_tokens.append(tokenizer(slice, return_tensors="np")["input_ids"][0])
         input_tokens = numpy.concatenate(input_tokens)
     else:
         text = "".join(text)
         text_slices = len(text) // max_text_length
-        sliced_text = [text[i*max_text_length:(i+1)*max_text_length] for i in range(text_slices)]
-        sliced_text.append(text[text_slices*max_text_length:])
+        sliced_text = [
+            text[i * max_text_length : (i + 1) * max_text_length]
+            for i in range(text_slices)
+        ]
+        sliced_text.append(text[text_slices * max_text_length :])
         input_tokens = []
         for slice in sliced_text:
-            input_tokens.append(tokenizer(slice, return_tensors="np")[
-                "input_ids"
-            ][0])
+            input_tokens.append(tokenizer(slice, return_tensors="np")["input_ids"][0])
         input_tokens = numpy.concatenate(input_tokens)
 
     # Then split the tokenized text into sections of size "max_sequence_length" and

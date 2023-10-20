@@ -661,8 +661,8 @@ class TextGenerationPipeline(TransformersPipeline):
         )
 
         outputs = dict(
-            created=datetime.datetime.now(), 
-            prompts=prompts, 
+            created=datetime.datetime.now(),
+            prompts=prompts,
             generations=generations,
             input_tokens=input_tokens,
         )
