@@ -33,9 +33,53 @@ __all__ = [
     "override_config",
     "process_generation_config",
     "validate_session_ids",
+    "set_generated_length",
 ]
 
 _LOGGER = logging.getLogger(__name__)
+
+
+def set_generated_length(
+    max_length: int,
+    prompt_tokens_length: int,
+    sequence_length: int,
+    prompt_sequence_length: int,
+    max_new_tokens: int,
+    finish_reason_choices: "FinishReason",  # noqa
+):
+    """
+    Determine the length of the generated tokens. The hard cap on the total number
+    of tokens is based on the sequence length. If max_length is provided and is less
+    than the sequence length, it will be used to cap the total number of tokens
+    generated. If it is not provided, the max_new_tokens attribute will be used and also
+    capped by the sequence length.
+
+    :param max_length: max_length attribute, provided as input during inference
+    :param prompt_tokens_length: the number of prompt tokens used as part of the
+        generated output
+    :param sequence_length: the sequence length used for the pipeline
+    :param prompt_sequence_length: the prompt sequence length used for the pipeline
+    :param max_new_tokens: the max_new_tokens attribute, which may be provided
+    as part of the input during inference
+    """
+    if max_length:
+        # if max_length provided, use that to cap total tokens generated
+        max_tokens = max_length
+        finish_reason = finish_reason_choices.LENGTH
+    else:
+        # if not provided, max tokens is based on max_new_tokens + prompt tokens
+        max_tokens = (
+            min(max_new_tokens, sequence_length - prompt_sequence_length)
+            + prompt_tokens_length
+        )
+        finish_reason = finish_reason_choices.MAX_NEW_TOKENS
+
+    # hard model/pipeline cap
+    return (
+        (sequence_length, finish_reason_choices.CAPACITY)
+        if sequence_length < max_tokens
+        else (max_tokens, finish_reason)
+    )
 
 
 def validate_session_ids(
