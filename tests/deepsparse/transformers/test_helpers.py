@@ -168,7 +168,11 @@ def test_truncate_transformer_onnx_model(
     model_onnx_path = get_model_onnx_path(model_name)
     output_name = "embedding"
 
-    (truncated_onnx_path, output_names, _,) = truncate_transformer_onnx_model(
+    (
+        truncated_onnx_path,
+        output_names,
+        _,
+    ) = truncate_transformer_onnx_model(
         model_path=model_onnx_path,
         emb_extraction_layer=emb_extraction_layer,
         hidden_layer_size=None,
