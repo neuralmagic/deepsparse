@@ -84,7 +84,6 @@ PPL_DATASETS = ["wikitext2", "c4", "openai_humaneval"]
 
 
 def perplexity_eval(args, dataset_name="openai_humaneval"):
-
     if dataset_name in ["wikitext2", "c4"]:
         if args.kwargs is None:
             kwargs = {}
@@ -123,7 +122,6 @@ def perplexity_eval(args, dataset_name="openai_humaneval"):
     end_evaluation = False
     dataset_length = len(dataset)
     for idx, sample in _enumerate_progress(dataset, args.max_samples):
-
         # Collect input sequence
         if dataset_name == "openai_humaneval":
             sample = sample["prompt"] + sample["canonical_solution"]
