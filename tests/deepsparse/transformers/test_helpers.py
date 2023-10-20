@@ -62,8 +62,8 @@ def get_model_onnx_path(model_stubs):
         onnx_path = model.onnx_model.path
         model_onnx_paths[model_name] = onnx_path
 
-    def _get_model_onnx_path(model_name):
-        return model_onnx_paths[model_name]
+    def _get_model_onnx_path(_model_name):
+        return model_onnx_paths[_model_name]
 
     return _get_model_onnx_path
 
