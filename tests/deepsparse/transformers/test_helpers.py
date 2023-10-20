@@ -12,11 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+
 import onnx
 
 import pytest
 from deepsparse.transformers.helpers import (
-    get_deployment_path,
+    get_hugging_face_configs,
+    get_onnx_path,
     get_transformer_layer_init_names,
     truncate_transformer_onnx_model,
 )
@@ -32,8 +35,20 @@ from sparsezoo import Model
         ),
     ],
 )
-def test_get_deployment_path(stub):
-    assert get_deployment_path(stub)
+def test_get_onnx_path_and_configs_from_stub(stub):
+    onnx_path = get_onnx_path(stub)
+    config_dir, tokenizer_dir = get_hugging_face_configs(stub)
+
+    assert onnx_path.endswith("model.onnx")
+    assert os.path.exists(onnx_path)
+
+    config_dir_files = os.listdir(config_dir)
+    assert "config.json" in config_dir_files
+
+    tokenizer_dir_files = os.listdir(tokenizer_dir)
+    assert "tokenizer.json" in tokenizer_dir_files
+    # make assert optional if stubs added for models with no known tokenizer_config
+    assert "tokenizer_config.json" in tokenizer_dir_files
 
 
 @pytest.fixture(scope="session")
@@ -62,8 +77,8 @@ def get_model_onnx_path(model_stubs):
         onnx_path = model.onnx_model.path
         model_onnx_paths[model_name] = onnx_path
 
-    def _get_model_onnx_path(_model_name):
-        return model_onnx_paths[_model_name]
+    def _get_model_onnx_path(model_name):
+        return model_onnx_paths[model_name]
 
     return _get_model_onnx_path
 
@@ -168,11 +183,7 @@ def test_truncate_transformer_onnx_model(
     model_onnx_path = get_model_onnx_path(model_name)
     output_name = "embedding"
 
-    (
-        truncated_onnx_path,
-        output_names,
-        _,
-    ) = truncate_transformer_onnx_model(
+    (truncated_onnx_path, output_names, _,) = truncate_transformer_onnx_model(
         model_path=model_onnx_path,
         emb_extraction_layer=emb_extraction_layer,
         hidden_layer_size=None,
