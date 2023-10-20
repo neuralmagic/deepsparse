@@ -554,7 +554,6 @@ class TestTextGenerationPipeline:
         session_id_1,
         session_id_2,
     ):
-
         tokenizer = pipeline.tokenizer
         config = GenerationConfig(
             output_scores=True, max_length=num_generated_tokens, top_k=0, top_p=0.0
@@ -607,7 +606,6 @@ class TestTextGenerationPipeline:
         max_logits_difference_threshold: Optional[float] = None,
         run_cache_validation: bool = True,
     ):
-
         (
             generated_logits,
             prompt_logits,
@@ -666,7 +664,9 @@ class TestTextGenerationPipeline:
                 x[:, :, -start_index:-end_index, :], y, atol=_PRECISION
             )
 
-    def test_pipeline_for_ppl_eval(self, ):
+    def test_pipeline_for_ppl_eval(
+        self,
+    ):
         pipeline = self.get_pipeline(
             task="text-generation",
             model_path=self.model_stub,
