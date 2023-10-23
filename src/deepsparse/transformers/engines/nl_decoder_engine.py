@@ -175,7 +175,7 @@ class NLDecoderEngine:
         else:
             # run the engine assuming external kv cache
             # management.
-            return self.engine.run(inputs, val_inp, kv_cache)
+            return self.engine.run(inputs, val_inp)
 
     def __call__(
         self,
