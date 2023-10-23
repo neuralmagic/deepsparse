@@ -22,8 +22,9 @@ usage: deepsparse.benchmark [-h] [-b BATCH_SIZE] [-i INPUT_SHAPES]
                             [-t TIME] [-w WARMUP_TIME] [-nstreams NUM_STREAMS]
                             [-seq_len SEQUENCE_LENGTH]
                             [-input_ids_len INPUT_IDS_LENGTH]
-                            [-pin {none,core,numa}] [-e ENGINE] [-q]
-                            [-x EXPORT_PATH]
+                            [-pin {none,core,numa}] [-e ENGINE]
+                            [--no-internal-kv-cache] [-q] [-x EXPORT_PATH]
+                            [--disable-kv-cache-overrides]
                             model_path
 
 Benchmark ONNX models in the DeepSparse Engine
@@ -80,9 +81,17 @@ optional arguments:
                         <path to python script>:<Engine Class name>. This
                         engine class will be dynamically imported during
                         runtime
+  --no-internal-kv-cache, --no_internal_kv_cache
+                        DeepSparse engine only - If not present, and model has
+                        KV cache, KV Cache state will be managed within the
+                        compiled deepsparse model. This is preferred when
+                        applicable for best performance. Set flag to disable
   -q, --quiet           Lower logging verbosity
   -x EXPORT_PATH, --export_path EXPORT_PATH
                         Store results into a JSON file
+  --disable-kv-cache-overrides, --disable_kv_cache_overrides
+                        If set, it will not alter the model
+                        with kv cache overrides
 
 ##########
 Example on a BERT from SparseZoo:
@@ -297,10 +306,7 @@ def parse_args():
     parser.add_argument(
         "--disable-kv-cache-overrides",
         "--disable_kv_cache_overrides",
-        help=(
-            "If set, deepsparse.benchmark will not alter the model "
-            "with kv cache overrides"
-        ),
+        help=("If set, it will not alter the model with kv cache overrides"),
         action="store_true",
         default=False,
     )

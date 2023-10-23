@@ -42,15 +42,15 @@ limitations under the License.
 [DeepSparse](https://github.com/neuralmagic/deepsparse) is a CPU inference runtime that takes advantage of sparsity to accelerate neural network inference. Coupled with [SparseML](https://github.com/neuralmagic/sparseml), our optimization library for pruning and quantizing your models, DeepSparse delivers exceptional inference performance on CPU hardware.
 
 <p align="center">
-   <img alt="NM Flow" src="https://github.com/neuralmagic/deepsparse/blob/7ee5e60f13b1fd321c5282c91e2873b3363ec911/docs/neural-magic-workflow.png" width="60%" />
+   <img alt="NM Flow" src="https://github.com/neuralmagic/deepsparse/assets/3195154/51e62fe7-9d9a-4fa5-a774-877158da1e29" width="60%" />
 </p>
 
 ## ✨NEW✨ DeepSparse LLMs
 
-We are excited to announce initial support for performant LLM inference in DeepSparse with:
-- Sparse kernels for speedups and memory savings from unstructured sparse weights
-- 8-bit weight and activation quantization support
-- Efficient usage of cached attention keys and values for minimal memory movement
+Neural Magic is excited to announce initial support for performant LLM inference in DeepSparse with:
+- sparse kernels for speedups and memory savings from unstructured sparse weights.
+- 8-bit weight and activation quantization support.
+- efficient usage of cached attention keys and values for minimal memory movement.
 
 ![mpt-chat-comparison](https://github.com/neuralmagic/deepsparse/assets/3195154/ccf39323-4603-4489-8462-7b103872aeb3)
 
@@ -71,20 +71,20 @@ Below is an instruction that describes a task. Write a response that appropriate
 """
 print(pipeline(prompt, max_new_tokens=75).generations[0].text)
 
-# Sparsity is the property of a matrix or other data structure in which a large number of elements are zero, and a smaller number of elements are non-zero. In the context of machine learning, sparsity can be used to improve the efficiency of training and prediction.
+# Sparsity is the property of a matrix or other data structure in which a large number of elements are zero and a smaller number of elements are non-zero. In the context of machine learning, sparsity can be used to improve the efficiency of training and prediction.
 ```
 
 > [Check out the `TextGeneration` documentation for usage details.](https://github.com/neuralmagic/deepsparse/blob/main/docs/llms/text-generation-pipeline.md)
 
 ### Sparsity :handshake: Performance
 
-Developed in collaboration with IST Austria, [our recent paper](https://arxiv.org/abs/2310.06927) details a new technique called **Sparse Finetuning**, which allows us to prune MPT-7B to 60% sparsity during finetuning without drop in accuracy. With our new support for LLMs, DeepSparse accelerates the sparse-quantized model 7x over the dense baseline:
+Developed in collaboration with IST Austria, [our recent paper](https://arxiv.org/abs/2310.06927) details a new technique called **Sparse Fine-Tuning**, which allows us to prune MPT-7B to 60% sparsity during fine-tuning without drop in accuracy. With our new support for LLMs, DeepSparse accelerates the sparse-quantized model 7x over the dense baseline:
 
 <div align="center">
     <img src="https://github.com/neuralmagic/deepsparse/assets/3195154/8687401c-f479-4999-ba6b-e01c747dace9" width="60%"/>
 </div>
 
-> [Learn more about our Sparse Finetuning research.](https://github.com/neuralmagic/deepsparse/blob/main/research/mpt#sparse-finetuned-llms-with-deepsparse)
+> [Learn more about our Sparse Fine-Tuning research.](https://github.com/neuralmagic/deepsparse/blob/main/research/mpt#sparse-finetuned-llms-with-deepsparse)
 
 > [Check out the model running live on Hugging Face.](https://huggingface.co/spaces/neuralmagic/sparse-mpt-7b-gsm8k)
 
@@ -92,13 +92,13 @@ Developed in collaboration with IST Austria, [our recent paper](https://arxiv.or
 
 Following this initial launch, we are rapidly expanding our support for LLMs, including:
 
-1. Productizing Sparse Finetuning: Enable external users to apply the sparse fine-tuning to their datasets via SparseML
-2. Expanding Model Support: Apply our sparse finetuning results to Llama2 and Mistral models
-3. Pushing to Higher Sparsity: Improving our pruning algorithms to reach even higher sparsity
+1. Productizing Sparse Fine-Tuning: Enable external users to apply sparse fine-tuning to their datasets via SparseML.
+2. Expanding model support: Apply our sparse fine-tuning results to Llama 2 and Mistral models.
+3. Pushing for higher sparsity: Improving our pruning algorithms to reach even higher sparsity.
 
 ## Computer Vision and NLP Models
 
-In addition to LLMs, DeepSparse supports many variants of CNNs and Transformer models such as BERT, ViT, ResNet, EfficientNet, YOLOv5/8, and many more! Take a look at the [Computer Vision](https://sparsezoo.neuralmagic.com/?modelSet=computer_vision) and [Natural Language Processing](https://sparsezoo.neuralmagic.com/?modelSet=natural_language_processing) domains of [SparseZoo](https://sparsezoo.neuralmagic.com/), our home for optimized models.
+In addition to LLMs, DeepSparse supports many variants of CNNs and Transformer models, such as BERT, ViT, ResNet, EfficientNet, YOLOv5/8, and many more! Take a look at the [Computer Vision](https://sparsezoo.neuralmagic.com/?modelSet=computer_vision) and [Natural Language Processing](https://sparsezoo.neuralmagic.com/?modelSet=natural_language_processing) domains of [SparseZoo](https://sparsezoo.neuralmagic.com/), our home for optimized models.
 
 ### Installation
 
@@ -108,15 +108,15 @@ Install via [PyPI](https://pypi.org/project/deepsparse/) ([optional dependencies
 pip install deepsparse 
 ```
 
-To experiment with the latest features, there is a nightly build available using `pip install deepsparse-nightly` or you can clone + install from source using `pip install -e path/to/deepsparse`.
+To experiment with the latest features, there is a nightly build available using `pip install deepsparse-nightly` or you can clone and install from source using `pip install -e path/to/deepsparse`.
 
 #### System Requirements
-- Hardware: [x86 AVX2, AVX512, AVX512-VNNI and ARM v8.2+](https://github.com/neuralmagic/deepsparse/tree/main/docs/user-guide/hardware-support.md)
+- Hardware: [x86 AVX2, AVX-512, AVX-512 VNNI and ARM v8.2+](https://github.com/neuralmagic/deepsparse/tree/main/docs/user-guide/hardware-support.md)
 - Operating System: Linux
 - Python: 3.8-3.11
 - ONNX versions 1.5.0-1.15.0, ONNX opset version 11 or higher
 
-For those using Mac or Windows, we recommend using Linux Containers with Docker.
+For those using Mac or Windows, we recommend using Linux containers with Docker.
 
 ## Deployment APIs
 
@@ -167,7 +167,7 @@ print(prediction)
 
 ### Server
 
-Server wraps Pipelines with REST APIs, enabling you to stand up model serving endpoint running DeepSparse. This enables you to send raw data to DeepSparse over HTTP and receive the post-processed predictions. DeepSparse Server is launched from the command line, configured via arguments or a server configuration file. The following downloads a 90% pruned-quantized BERT model for sentiment analysis in ONNX format from SparseZoo and launches a sentiment analysis endpoint:
+Server wraps Pipelines with REST APIs, enabling you to set up a model-serving endpoint running DeepSparse. This enables you to send raw data to DeepSparse over HTTP and receive the post-processed predictions. DeepSparse Server is launched from the command line and configured via arguments or a server configuration file. The following downloads a 90% pruned-quantized BERT model for sentiment analysis in ONNX format from SparseZoo and launches a sentiment analysis endpoint:
 
 ```bash
 deepsparse.server \
@@ -199,7 +199,7 @@ print(response.text)
 
 ## Product Usage Analytics
 
-DeepSparse gathers basic usage telemetry including, but not limited to, Invocations, Package, Version, and IP Address for Product Usage Analytics purposes. Review Neural Magic's [Products Privacy Policy](https://neuralmagic.com/legal/) for further details on how we process this data. 
+DeepSparse gathers basic usage telemetry, including, but not limited to, Invocations, Package, Version, and IP Address, for Product Usage Analytics purposes. Review Neural Magic's [Products Privacy Policy](https://neuralmagic.com/legal/) for further details on how we process this data. 
 
 To disable Product Usage Analytics, run:
 ```bash
@@ -233,7 +233,7 @@ Find this project useful in your research or other communications? Please consid
 
 ```bibtex
 @misc{kurtic2023sparse,
-      title={Sparse Finetuning for Inference Acceleration of Large Language Models}, 
+      title={Sparse Fine-Tuning for Inference Acceleration of Large Language Models}, 
       author={Eldar Kurtic and Denis Kuznedelev and Elias Frantar and Michael Goin and Dan Alistarh},
       year={2023},
       url={https://arxiv.org/abs/2310.06927},
