@@ -648,6 +648,9 @@ class TextGenerationPipeline(TransformersPipeline):
             created=datetime.datetime.now(), prompts=prompts, generations=generations
         )
 
+        if "session_ids" in kwargs:
+            outputs["session_ids"] = kwargs["session_ids"]
+
         if self._debug:
             debug_params = dict(
                 kv_cache_state=kv_cache_state,
