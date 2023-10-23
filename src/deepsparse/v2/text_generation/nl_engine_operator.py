@@ -1,27 +1,50 @@
-from deepsparse.v2.operators import EngineOperator, Operator
-from deepsparse import Context as EngineContext
-from typing import Any 
-from deepsparse.v2.utils import Context
+# Copyright (c) 2021 - present / Neuralmagic, Inc. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import copy
+from typing import Any, List, Optional, Tuple
+
 from pydantic import BaseModel, Field
-from deepsparse.utils.onnx import CACHE_INPUT_PREFIX,
+
+from deepsparse.transformers.utils import DecoderKVCache
+from deepsparse.utils.onnx import (
+    CACHE_INPUT_PREFIX,
+    overwrite_onnx_model_inputs_for_kv_cache_models,
+)
+from deepsparse.v2.operators.engine_operator import DEEPSPARSE_ENGINE, EngineOperator
+from deepsparse.v2.utils import Context, InferenceState, PipelineState
+
 
 __all__ = ["NLEngineOperator"]
 
-class NlEngineInput(BaseModel):
-    inputs: Any = Field(description="engine inputs")
-    kv_cache: DecoderKVCache = Field(description="kv_cache object")
 
+class NlEngineInput(BaseModel):
+    engine_inputs: Any = Field(description="engine inputs")
+    kv_cache: Any = Field(description="kv_cache object") #DecoderKVCache
+    tokens: Any = Field(description="tokens")
 
 class NLEngineOperator(EngineOperator):
     input_schema = NlEngineInput
     output_schema = None
 
-    def __init__(self,
-            sequence_length: int, 
-            input_ids_length: int,
-            enable_multitoken_prefill: bool,
-            internal_kv_cache: bool = False,
-            **kwargs):
+    def __init__(
+        self,
+        sequence_length: int,
+        input_ids_length: int,
+        internal_kv_cache: bool = False,
+        **kwargs,
+    ):
 
         (
             onnx_file_path,
@@ -34,31 +57,37 @@ class NLEngineOperator(EngineOperator):
             input_ids_length=input_ids_length,
         )
 
-        self._can_operate = enable_multitoken_prefill
+        if not kwargs.get("engine_kwargs"):
+            engine_kwargs = {}
+            
         self.kv_cache_data_type = None
         if any(output_indices_to_be_cached):
             self.kv_cache_data_type = kv_cache_data_type
             if internal_kv_cache and kwargs.get("engine_type") == DEEPSPARSE_ENGINE:
+                print(kwargs.get("engine_type"))
                 # inform the engine, that are using the kv cache
+            
                 engine_kwargs = kwargs.get("engine_kwargs")
-                if not engine_kwargs:
-                    engine_kwargs = {}
                 engine_kwargs["cached_outputs"] = output_indices_to_be_cached
 
-        kwargs["engine_kwargs"] = engine_kwargs 
+        kwargs["engine_kwargs"] = engine_kwargs
         kwargs["model_path"] = onnx_file_path
         super().__init__(**kwargs)
 
-        self.sequence_length = sequence_length
         self.input_ids_length = input_ids_length
+        print(self.engine, type(self.engine))
 
-    @property
-    def can_operate(self):
-        return self._can_operate
 
-    def run(self, inp: NlEngineInput, context: Optional[Context]) -> Any:
-        engine_input = inp.inputs
+    def run(
+        self,
+        inp: NlEngineInput,
+        context: Optional[Context],
+        pipeline_state: PipelineState,
+        inference_state: InferenceState,
+    ) -> Any:
+        engine_input = inp.engine_inputs
         kv_cache = inp.kv_cache
+        tokens = inp.tokens
 
         inputs = self._add_kv_cache_to_input(engine_input, kv_cache)
         if bool(kv_cache.engine_internal_cache):
@@ -73,25 +102,26 @@ class NLEngineOperator(EngineOperator):
             )
         else:
             # run the engine without the LIB.kv_cache object
-            out = super().__call__(inputs)
-            
+            out = super().run(inputs, context=context, pipeline_state=pipeline_state, inference_state=inference_state)
+
         logits, *kv_cache_state = out
         self._update_kv_cache(
             kv_cache_state=kv_cache_state,
             input_ids_len=self.input_ids_length,
             kv_cache=kv_cache,
         )
-        return logits
+
+        return {"logits": logits, "kv_cache": kv_cache, "tokens": tokens}
 
     def _add_kv_cache_to_input(self, engine_input, kv_cache):
         kv_cache_state = copy.copy(kv_cache.cached_inputs)
 
         for idx, input_name in enumerate(self.onnx_input_names_no_cache):
-            kv_cache_state[input_name] = inp[idx]
+            kv_cache_state[input_name] = engine_input[idx]
 
         new_inp = [kv_cache_state[name] for name in self.engine.input_names]
         return new_inp
-    
+
     def _update_kv_cache(self, kv_cache_state, input_ids_len, kv_cache):
         if bool(kv_cache.engine_internal_cache):
             kv_cache.total_num_processed_tokens += input_ids_len
@@ -150,5 +180,3 @@ class NLEngineOperator(EngineOperator):
         :return: The output names for the onnx model
         """
         return self.engine.output_names
-    
-    

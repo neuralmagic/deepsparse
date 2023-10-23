@@ -17,7 +17,7 @@ from typing import Any, Optional, Type
 
 from pydantic import BaseModel
 
-from deepsparse.v2.utils import Context
+from deepsparse.v2.utils import Context, InferenceState, PipelineState
 
 
 __all__ = ["Operator"]
@@ -38,6 +38,7 @@ class Operator(ABC):
         """
         :return: True if this class has a defined pydantic input schema
         """
+  
         if not cls.input_schema:
             return False
 
@@ -57,6 +58,8 @@ class Operator(ABC):
         self,
         *args,
         context: Context,
+        pipeline_state: PipelineState,
+        inference_state: InferenceState, 
         **kwargs,
     ) -> Any:
         """
@@ -68,6 +71,7 @@ class Operator(ABC):
         :param kwargs: kwargs when not initializing from an instantiated schema
         :return: operator output
         """
+        print(args, kwargs)
         if len(args) > 1:
             raise ValueError(
                 f"Only 1 unnamed arg may be supplied to an Operator, found {len(args)}"
@@ -90,18 +94,23 @@ class Operator(ABC):
         else:
             inference_input = kwargs
 
-        run_output = self.run(inp=inference_input, context=context)
-
+        run_output, state_update = self.run(inp=inference_input, context=context, pipeline_state=pipeline_state, inference_state=inference_state)
         if self.has_output_schema():
-            return self.output_schema(**run_output)
-        return run_output
+            return self.output_schema(**run_output), state_update
+        return run_output, state_update
 
     @abstractmethod
-    def run(self, inp: Any, context: Optional[Context]) -> Any:
+    def run(self, inp: Any, context: Optional[Context], pipeline_state: PipelineState, inference_state: InferenceState) -> Any:
         """
         :param inp: operator input, as the defined input schema if applicable
         :param context: pipeline context of already run operators
         :return: result of this operator as the defined output schema if applicable
+        """
+        raise NotImplementedError
+
+    def can_operate(self, inp: Any, inference_state: InferenceState) -> bool:
+        """
+        Whether or not the given operator can run, based on input and state
         """
         raise NotImplementedError
 

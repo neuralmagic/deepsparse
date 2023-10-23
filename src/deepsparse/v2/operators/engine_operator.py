@@ -14,10 +14,12 @@
 
 from typing import Any, Dict, List, Optional, Union
 
-from deepsparse import Context, Engine, MultiModelEngine, Scheduler
+from deepsparse import Engine, MultiModelEngine, Scheduler
+from deepsparse import Context as EngineContext
 from deepsparse.benchmark import ORTEngine
 from deepsparse.utils import join_engine_outputs, split_engine_inputs
 from deepsparse.v2.operators import Operator
+from deepsparse.v2.utils import Context, PipelineState, InferenceState
 
 
 DEEPSPARSE_ENGINE = "deepsparse"
@@ -38,10 +40,9 @@ class EngineOperator(Operator):
         num_streams: int = None,
         scheduler: Scheduler = None,
         input_shapes: List[List[int]] = None,
-        engine_context: Optional[Context] = None,
+        engine_context: Optional[EngineContext] = None,
         engine_kwargs: Dict = None,
     ):
-
         self._batch_size = batch_size
         self.engine_context = engine_context
 
@@ -63,7 +64,7 @@ class EngineOperator(Operator):
             engine_args["scheduler"] = scheduler
             engine_args["num_streams"] = num_streams
 
-        engine_args.updated(engine_kwargs)
+        engine_args.update(engine_kwargs)
 
         self.engine = self._create_engine(model_path, engine_type, engine_args)
 
@@ -83,7 +84,7 @@ class EngineOperator(Operator):
 
         if engine_type == DEEPSPARSE_ENGINE:
             if self.engine_context is not None and isinstance(
-                self.engine_context, Context
+                self.engine_context, EngineContext
             ):
                 engine_args.pop("num_cores", None)
                 engine_args.pop("scheduler", None)
@@ -104,7 +105,7 @@ class EngineOperator(Operator):
             f"{SUPPORTED_PIPELINE_ENGINES}"
         )
 
-    def run(self, inp: Any, context: Optional[Context]) -> Any:
+    def run(self, inp: Any, context: Optional[Context], pipeline_state: PipelineState, inference_state: InferenceState) -> Any:
         batches, orig_batch_size = self.expand_inputs(engine_inputs=inp)
         batches_outputs = list(map(self.engine, batches))
         engine_outputs = self.condense_inputs(

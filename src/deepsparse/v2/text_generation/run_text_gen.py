@@ -11,12 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from .compile_logits import *
-from .kv_cache_operator import *
-from .multi_engine_prefill_operator import *
-from .nl_engine_operator import *
-from .prepare_for_multi_engine import *
-from .prep_for_prefill import *
-from .process_inputs import *
-from .tokens_to_engine_inputs import *
-from .pipeline import *
+
+from deepsparse.transformers.pipelines.text_generation import TextGenerationInput
+from deepsparse.v2.text_generation.pipeline import TextGenerationPipeline
+
+model_path = "/home/dsikka/.cache/sparsezoo/neuralmagic/mpt-7b-gsm8k_mpt_pretrain-base_quantized/deployment"
+pipeline = TextGenerationPipeline(model_path, prompt_sequence_length=1, engine_kwargs={"engine_type": "onnxruntime"})
+input_values = TextGenerationInput(prompt="Hello there, how are you?")
+pipeline(input_values)

@@ -18,7 +18,7 @@ from typing import Any, List
 
 from deepsparse.v2.operators import Operator
 from deepsparse.v2.schedulers.scheduler import OperatorScheduler
-from deepsparse.v2.utils import Context
+from deepsparse.v2.utils import Context, PipelineState, InferenceState
 
 
 __all__ = ["SchedulerGroup"]
@@ -36,10 +36,7 @@ class SchedulerGroup(OperatorScheduler):
         self.schedulers = schedulers
 
     def submit(
-        self,
-        operator: Operator,
-        operator_input: Any,
-        context: Context,
+        self, operator: Operator, operator_input: Any, context: Context, pipeline_state: PipelineState, inference_state: InferenceState
     ) -> Future:
         """
         :param operator: operator to run
@@ -49,7 +46,7 @@ class SchedulerGroup(OperatorScheduler):
         """
         for scheduler in self.schedulers:
             if scheduler.can_process(operator, operator_input):
-                return scheduler.submit(operator, operator_input, context)
+                return scheduler.submit(operator, operator_input, context, pipeline_state, inference_state)
 
     def can_process(self, operator: Operator, operator_input: Any) -> bool:
         """

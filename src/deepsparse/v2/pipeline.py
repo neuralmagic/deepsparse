@@ -18,7 +18,7 @@ from typing import Any, Dict, List, Optional, Union
 from deepsparse.v2.operators import Operator
 from deepsparse.v2.routers import Router
 from deepsparse.v2.schedulers import OperatorScheduler, SchedulerGroup
-from deepsparse.v2.utils import Context
+from deepsparse.v2.utils import Context, InferenceState, PipelineState
 
 
 __all__ = ["Pipeline"]
@@ -41,17 +41,24 @@ class Pipeline(Operator):
         ops: Union[Dict[str, Operator], List[Operator]],
         router: Router,
         schedulers: List[OperatorScheduler],
+        pipeline_state: PipelineState,
     ):
 
         self.ops = ops
         self.router = router
         self.schedulers = schedulers
         self.validate()
+        self.pipeline_state = pipeline_state
 
         # SchedulerGroup handles running all schedulers in order of priority
         self._scheduler_group = SchedulerGroup(self.schedulers)
 
-    def run(self, inp: Any, context: Optional[Context]):
+    def run(
+        self,
+        inp: Any,
+        context: Optional[Context],
+        inference_state: InferenceState,
+    ):
         """
         Run through the operators using the provided router and scheduler. Update the
         context to reflect each step of the router. The input to a given operator is the
@@ -67,13 +74,24 @@ class Pipeline(Operator):
         while next_step != self.router.END_ROUTE:
             # Either a dictionary key or valid index
             operator = self.ops[next_step]
+            print("BEFORE", next_step)
 
             output_future = self._scheduler_group.submit(
-                operator=operator, operator_input=inp, context=context
+                operator=operator,
+                operator_input=inp,
+                context=context,
+                pipeline_state=self.pipeline_state,
+                inference_state=inference_state,
             )
 
             # wait for future to resolve
-            operator_output = output_future.result()
+            operator_output, state_update = output_future.result()
+
+            print("STATE UPDATE")
+            print(state_update)
+            # Update inference state
+            inference_state.update_state(state_update)
+            print(inference_state.current_state)
 
             # update context
             context.update(
@@ -82,8 +100,10 @@ class Pipeline(Operator):
                 output=operator_output,
             )
 
-            next_step = self.router.next(next_step, self.ops)
+            next_step = self.router.next(next_step, self.ops, operator_output, inference_state)
             inp = operator_output
+
+            print("NEXT", next_step)
         return operator_output, context
 
     def __call__(self, *args, return_context: bool = False, **kwargs):
@@ -104,7 +124,16 @@ class Pipeline(Operator):
             )
 
         pipeline_input = kwargs or args[0]
-        pipeline_output, context = self.run(inp=pipeline_input, context=Context())
+
+        # A new inference state is created for every pipeline inference run
+        inference_state = InferenceState()
+        inference_state.create_state({})
+
+        pipeline_output, context = self.run(
+            inp=pipeline_input,
+            context=Context(),
+            inference_state=inference_state,
+        )
 
         if return_context:
             return pipeline_output, context
