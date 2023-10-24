@@ -13,7 +13,7 @@
 # limitations under the License.
 import warnings
 from abc import ABC
-from typing import Any
+from typing import Any, Union
 
 
 __all__ = ["State", "PipelineState", "InferenceState"]
@@ -43,12 +43,10 @@ class InferenceState(State):
             warnings.warn("Current state already exists, overriding.")
         self._current_state = new_state
 
-    def update_value(self, attribute: str):
+    def update_value(self, attribute: str, value: Union[str, int, list]):
         if not self._current_state.get(attribute):
             raise ValueError(f"{attribute} is not a valid state attribute")
         self._current_state[attribute] = value
 
-
     def update_state(self, value: Any):
         self._current_state.update(value)
-            

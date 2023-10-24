@@ -20,18 +20,29 @@ from deepsparse.v2.operators import Operator
 from deepsparse.v2.utils import Context, InferenceState, PipelineState
 
 
-__all__ = ["PrepareforMultiEngine"]
+__all__ = ["PrepareforSingleEngine"]
 
 
-class PrepareforMultiEngine(Operator):
-    def __init__(self, prompt_sequence_length):
-        self.prompt_sequence_length = prompt_sequence_length
-
+class PrepareforSingleEngine(Operator):
     def can_operate(self, inp: Any, context: Context, inference_state: InferenceState):
+        number_tokens_processed = inference_state.current_state.get(
+            "num_tokens_processed"
+        )
         tokens = inp.get("tokens")
-        if len(tokens) > self.prompt_sequence_length:
+        if (
+            len(tokens) < self.prompt_sequence_length
+        ):  ## can't run multi-engine (running first time)
             return True
-        return False
+
+        for c in context.stages_executed:
+            if c.operator.__name__ == "AutoRegressiveOperator":
+                return False
+
+        if (
+            len(tokens[number_tokens_processed:]) == 0
+        ):  ## if 0 remain, can't operate (after multi-engine has already run)
+            return False
+        return True  ## if some remain, can operate
 
     def run(
         self,
@@ -41,11 +52,14 @@ class PrepareforMultiEngine(Operator):
         inference_state: InferenceState,
     ):
         tokens = inp.get("tokens")
+        num_processed_tokens = inference_state.current_stat.get(
+            "num_tokens_processed", 0
+        )
         state_dict = {
-            "num_batches": len(tokens) // self.prompt_sequence_length,
-            "start_token": 0,
-            "end_token": self.prompt_sequence_length,
+            "num_batches": len(tokens[num_processed_tokens:]),
+            "start_token": num_processed_tokens,
+            "end_token": num_processed_tokens + 1,
             "batches_processed": 0,
-            "num_tokens_processed": 0,
+            "num_processed_tokens": num_processed_tokens,
         }
         return inp, state_dict

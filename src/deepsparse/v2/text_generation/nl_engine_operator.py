@@ -31,8 +31,9 @@ __all__ = ["NLEngineOperator"]
 
 class NlEngineInput(BaseModel):
     engine_inputs: Any = Field(description="engine inputs")
-    kv_cache: Any = Field(description="kv_cache object") #DecoderKVCache
+    kv_cache: Any = Field(description="kv_cache object")  # DecoderKVCache
     tokens: Any = Field(description="tokens")
+
 
 class NLEngineOperator(EngineOperator):
     input_schema = NlEngineInput
@@ -59,14 +60,11 @@ class NLEngineOperator(EngineOperator):
 
         if not kwargs.get("engine_kwargs"):
             engine_kwargs = {}
-            
+
         self.kv_cache_data_type = None
         if any(output_indices_to_be_cached):
             self.kv_cache_data_type = kv_cache_data_type
             if internal_kv_cache and kwargs.get("engine_type") == DEEPSPARSE_ENGINE:
-                print(kwargs.get("engine_type"))
-                # inform the engine, that are using the kv cache
-            
                 engine_kwargs = kwargs.get("engine_kwargs")
                 engine_kwargs["cached_outputs"] = output_indices_to_be_cached
 
@@ -75,8 +73,6 @@ class NLEngineOperator(EngineOperator):
         super().__init__(**kwargs)
 
         self.input_ids_length = input_ids_length
-        print(self.engine, type(self.engine))
-
 
     def run(
         self,
@@ -87,7 +83,6 @@ class NLEngineOperator(EngineOperator):
     ) -> Any:
         engine_input = inp.engine_inputs
         kv_cache = inp.kv_cache
-        tokens = inp.tokens
 
         inputs = self._add_kv_cache_to_input(engine_input, kv_cache)
         if bool(kv_cache.engine_internal_cache):
@@ -102,7 +97,12 @@ class NLEngineOperator(EngineOperator):
             )
         else:
             # run the engine without the LIB.kv_cache object
-            out = super().run(inputs, context=context, pipeline_state=pipeline_state, inference_state=inference_state)
+            out, _ = super().run(
+                inputs,
+                context=context,
+                pipeline_state=pipeline_state,
+                inference_state=inference_state,
+            )
 
         logits, *kv_cache_state = out
         self._update_kv_cache(
@@ -111,7 +111,10 @@ class NLEngineOperator(EngineOperator):
             kv_cache=kv_cache,
         )
 
-        return {"logits": logits, "kv_cache": kv_cache, "tokens": tokens}
+        output = dict(inp)
+        output.update({"logits": logits, "kv_cache": kv_cache})
+
+        return output, {}
 
     def _add_kv_cache_to_input(self, engine_input, kv_cache):
         kv_cache_state = copy.copy(kv_cache.cached_inputs)

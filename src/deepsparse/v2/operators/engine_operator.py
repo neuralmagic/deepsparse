@@ -14,12 +14,12 @@
 
 from typing import Any, Dict, List, Optional, Union
 
-from deepsparse import Engine, MultiModelEngine, Scheduler
 from deepsparse import Context as EngineContext
+from deepsparse import Engine, MultiModelEngine, Scheduler
 from deepsparse.benchmark import ORTEngine
 from deepsparse.utils import join_engine_outputs, split_engine_inputs
 from deepsparse.v2.operators import Operator
-from deepsparse.v2.utils import Context, PipelineState, InferenceState
+from deepsparse.v2.utils import Context, InferenceState, PipelineState
 
 
 DEEPSPARSE_ENGINE = "deepsparse"
@@ -35,7 +35,6 @@ class EngineOperator(Operator):
         self,
         model_path: str,
         engine_type: str = DEEPSPARSE_ENGINE,
-        batch_size: Optional[int] = 1,
         num_cores: int = None,
         num_streams: int = None,
         scheduler: Scheduler = None,
@@ -43,7 +42,7 @@ class EngineOperator(Operator):
         engine_context: Optional[EngineContext] = None,
         engine_kwargs: Dict = None,
     ):
-        self._batch_size = batch_size
+        self._batch_size = 1
         self.engine_context = engine_context
 
         if self.engine_context is not None:
@@ -105,13 +104,19 @@ class EngineOperator(Operator):
             f"{SUPPORTED_PIPELINE_ENGINES}"
         )
 
-    def run(self, inp: Any, context: Optional[Context], pipeline_state: PipelineState, inference_state: InferenceState) -> Any:
+    def run(
+        self,
+        inp: Any,
+        context: Optional[Context],
+        pipeline_state: PipelineState,
+        inference_state: InferenceState,
+    ) -> Any:
         batches, orig_batch_size = self.expand_inputs(engine_inputs=inp)
         batches_outputs = list(map(self.engine, batches))
         engine_outputs = self.condense_inputs(
             batch_outputs=batches_outputs, orig_batch_size=orig_batch_size
         )
-        return engine_outputs
+        return engine_outputs, {}
 
     def expand_inputs(self, **kwargs):
         return split_engine_inputs(kwargs["engine_inputs"], self._batch_size)

@@ -12,39 +12,68 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from typing import Any, Optional
+
 import numpy
-from pydantic import BaseModel
 
 from deepsparse.transformers.utils.helpers import create_causal_mask
 from deepsparse.v2.operators import Operator
+from deepsparse.v2.utils import Context, InferenceState, PipelineState
 
 
 __all__ = ["AutoRegressiveOperator"]
 
 
-class AutoRegressiveInput(BaseModel):
-    tokens: Any = Field(description="tokens")
-    kv_cache: DecoderKVCache = Field(description="kv_cache object")
-
-
-class AutoRegressiveOutput(BaseModel):
-    engine_inputs: list = Field(description="engine inputs maps")
-
-
 class AutoRegressiveOperator(Operator):
-    input_schema = AutoRegressiveInput
-    output_schema = AutoRegressiveOutput
-
     def __init__(self, sequence_length: int):
         self.sequence_length = sequence_length
 
-    def run(inp: Any, context: Optional[Context]):
-        kv_cache = inp.kv_cache
-        tokens = inp.tokens
-        engine_input_names = inp.engine_input_names  ## property of the engine
+    def can_operate(self, inp: Any, context: Context, inference_state: InferenceState):
+        if len(inp.tokens) > self.prompt_sequence_length:
+            return False
 
-        num_total_processed_tokens = kv_cache.total_num_processed_tokens
-        new_token = tokens[-1]
+        start_token = inference_state.current_state.get("start_token")
+        end_token = inference_state.current_state.get("end_token")
+
+        if end_token - start_token == 1 and inference_state.current_state.get(
+            "batches_processed"
+        ) < inference_state.current_state.get("num_batches"):
+            return True
+        return False
+
+    def _fetch_state_update(self, current: dict):
+        return {
+            "start_token": current.get("end_token"),
+            "end_token": current.get("end_token") + 1,
+            "batches_processed": current.get("batches_processed") + 1,
+            "num_tokens_processed": current.get("num_tokens_processed") + 1,
+        }
+
+    def run(
+        self,
+        inp: Any,
+        context: Optional[Context],
+        inference_state: InferenceState,
+        pipeline_state: PipelineState,
+    ):
+        kv_cache = inp.get("kv_cache")
+        tokens = inp.get("tokens")
+
+        start_token = inference_state.current_state.get("start_token")
+        end_token = inference_state.current_state.get("end_token")
+        engine_input_names = pipeline_state.current_state.get(
+            "onnx_input_names_no_cache"
+        )
+
+        new_token = tokens[start_token:end_token]
+        num_total_processed_tokens = (
+            kv_cache.total_num_processed_tokens
+        )  # should be same as the state value?
+        print(
+            num_total_processed_tokens,
+            inference_state.current_state.get("num_total_processed_tokens"),
+        )
+
         # padding is added to left, so attention mask is 1s from the
         # right up to the number of total tokens (prompt + generated)
         attention_mask = numpy.zeros((1, self.sequence_length), dtype=numpy.int64)
@@ -64,12 +93,12 @@ class AutoRegressiveOperator(Operator):
             positions=positions,
         )
 
-        ## engine_inputs = [engine_inputs_map[name] for name in engine_input_names] ## covered by tokens_to_engine_names
+        # covered by tokens_to_engine_names --> why does this have to be a dictionary? can also remove tokens_to_engins?
+        engine_inputs = [engine_inputs_map[name] for name in engine_input_names]
 
-        return {"engine_inputs_map": engine_inputs_map}
-
-        """ next operator to call engine
-        generated_logits = self.engine(engine_inputs, kv_cache)
-
-        return generated_logits
-        """
+        state_update = self._fetch_state_update(inference_state.current_state)
+        return {
+            "engine_inputs": engine_inputs,
+            "kv_cache": kv_cache,
+            "tokens": tokens,
+        }, state_update

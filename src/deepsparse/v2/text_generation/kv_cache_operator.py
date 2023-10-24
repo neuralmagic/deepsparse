@@ -74,6 +74,4 @@ class KVCacheCreator(Operator):
             state=kv_cache_state,
             freeze_first_position=prepends_bos_token(self.tokenizer),
         )
-        print("KV CACHE")
-        print(kv_cache)
         return {"kv_cache": kv_cache}, {}

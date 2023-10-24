@@ -15,26 +15,24 @@
 from typing import Dict
 
 from deepsparse.transformers.utils.helpers import process_generation_config
+from deepsparse.utils import join_engine_outputs, split_engine_inputs
 from deepsparse.v2.operators import Operator
 from deepsparse.v2.pipeline import Pipeline
 from deepsparse.v2.routers import TextGenerationRouter
 from deepsparse.v2.schedulers import OperatorScheduler
 from deepsparse.v2.text_generation import (
+    AutoRegressiveOperator,
     CompilePromptLogits,
     KVCacheCreator,
     MultiEnginePrefill,
     NLEngineOperator,
     PrepareforMultiEngine,
     PrepareforPrefill,
+    PrepareforSingleEngine,
     ProcessInputsTextGeneration,
     TokensToEngineInputs,
 )
 from deepsparse.v2.utils import PipelineState
-
-
-class DoNothing(Operator):
-    def run():
-        return
 
 
 class TextGenerationPipeline(Pipeline):
@@ -56,6 +54,7 @@ class TextGenerationPipeline(Pipeline):
         # temporarily copy/pasta transformers code until this operator is set-up
         self.tokenizer = None
         model_path = self.setup_onnx_file_path(model_path, sequence_length)
+        self.tokenizer.pad_token = self.tokenizer.eos_token
 
         if not engine_kwargs:
             engine_kwargs = {}
@@ -87,7 +86,6 @@ class TextGenerationPipeline(Pipeline):
             "kv_cache_data_type"
         ] = single_engine_operator.kv_cache_data_type
         pipeline_state.create_state(pipeline_state_vals)
-        print(pipeline_state_vals)
 
         # Can have the transformers call the operator inside this operator --> need tokenzier and model_path, fed into engine
         process_inputs = ProcessInputsTextGeneration(
@@ -115,7 +113,10 @@ class TextGenerationPipeline(Pipeline):
             sequence_length=sequence_length,
         )
         compile_prompt_logits = CompilePromptLogits()
-        do_nothing = DoNothing()
+        prep_for_single_engine = PrepareforSingleEngine()
+        autoregressive_preprocess = AutoRegressiveOperator(
+            sequence_length=sequence_length
+        )
 
         ops = {
             "process_input": process_inputs,
@@ -126,19 +127,27 @@ class TextGenerationPipeline(Pipeline):
             "prepare_prefill": engine_inputs_for_prefill,
             "prepare_multiengine": prepare_for_multi_engine,
             "multi_engine_prefill": multi_engine_prefill,
-            "do_nothing": do_nothing,
-            "compile_prompt_logits": compile_prompt_logits,
+            "compile_logits": compile_prompt_logits,
+            "prepare_single_engine": prep_for_single_engine,
+            "autoregressive_preprocess": autoregressive_preprocess,
         }
 
         routes = {
             "process_input": "tokens_to_engine",
             "tokens_to_engine": "prepare_prefill",
-            "prepare_prefill": ["prepare_multiengine", "do_nothing"],
+            "prepare_prefill": ["prepare_multiengine", "prepare_single_engine"],
             "prepare_multiengine": "multi_engine_prefill",
             "multi_engine_prefill": "multi_engine",
             "multi_engine": "compile_logits",
-            "compile_logits": ["prepare_multiengine", "do_nothing"],
-            "do_nothing": "STOP",
+            "compile_logits": [
+                "multi_engine_prefill",
+                "prepare_single_engine",
+                "autoregressive_process",
+                "STOP",
+            ],
+            "prepare_single_engine": "autoregressive_preprocess",
+            "autoregressive_preprocess": "single_engine",
+            "single_engine": "compile_logits",
         }
 
         router = TextGenerationRouter(
@@ -149,6 +158,18 @@ class TextGenerationPipeline(Pipeline):
             ops=ops, router=router, schedulers=scheduler, pipeline_state=pipeline_state
         )
 
+    """
+    def expand_inputs(self, **kwargs):
+        inp = kwargs.get("inp")
+        engine_inputs = inp.engine_inputs
+        return split_engine_inputs(engine_inputs, self.batch_size)
+
+    def combine_inputs(self, **kwargs):
+        batch_outputs = kwargs.get("batch_outputs")
+        orig_batch_size = kwargs.get("orig_batch_size")
+        return join_engine_outputs(batch_outputs, orig_batch_size)
+    """
+    
     # stealing this for now
     def setup_onnx_file_path(self, model_path, sequence_length) -> str:
         import logging

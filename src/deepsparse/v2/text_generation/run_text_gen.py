@@ -15,7 +15,10 @@
 from deepsparse.transformers.pipelines.text_generation import TextGenerationInput
 from deepsparse.v2.text_generation.pipeline import TextGenerationPipeline
 
-model_path = "/home/dsikka/.cache/sparsezoo/neuralmagic/mpt-7b-gsm8k_mpt_pretrain-base_quantized/deployment"
-pipeline = TextGenerationPipeline(model_path, prompt_sequence_length=1, engine_kwargs={"engine_type": "onnxruntime"})
-input_values = TextGenerationInput(prompt="Hello there, how are you?")
+
+model_path = "hf:mgoin/TinyStories-1M-deepsparse"
+pipeline = TextGenerationPipeline(
+    model_path, prompt_sequence_length=1, engine_kwargs={"engine_type": "onnxruntime"}
+)
+input_values = TextGenerationInput(prompt=["Hello there, how are you?"])
 pipeline(input_values)

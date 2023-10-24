@@ -20,19 +20,12 @@ from deepsparse.transformers.utils import DecoderKVCache
 from deepsparse.v2.operators import Operator
 from deepsparse.v2.utils import Context, InferenceState, PipelineState
 
-__all__ = ["PrepareforPrefill"]
 
-class PrepareforPrefillOutput(BaseModel):
-    tokens: list = Field(description="tokens")
-    kv_cache: Any = Field(description="KV Cache") #DecoderKVCache
+__all__ = ["PrepareforPrefill"]
 
 
 class PrepareforPrefill(Operator):
-    output_schema = PrepareforPrefillOutput
-
-    def __init__(
-        self, kv_cache_creator
-    ):
+    def __init__(self, kv_cache_creator):
         self.kv_cache_creator = kv_cache_creator
 
     def run(
@@ -43,7 +36,7 @@ class PrepareforPrefill(Operator):
         inference_state: InferenceState,
     ):
         cache_shape = pipeline_state.current_state.get("cache_shape")
-        data_type = pipeline_state.current_state.get("data_type")
+        data_type = pipeline_state.current_state.get("kv_cache_data_type")
         output_names = pipeline_state.current_state.get("output_names")
 
         engine_inputs = inp.get("engine_inputs")
@@ -57,5 +50,5 @@ class PrepareforPrefill(Operator):
                 "output_names": output_names,
             },
         )
-        tokens = engine_inputs[0][engine_inputs[1].nonzero()].tolist() # wont work for multiple sequences
+        tokens = engine_inputs[0][engine_inputs[1].nonzero()].tolist()
         return {"tokens": tokens, "kv_cache": kv_cache.kv_cache}, {}

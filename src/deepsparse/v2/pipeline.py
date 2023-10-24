@@ -73,8 +73,27 @@ class Pipeline(Operator):
         next_step = self.router.START_ROUTE
         while next_step != self.router.END_ROUTE:
             # Either a dictionary key or valid index
+            """
+            if next_step == self.router.SPLIT_ROUTE:
+                batches, orig_batch_size = self.expand_inputs(
+                    inp, context, inference_state, pipeline_state
+                )
+                run_with_state = partial(
+                    self.run_parallel, pipeline_state=self.pipeline_state, context=context
+                )
+                inference_state_list = [
+                    inference_state.copy() for x in range(len(batches))
+                ]
+                outputs = list(
+                    self._scheduler_group[0].map(
+                        run_with_state, batches, inference_state_list
+                    )
+                )
+                inp = self.condense_inputs(outputs, orig_batch_size)
+                next_step = self.router.END_SPLIT
+            """
+
             operator = self.ops[next_step]
-            print("BEFORE", next_step)
 
             output_future = self._scheduler_group.submit(
                 operator=operator,
@@ -86,12 +105,7 @@ class Pipeline(Operator):
 
             # wait for future to resolve
             operator_output, state_update = output_future.result()
-
-            print("STATE UPDATE")
-            print(state_update)
-            # Update inference state
             inference_state.update_state(state_update)
-            print(inference_state.current_state)
 
             # update context
             context.update(
@@ -100,10 +114,11 @@ class Pipeline(Operator):
                 output=operator_output,
             )
 
-            next_step = self.router.next(next_step, self.ops, operator_output, inference_state)
+            next_step = self.router.next(
+                next_step, self.ops, operator_output, inference_state
+            )
             inp = operator_output
 
-            print("NEXT", next_step)
         return operator_output, context
 
     def __call__(self, *args, return_context: bool = False, **kwargs):

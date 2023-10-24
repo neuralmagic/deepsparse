@@ -13,34 +13,33 @@
 # limitations under the License.
 
 
-from typing import Any
+from typing import Any, Optional
+
 from pydantic import BaseModel, Field
 
 from deepsparse.v2.operators import Operator
-from deepsparse.v2.utils import InferenceState, PipelineState
-from deepsparse.v2.text_generation.prep_for_prefill import PrepareforPrefillOutput
+from deepsparse.v2.utils import Context, InferenceState, PipelineState
 
 
 __all__ = ["CompilePromptLogits"]
 
-class PrepareforPrefillOutput(BaseModel):
-    tokens: list = Field(description="tokens")
-    kv_cache: Any = Field(description="KV Cache") #DecoderKVCache
 
 class CompilePromptLogits(Operator):
-    output_schema = PrepareforPrefillOutput
-
     def run(
-        self, inp: Any, pipeline_state: PipelineState, inference_state: InferenceState
+        self,
+        inp: Any,
+        context: Optional[Context],
+        pipeline_state: PipelineState,
+        inference_state: InferenceState,
     ):
         logit_type = "prompt_logits"
         logits = inp.get("logits")
 
-        if inference_state.current_state.get(logit_type):
+        if inference_state.current_state.get(logit_type) is not None:
             current_logits = inference_state.current_state.get(logit_type).copy()
             current_logits.extend(logits)
         else:
-            current_logits = logits
+            current_logits = list(logits)
 
-        state_update = dict(logit_type=current_logits)
-        return {"kv_cache": inp.kv_cache, "tokens": inp.tokens}, state_update
+        state_update = {logit_type: current_logits}
+        return inp, state_update

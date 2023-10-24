@@ -42,6 +42,7 @@ class Router:
         self.START_ROUTE = start_route
         self.END_ROUTE = end_route
         self.route = route
+        self.SPLIT_ROUTE = None
 
     @abstractmethod
     def next(
@@ -156,4 +157,4 @@ class TextGenerationRouter(Router):
 
     @staticmethod
     def validate(ops) -> bool:
-        pass 
+        pass

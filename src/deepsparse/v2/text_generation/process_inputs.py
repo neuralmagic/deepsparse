@@ -24,8 +24,8 @@ from deepsparse.transformers.utils.helpers import (
     repeat_inputs,
 )
 from deepsparse.v2.operators import Operator
-from deepsparse.v2.utils import Context, InferenceState, PipelineState
 from deepsparse.v2.text_generation.tokens_to_engine_inputs import TokensToEngineInput
+from deepsparse.v2.utils import Context, InferenceState, PipelineState
 
 
 class GenerationDefaults:
@@ -39,7 +39,9 @@ class GenerationDefaults:
     do_sample = False
     temperature = 1.0
 
+
 __all__ = ["ProcessInputsTextGeneration"]
+
 
 class ProcessInputsTextGeneration(Operator):
     input_schema = TextGenerationInput
@@ -116,12 +118,4 @@ class ProcessInputsTextGeneration(Operator):
             presence_penalty=inp.presence_penalty,
             frequency_penalty=generation_config.repetition_penalty,
         )
-
-        """
-        engine_inputs = self._tokens_to_engine_input(
-            input_tokens, state.global_state.get("onnx_input_names_no_cache") ## Covered by tokens_to_engine_names
-        )
-        tokens = engine_inputs[0][engine_inputs[1].nonzero()].tolist() ## covered by prep_for_prefill
-        """
-
         return {"tokens": input_tokens}, inference_state_update

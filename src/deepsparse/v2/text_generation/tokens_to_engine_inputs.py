@@ -19,10 +19,13 @@ from pydantic import BaseModel, Field
 from deepsparse.v2.operators import Operator
 from deepsparse.v2.utils import Context, InferenceState, PipelineState
 
+
 __all__ = ["TokensToEngineInputs"]
+
 
 class TokensToEngineInput(BaseModel):
     tokens: dict = Field(description="tokens")
+
 
 class TokensToEngineInputs(Operator):
     input_schema = TokensToEngineInput
