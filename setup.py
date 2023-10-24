@@ -274,10 +274,7 @@ def _setup_extras() -> Dict:
         "openpifpaf": _openpifpaf_integration_deps,
         "yolov8": _yolov8_integration_deps,
         "transformers": _transformers_integration_deps,
-<<<<<<< HEAD
         "llm": _transformers_integration_deps,
-=======
->>>>>>> b750add0 (Support for SentenceTransformer with `deepsparse.sentence_transformers.SentenceTransformer`)
         "sentence_transformers": _sentence_transformers_integration_deps,
         "torch": _torch_deps,
         "clip": _clip_deps,
