@@ -13,9 +13,7 @@
 # limitations under the License.
 
 import logging
-<<<<<<< HEAD
-<<<<<<< HEAD
-from typing import Dict, List, Tuple, Union
+from typing import Dict, List, Optional, Tuple, Union
 
 import numpy as np
 from tqdm.autonotebook import trange
@@ -23,28 +21,10 @@ from transformers.onnx.utils import get_preprocessor
 
 import torch
 from optimum.deepsparse import DeepSparseModelForFeatureExtraction
-=======
-from typing import Callable, Dict, Iterable, List, Optional, Tuple, Type, Union
-=======
-from typing import Dict, List, Tuple, Union
->>>>>>> 4441aad0 (Format)
-
-import numpy as np
-from tqdm.autonotebook import trange
-from transformers.onnx.utils import get_preprocessor
-
-import torch
-<<<<<<< HEAD
->>>>>>> b750add0 (Support for SentenceTransformer with `deepsparse.sentence_transformers.SentenceTransformer`)
-=======
-from optimum.deepsparse import DeepSparseModelForFeatureExtraction
->>>>>>> 4441aad0 (Format)
 
 
 logger = logging.getLogger(__name__)
 
-<<<<<<< HEAD
-<<<<<<< HEAD
 DEFAULT_MODEL_NAME = "zeroshot/bge-small-en-v1.5-quant"
 
 
@@ -62,6 +42,8 @@ class SentenceTransformer:
         this should be set to 512 for most models. Any text that exceeds this
         token length will be truncated.
     :param use_auth_token: HuggingFace authentication token to download private models.
+    :param buckets: Create static buckets less than max_seq_length automaticly if True,
+        manually specified if a List of lengths are passed in, or fully dynamic if False
     """
 
     def __init__(
@@ -70,70 +52,37 @@ class SentenceTransformer:
         export: bool = False,
         max_seq_length: int = 512,
         use_auth_token: Union[bool, str, None] = None,
+        buckets: Union[bool, List[int]] = True,
     ):
 
         self.model_name_or_path = model_name_or_path
-        self.model = DeepSparseModelForFeatureExtraction.from_pretrained(
+        self.tokenizer = get_preprocessor(model_name_or_path)
+        self._max_seq_length = max_seq_length
+        # TODO: support faster bulk execution with batch size > 1
+        self._static_batch_size = 1
+
+        self.dyn_model = DeepSparseModelForFeatureExtraction.from_pretrained(
             model_name_or_path, export=export, use_auth_token=use_auth_token
         )
-        self.model.compile(batch_size=0)
-        self.tokenizer = get_preprocessor(model_name_or_path)
+        self.dyn_model.compile(batch_size=0)
 
-        self._max_seq_length = max_seq_length
-=======
-DEFAULT_MODEL_NAME = "zeroshot/oneshot-minilm"
-=======
-DEFAULT_MODEL_NAME = "zeroshot/bge-small-en-v1.5-quant"
->>>>>>> 7a4cc1d5 (Update)
-
-
-class SentenceTransformer:
-    """
-    Loads or creates a SentenceTransformer-compatible model that can be used to map
-    text to embeddings.
-
-    :param model_name_or_path: If it is a filepath on disc, it loads the model from
-        that path. If it is not a path, it first tries to download and export a model
-        from a HuggingFace models repository with that name.
-    :param export: To load a PyTorch checkpoint and convert it to the DeepSparse
-        format on-the-fly, you can set `export=True` when loading your model.
-    :param max_seq_length: Sets a limit on the maxmimum sequence length allowed,
-        this should be set to 512 for most models. Any text that exceeds this
-        token length will be truncated.
-    :param use_auth_token: HuggingFace authentication token to download private models.
-    """
-
-    def __init__(
-        self,
-        model_name_or_path: str = DEFAULT_MODEL_NAME,
-        export: bool = False,
-        max_seq_length: int = 512,
-        use_auth_token: Union[bool, str, None] = None,
-    ):
-
-        self.model_name_or_path = model_name_or_path
-        self.tokenizer = get_preprocessor(model_name_or_path)
-        self._max_seq_length = max_seq_length
-<<<<<<< HEAD
-        self._batch_size = 1
->>>>>>> b750add0 (Support for SentenceTransformer with `deepsparse.sentence_transformers.SentenceTransformer`)
-=======
-        # TODO: support faster bulk execution with batch size > 1
-        self._batch_size = 1 
-
-        # Define the buckets
-        self.buckets = [int(self._max_seq_length / 4 * i) for i in range(1, 5)]
-        self.models = {}
-
-        # Initialize a model for each bucket
-        for bucket in self.buckets:
-            self.models[bucket] = DeepSparseModelForFeatureExtraction.from_pretrained(
-                model_name_or_path,
-                export=export,
-                use_auth_token=use_auth_token,
-                input_shapes=f"[{self._batch_size},{bucket}]"
-            )
-            self.models[bucket].compile(batch_size=self._batch_size)
+        if buckets:
+            # Initialize a model for each bucket
+            self.buckets = [int(self._max_seq_length / 4 * i) for i in range(1, 5)]
+            self.models = {}
+            for bucket in self.buckets:
+                self.models[
+                    bucket
+                ] = DeepSparseModelForFeatureExtraction.from_pretrained(
+                    model_name_or_path,
+                    export=export,
+                    use_auth_token=use_auth_token,
+                    input_shapes=f"[{self._static_batch_size},{bucket}]",
+                )
+                self.models[bucket].compile(batch_size=self._static_batch_size)
+        else:
+            self.buckets = None
+            self.models = None
 
     def _select_bucket(self, seq_length: int) -> int:
         """
@@ -145,8 +94,6 @@ class SentenceTransformer:
         # default to the maximum if seq_length exceeds all buckets
         return self._max_seq_length
 
->>>>>>> df63c36d (Add bucketing to SentenceTransformer)
-
     def encode(
         self,
         sentences: Union[str, List[str]],
@@ -157,10 +104,6 @@ class SentenceTransformer:
         convert_to_tensor: bool = False,
         normalize_embeddings: bool = False,
     ) -> Union[List[torch.Tensor], np.ndarray, torch.Tensor]:
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 5936830a (Address comments)
         """
         Computes sentence embeddings
 
@@ -183,18 +126,6 @@ class SentenceTransformer:
            a stacked tensor is returned. If convert_to_numpy, a numpy matrix
            is returned.
         """
-<<<<<<< HEAD
-=======
-=======
->>>>>>> 5936830a (Address comments)
-
-<<<<<<< HEAD
-        # TODO: support faster execution with batch size > 1
-        batch_size = 1
->>>>>>> 7a4cc1d5 (Update)
-=======
-        batch_size = self._batch_size
->>>>>>> df63c36d (Add bucketing to SentenceTransformer)
 
         if show_progress_bar is None:
             show_progress_bar = logger.getEffectiveLevel() in (
@@ -225,15 +156,24 @@ class SentenceTransformer:
         ):
             sentences_batch = sentences_sorted[start_index : start_index + batch_size]
 
-            # Select the model based on the bucketing logic
-            # TODO: tokenize ahead of time and simply add padding
-            seq_length = max([self._text_length(sen) for sen in sentences_batch])
-            selected_bucket = self._select_bucket(seq_length)
-            model = self.models[selected_bucket]
+            if self.buckets and batch_size == 1:
+                # Use bucketing for batch size 1
+                # Select the model based on the bucketing logic
+                # TODO: tokenize ahead of time and simply add padding
+                seq_length = len(self.tokenize(sentences_batch)[0])
+                selected_bucket = self._select_bucket(seq_length)
 
-            # Tokenize using the selected bucket size
-            model_inputs = self.tokenize(sentences_batch, target_length=selected_bucket)
+                # Tokenize using the selected bucket size
+                model_inputs = self.tokenize(
+                    sentences_batch, target_length=selected_bucket
+                )
+                model = self.models[selected_bucket]
+            else:
+                # Use dynamic shape
+                model_inputs = self.tokenize(sentences_batch)
+                model = self.dyn_model
 
+            # Run the inference
             model_output = model(**model_inputs)
 
             out_features = {}
@@ -241,8 +181,6 @@ class SentenceTransformer:
                 model_output, model_inputs["attention_mask"]
             )
 
-<<<<<<< HEAD
-<<<<<<< HEAD
             embeddings = []
             if output_value == "token_embeddings":
                 for token_emb, attention in zip(
@@ -260,31 +198,6 @@ class SentenceTransformer:
                     embeddings.append(row)
             else:
                 # Sentence embeddings
-=======
-=======
-            embeddings = []
->>>>>>> 5936830a (Address comments)
-            if output_value == "token_embeddings":
-                for token_emb, attention in zip(
-                    out_features[output_value], out_features["attention_mask"]
-                ):
-                    # Apply the attention mask to remove embeddings for padding tokens
-                    # Count non-zero values in the attention mask
-                    actual_tokens_count = attention.sum().item()
-                    # Slice the embeddings using this count
-                    embeddings.append(token_emb[:actual_tokens_count])
-            elif output_value is None:
-                # Return all outputs
-                for sent_idx in range(len(out_features["sentence_embedding"])):
-                    row = {name: out_features[name][sent_idx] for name in out_features}
-                    embeddings.append(row)
-<<<<<<< HEAD
-            else:  # Sentence embeddings
->>>>>>> b750add0 (Support for SentenceTransformer with `deepsparse.sentence_transformers.SentenceTransformer`)
-=======
-            else:
-                # Sentence embeddings
->>>>>>> 7a4cc1d5 (Update)
                 embeddings = out_features[output_value]
                 if normalize_embeddings:
                     embeddings = torch.nn.functional.normalize(embeddings, p=2, dim=1)
@@ -303,8 +216,6 @@ class SentenceTransformer:
 
         return all_embeddings
 
-<<<<<<< HEAD
-<<<<<<< HEAD
     def get_max_seq_length(self) -> int:
         """
         Returns the maximal sequence length for input the model accepts.
@@ -313,23 +224,6 @@ class SentenceTransformer:
         return self._max_seq_length
 
     def _text_length(self, text: Union[List[int], List[List[int]]]) -> int:
-=======
-    def get_max_seq_length(self):
-=======
-    def get_max_seq_length(self) -> int:
->>>>>>> 7a4cc1d5 (Update)
-        """
-        Returns the maximal sequence length for input the model accepts.
-        Longer inputs will be truncated
-        """
-        return self._max_seq_length
-
-<<<<<<< HEAD
-    def _text_length(self, text: Union[List[int], List[List[int]]]):
->>>>>>> b750add0 (Support for SentenceTransformer with `deepsparse.sentence_transformers.SentenceTransformer`)
-=======
-    def _text_length(self, text: Union[List[int], List[List[int]]]) -> int:
->>>>>>> 7a4cc1d5 (Update)
         """
         Help function to get the length for the input text. Text can be either
         a list of ints (which means a single text as input), or a tuple of list of ints
@@ -346,56 +240,34 @@ class SentenceTransformer:
             return sum([len(t) for t in text])  # Sum of length of individual strings
 
     def tokenize(
-        self, 
-        texts: Union[List[str], List[Dict], List[Tuple[str, str]]], 
-        target_length: Optional[int] = None
+        self,
+        texts: Union[List[str], List[Dict], List[Tuple[str, str]]],
+        target_length: Optional[int] = None,
     ) -> List[torch.Tensor]:
         """
         Tokenizes the texts
         """
-<<<<<<< HEAD
-        return self.tokenizer(texts, padding=True, truncation=True, return_tensors="pt")
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-
-    def mean_pooling(
-        self, model_output: torch.Tensor, attention_mask: torch.Tensor
-    ) -> torch.Tensor:
-=======
-        # return self.tokenizer(texts, padding='max_length', truncation=True, max_length=self.get_max_seq_length(), return_tensors="pt")
-=======
-        # return self.tokenizer(texts, padding='max_length', truncation=True,
-        #  max_length=self.get_max_seq_length(), return_tensors="pt")
->>>>>>> 4441aad0 (Format)
-
-    def mean_pooling(self, model_output: torch.Tensor, attention_mask: torch.Tensor):
->>>>>>> b750add0 (Support for SentenceTransformer with `deepsparse.sentence_transformers.SentenceTransformer`)
-=======
-=======
         if target_length:
             # Make sure to pad the tokens to the specified length
             return self.tokenizer(
-                texts, 
-                max_length=target_length, 
-                padding='max_length', 
-                truncation=True, 
+                texts,
+                max_length=target_length,
+                padding="max_length",
+                truncation=True,
                 return_tensors="pt",
             )
         else:
             # No padding needed
             return self.tokenizer(
-                texts, 
-                padding=True, 
-                truncation=True, 
-                return_tensors="pt"
+                texts,
+                truncation=True,
+                max_length=self._max_seq_length,
+                return_tensors="pt",
             )
->>>>>>> df63c36d (Add bucketing to SentenceTransformer)
 
     def mean_pooling(
         self, model_output: torch.Tensor, attention_mask: torch.Tensor
     ) -> torch.Tensor:
->>>>>>> 7a4cc1d5 (Update)
         """
         Compute mean pooling of token embeddings weighted by attention mask.
         Args:
