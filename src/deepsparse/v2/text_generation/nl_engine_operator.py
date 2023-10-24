@@ -8,8 +8,9 @@ from deepsparse.utils.onnx import CACHE_INPUT_PREFIX,
 __all__ = ["NLEngineOperator"]
 
 class NlEngineInput(BaseModel):
-    inputs: Any = Field(description="engine inputs")
-    kv_cache: DecoderKVCache = Field(description="kv_cache object")
+    engine_inputs: Any = Field(description="engine inputs")
+    kv_cache: Any = Field(description="kv_cache object")  # DecoderKVCache
+    tokens: Any = Field(description="tokens")
 
 
 class NLEngineOperator(EngineOperator):
@@ -34,7 +35,9 @@ class NLEngineOperator(EngineOperator):
             input_ids_length=input_ids_length,
         )
 
-        self._can_operate = enable_multitoken_prefill
+        if not kwargs.get("engine_kwargs"):
+            engine_kwargs = {}
+
         self.kv_cache_data_type = None
         if any(output_indices_to_be_cached):
             self.kv_cache_data_type = kv_cache_data_type
@@ -51,10 +54,6 @@ class NLEngineOperator(EngineOperator):
 
         self.sequence_length = sequence_length
         self.input_ids_length = input_ids_length
-
-    @property
-    def can_operate(self):
-        return self._can_operate
 
     def run(self, inp: NlEngineInput, context: Optional[Context]) -> Any:
         engine_input = inp.inputs
@@ -73,15 +72,24 @@ class NLEngineOperator(EngineOperator):
             )
         else:
             # run the engine without the LIB.kv_cache object
-            out = super().__call__(inputs)
-            
+            out, _ = super().run(
+                inputs,
+                context=context,
+                pipeline_state=pipeline_state,
+                inference_state=inference_state,
+            )
+
         logits, *kv_cache_state = out
         self._update_kv_cache(
             kv_cache_state=kv_cache_state,
             input_ids_len=self.input_ids_length,
             kv_cache=kv_cache,
         )
-        return logits
+
+        output = dict(inp)
+        output.update({"logits": logits, "kv_cache": kv_cache})
+
+        return output, {}
 
     def _add_kv_cache_to_input(self, engine_input, kv_cache):
         kv_cache_state = copy.copy(kv_cache.cached_inputs)

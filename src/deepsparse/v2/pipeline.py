@@ -86,8 +86,14 @@ class Pipeline(Operator):
                     )
 
             # wait for future to resolve
-            operator_output = output_future.result()
-            next_step = self.router.next(next_step, self.ops)
+            operator_output, state_update = output_future.result()
+            inference_state.update_state(state_update)
+
+            next_step = self.router.next(
+                next_step, self.ops, operator_output, inference_state
+            )
+            inp = operator_output
+
         return operator_output
 
     def __call__(self, *args, **kwargs):

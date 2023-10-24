@@ -38,6 +38,8 @@ class Router:
     def __init__(self, end_route: Union[str, int], start_route: Union[str, int]):
         self.START_ROUTE = start_route
         self.END_ROUTE = end_route
+        self.route = route
+        self.SPLIT_ROUTE = None
 
     @abstractmethod
     def next(
@@ -105,3 +107,38 @@ class LinearRouter(Router):
                 )
                 return False
         return True
+
+
+class TextGenerationRouter(Router):
+    """
+    Router for a DAG. Expects graphs be presented in the form of a dictionary, where
+    keys are the nodes of the graph and the values are the connected nodes. For
+    nodes with multiple ouput edges, all the nodes will be visited and the first node
+    where `can_operate` returns True will run.
+    """
+
+    def __init__(self, end_route: str, start_route: str, route: Dict):
+        super().__init__(end_route=end_route, start_route=start_route, route=route)
+
+    def next(
+        self,
+        past: str,
+        ops: Dict[str, Operator],
+        inp: Any,
+        inference_state: InferenceState,
+    ) -> int:
+        node = past
+        if isinstance(self.route[node], str):
+            print(past, self.route[node])
+            return self.route[node]
+        else:
+            for neighbour_node in self.route[node]:
+                neighbour_node_op = ops[neighbour_node]
+                print(node, neighbour_node)
+                if neighbour_node_op.can_operate(inp, inference_state):
+                    return neighbour_node
+            raise ValueError("Cannot operate on any of the nodes")
+
+    @staticmethod
+    def validate(ops) -> bool:
+        pass

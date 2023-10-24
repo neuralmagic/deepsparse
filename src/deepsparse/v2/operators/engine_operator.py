@@ -17,7 +17,8 @@ from typing import Dict, List, Optional, Union
 
 from pydantic import BaseModel, Field
 
-from deepsparse import Context, Engine, MultiModelEngine, Scheduler
+from deepsparse import Context as EngineContext
+from deepsparse import Engine, MultiModelEngine, Scheduler
 from deepsparse.benchmark import ORTEngine
 from deepsparse.utils import join_engine_outputs, model_to_path, split_engine_inputs
 from deepsparse.v2.operators import Operator
@@ -54,7 +55,6 @@ class EngineOperator(Operator):
         self,
         model_path: str,
         engine_type: str = DEEPSPARSE_ENGINE,
-        batch_size: Optional[int] = 1,
         num_cores: int = None,
         num_streams: int = None,
         scheduler: Scheduler = None,
@@ -62,9 +62,8 @@ class EngineOperator(Operator):
         engine_context: Optional[Context] = None,
         engine_kwargs: Dict = None,
     ):
-
-        self._batch_size = batch_size
         self.model_path = model_to_path(model_path)
+        self._batch_size = 1
         self.engine_context = engine_context
 
         if self.engine_context is not None:

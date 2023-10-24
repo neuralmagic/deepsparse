@@ -99,6 +99,14 @@ class Operator(ABC):
         """
         raise NotImplementedError
 
+    def can_operate(
+        self, inp: Any, context: Context, inference_state: InferenceState
+    ) -> bool:
+        """
+        Whether or not the given operator can run, based on input and state
+        """
+        raise NotImplementedError
+
     def expand_inputs(self, **kwargs):
         """
         Generic function to handle expanding values.
