@@ -88,11 +88,6 @@ class AutoRegressiveOperatorPreprocess(Operator):
 
         engine_inputs = [engine_inputs_map[name] for name in engine_input_names]
 
-        onnx_input_names_no_cache = pipeline_state.current_state.get(
-            "onnx_input_names_no_cache"
-        )
-        engine_inputs = [engine_inputs_map[name] for name in onnx_input_names_no_cache]
-
         return {
             "engine_inputs": engine_inputs,
             "kv_cache": kv_cache,

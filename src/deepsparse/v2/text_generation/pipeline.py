@@ -15,6 +15,7 @@
 from typing import Dict
 
 from deepsparse.transformers.utils.helpers import process_generation_config
+from deepsparse.utils import join_engine_outputs, split_engine_inputs
 from deepsparse.v2.operators import Operator
 from deepsparse.v2.pipeline import Pipeline
 from deepsparse.v2.routers import GraphRouter
@@ -26,6 +27,7 @@ from deepsparse.v2.text_generation import (
     MultiEnginePrefill,
     NLEngineOperator,
     PrepareforPrefill,
+    PrepareforSingleEngine,
     ProcessInputsTextGeneration,
 )
 from deepsparse.v2.utils import PipelineState
