@@ -463,15 +463,14 @@ def main():
                 }
                 for li in result["layer_info"]
             ]
+            col_keys = {k for li in csv_layer_infos for k in li.keys()}
 
             # Export results
             import csv
 
             print("Saving analysis results to CSV file at {}".format(args.export_path))
             with open(args.export_path, "w") as out:
-                writer = csv.DictWriter(
-                    out, fieldnames=csv_layer_infos[0].keys(), extrasaction="ignore"
-                )
+                writer = csv.DictWriter(out, fieldnames=col_keys, extrasaction="ignore")
                 writer.writeheader()
                 for data in csv_layer_infos:
                     writer.writerow(data)
