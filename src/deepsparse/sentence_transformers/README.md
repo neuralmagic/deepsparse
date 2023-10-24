@@ -38,6 +38,21 @@ for sentence, embedding in zip(sentences, embeddings):
     print("")
 ```
 
+## Benchmarking Performance
+
+There is a `benchmarking_encoding.py` script located in this directory that compares a standard model running in both SentenceTransformers and DeepSparse, with a sparsified model in DeepSparse. Here is an example run on an 8 core SPR CPU with the base model being `BAAI/bge-small-en-v1.5`:
+```bash
+python ~/benchmark_sentencetransformers.py
+
+[Standard SentenceTransformer] Encoded 100 sentences of length 700 in 10.42 seconds.
+Batches: 100%|████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 100/100 [00:04<00:00, 24.77it/s]
+[DeepSparse] Encoded 100 sentences of length 700 in 4.04 seconds.
+Batches: 100%|████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 100/100 [00:01<00:00, 54.95it/s]
+[DeepSparse Optimized] Encoded 100 sentences of length 700 in 1.82 seconds.
+
+```
+
+
 ## Accuracy Validation with MTEB
 
 DeepSparse's efficiency doesn't compromise its accuracy, thanks to testing with the Multilingual Text Embedding Benchmark (MTEB). This process validates the model's performance against standard tasks, ensuring its reliability.

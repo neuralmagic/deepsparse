@@ -54,7 +54,6 @@ class SentenceTransformer:
         use_auth_token: Union[bool, str, None] = None,
         buckets: Union[bool, List[int]] = True,
     ):
-
         self.model_name_or_path = model_name_or_path
         self.tokenizer = get_preprocessor(model_name_or_path)
         self._max_seq_length = max_seq_length
@@ -62,8 +61,11 @@ class SentenceTransformer:
         self._static_batch_size = 1
 
         self.dyn_model = DeepSparseModelForFeatureExtraction.from_pretrained(
-            model_name_or_path, export=export, use_auth_token=use_auth_token
+            model_name_or_path,
+            export=export,
+            use_auth_token=use_auth_token,
         )
+        self.dyn_model.reshape(input_shapes="[0,0]")
         self.dyn_model.compile(batch_size=0)
 
         if buckets:
@@ -77,7 +79,9 @@ class SentenceTransformer:
                     model_name_or_path,
                     export=export,
                     use_auth_token=use_auth_token,
-                    input_shapes=f"[{self._static_batch_size},{bucket}]",
+                )
+                self.models[bucket].reshape(
+                    input_shapes=f"[{self._static_batch_size},{bucket}]"
                 )
                 self.models[bucket].compile(batch_size=self._static_batch_size)
         else:
