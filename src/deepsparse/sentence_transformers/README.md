@@ -1,6 +1,8 @@
 
 # DeepSparse SentenceTransformers
 
+[![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1sfN8zDK7MIyatiSIbt2xWh0i6GnaBnTR?usp=sharing)
+
 ```python
 from deepsparse.sentence_transformers import SentenceTransformer
 ```
