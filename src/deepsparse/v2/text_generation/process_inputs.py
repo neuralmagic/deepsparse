@@ -121,5 +121,8 @@ class ProcessInputsTextGeneration(Operator):
             frequency_penalty=generation_config.repetition_penalty,
         )
 
+        # TODO: move this step to prep_for_prefill and add attention mask to the output
+        # this will allow us to split/join more easily when processing multiple prompts
+        # in parallel
         tokens = input_ids[attention_mask.nonzero()].tolist()
         return {"tokens": tokens}, inference_state_update
