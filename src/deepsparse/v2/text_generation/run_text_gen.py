@@ -12,13 +12,44 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import numpy as np
+from transformers import AutoModelForCausalLM, AutoTokenizer
+
+import torch
 from deepsparse.transformers.pipelines.text_generation import TextGenerationInput
 from deepsparse.v2.text_generation.pipeline import TextGenerationPipeline
+from huggingface_hub import snapshot_download
 
 
+def create_tokenizer(model_name):
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
+    tokenizer.padding_side = "left"
+    if tokenizer.pad_token is None:
+        tokenizer.pad_token = tokenizer.eos_token
+
+    return tokenizer
+
+
+def get_ground_truth(prompt):
+    model = AutoModelForCausalLM.from_pretrained("roneneldan/TinyStories-1M")
+    tokenizer = create_tokenizer("roneneldan/TinyStories-1M")
+
+    input_ids = tokenizer.encode(prompt, return_tensors="pt")
+    out = model(input_ids=input_ids)
+    prompt_logits = out.logits.detach().numpy()
+    return prompt_logits
+
+
+engine_kwargs = {"engine_type": "onnxruntime"}
+prompt = "Hello!"
 model_path = "hf:mgoin/TinyStories-1M-deepsparse"
-pipeline = TextGenerationPipeline(
-    model_path, prompt_sequence_length=1, engine_kwargs={"engine_type": "onnxruntime"}
-)
-input_values = TextGenerationInput(prompt=["Hello there, how are you?"])
-pipeline(input_values)
+pipeline = TextGenerationPipeline(model_path)
+input_values = TextGenerationInput(prompt=prompt)
+logits = pipeline(input_values)
+ground_truth = get_ground_truth(prompt)
+
+for i in range(ground_truth.shape[1]):
+    print(ground_truth[0, i, :])
+    print(logits[0, i, :])
+    print("\n")
+print("All Close?", np.allclose(logits, ground_truth, atol=0.0001))

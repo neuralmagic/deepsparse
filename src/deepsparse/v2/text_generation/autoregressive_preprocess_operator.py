@@ -21,33 +21,39 @@ from deepsparse.v2.operators import Operator
 from deepsparse.v2.utils import Context, InferenceState, PipelineState
 
 
-__all__ = ["AutoRegressiveOperator"]
+__all__ = ["AutoRegressiveOperatorPreprocess"]
 
 
-class AutoRegressiveOperator(Operator):
-    def __init__(self, sequence_length: int):
+class AutoRegressiveOperatorPreprocess(Operator):
+    def __init__(self, sequence_length: int, prompt_sequence_length: int):
+        """
+        Prepare the tokens for the single-token engine. This requires creating the
+        attention mask, positions, and causal mask. The output contains these three
+        arrays to be passed into the single-token engine.
+        """
         self.sequence_length = sequence_length
+        self.prompt_sequence_length = prompt_sequence_length
 
     def can_operate(self, inp: Any, context: Context, inference_state: InferenceState):
-        if len(inp.tokens) > self.prompt_sequence_length:
-            return False
+        """
+        Can run this Operator if the number of tokens left to process is greater than
+        0 but less than the self.promt_sequence_length. Also, thie Operator can only
+        run after PrepareforSingleEngine as it requires the kv_cache to be updated.
+        """
+        tokens = inp.get("tokens")
+        kv_cache = inp.get("kv_cache")
 
-        start_token = inference_state.current_state.get("start_token")
-        end_token = inference_state.current_state.get("end_token")
+        found = False
+        for c in context.stages_executed:
+            if c.operator.__class__.__name__ == "PrepareforSingleEngine":
+                found = True
 
-        if end_token - start_token == 1 and inference_state.current_state.get(
-            "batches_processed"
-        ) < inference_state.current_state.get("num_batches"):
+        remaining_tokens = len(tokens) - kv_cache.total_num_processed_tokens
+        if found and (
+            remaining_tokens > 0 and remaining_tokens < self.prompt_sequence_length
+        ):
             return True
         return False
-
-    def _fetch_state_update(self, current: dict):
-        return {
-            "start_token": current.get("end_token"),
-            "end_token": current.get("end_token") + 1,
-            "batches_processed": current.get("batches_processed") + 1,
-            "num_tokens_processed": current.get("num_tokens_processed") + 1,
-        }
 
     def run(
         self,
@@ -59,20 +65,8 @@ class AutoRegressiveOperator(Operator):
         kv_cache = inp.get("kv_cache")
         tokens = inp.get("tokens")
 
-        start_token = inference_state.current_state.get("start_token")
-        end_token = inference_state.current_state.get("end_token")
-        engine_input_names = pipeline_state.current_state.get(
-            "onnx_input_names_no_cache"
-        )
-
-        new_token = tokens[start_token:end_token]
-        num_total_processed_tokens = (
-            kv_cache.total_num_processed_tokens
-        )  # should be same as the state value?
-        print(
-            num_total_processed_tokens,
-            inference_state.current_state.get("num_total_processed_tokens"),
-        )
+        num_total_processed_tokens = kv_cache.total_num_processed_tokens
+        new_token = tokens[num_total_processed_tokens]
 
         # padding is added to left, so attention mask is 1s from the
         # right up to the number of total tokens (prompt + generated)
@@ -85,7 +79,6 @@ class AutoRegressiveOperator(Operator):
         input_ids = numpy.array([[new_token]])
         causal_mask = create_causal_mask(input_ids, attention_mask)
 
-        # filter out the inputs that are not needed by the engine
         engine_inputs_map = dict(
             input_ids=input_ids,
             attention_mask=attention_mask,
@@ -93,12 +86,13 @@ class AutoRegressiveOperator(Operator):
             positions=positions,
         )
 
-        # covered by tokens_to_engine_names --> why does this have to be a dictionary? can also remove tokens_to_engins?
-        engine_inputs = [engine_inputs_map[name] for name in engine_input_names]
+        onnx_input_names_no_cache = pipeline_state.current_state.get(
+            "onnx_input_names_no_cache"
+        )
+        engine_inputs = [engine_inputs_map[name] for name in onnx_input_names_no_cache]
 
-        state_update = self._fetch_state_update(inference_state.current_state)
         return {
             "engine_inputs": engine_inputs,
             "kv_cache": kv_cache,
             "tokens": tokens,
-        }, state_update
+        }, {}

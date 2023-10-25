@@ -14,8 +14,6 @@
 
 from typing import Any, Optional
 
-from pydantic import Field
-
 from deepsparse.v2.operators import Operator
 from deepsparse.v2.utils import Context, InferenceState, PipelineState
 
@@ -24,25 +22,34 @@ __all__ = ["PrepareforSingleEngine"]
 
 
 class PrepareforSingleEngine(Operator):
-    def can_operate(self, inp: Any, context: Context, inference_state: InferenceState):
-        number_tokens_processed = inference_state.current_state.get(
-            "num_tokens_processed"
-        )
-        tokens = inp.get("tokens")
-        if (
-            len(tokens) < self.prompt_sequence_length
-        ):  ## can't run multi-engine (running first time)
-            return True
+    def __init__(self, prompt_sequence_length: int, sequence_length: int):
+        """
+        Prepare to use the single_engine Operator for prompt inference. This requires
+        updating the kv_cache capacity.
+        """
+        self.prompt_sequence_length = prompt_sequence_length
+        self.sequence_length = sequence_length
 
+    def can_operate(self, inp: Any, context: Context, inference_state: InferenceState):
+        # Don't rerun if in autoregessive loop
         for c in context.stages_executed:
-            if c.operator.__name__ == "AutoRegressiveOperator":
+            if c.operator.__class__.__name__ == "AutoRegressiveOperatorPreprocess":
                 return False
 
-        if (
-            len(tokens[number_tokens_processed:]) == 0
-        ):  ## if 0 remain, can't operate (after multi-engine has already run)
+        kv_cache = inp.get("kv_cache")
+        tokens = inp.get("tokens")
+        # if 0 prompt tokens remain, can't operate (multi-token engine has already run)
+        if len(tokens) == kv_cache.total_num_processed_tokens == 0:
             return False
-        return True  ## if some remain, can operate
+
+        # if number of prompt tokens left to process is >= self.prompt_sequnce_length
+        # should use the multi_token engine.
+        if (
+            len(tokens) - kv_cache.total_num_processed_tokens
+            >= self.prompt_sequence_length
+        ):
+            return False
+        return True
 
     def run(
         self,
@@ -51,15 +58,9 @@ class PrepareforSingleEngine(Operator):
         pipeline_state: PipelineState,
         inference_state: InferenceState,
     ):
-        tokens = inp.get("tokens")
-        num_processed_tokens = inference_state.current_stat.get(
-            "num_tokens_processed", 0
-        )
-        state_dict = {
-            "num_batches": len(tokens[num_processed_tokens:]),
-            "start_token": num_processed_tokens,
-            "end_token": num_processed_tokens + 1,
-            "batches_processed": 0,
-            "num_processed_tokens": num_processed_tokens,
-        }
-        return inp, state_dict
+        kv_cache = inp.get("kv_cache")
+        kv_cache.set_capacity(self.sequence_length - 1)
+
+        input_values = dict(inp)
+        input_values.update({"kv_cache": kv_cache})
+        return input_values, {}

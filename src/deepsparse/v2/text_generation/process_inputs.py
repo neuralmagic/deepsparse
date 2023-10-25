@@ -12,19 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Any, Optional
+import pathlib
+from typing import Any, Dict, Optional, Union
 
-from pydantic import BaseModel, Field
+import transformers
 
 from deepsparse.transformers.pipelines.text_generation import TextGenerationInput
 from deepsparse.transformers.utils.helpers import (
     check_and_return_generation_config,
-    create_causal_mask,
     override_config,
     repeat_inputs,
 )
 from deepsparse.v2.operators import Operator
-from deepsparse.v2.text_generation.tokens_to_engine_inputs import TokensToEngineInput
 from deepsparse.v2.utils import Context, InferenceState, PipelineState
 
 
@@ -44,10 +43,23 @@ __all__ = ["ProcessInputsTextGeneration"]
 
 
 class ProcessInputsTextGeneration(Operator):
-    input_schema = TextGenerationInput
-    output_schema = TokensToEngineInput
+    """
+    Input processing operator. Responsible for tokenizing the input, handling the
+    generation_config (if provided), updating the inference_state for later use,
+    and returning the tokens for prompt inferece. The expected input is defined by
+    the input_schema, which for this operator is TextGeneratioInput.
+    """
 
-    def __init__(self, tokenizer, generation_config, sequence_length):
+    input_schema = TextGenerationInput
+
+    def __init__(
+        self,
+        tokenizer: transformers.PreTrainedTokenizerBase,
+        generation_config: Union[
+            str, pathlib.Path, Dict, transformers.GenerationConfig
+        ],
+        sequence_length: int,
+    ):
         self.generation_config = generation_config
         self.tokenizer = tokenizer
         self.sequence_length = sequence_length
@@ -93,18 +105,8 @@ class ProcessInputsTextGeneration(Operator):
             truncation=truncate,
         )
 
+        input_ids = input_tokens["input_ids"]
         attention_mask = input_tokens["attention_mask"]
-
-        positions = attention_mask.cumsum(1) * attention_mask
-        positions -= 1  # assert that positions start at 0
-
-        causal_mask = create_causal_mask(
-            input_tokens["input_ids"], input_tokens["attention_mask"]
-        )
-
-        input_tokens = dict(
-            **input_tokens, positions=positions, causal_mask=causal_mask
-        )
 
         inference_state_update = dict(
             prompts=original_inputs,
@@ -118,4 +120,6 @@ class ProcessInputsTextGeneration(Operator):
             presence_penalty=inp.presence_penalty,
             frequency_penalty=generation_config.repetition_penalty,
         )
-        return {"tokens": input_tokens}, inference_state_update
+
+        tokens = input_ids[attention_mask.nonzero()].tolist()
+        return {"tokens": tokens}, inference_state_update

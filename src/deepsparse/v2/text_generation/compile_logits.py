@@ -15,7 +15,7 @@
 
 from typing import Any, Optional
 
-from pydantic import BaseModel, Field
+import numpy as np
 
 from deepsparse.v2.operators import Operator
 from deepsparse.v2.utils import Context, InferenceState, PipelineState
@@ -25,6 +25,12 @@ __all__ = ["CompilePromptLogits"]
 
 
 class CompilePromptLogits(Operator):
+    """
+    Combine the prompt logits. Currently relying on the inference state to store the
+    prompt logits for each token or multi-token batch processed. This operator will
+    take prompt logits from each iteration run and update the inference state.
+    """
+
     def run(
         self,
         inp: Any,
@@ -37,9 +43,9 @@ class CompilePromptLogits(Operator):
 
         if inference_state.current_state.get(logit_type) is not None:
             current_logits = inference_state.current_state.get(logit_type).copy()
-            current_logits.extend(logits)
+            current_logits = np.concatenate((current_logits, logits), axis=1)
         else:
-            current_logits = list(logits)
+            current_logits = logits
 
         state_update = {logit_type: current_logits}
         return inp, state_update

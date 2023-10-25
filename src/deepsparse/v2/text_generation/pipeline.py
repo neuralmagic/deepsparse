@@ -15,22 +15,19 @@
 from typing import Dict
 
 from deepsparse.transformers.utils.helpers import process_generation_config
-from deepsparse.utils import join_engine_outputs, split_engine_inputs
 from deepsparse.v2.operators import Operator
 from deepsparse.v2.pipeline import Pipeline
 from deepsparse.v2.routers import TextGenerationRouter
 from deepsparse.v2.schedulers import OperatorScheduler
 from deepsparse.v2.text_generation import (
-    AutoRegressiveOperator,
+    AutoRegressiveOperatorPreprocess,
     CompilePromptLogits,
     KVCacheCreator,
     MultiEnginePrefill,
     NLEngineOperator,
-    PrepareforMultiEngine,
     PrepareforPrefill,
     PrepareforSingleEngine,
     ProcessInputsTextGeneration,
-    TokensToEngineInputs,
 )
 from deepsparse.v2.utils import PipelineState
 
@@ -50,11 +47,12 @@ class TextGenerationPipeline(Pipeline):
         pipeline_state = PipelineState()
         pipeline_state_vals = {}
 
-        # transformers_preprocess = TransformersPreprocess() ## set-up config/tokenizer ## should give us a tokenizer, onnxfilepath
-        # temporarily copy/pasta transformers code until this operator is set-up
+        # TODO: The code below will be replaced with a transformers set-up Operator.
         self.tokenizer = None
         model_path = self.setup_onnx_file_path(model_path, sequence_length)
-        self.tokenizer.pad_token = self.tokenizer.eos_token
+        self.tokenizer.padding_side = "left"
+        if not self.tokenizer.pad_token:
+            self.tokenizer.pad_token = self.tokenizer.eos_token
 
         if not engine_kwargs:
             engine_kwargs = {}
@@ -66,28 +64,29 @@ class TextGenerationPipeline(Pipeline):
         single_engine_operator = NLEngineOperator(
             sequence_length=sequence_length,
             internal_kv_cache=internal_kv_cache,
-            input_ids_length=prompt_sequence_length,
+            input_ids_length=1,
             **engine_kwargs,
         )
 
         multi_engine_operator = NLEngineOperator(
             sequence_length=sequence_length,
             internal_kv_cache=internal_kv_cache,
-            input_ids_length=1,
+            input_ids_length=prompt_sequence_length,
             **engine_kwargs,
         )
 
+        # NOTE: Currently using pipeline state. Can swap to simply pass in the
+        # attributes to the specific Operator that neeed them, as class attributes.
         pipeline_state_vals[
             "onnx_input_names_no_cache"
-        ] = single_engine_operator.onnx_input_names_no_cache
-        pipeline_state_vals["cache_shape"] = single_engine_operator.cache_shape
-        pipeline_state_vals["output_names"] = single_engine_operator.output_names
+        ] = multi_engine_operator.onnx_input_names_no_cache
+        pipeline_state_vals["cache_shape"] = multi_engine_operator.cache_shape
+        pipeline_state_vals["output_names"] = multi_engine_operator.output_names
         pipeline_state_vals[
             "kv_cache_data_type"
-        ] = single_engine_operator.kv_cache_data_type
+        ] = multi_engine_operator.kv_cache_data_type
         pipeline_state.create_state(pipeline_state_vals)
 
-        # Can have the transformers call the operator inside this operator --> need tokenzier and model_path, fed into engine
         process_inputs = ProcessInputsTextGeneration(
             generation_config=process_generation_config(generation_config),
             sequence_length=sequence_length,
@@ -101,53 +100,54 @@ class TextGenerationPipeline(Pipeline):
             internal_kv_cache=internal_kv_cache,
         )
 
-        # Operators has a dependency on the engine_operator as depends on the engine
-        # We can either initialize or we store everything in a pipeline state (this couples the operators together)
-        tokens_to_engine_input = TokensToEngineInputs()
+        # NOTE: Can also have the KVCacheCreator be initialized inside this Operator.
+        # Relies on pipeline state variables set-up above (can be swapped to be class
+        # attributes instead of using the state.
         engine_inputs_for_prefill = PrepareforPrefill(kv_cache_creator=kv_cache_creator)
-        prepare_for_multi_engine = PrepareforMultiEngine(
-            prompt_sequence_length=prompt_sequence_length
-        )
+
         multi_engine_prefill = MultiEnginePrefill(
             prompt_sequence_length=prompt_sequence_length,
             sequence_length=sequence_length,
         )
         compile_prompt_logits = CompilePromptLogits()
-        prep_for_single_engine = PrepareforSingleEngine()
-        autoregressive_preprocess = AutoRegressiveOperator(
-            sequence_length=sequence_length
+        prep_for_single_engine = PrepareforSingleEngine(
+            prompt_sequence_length=prompt_sequence_length,
+            sequence_length=sequence_length,
         )
+        autoregressive_preprocess = AutoRegressiveOperatorPreprocess(
+            sequence_length=sequence_length,
+            prompt_sequence_length=prompt_sequence_length,
+        )
+        final_step = FinalStep()
 
         ops = {
             "process_input": process_inputs,
             "single_engine": single_engine_operator,
             "multi_engine": multi_engine_operator,
             "kv_cache_creator": kv_cache_creator,
-            "tokens_to_engine": tokens_to_engine_input,
             "prepare_prefill": engine_inputs_for_prefill,
-            "prepare_multiengine": prepare_for_multi_engine,
             "multi_engine_prefill": multi_engine_prefill,
             "compile_logits": compile_prompt_logits,
             "prepare_single_engine": prep_for_single_engine,
             "autoregressive_preprocess": autoregressive_preprocess,
+            "final_step": final_step,
         }
 
         routes = {
-            "process_input": "tokens_to_engine",
-            "tokens_to_engine": "prepare_prefill",
-            "prepare_prefill": ["prepare_multiengine", "prepare_single_engine"],
-            "prepare_multiengine": "multi_engine_prefill",
+            "process_input": "prepare_prefill",
+            "prepare_prefill": ["multi_engine_prefill", "prepare_single_engine"],
             "multi_engine_prefill": "multi_engine",
             "multi_engine": "compile_logits",
             "compile_logits": [
                 "multi_engine_prefill",
                 "prepare_single_engine",
-                "autoregressive_process",
-                "STOP",
+                "autoregressive_preprocess",
+                "final_step",
             ],
             "prepare_single_engine": "autoregressive_preprocess",
             "autoregressive_preprocess": "single_engine",
             "single_engine": "compile_logits",
+            "final_step": "STOP",
         }
 
         router = TextGenerationRouter(
@@ -158,19 +158,7 @@ class TextGenerationPipeline(Pipeline):
             ops=ops, router=router, schedulers=scheduler, pipeline_state=pipeline_state
         )
 
-    """
-    def expand_inputs(self, **kwargs):
-        inp = kwargs.get("inp")
-        engine_inputs = inp.engine_inputs
-        return split_engine_inputs(engine_inputs, self.batch_size)
-
-    def combine_inputs(self, **kwargs):
-        batch_outputs = kwargs.get("batch_outputs")
-        orig_batch_size = kwargs.get("orig_batch_size")
-        return join_engine_outputs(batch_outputs, orig_batch_size)
-    """
-    
-    # stealing this for now
+    # TODO: Move to be part of a generic transformers set-up Operator.
     def setup_onnx_file_path(self, model_path, sequence_length) -> str:
         import logging
 
@@ -188,8 +176,6 @@ class TextGenerationPipeline(Pipeline):
         """
         deployment_path, onnx_path = get_deployment_path(model_path)
 
-        # temporarily set transformers logger to ERROR to avoid
-        # printing misleading warnings
         hf_logger = logging.getLogger("transformers")
         hf_logger_level = hf_logger.level
         hf_logger.setLevel(logging.ERROR)
@@ -213,3 +199,15 @@ class TextGenerationPipeline(Pipeline):
                 "See `tokenizer` and `config` arguments for details."
             )
         return onnx_path
+
+
+# NOTE: This is a dummy last step which will be removed. Used as a final step
+# for the current routes.
+class FinalStep(Operator):
+    def can_operate(self, *args, **kwargs):
+        return True
+
+    def run(self, *args, **kwargs):
+        inference_state = kwargs.get("inference_state")
+        prompt_logits = inference_state.current_state.get("prompt_logits")
+        return prompt_logits, {}
