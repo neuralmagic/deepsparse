@@ -40,16 +40,13 @@ for sentence, embedding in zip(sentences, embeddings):
 
 ## Benchmarking Performance
 
-There is a `benchmarking_encoding.py` script located in this directory that compares a standard model running in both SentenceTransformers and DeepSparse, with a sparsified model in DeepSparse. Here is an example run on an 8 core SPR CPU with the base model being `BAAI/bge-small-en-v1.5`:
+There is a `benchmark_encoding.py` script located in this directory that compares a standard model running in both SentenceTransformers and DeepSparse, with a sparsified model in DeepSparse. Here is an example run on an 8 core SPR CPU with the base model being `BAAI/bge-small-en-v1.5`:
 ```bash
-python ~/benchmark_sentencetransformers.py
+python benchmark_encoding.py --base_model BAAI/bge-small-en-v1.5 --sparse_model zeroshot/bge-small-en-v1.5-quant
 
 [Standard SentenceTransformer] Encoded 100 sentences of length 700 in 10.42 seconds.
-Batches: 100%|████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 100/100 [00:04<00:00, 24.77it/s]
 [DeepSparse] Encoded 100 sentences of length 700 in 4.04 seconds.
-Batches: 100%|████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████| 100/100 [00:01<00:00, 54.95it/s]
 [DeepSparse Optimized] Encoded 100 sentences of length 700 in 1.82 seconds.
-
 ```
 
 

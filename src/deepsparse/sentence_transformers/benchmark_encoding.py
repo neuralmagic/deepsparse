@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import argparse
 import random
 import string
 import time
@@ -43,36 +44,64 @@ def benchmark_model(model, sentences):
     return elapsed_time
 
 
-# Generate a list of random sentences
-num_sentences = 100
-sentences = [generate_random_sentence() for _ in range(num_sentences)]
+def main(args):
+    # Generate a list of random sentences
+    sentences = [
+        generate_random_sentence(args.length) for _ in range(args.num_sentences)
+    ]
 
-# Model names
-model_name = "BAAI/bge-small-en-v1.5"
-sparse_model_name = "zeroshot/bge-small-en-v1.5-quant"
+    # Load the models
+    standard_model = sentence_transformers.SentenceTransformer(args.base_model)
+    deepsparse_model = DeepSparseSentenceTransformer(args.base_model, export=True)
+    deepsparse_opt_model = DeepSparseSentenceTransformer(args.sparse_model)
 
-# Load the models
-standard_model = sentence_transformers.SentenceTransformer(model_name)
-deepsparse_model = DeepSparseSentenceTransformer(model_name, export=True)
-deepsparse_opt_model = DeepSparseSentenceTransformer(sparse_model_name)
+    # Benchmark sentence_transformers
+    standard_time = benchmark_model(standard_model, sentences)
+    print(
+        f"[Standard SentenceTransformer] Encoded {args.num_sentences} sentences "
+        f"of length {args.length} in {standard_time:.2f} seconds."
+    )
 
-# Benchmark sentence_transformers
-standard_time = benchmark_model(standard_model, sentences)
-print(
-    f"[Standard SentenceTransformer] Encoded {num_sentences} sentences "
-    f"of length {len(sentences[0])} in {standard_time:.2f} seconds."
-)
+    # Benchmark deepsparse.sentence_transformers
+    deepsparse_time = benchmark_model(deepsparse_model, sentences)
+    print(
+        f"[DeepSparse] Encoded {args.num_sentences} sentences of length "
+        f"{args.length} in {deepsparse_time:.2f} seconds."
+    )
 
-# Benchmark deepsparse.sentence_transformers
-deepsparse_time = benchmark_model(deepsparse_model, sentences)
-print(
-    f"[DeepSparse] Encoded {num_sentences} sentences of length "
-    f"{len(sentences[0])} in {deepsparse_time:.2f} seconds."
-)
+    # Benchmark deepsparse.sentence_transformers
+    deepsparse_opt_time = benchmark_model(deepsparse_opt_model, sentences)
+    print(
+        f"[DeepSparse Optimized]Encoded {args.num_sentences} sentences of length "
+        f"{args.length} in {deepsparse_opt_time:.2f} seconds."
+    )
 
-# Benchmark deepsparse.sentence_transformers
-deepsparse_opt_time = benchmark_model(deepsparse_opt_model, sentences)
-print(
-    f"[DeepSparse Optimized] Encoded {num_sentences} sentences of length "
-    f"{len(sentences[0])} in {deepsparse_opt_time:.2f} seconds."
-)
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(
+        description="Benchmark Sentence Transformer Models."
+    )
+    parser.add_argument(
+        "--base_model",
+        type=str,
+        default="BAAI/bge-small-en-v1.5",
+        help="Name of the standard model.",
+    )
+    parser.add_argument(
+        "--sparse_model",
+        type=str,
+        default="zeroshot/bge-small-en-v1.5-quant",
+        help="Name of the sparse model.",
+    )
+    parser.add_argument(
+        "--num_sentences",
+        type=int,
+        default=100,
+        help="Number of sentences to generate.",
+    )
+    parser.add_argument(
+        "--length", type=int, default=700, help="Length of each sentence."
+    )
+    args = parser.parse_args()
+
+    main(args)
