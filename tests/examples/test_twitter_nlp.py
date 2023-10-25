@@ -13,11 +13,10 @@
 # limitations under the License.
 
 import sys
-
 import pytest
 from tests.helpers import run_command
 
-
+# This fixture is used to install required Python packages before running tests.
 @pytest.fixture(scope="session", autouse=True)
 def install_reqs():
     run_command(
@@ -32,7 +31,7 @@ def install_reqs():
         ]
     )
 
-
+# This test function analyzes tokens using a specific model and input data.
 @pytest.mark.smoke
 def test_analyze_tokens():
     cmd = [
@@ -51,11 +50,11 @@ def test_analyze_tokens():
     if res.stdout is not None:
         print(f"\n==== test_analyze_tokens output ====\n{res.stdout}")
 
-    # validate command executed successfully
+    # Validate that the command executed successfully and produced the expected output.
     assert res.returncode == 0
     assert "Completed analyzing" in res.stdout
 
-
+# This test function analyzes sentiment using a specific model and input data.
 @pytest.mark.smoke
 def test_analyze_sentiment():
     cmd = [
@@ -74,6 +73,7 @@ def test_analyze_sentiment():
     if res.stdout is not None:
         print(f"\n==== test_analyze_sentiment output ====\n{res.stdout}")
 
-    # validate command executed successfully
+    # Validate that the command executed successfully and produced the expected output.
     assert res.returncode == 0
     assert "Completed analyzing" in res.stdout
+
