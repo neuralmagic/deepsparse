@@ -103,7 +103,7 @@ class Operator(ABC):
         self, inp: Any, context: Context, inference_state: InferenceState
     ) -> bool:
         """
-        Whether or not the given operator can run, based on input and state
+        Whether or not the given operator can run, based on input, context, or state
         """
         raise NotImplementedError
 

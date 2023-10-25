@@ -84,13 +84,25 @@ class Pipeline(Operator):
                     output_future = self._scheduler_group.submit(
                         operator_output, operator=operator
                     )
+                    
+            # print("Current State", inference_state.current_state)
+
+            """
+            output_future = self._scheduler_group.submit(
+                operator=operator,
+                operator_input=inp,
+                context=context,
+                pipeline_state=self.pipeline_state,
+                inference_state=inference_state,
+            )
+            """
 
             # wait for future to resolve
             operator_output, state_update = output_future.result()
             inference_state.update_state(state_update)
 
             next_step = self.router.next(
-                next_step, self.ops, operator_output, inference_state
+                next_step, self.ops, context, operator_output, inference_state
             )
             inp = operator_output
 

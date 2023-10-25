@@ -18,6 +18,7 @@ from abc import abstractmethod
 from typing import Dict, List, Union
 
 from deepsparse.v2.operators import Operator
+from deepsparse.v2.utils import Context, InferenceState
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -39,7 +40,6 @@ class Router:
         self.START_ROUTE = start_route
         self.END_ROUTE = end_route
         self.route = route
-        self.SPLIT_ROUTE = None
 
     @abstractmethod
     def next(
@@ -51,6 +51,8 @@ class Router:
         :param past: the previous index or key. This should uniquely determine the next
         operator to run
         :param ops: list or dictionary of operators
+        :param inp: operator input
+        :param inference_state: state variables stores in InferenceState
         :returns: the next index or dictionary key for the next operator to run
         """
         raise NotImplementedError
@@ -114,7 +116,7 @@ class TextGenerationRouter(Router):
     Router for a DAG. Expects graphs be presented in the form of a dictionary, where
     keys are the nodes of the graph and the values are the connected nodes. For
     nodes with multiple ouput edges, all the nodes will be visited and the first node
-    where `can_operate` returns True will run.
+    where `can_operate` returns True will run. Paths should be deterministic.
     """
 
     def __init__(self, end_route: str, start_route: str, route: Dict):
@@ -124,18 +126,17 @@ class TextGenerationRouter(Router):
         self,
         past: str,
         ops: Dict[str, Operator],
+        context: Context,
         inp: Any,
         inference_state: InferenceState,
     ) -> int:
         node = past
         if isinstance(self.route[node], str):
-            print(past, self.route[node])
             return self.route[node]
         else:
             for neighbour_node in self.route[node]:
                 neighbour_node_op = ops[neighbour_node]
-                print(node, neighbour_node)
-                if neighbour_node_op.can_operate(inp, inference_state):
+                if neighbour_node_op.can_operate(inp, context, inference_state):
                     return neighbour_node
             raise ValueError("Cannot operate on any of the nodes")
 

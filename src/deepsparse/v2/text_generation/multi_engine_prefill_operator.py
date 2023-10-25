@@ -19,7 +19,6 @@ import numpy
 
 from deepsparse.transformers.utils.helpers import create_causal_mask
 from deepsparse.v2.operators import Operator
-from deepsparse.v2.text_generation.nl_engine_operator import NlEngineInput
 from deepsparse.v2.utils import Context, InferenceState, PipelineState
 
 
@@ -33,8 +32,17 @@ class OnnxInputNames(Enum):
     POSITIONS = "positions"
 
 
+# NOTE: A possible clean-up could involve combining this Operator and the
+# autoregressive_preprocess_operator
+
+
 class MultiEnginePrefill(Operator):
-    def __init__(self, prompt_sequence_length):
+    def __init__(self, prompt_sequence_length, sequence_length):
+        """
+        Prepare the tokens for the multi-token engine. This requires creating the
+        attention mask, positions, and causal mask. The output contains these three
+        arrays to be passed into the multi-token engine.
+        """
         self.prompt_sequence_length = prompt_sequence_length
         self.sequence_length = sequence_length
         self.cases = {
@@ -42,18 +50,20 @@ class MultiEnginePrefill(Operator):
             OnnxInputNames.POSITIONS.value: self._case_positions,
         }
 
-    # potentially update to use context
     def can_operate(self, inp: Any, context: Context, inference_state: InferenceState):
-        if len(inp.tokens) < self.prompt_sequence_length:
+        """
+        Can only run if the number of prompt tokens left to process is greater than
+        or equal to the self.prompt_sequence_length.
+        """
+        kv_cache = inp.get("kv_cache")
+        tokens = inp.get("tokens")
+
+        if len(tokens) < self.prompt_sequence_length:
             return False
 
-        start_token = inference_state.current_state.get("start_token")
-        end_token = inference_state.current_state.get("end_token")
-
         if (
-            end_token - start_token == self.prompt_sequence_length
-            and inference_state.current_state.get("batches_processed")
-            < inference_state.current_state.get("num_batches")
+            len(tokens) - kv_cache.total_num_processed_tokens
+            >= self.prompt_sequence_length
         ):
             return True
         return False
@@ -79,15 +89,6 @@ class MultiEnginePrefill(Operator):
             .astype(numpy.int64)
         )
 
-    def _fetch_state_update(self, current: dict):
-        return {
-            "start_token": current.get("end_token"),
-            "end_token": current.get("end_token") + self.prompt_sequence_length,
-            "batches_processed": current.get("batches_processed") + 1,
-            "num_tokens_processed": current.get("num_tokens_processed")
-            + self.prompt_sequence_length,
-        }
-
     def run(
         self,
         inp: Any,
@@ -100,33 +101,35 @@ class MultiEnginePrefill(Operator):
         onnx_input_names_no_cache = pipeline_state.current_state.get(
             "onnx_input_names_no_cache"
         )
-        current = inference_state.current_state
-        start = current.get("start_multi_token")
-        end = current.get("end_multi_token")
-        token_batch = tokens[start:end]
 
         num_total_processed_tokens = kv_cache.total_num_processed_tokens
+        start = num_total_processed_tokens
+        end = start + self.prompt_sequence_length
+        token_batch = tokens[start:end]
+
         engine_inputs = []
         for name in onnx_input_names_no_cache:
             if name == OnnxInputNames.INPUT_IDS.value:
-                engine_inputs.append(numpy.array([token_batch]))
+                engine_input = numpy.array([token_batch])
             elif (
                 name == OnnxInputNames.ATTN_MASK.value
                 or name == OnnxInputNames.POSITIONS.value
             ):
-                engine_inputs.append(self.cases[name](num_total_processed_tokens))
+                engine_input = self.cases[name](num_total_processed_tokens)
+            elif name == OnnxInputNames.CAUSAL_MASK.value:
+                continue
 
-        # create the causal mask once we have the input_ids and attention_mask
+            engine_inputs.append(engine_input)
+
         if OnnxInputNames.CAUSAL_MASK.value in onnx_input_names_no_cache:
             causal_mask = create_causal_mask(
-                input_ids=engine_inputs[0], attention_mask=engine_inputs[1]
+                input_ids=engine_inputs[0],
+                attention_mask=engine_inputs[1],
             )
             engine_inputs.append(causal_mask)
 
-        # update state for next token batch to process
-        state_update = self._fetch_state_update(current)
         return {
             "engine_inputs": engine_inputs,
             "kv_cache": kv_cache,
             "tokens": tokens,
-        }, state_update
+        }, {}

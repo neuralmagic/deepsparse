@@ -1,21 +1,48 @@
-from deepsparse.v2.operators import EngineOperator, Operator
-from deepsparse import Context as EngineContext
-from typing import Any 
-from deepsparse.v2.utils import Context
+# Copyright (c) 2021 - present / Neuralmagic, Inc. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import copy
+import os
+from typing import Any, List, Optional, Tuple
+
 from pydantic import BaseModel, Field
-from deepsparse.utils.onnx import CACHE_INPUT_PREFIX,
+
+from deepsparse.utils.onnx import (
+    CACHE_INPUT_PREFIX,
+    overwrite_onnx_model_inputs_for_kv_cache_models,
+)
+from deepsparse.v2.operators.engine_operator import DEEPSPARSE_ENGINE, EngineOperator
+from deepsparse.v2.utils import Context, InferenceState, PipelineState
+
 
 __all__ = ["NLEngineOperator"]
 
 class NlEngineInput(BaseModel):
-    engine_inputs: Any = Field(description="engine inputs")
-    kv_cache: Any = Field(description="kv_cache object")  # DecoderKVCache
-    tokens: Any = Field(description="tokens")
+    engine_inputs: List = Field(description="engine inputs")
+    kv_cache: Any = Field(description="kv_cache object")
+    tokens: List = Field(description="tokens")
 
 
 class NLEngineOperator(EngineOperator):
+    """
+    Operator for the NL Decoder Engine. This Operator inherits from the EngineOperator.
+    Specific updates to engine attributes are made through this operator, as well
+    as updating the kv_cache. This Operator is used for both the single-token and
+    multi-token case.
+    """
+
     input_schema = NlEngineInput
-    output_schema = None
 
     def __init__(self,
             sequence_length: int, 
@@ -24,6 +51,7 @@ class NLEngineOperator(EngineOperator):
             internal_kv_cache: bool = False,
             **kwargs):
 
+        self.kv_cache_data_type = None
         (
             onnx_file_path,
             output_indices_to_be_cached,
@@ -35,17 +63,17 @@ class NLEngineOperator(EngineOperator):
             input_ids_length=input_ids_length,
         )
 
-        if not kwargs.get("engine_kwargs"):
-            engine_kwargs = {}
+        engine_kwargs = kwargs.get("engine_kwargs", {})
+        if kwargs.get("engine_type", DEEPSPARSE_ENGINE) == DEEPSPARSE_ENGINE:
+            if "WAND_OPT_FLAGS" not in os.environ:
+                os.environ["WAND_OPT_FLAGS"] = "default,~pyramids"
 
-        self.kv_cache_data_type = None
         if any(output_indices_to_be_cached):
             self.kv_cache_data_type = kv_cache_data_type
-            if internal_kv_cache and kwargs.get("engine_type") == DEEPSPARSE_ENGINE:
-                # inform the engine, that are using the kv cache
-                engine_kwargs = kwargs.get("engine_kwargs")
-                if not engine_kwargs:
-                    engine_kwargs = {}
+            if (
+                internal_kv_cache
+                and kwargs.get("engine_type", DEEPSPARSE_ENGINE) == DEEPSPARSE_ENGINE
+            ):
                 engine_kwargs["cached_outputs"] = output_indices_to_be_cached
 
         kwargs["engine_kwargs"] = engine_kwargs 
