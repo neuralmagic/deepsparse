@@ -129,7 +129,7 @@ _server_deps = [
 _onnxruntime_deps = [
     "onnxruntime>=1.7.0",
 ]
-_torch_deps = ["torch>=1.7.0,<=2.0"]
+_torch_deps = ["torch>=1.7.0,<2.2"]
 _image_classification_deps = [
     "torchvision>=0.3.0,<0.14",
     "opencv-python<=4.6.0.66",
