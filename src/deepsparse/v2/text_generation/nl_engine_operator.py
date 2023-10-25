@@ -49,7 +49,6 @@ class NLEngineOperator(EngineOperator):
     """
 
     input_schema = NlEngineInput
-    output_schema = None
 
     def __init__(
         self,

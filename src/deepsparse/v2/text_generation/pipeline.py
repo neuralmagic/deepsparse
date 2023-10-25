@@ -15,7 +15,6 @@
 from typing import Dict
 
 from deepsparse.transformers.utils.helpers import process_generation_config
-from deepsparse.utils import join_engine_outputs, split_engine_inputs
 from deepsparse.v2.operators import Operator
 from deepsparse.v2.pipeline import Pipeline
 from deepsparse.v2.routers import GraphRouter
@@ -80,12 +79,12 @@ class TextGenerationPipeline(Pipeline):
         # attributes to the specific Operator that neeed them, as class attributes.
         pipeline_state_vals[
             "onnx_input_names_no_cache"
-        ] = single_engine_operator.onnx_input_names_no_cache
-        pipeline_state_vals["cache_shape"] = single_engine_operator.cache_shape
-        pipeline_state_vals["output_names"] = single_engine_operator.output_names
+        ] = multi_engine_operator.onnx_input_names_no_cache
+        pipeline_state_vals["cache_shape"] = multi_engine_operator.cache_shape
+        pipeline_state_vals["output_names"] = multi_engine_operator.output_names
         pipeline_state_vals[
             "kv_cache_data_type"
-        ] = single_engine_operator.kv_cache_data_type
+        ] = multi_engine_operator.kv_cache_data_type
         pipeline_state.create_state(pipeline_state_vals)
 
         process_inputs = ProcessInputsTextGeneration(

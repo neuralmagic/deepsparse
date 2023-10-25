@@ -26,7 +26,6 @@ _LOGGER = logging.getLogger(__name__)
 
 __all__ = ["AutoRegressiveOperatorPreprocess"]
 
-
 class AutoRegressiveOperatorPreprocess(Operator):
     def __init__(self, sequence_length: int, prompt_sequence_length: int):
         """

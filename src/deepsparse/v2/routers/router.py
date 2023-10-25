@@ -45,7 +45,6 @@ class Router:
         self.START_ROUTE = start_route
         self.END_ROUTE = end_route
         self.route = route
-        self.SPLIT_ROUTE = None
 
     @abstractmethod
     def next(
@@ -136,6 +135,7 @@ class GraphRouter(Router):
         self,
         past: str,
         ops: Dict[str, Operator],
+        context: Context,
         inp: Any,
     ) -> int:
         node = past
