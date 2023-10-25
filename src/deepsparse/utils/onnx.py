@@ -271,7 +271,7 @@ def override_onnx_batch_size(
         external_input.type.tensor_type.shape.dim[0].dim_value = batch_size
 
     if inplace:
-        _LOGGER.info(
+        _LOGGER.debug(
             f"Overwriting in-place the batch size of the model at {onnx_filepath}"
         )
         save_onnx(model, onnx_filepath)
@@ -347,7 +347,7 @@ def override_onnx_input_shapes(
             dim.dim_value = input_shapes[input_idx][dim_idx]
 
     if inplace:
-        _LOGGER.info(
+        _LOGGER.debug(
             f"Overwriting in-place the input shapes of the model at {onnx_filepath}"
         )
         onnx.save(model, onnx_filepath)
