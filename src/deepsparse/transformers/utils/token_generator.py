@@ -19,6 +19,9 @@ import numpy
 from deepsparse.utils.data import numpy_softmax
 
 
+_MIN_FLOAT = numpy.finfo(numpy.float32).min
+
+
 class TokenGenerator:
     """
     Responsible for generating tokens, and contains functions that
@@ -115,7 +118,7 @@ class TokenGenerator:
 
     # from https://gist.github.com/thomwolf/1a5a29f6962089e871b94cbd09daf31
     def apply_top_k(
-        self, logits: numpy.ndarray, filter_value=-float("Inf")
+        self, logits: numpy.ndarray, filter_value=_MIN_FLOAT
     ) -> numpy.ndarray:
         """
         Keep top_k logits based on its value. All other values
@@ -134,7 +137,7 @@ class TokenGenerator:
     def apply_top_p(
         self,
         logits: numpy.ndarray,
-        filter_value=-float("Inf"),
+        filter_value=_MIN_FLOAT,
         min_tokens_to_keep: int = 1,
     ) -> numpy.ndarray:
         """
@@ -156,7 +159,7 @@ class TokenGenerator:
         # (token with 0 are kept)
         sorted_indices_to_remove = logit_cumulative_probs > self.top_p
         # Keep at least min_tokens_to_keep
-        sorted_indices_to_remove[..., -min_tokens_to_keep:] = 0
+        sorted_indices_to_remove[..., :min_tokens_to_keep] = 0
 
         # scatter sorted tensors to original indexing
         indices_to_remove = sorted_indices[sorted_indices_to_remove]
