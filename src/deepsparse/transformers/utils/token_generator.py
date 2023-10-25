@@ -151,15 +151,16 @@ class TokenGenerator:
         logits_shape = logits.shape
         logits = logits.reshape(logits.shape[-1])
 
-        sorted_indices = numpy.argsort(logits)[::-1]
+        sorted_indices = numpy.argsort(logits)
         sorted_logits = logits[sorted_indices]
         logit_cumulative_probs = numpy.cumsum(numpy_softmax(sorted_logits))
 
         # Remove tokens with cumulative top_p above the threshold
         # (token with 0 are kept)
-        sorted_indices_to_remove = logit_cumulative_probs > self.top_p
+        sorted_indices_to_remove = logit_cumulative_probs <= (1 - self.top_p)
         # Keep at least min_tokens_to_keep
-        sorted_indices_to_remove[..., :min_tokens_to_keep] = 0
+        if min_tokens_to_keep:
+            sorted_indices_to_remove[..., -min_tokens_to_keep:] = 0
 
         # scatter sorted tensors to original indexing
         indices_to_remove = sorted_indices[sorted_indices_to_remove]
