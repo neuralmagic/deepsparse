@@ -347,7 +347,7 @@ def override_onnx_input_shapes(
             dim.dim_value = input_shapes[input_idx][dim_idx]
 
     if inplace:
-        _LOGGER.info(
+        _LOGGER.debug(
             f"Overwriting in-place the input shapes of the model at {onnx_filepath}"
         )
         onnx.save(model, onnx_filepath)
