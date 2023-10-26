@@ -75,7 +75,6 @@ class Pipeline(Operator):
 
             operator = self.ops[next_step]
             print("Currently running", next_step)
-            # print("Current State", inference_state.current_state)
 
             output_future = self._scheduler_group.submit(
                 operator=operator,

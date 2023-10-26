@@ -20,6 +20,8 @@ from deepsparse.v2.routers import TextGenerationRouter
 from deepsparse.v2.schedulers import OperatorScheduler
 from deepsparse.v2.text_generation import (
     AutoRegressiveOperatorPreprocess,
+    CompileGeneratedTokens,
+    CompileGenerations,
     CompilePromptLogits,
     GenerateNewTokenOperator,
     KVCacheCreator,
@@ -131,6 +133,8 @@ class TextGenerationPipeline(Pipeline):
             tokenizer=self.tokenizer, force_max_tokens=force_max_tokens
         )
         process_output = ProcessOutputs(tokenizer=self.tokenizer)
+        compile_generations = CompileGenerations()
+        compile_generated_tokens = CompileGeneratedTokens()
 
         ops = {
             "process_input": process_inputs,
@@ -145,6 +149,8 @@ class TextGenerationPipeline(Pipeline):
             "prep_for_generation": prep_for_generation,
             "generate_new_token": generate_new_token,
             "process_outputs": process_output,
+            "compile_generations": compile_generations,
+            "compile_generated_tokens": compile_generated_tokens,
         }
 
         routes = {
@@ -166,10 +172,14 @@ class TextGenerationPipeline(Pipeline):
             "single_engine": [
                 "compile_logits",
                 "generate_new_token",
-                "process_outputs",
             ],
             "prep_for_generation": "autoregressive_preprocess",
-            "generate_new_token": "autoregressive_preprocess",
+            "generate_new_token": "compile_generated_tokens",
+            "compile_generated_tokens": [
+                "autoregressive_preprocess",
+                "compile_generations",
+            ],
+            "compile_generations": "process_outputs",
             "process_outputs": "STOP",
         }
 

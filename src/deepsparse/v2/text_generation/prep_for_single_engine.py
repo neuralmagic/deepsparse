@@ -45,11 +45,6 @@ class PrepareforSingleEngine(Operator):
             >= self.prompt_sequence_length
         ):
             return False
-
-        # if 0 prompt tokens remain, can't operate (multi-token engine has already run)
-        # if len(tokens) == kv_cache.total_num_processed_tokens:
-        #    return False
-
         return True
 
     def run(

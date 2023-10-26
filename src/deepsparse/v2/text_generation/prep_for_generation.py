@@ -13,6 +13,8 @@
 # limitations under the License.
 from typing import Any, Optional
 
+import numpy
+
 from deepsparse.transformers.pipelines.text_generation import FinishReason
 from deepsparse.v2.operators import Operator
 from deepsparse.v2.text_generation import TokenGeneratorOperator
@@ -38,7 +40,8 @@ class PrepareGeneration(Operator):
         tokens = inp.get("tokens")
 
         # If the number of prompt tokens is greater than what we've processed,
-        # don't start generation
+        # don't start generation. Should be equal when started as all prompt logits
+        # should be accounted for.
         if len(tokens) > kv_cache.total_num_processed_tokens:
             return False
         return True
@@ -93,36 +96,32 @@ class PrepareGeneration(Operator):
         inference_state: InferenceState,
         pipeline_state: PipelineState,
     ):
-        tokens = inp.get("tokens")
-        finished_reason = []
         prompt_logits = inference_state.current_state.get("prompt_logits")
+        # TODO: clean this up such that dont have to keep writing current_state everyhere
+
         generation_config = inference_state.current_state.get("generation_config")
         include_prompt_logits = inference_state.current_state.get(
             "include_prompt_logits"
         )
 
-        token_generator, _ = self.token_generator_creator(
+        token_generator_creator_output, _ = self.token_generator_creator(
             context=context,
             pipeline_state=pipeline_state,
             inference_state=inference_state,
             **{
-                "logits_shape": prompt_logits[-1].shape[-1],
+                "logits_shape": prompt_logits[0, -1, :].shape,
                 "deterministic": not generation_config.do_sample,
                 "sampling_temperature": generation_config.temperature,
                 "kwargs": inference_state.current_state,
-                "tokens": tokens,
+                "tokens": inp.get("tokens"),
             },
         )
-        token_generator = token_generator.get("token_generator")
-        token_generator.generate(prompt_logits[0, -1, :])  # TODO: compare/changed
-        generated_tokens = [token_generator.tokens[-1]]
-        generated_logits = (
-            prompt_logits if include_prompt_logits else [prompt_logits[-1]]
-        )
+        token_generator = token_generator_creator_output.get("token_generator")
+        token_generator.generate(prompt_logits[0, -1, :])
 
         max_tokens, length_finish_reason = PrepareGeneration.set_generated_length(
             max_length=generation_config.max_length,
-            prompt_tokens_length=len(generated_tokens),
+            prompt_tokens_length=1,
             max_new_tokens=generation_config.max_new_tokens,
             sequence_length=self.sequence_length,
             prompt_sequence_length=self.prompt_sequence_length,
@@ -132,12 +131,13 @@ class PrepareGeneration(Operator):
             "max_tokens": max_tokens,
             "length_finish_reason": length_finish_reason,
             "in_generation": True,
-            "generated_tokens": generated_tokens,
-            "generated_logits": generated_logits,
-            "finished_reason": finished_reason,
+            "generated_tokens": [token_generator.tokens[-1]],
+            "generated_logits": [prompt_logits]
+            if include_prompt_logits
+            else [numpy.expand_dims(prompt_logits[:, -1, :], 0)],
+            "finished_reason": [],
             "token_generator": token_generator,
         }
 
-        output = dict(inp)
-        output.update({"tokens": token_generator.tokens})
+        output = {"tokens": token_generator.tokens, "kv_cache": inp.get("kv_cache")}
         return output, state_update

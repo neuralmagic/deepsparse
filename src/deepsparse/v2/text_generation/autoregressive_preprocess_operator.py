@@ -44,8 +44,8 @@ class AutoRegressiveOperatorPreprocess(Operator):
         kv_cache = inp.get("kv_cache")
 
         # Check if in active generation
-        if inference_state.current_state.get("in_generation") is not None:
-            return True
+        if inference_state.current_state.get("in_generation") is False:
+            return False
 
         # Check if in prompt inference
         found = False
@@ -71,10 +71,7 @@ class AutoRegressiveOperatorPreprocess(Operator):
         tokens = inp.get("tokens")
 
         num_total_processed_tokens = kv_cache.total_num_processed_tokens
-        if inference_state.current_state.get("in_generation") is not None:
-            new_token = tokens[-1]
-        else:
-            new_token = tokens[num_total_processed_tokens]
+        new_token = tokens[num_total_processed_tokens]
 
         # padding is added to left, so attention mask is 1s from the
         # right up to the number of total tokens (prompt + generated)
