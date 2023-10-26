@@ -31,6 +31,11 @@ class CompilePromptLogits(Operator):
     take prompt logits from each iteration run and update the inference state.
     """
 
+    def can_operate(self, inp: Any, context: Context, inference_state: InferenceState):
+        if inference_state.current_state.get("in_generation") is None:
+            return True
+        return False
+
     def run(
         self,
         inp: Any,

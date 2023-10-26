@@ -38,10 +38,6 @@ class PrepareforSingleEngine(Operator):
 
         kv_cache = inp.get("kv_cache")
         tokens = inp.get("tokens")
-        # if 0 prompt tokens remain, can't operate (multi-token engine has already run)
-        if len(tokens) == kv_cache.total_num_processed_tokens:
-            return False
-
         # if number of prompt tokens left to process is >= self.prompt_sequnce_length
         # should use the multi_token engine.
         if (
@@ -49,6 +45,11 @@ class PrepareforSingleEngine(Operator):
             >= self.prompt_sequence_length
         ):
             return False
+
+        # if 0 prompt tokens remain, can't operate (multi-token engine has already run)
+        # if len(tokens) == kv_cache.total_num_processed_tokens:
+        #    return False
+
         return True
 
     def run(

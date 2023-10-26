@@ -29,7 +29,7 @@ from deepsparse.v2.utils import Context, InferenceState, PipelineState
 
 class GenerationDefaults:
     num_return_sequences = 1
-    max_length = 1024
+    max_length = 10
     max_new_tokens = None
     output_scores = False
     top_k = 0

@@ -43,6 +43,11 @@ class AutoRegressiveOperatorPreprocess(Operator):
         tokens = inp.get("tokens")
         kv_cache = inp.get("kv_cache")
 
+        # Check if in active generation
+        if inference_state.current_state.get("in_generation") is not None:
+            return True
+
+        # Check if in prompt inference
         found = False
         for c in context.stages_executed:
             if c.operator.__class__.__name__ == "PrepareforSingleEngine":
@@ -66,7 +71,10 @@ class AutoRegressiveOperatorPreprocess(Operator):
         tokens = inp.get("tokens")
 
         num_total_processed_tokens = kv_cache.total_num_processed_tokens
-        new_token = tokens[num_total_processed_tokens]
+        if inference_state.current_state.get("in_generation") is not None:
+            new_token = tokens[-1]
+        else:
+            new_token = tokens[num_total_processed_tokens]
 
         # padding is added to left, so attention mask is 1s from the
         # right up to the number of total tokens (prompt + generated)
@@ -90,7 +98,6 @@ class AutoRegressiveOperatorPreprocess(Operator):
             "onnx_input_names_no_cache"
         )
         engine_inputs = [engine_inputs_map[name] for name in onnx_input_names_no_cache]
-
         return {
             "engine_inputs": engine_inputs,
             "kv_cache": kv_cache,
