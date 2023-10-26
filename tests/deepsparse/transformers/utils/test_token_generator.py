@@ -21,6 +21,9 @@ import pytest
 from deepsparse.transformers.utils.token_generator import TokenGenerator
 
 
+_MIN_FLOAT = numpy.finfo(numpy.float32).min
+
+
 @pytest.fixture(scope="function")
 def logits_fixture() -> numpy.array:
     def get(shape: Tuple = (1, 1, 51200), token_max_thresh: int = 30, low: int = -30):
@@ -128,25 +131,30 @@ class TestTokenGenerator:
         assert numpy.all(new_logits == filter_value)
 
     @pytest.mark.parametrize(
-        ("logits", "top_p", "expected_non_inf_counts"),
+        ("logits", "top_p", "min_tokens_to_keep", "expected_filtered_values"),
         [
             (
                 0.1 * numpy.ones(10).reshape((1, 1, 10)),
-                0.89,
-                9,
+                0.79,
+                0,
+                2,
             ),
             (
                 0.1 * numpy.ones(10).reshape((1, 1, 10)),
-                0.9,
-                10,  # one token should have cumsum > 0.9
+                0.899,
+                0,
+                1,  # one token should have cumsum > 0.9
             ),
-            (0.1 * numpy.ones(10).reshape((1, 1, 10)), 0, 1),  # keep at least one token
+            (0.1 * numpy.ones(10).reshape((1, 1, 10)), 0, 1, 9),  # keep all toks but 1
             (
                 numpy.array([1.0, -3.1, 2.0, 3.1, -1.0, -2.0, 1.2, -1.2]).reshape(
                     1, 1, -1
                 ),
+                # expected distribution:
+                # [0.0012, 0.0049, 0.0132, 0.023, 0.097, 0.188, 0.3914, 1]
                 0.9,
-                3,
+                0,
+                5,
             ),
         ],
     )
@@ -154,7 +162,8 @@ class TestTokenGenerator:
         self,
         logits,
         top_p,
-        expected_non_inf_counts,
+        min_tokens_to_keep,
+        expected_filtered_values,
     ):
 
         token_generator = TokenGenerator(
@@ -162,11 +171,13 @@ class TestTokenGenerator:
             top_p=top_p,
         )
 
-        filter_value = -float("Inf")
+        filter_value = _MIN_FLOAT
         new_logits = token_generator.apply_top_p(
-            logits.copy(), filter_value=filter_value
+            logits.copy(),
+            filter_value=filter_value,
+            min_tokens_to_keep=min_tokens_to_keep,
         )
-        assert numpy.isfinite(new_logits[-1]).sum(axis=1) == expected_non_inf_counts
+        assert (new_logits[-1] == filter_value).sum(axis=1) == expected_filtered_values
 
     def test_generate_token(
         self,
