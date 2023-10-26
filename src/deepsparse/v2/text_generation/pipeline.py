@@ -15,19 +15,22 @@
 from typing import Dict
 
 from deepsparse.transformers.utils.helpers import process_generation_config
-from deepsparse.v2.operators import Operator
 from deepsparse.v2.pipeline import Pipeline
 from deepsparse.v2.routers import GraphRouter
 from deepsparse.v2.schedulers import OperatorScheduler
 from deepsparse.v2.text_generation import (
     AutoRegressiveOperatorPreprocess,
     CompilePromptLogits,
+    GenerateNewTokenOperator,
     KVCacheCreator,
     MultiEnginePrefill,
     NLEngineOperator,
     PrepareforPrefill,
     PrepareforSingleEngine,
+    PrepareGeneration,
     ProcessInputsTextGeneration,
+    ProcessOutputs,
+    TokenGeneratorOperator,
 )
 from deepsparse.v2.utils import PipelineState
 
@@ -120,7 +123,16 @@ class TextGenerationPipeline(Pipeline):
             sequence_length=sequence_length,
             prompt_sequence_length=prompt_sequence_length,
         )
-        final_step = FinalStep()
+        token_generater = TokenGeneratorOperator()
+        prep_for_generation = PrepareGeneration(
+            sequence_length=sequence_length,
+            prompt_sequence_length=prompt_sequence_length,
+            token_generator=token_generater,
+        )
+        generate_new_token = GenerateNewTokenOperator(
+            tokenizer=self.tokenizer, force_max_tokens=force_max_tokens
+        )
+        process_output = ProcessOutputs(tokenizer=self.tokenizer)
 
         ops = {
             "process_input": process_inputs,
@@ -131,7 +143,9 @@ class TextGenerationPipeline(Pipeline):
             "multi_engine_prefill": multi_engine_prefill,
             "compile_logits": compile_prompt_logits,
             "autoregressive_preprocess": autoregressive_preprocess,
-            "final_step": final_step,
+            "prep_for_generation": prep_for_generation,
+            "generate_new_token": generate_new_token,
+            "process_outputs": process_output,
         }
 
         routes = {
@@ -142,11 +156,21 @@ class TextGenerationPipeline(Pipeline):
             "compile_logits": [
                 "multi_engine_prefill",
                 "autoregressive_preprocess",
-                "final_step",
+                "prep_for_generation",
+            ],
+            "prepare_single_engine": [
+                "prep_for_generation",
+                "autoregressive_preprocess",
             ],
             "autoregressive_preprocess": "single_engine",
-            "single_engine": "compile_logits",
-            "final_step": "STOP",
+            "single_engine": [
+                "compile_logits",
+                "generate_new_token",
+                "process_outputs",
+            ],
+            "prep_for_generation": "autoregressive_preprocess",
+            "generate_new_token": "autoregressive_preprocess",
+            "process_outputs": "STOP",
         }
 
         router = GraphRouter(
@@ -198,17 +222,3 @@ class TextGenerationPipeline(Pipeline):
                 "See `tokenizer` and `config` arguments for details."
             )
         return onnx_path
-
-
-# NOTE: This is a dummy last step which will be removed. Used as a final step
-# for the current routes.
-class FinalStep(Operator):
-    def can_operate(self, *args, **kwargs):
-        return True
-
-    def run(self, *args, **kwargs):
-        import numpy
-
-        inference_state = kwargs.get("inference_state")
-        prompt_logits = inference_state.current_state.get("prompt_logits")
-        return numpy.concatenate(prompt_logits, axis=1)
