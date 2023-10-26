@@ -52,6 +52,7 @@ __all__ = [
     "truncate_onnx_embedding_model",
     "overwrite_onnx_model_inputs_for_kv_cache_models",
     "default_cached_outputs",
+    "infer_sequence_length",
     "has_model_kv_cache",
     "CACHE_INPUT_PREFIX",
     "CACHE_OUTPUT_PREFIX",
@@ -127,11 +128,8 @@ def model_to_path(model: Union[str, Model, File]) -> str:
         model = Model(model)
 
     if Model is not object and isinstance(model, Model):
-        # download any onnx data files in deployment directory
-        for deployment_file in model.deployment.files:
-            if ".data" in deployment_file.name:
-                # forces download of data file if not cached
-                deployment_file.path
+        # trigger download and unzipping of deployment directory if not cached
+        model.deployment_directory_path
 
         # default to the main onnx file for the model
         model = model.deployment.get_file(_MODEL_DIR_ONNX_NAME).path
@@ -273,7 +271,7 @@ def override_onnx_batch_size(
         external_input.type.tensor_type.shape.dim[0].dim_value = batch_size
 
     if inplace:
-        _LOGGER.info(
+        _LOGGER.debug(
             f"Overwriting in-place the batch size of the model at {onnx_filepath}"
         )
         save_onnx(model, onnx_filepath)
@@ -349,7 +347,7 @@ def override_onnx_input_shapes(
             dim.dim_value = input_shapes[input_idx][dim_idx]
 
     if inplace:
-        _LOGGER.info(
+        _LOGGER.debug(
             f"Overwriting in-place the input shapes of the model at {onnx_filepath}"
         )
         onnx.save(model, onnx_filepath)
@@ -595,3 +593,24 @@ def has_model_kv_cache(model: Union[str, ModelProto]) -> bool:
     :return True if the model has a KV cache support, False otherwise.
     """
     return bool(any(default_cached_outputs(model)))
+
+
+def infer_sequence_length(model: Union[str, ModelProto]) -> int:
+    """
+    :param model: model
+    :return: inferred sequence length of the model
+    """
+    if not isinstance(model, ModelProto):
+        model = onnx.load(model, load_external_data=False)
+
+    # try to find attention mask dim, default to 0
+    target_input_idx = 0
+    for idx, inp in enumerate(model.graph.input):
+        if inp.name == "attention_mask":
+            target_input_idx = idx
+    try:
+        # return shape of second dim if possible
+        target_input = model.graph.input[target_input_idx]
+        return target_input.type.tensor_type.shape.dim[1].dim_value
+    except Exception:
+        return 0  # unable to infer seq len

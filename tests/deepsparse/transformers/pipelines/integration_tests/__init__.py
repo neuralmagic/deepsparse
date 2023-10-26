@@ -11,29 +11,3 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-"""
-Helpers for running transformer based models with DeepSparse and integrating with
-huggingface/transformers
-"""
-
-# flake8: noqa
-
-
-from deepsparse.analytics import deepsparse_analytics as _analytics
-
-
-_analytics.send_event("python__transformers__init")
-
-
-try:
-    import transformers as _transformers
-
-    import datasets as _datasets
-except ImportError:
-    raise ImportError("Please install deepsparse[transformers] to use this pathway")
-
-
-from .helpers import *
-from .loaders import *
-from .pipelines import *

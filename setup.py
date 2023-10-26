@@ -129,6 +129,7 @@ _server_deps = [
 _onnxruntime_deps = [
     "onnxruntime>=1.7.0",
 ]
+_torch_deps = ["torch>=1.7.0,<=2.0"]
 _image_classification_deps = [
     "torchvision>=0.3.0,<0.14",
     "opencv-python<=4.6.0.66",
@@ -145,12 +146,12 @@ _openpifpaf_integration_deps = [
 ]
 _yolov8_integration_deps = _yolo_integration_deps + ["ultralytics==8.0.124"]
 _transformers_integration_deps = [
-    f"{'nm-transformers' if is_release else 'nm-transformers-nightly'}"
-    f"~={version_base}",
-    "datasets<=2.11",
+    "transformers<4.35",
+    "datasets<2.13",
     "scikit-learn",
     "seqeval",
 ]
+_sentence_transformers_integration_deps = ["optimum-deepsparse"] + _torch_deps
 
 # haystack dependencies are installed from a requirements file to avoid
 # conflicting versions with NM's deepsparse/transformers
@@ -166,10 +167,8 @@ _haystack_integration_deps = _parse_requirements_file(_haystack_requirements_fil
 _clip_deps = [
     "open_clip_torch==2.20.0",
     "scipy<1.9.2,>=1.8",
-    f"{'nm-transformers' if is_release else 'nm-transformers-nightly'}",
+    "transformers<4.35",
 ]
-
-_torch_deps = ["torch>=1.7.0,<=2.0"]
 
 
 def _check_supported_system():
@@ -202,7 +201,7 @@ def _check_supported_system():
 
 def _check_supported_python_version():
     supported_major = 3
-    supported_minor = [8, 9, 10]
+    supported_minor = [8, 9, 10, 11]
 
     if (
         sys.version_info[0] != supported_major
@@ -276,6 +275,7 @@ def _setup_extras() -> Dict:
         "yolov8": _yolov8_integration_deps,
         "transformers": _transformers_integration_deps,
         "llm": _transformers_integration_deps,
+        "sentence_transformers": _sentence_transformers_integration_deps,
         "torch": _torch_deps,
         "clip": _clip_deps,
     }
@@ -343,7 +343,7 @@ setup(
     install_requires=_setup_install_requires(),
     extras_require=_setup_extras(),
     entry_points=_setup_entry_points(),
-    python_requires=">=3.8, <3.11",
+    python_requires=">=3.8, <3.12",
     classifiers=[
         "Development Status :: 5 - Production/Stable",
         "Programming Language :: Python :: 3",
@@ -351,6 +351,7 @@ setup(
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.11",
         "Intended Audience :: Developers",
         "Intended Audience :: Education",
         "Intended Audience :: Information Technology",

@@ -25,10 +25,11 @@ usage: deepsparse.debug_analysis [-h] [-wi NUM_WARMUP_ITERATIONS]
                                  [--optimization OPTIMIZATION]
                                  [-seq_len SEQUENCE_LENGTH]
                                  [-input_ids_len INPUT_IDS_LENGTH]
-                                 [--internal-kv-cache INTERNAL_KV_CACHE]
+                                 [--no-internal-kv-cache]
                                  [--kv-cache-prev-num-tokens KV_CACHE_PREV_NUM_TOKENS]
                                  [--kv-cache-num-frozen-tokens KV_CACHE_NUM_FROZEN_TOKENS]
                                  [-q] [-x EXPORT_PATH]
+                                 [--disable-kv-cache-overrides]
                                  model_path
 
 Analyze ONNX models in the DeepSparse Engine
@@ -67,8 +68,11 @@ optional arguments:
                         The input ids length to run the KV cache supported
                         model benchmarks for. Must be 1 <= input_ids_len <=
                         seq_len, default is 1
-  --internal-kv-cache, --internal_kv_cache
-                        Control enabling internal KVCache
+  --no-internal-kv-cache, --no_internal_kv_cache
+                        If not present, and model has KV cache, KV Cache state
+                        will be managed within the compiled deepsparse model.
+                        This is preferred when applicable for best
+                        performance. Set flag to disable
   --kv-cache-prev-num-tokens KV_CACHE_PREV_NUM_TOKENS
                         Internal KVCache: The amount of previous tokens that
                         will be read from the external KV cache on the first
@@ -78,7 +82,10 @@ optional arguments:
                         want to keep permanently in the KV cache
   -q, --quiet           Lower logging verbosity
   -x EXPORT_PATH, --export_path EXPORT_PATH
-                        Store results into a JSON file
+                        Store results into a JSON or CSV file
+  --disable-kv-cache-overrides, --disable_kv_cache_overrides
+                        If set, it will not alter the model
+                        with kv cache overrides
 """  # noqa E501
 
 import argparse
@@ -90,6 +97,7 @@ from deepsparse.utils import (
     default_cached_outputs,
     generate_random_inputs,
     has_model_kv_cache,
+    infer_sequence_length,
     model_to_path,
     override_onnx_input_shapes,
     overwrite_onnx_model_inputs_for_kv_cache_models,
@@ -184,9 +192,14 @@ def parse_args():
         "benchmarks for. Must be 1 <= input_ids_len <= seq_len, default is 1",
     )
     parser.add_argument(
-        "--internal-kv-cache",
-        "--internal_kv_cache",
-        help="Control enabling internal KVCache",
+        "--no-internal-kv-cache",
+        "--no_internal_kv_cache",
+        help=(
+            "If not present, and model has KV cache, "
+            "KV Cache state will be managed within the compiled deepsparse "
+            "model. This is preferred when applicable for best performance. Set "
+            "flag to disable"
+        ),
         action="store_true",
         default=False,
     )
@@ -217,6 +230,16 @@ def parse_args():
         help="Store results into a JSON or CSV file",
         type=str,
         default=None,
+    )
+    parser.add_argument(
+        "--disable-kv-cache-overrides",
+        "--disable_kv_cache_overrides",
+        help=(
+            "If set, deepsparse.benchmark will not alter the model "
+            "with kv cache overrides"
+        ),
+        action="store_true",
+        default=False,
     )
 
     return parser.parse_args()
@@ -357,11 +380,9 @@ def main():
 
     batch_size = args.batch_size
 
-    if (
-        args.sequence_length
-        and args.input_ids_length
-        and has_model_kv_cache(model_path)
-    ):
+    if not args.disable_kv_cache_overrides and has_model_kv_cache(model_path):
+        if not args.sequence_length:
+            args.sequence_length = infer_sequence_length(model_path)
         if args.input_ids_length > args.sequence_length:
             raise ValueError(
                 f"input_ids_length: {args.input_ids_length} "
@@ -389,7 +410,7 @@ def main():
         input_list = generate_random_inputs(model_path, batch_size)
 
     kv_cache_params = None
-    if args.internal_kv_cache:
+    if not args.no_internal_kv_cache:
         kv_cache_params = KVCacheParams(
             default_cached_outputs(model_path),
             args.kv_cache_prev_num_tokens,
@@ -442,15 +463,14 @@ def main():
                 }
                 for li in result["layer_info"]
             ]
+            col_keys = {k for li in csv_layer_infos for k in li.keys()}
 
             # Export results
             import csv
 
             print("Saving analysis results to CSV file at {}".format(args.export_path))
             with open(args.export_path, "w") as out:
-                writer = csv.DictWriter(
-                    out, fieldnames=csv_layer_infos[0].keys(), extrasaction="ignore"
-                )
+                writer = csv.DictWriter(out, fieldnames=col_keys, extrasaction="ignore")
                 writer.writeheader()
                 for data in csv_layer_infos:
                     writer.writerow(data)

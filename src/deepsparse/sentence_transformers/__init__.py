@@ -13,27 +13,24 @@
 # limitations under the License.
 
 """
-Helpers for running transformer based models with DeepSparse and integrating with
+Helpers for running SentenceTransformer based models with DeepSparse and integrating with
 huggingface/transformers
 """
 
 # flake8: noqa
 
-
 from deepsparse.analytics import deepsparse_analytics as _analytics
 
 
-_analytics.send_event("python__transformers__init")
+_analytics.send_event("python__sentence_transformers__init")
 
 
 try:
-    import transformers as _transformers
-
-    import datasets as _datasets
+    import optimum.deepsparse
 except ImportError:
-    raise ImportError("Please install deepsparse[transformers] to use this pathway")
+    raise ImportError(
+        "Please install deepsparse[sentence_transformers] to use this pathway"
+    )
 
 
-from .helpers import *
-from .loaders import *
-from .pipelines import *
+from .sentence_transformer import DeepSparseSentenceTransformer, SentenceTransformer

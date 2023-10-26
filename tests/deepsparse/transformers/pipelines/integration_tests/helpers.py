@@ -12,10 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import List, Tuple
+import logging
+import os
+from typing import Any, Dict, List, Tuple, Union
 
 import numpy
+import yaml
 from transformers import AutoModelForCausalLM, AutoTokenizer
+
+import pytest
 
 
 class TorchGroundTruthSource:
@@ -36,7 +41,6 @@ class TorchGroundTruthSource:
         self.tokenizer = self._create_tokenizer(model_name)
 
         self.num_tokens_to_generate = num_tokens_to_generate
-        self.model_name = model_name
 
     def tokenize(self, prompt: str):
         return self.tokenizer(prompt, return_tensors="pt")
@@ -82,3 +86,61 @@ class TorchGroundTruthSource:
             tokenizer.pad_token = tokenizer.eos_token
 
         return tokenizer
+
+
+def parse_params(configs_directory: str) -> List[Dict[str, Any]]:
+    # parses the config file provided
+    assert os.path.isdir(
+        configs_directory
+    ), f"Config_directory {configs_directory} is not a directory"
+
+    config_dicts = []
+    for file in os.listdir(configs_directory):
+        if file.endswith(".yaml"):
+            config_path = os.path.join(configs_directory, file)
+            # reads the yaml file
+            with open(config_path, "r") as f:
+                config = yaml.safe_load(f)
+
+            cadence = os.environ.get("CADENCE", "commit")
+            expected_cadence = config["cadence"]
+
+            if not isinstance(expected_cadence, list):
+                expected_cadence = [expected_cadence]
+            if cadence in expected_cadence:
+                config_dicts.append(config)
+            else:
+                logging.info(
+                    f"Skipping testing model: {config['model_path']} "
+                    f"for cadence: {config['cadence']}"
+                )
+        else:
+            raise FileNotFoundError(
+                f"Could not find a yaml file in {configs_directory}"
+            )
+    return config_dicts
+
+
+def validate_internal_kv_cache(
+    internal_kv_cache, available_kv_cache_types: Union[str, List[str]]
+) -> bool:
+    if internal_kv_cache and True not in available_kv_cache_types:
+        pytest.skip(
+            "The tests for running the pipeline with "
+            "internal kv cache management are disabled."
+        )
+    if not internal_kv_cache and False not in available_kv_cache_types:
+        pytest.skip(
+            "The tests for running the pipeline with "
+            "external kv cache management are disabled."
+        )
+    return internal_kv_cache
+
+
+def validate_task(task: str, available_tasks: Union[str, List[str]]) -> bool:
+    if task not in available_tasks:
+        pytest.skip(
+            f"The tests for running the pipeline with task: {task} are disabled. "
+            f"The available tasks, as specified in the config are: {available_tasks}"
+        )
+    return task

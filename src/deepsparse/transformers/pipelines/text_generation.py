@@ -50,6 +50,7 @@ from deepsparse.transformers.utils.helpers import (
     prepends_bos_token,
     process_generation_config,
     repeat_inputs,
+    set_generated_length,
 )
 from deepsparse.transformers.utils.timings import TextGenerationTimings
 from deepsparse.transformers.utils.token_generator import TokenGenerator
@@ -61,16 +62,21 @@ _LOGGER = logging.getLogger(__name__)
 __all__ = ["TextGenerationPipeline"]
 
 
+# Based off of https://huggingface.co/docs/transformers/main_classes/text_generation#transformers.GenerationConfig # noqa E501
 class GenerationDefaults:
-    num_return_sequences = 1
-    max_length = 1024
-    max_new_tokens = None
-    output_scores = False
-    top_k = 0
-    top_p = 0.0
-    repetition_penalty = 0.0
+    # Parameters that control the length of the output
+    max_length = None
+    max_new_tokens = 100
+    # Parameters that control the generation strategy used
     do_sample = False
+    # Parameters for manipulation of the model output logits
     temperature = 1.0
+    top_k = 50
+    top_p = 1.0
+    repetition_penalty = 1.0
+    # Parameters that define the outputs
+    num_return_sequences = 1
+    output_scores = False
 
 
 class FinishReason(Enum):
@@ -78,6 +84,8 @@ class FinishReason(Enum):
     LENGTH = "length"
     TIME = "time"
     CALLBACK = "callback"
+    CAPACITY = "capacity"
+    MAX_NEW_TOKENS = "max_new_tokens"
 
 
 class TextGenerationInput(BaseModel):
@@ -252,6 +260,15 @@ class TextGenerationPipeline(TransformersPipeline):
             if "WAND_OPT_FLAGS" not in os.environ:
                 os.environ["WAND_OPT_FLAGS"] = "default,~pyramids"
 
+        # the current requirement on the deepsparse engine
+        # is that prompt_sequence_length
+        # must be 1 or a multiple of four.
+        # for simplicity let's extend this requirement to all engines
+        if (prompt_sequence_length % 4 != 0) and (prompt_sequence_length != 1):
+            raise ValueError(
+                f"prompt_sequence_length must be 1 or multiple of 4. "
+                f"prompt_sequence_length is {prompt_sequence_length}"
+            )
         self.prompt_sequence_length = prompt_sequence_length
         self.force_max_tokens = force_max_tokens
         self.internal_kv_cache = internal_kv_cache
@@ -329,7 +346,6 @@ class TextGenerationPipeline(TransformersPipeline):
         if (
             self.cache_support_enabled and self.enable_multitoken_prefill
         ) or not self.cache_support_enabled:
-
             # input_ids_length for the multitoken engine is either:
             # - the prompt_sequence_length if the cache support is enabled
             #   (the prompt is processed sequentially at predefined processing length)
@@ -637,6 +653,9 @@ class TextGenerationPipeline(TransformersPipeline):
             created=datetime.datetime.now(), prompts=prompts, generations=generations
         )
 
+        if "session_ids" in kwargs:
+            outputs["session_ids"] = kwargs["session_ids"]
+
         if self._debug:
             debug_params = dict(
                 kv_cache_state=kv_cache_state,
@@ -684,7 +703,10 @@ class TextGenerationPipeline(TransformersPipeline):
                 )
                 for prompt_logit in prompt_logits:
                     token_generator.generate(prompt_logit)
-                return numpy.array([self.tokens]), prompt_logits
+                yield numpy.array([token_generator.tokens]), prompt_logits, [
+                    FinishReason.LENGTH
+                ]
+                return
 
             else:
                 # run the prompt through
@@ -714,14 +736,14 @@ class TextGenerationPipeline(TransformersPipeline):
             callback = context.get("callback")
             stop = context.get("stop")
 
-            max_new_tokens = generation_config.max_new_tokens
-            if max_new_tokens:
-                max_tokens = max_new_tokens + len(generated_tokens)
-            else:
-                max_tokens = generation_config.max_length
-                max_tokens = (
-                    max_tokens if max_tokens > 0 else (100 * self.sequence_length)
-                )
+            max_tokens, length_finish_reason = set_generated_length(
+                max_length=generation_config.max_length,
+                prompt_tokens_length=len(generated_tokens),
+                max_new_tokens=generation_config.max_new_tokens,
+                sequence_length=self.sequence_length,
+                prompt_sequence_length=self.prompt_sequence_length,
+                finish_reason_choices=FinishReason,
+            )
 
             with timer.time(TextGenerationTimings.TOKEN_GENERATION):
                 if len(generated_tokens) < max_tokens:
@@ -766,11 +788,12 @@ class TextGenerationPipeline(TransformersPipeline):
                         break
 
                     if len(generated_tokens) == max_tokens:
-                        finished_reason.append(FinishReason.LENGTH)
+                        finished_reason.append(length_finish_reason)
                         break
 
                     if streaming:
                         yield (numpy.array([token]), numpy.array([logits]), [None])
+
                 # Run the autoregressive inference only to put the
                 # kv cache entry for the last generated token into the
                 # kv cache

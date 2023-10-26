@@ -20,120 +20,134 @@ limitations under the License.
     <img alt="tool icon" src="https://raw.githubusercontent.com/neuralmagic/deepsparse/main/docs/old/source/icon-deepsparse.png" />
     &nbsp;&nbsp;DeepSparse
   </h1>
-  <h4> An inference runtime offering GPU-class performance on CPUs and APIs to integrate ML into your application</h4>
+  <h4>Sparsity-aware deep learning inference runtime for CPUs</h4>
   <div align="center">
-    <a href="https://docs.neuralmagic.com/deepsparse/">
-      <img alt="Documentation" src="https://img.shields.io/badge/documentation-darkred?&style=for-the-badge&logo=read-the-docs" height="20" />
-    </a>
-    <a href="https://join.slack.com/t/discuss-neuralmagic/shared_invite/zt-q1a1cnvo-YBoICSIw3L1dmQpjBeDurQ/">
-      <img alt="Slack" src="https://img.shields.io/badge/slack-purple?style=for-the-badge&logo=slack" height="20" />
-    </a>
-    <a href="https://github.com/neuralmagic/deepsparse/issues/">
-      <img alt="Support" src="https://img.shields.io/badge/support%20forums-navy?style=for-the-badge&logo=github" height="20" />
-    </a>
-    <a href="https://github.com/neuralmagic/deepsparse/actions/workflows/quality-check.yaml">
-      <img alt="Main" src="https://img.shields.io/github/workflow/status/neuralmagic/deepsparse/Quality%20Checks/main?label=build&style=for-the-badge" height="20" />
-    </a>
-    <a href="https://github.com/neuralmagic/deepsparse/releases">
-      <img alt="GitHub release" src="https://img.shields.io/github/release/neuralmagic/deepsparse.svg?style=for-the-badge" height="20" />
-    </a>
-    <a href="https://github.com/neuralmagic/deepsparse/blob/main/CODE_OF_CONDUCT.md">
-      <img alt="Contributor Covenant" src="https://img.shields.io/badge/Contributor%20Covenant-v2.1%20adopted-ff69b4.svg?color=yellow&style=for-the-badge" height="20" />
-    </a>
-    <a href="https://www.youtube.com/channel/UCo8dO_WMGYbWCRnj_Dxr4EA">
-      <img alt="YouTube" src="https://img.shields.io/badge/-YouTube-red?&style=for-the-badge&logo=youtube&logoColor=white" height="20" />
-    </a>
-    <a href="https://medium.com/limitlessai">
-      <img alt="Medium" src="https://img.shields.io/badge/medium-%2312100E.svg?&style=for-the-badge&logo=medium&logoColor=white" height="20" />
-    </a>
-    <a href="https://twitter.com/neuralmagic">
-      <img alt="Twitter" src="https://img.shields.io/twitter/follow/neuralmagic?color=darkgreen&label=Follow&style=social" height="20" />
-    </a>
-  </div>
+  <a href="https://docs.neuralmagic.com/deepsparse/">
+    <img alt="Documentation" src="https://img.shields.io/badge/documentation-darkred?&style=for-the-badge&logo=read-the-docs" height="20" />
+  </a>
+  <a href="https://join.slack.com/t/discuss-neuralmagic/shared_invite/zt-q1a1cnvo-YBoICSIw3L1dmQpjBeDurQ/">
+    <img alt="Slack" src="https://img.shields.io/badge/slack-purple?style=for-the-badge&logo=slack" height="20" />
+  </a>
+  <a href="https://github.com/neuralmagic/deepsparse/issues/">
+    <img alt="Support" src="https://img.shields.io/badge/support%20forums-navy?style=for-the-badge&logo=github" height="20" />
+  </a>
+  <a href="https://www.youtube.com/channel/UCo8dO_WMGYbWCRnj_Dxr4EA">
+    <img alt="YouTube" src="https://img.shields.io/badge/-YouTube-red?&style=for-the-badge&logo=youtube&logoColor=white" height="20" />
+  </a>
+  <a href="https://twitter.com/neuralmagic">
+    <img alt="Twitter" src="https://img.shields.io/twitter/follow/neuralmagic?color=darkgreen&label=Follow&style=social" height="20" />
+  </a>
 </div>
 
-
-[DeepSparse](https://github.com/neuralmagic/deepsparse) is a CPU inference runtime that takes advantage of sparsity within neural networks to execute inference quickly. Coupled with [SparseML](https://github.com/neuralmagic/sparseml), an open-source optimization library, DeepSparse enables you to achieve GPU-class performance on commodity hardware.
+[DeepSparse](https://github.com/neuralmagic/deepsparse) is a CPU inference runtime that takes advantage of sparsity to accelerate neural network inference. Coupled with [SparseML](https://github.com/neuralmagic/sparseml), our optimization library for pruning and quantizing your models, DeepSparse delivers exceptional inference performance on CPU hardware.
 
 <p align="center">
-   <img alt="NM Flow" src="https://github.com/neuralmagic/deepsparse/blob/7ee5e60f13b1fd321c5282c91e2873b3363ec911/docs/neural-magic-workflow.png" width="60%" />
+   <img alt="NM Flow" src="https://github.com/neuralmagic/deepsparse/assets/3195154/51e62fe7-9d9a-4fa5-a774-877158da1e29" width="60%" />
 </p>
 
-For details of training sparse models for deployment with DeepSparse, [check out SparseML](https://github.com/neuralmagic/sparseml).
+## ✨NEW✨ DeepSparse LLMs
 
-### ✨NEW✨ DeepSparse ARM Alpha 💪
+Neural Magic is excited to announce initial support for performant LLM inference in DeepSparse with:
+- sparse kernels for speedups and memory savings from unstructured sparse weights.
+- 8-bit weight and activation quantization support.
+- efficient usage of cached attention keys and values for minimal memory movement.
 
-Neural Magic is bringing performant deep learning inference to ARM CPUs! In our recent product release, we launched alpha support for DeepSparse on AWS Graviton and Ampere. We are working towards a general release across ARM server, embedded, and mobile platforms in 2023.
+![mpt-chat-comparison](https://github.com/neuralmagic/deepsparse/assets/3195154/ccf39323-4603-4489-8462-7b103872aeb3)
 
-**If you would like to trial the alpha or want early access to the general release, [sign up for the waitlist](https://neuralmagic.com/deepsparse-arm-waitlist/).**
+### Try It Now
 
-## Installation
-
-DeepSparse is available in two editions: 
-1. DeepSparse Community is free for evaluation, research, and non-production use with our [DeepSparse Community License](https://neuralmagic.com/legal/engine-license-agreement/).
-2. DeepSparse Enterprise requires a [trial license](https://neuralmagic.com/deepsparse-free-trial/) or [can be fully licensed](https://neuralmagic.com/legal/master-software-license-and-service-agreement/) for production, commercial applications.
-
-#### Install via Docker (Recommended)
-
-DeepSparse Community is available as a container image hosted on [GitHub container registry](https://github.com/neuralmagic/deepsparse/pkgs/container/deepsparse).
-
+Install (requires Linux):
 ```bash
-docker pull ghcr.io/neuralmagic/deepsparse:1.4.2
-docker tag ghcr.io/neuralmagic/deepsparse:1.4.2 deepsparse-docker
-docker run -it deepsparse-docker
+pip install -U deepsparse-nightly[llm]
 ```
 
-- [Check out the Docker page](https://github.com/neuralmagic/deepsparse/tree/main/docker/) for more details.
+Run inference:
+```python
+from deepsparse import TextGeneration
+pipeline = TextGeneration(model="zoo:mpt-7b-dolly_mpt_pretrain-pruned50_quantized")
 
-#### Install via PyPI
-DeepSparse Community is also available via PyPI. We recommend using a virtual enviornment.
+prompt="""
+Below is an instruction that describes a task. Write a response that appropriately completes the request. ### Instruction: what is sparsity? ### Response:
+"""
+print(pipeline(prompt, max_new_tokens=75).generations[0].text)
 
-```bash
-pip install deepsparse
+# Sparsity is the property of a matrix or other data structure in which a large number of elements are zero and a smaller number of elements are non-zero. In the context of machine learning, sparsity can be used to improve the efficiency of training and prediction.
 ```
 
-- [Check out the Installation page](https://github.com/neuralmagic/deepsparse/tree/main/docs/user-guide/installation.md) for optional dependencies.
+> [Check out the `TextGeneration` documentation for usage details.](https://github.com/neuralmagic/deepsparse/blob/main/docs/llms/text-generation-pipeline.md)
 
-## Hardware Support and System Requirements
+### Sparsity :handshake: Performance
 
-[Supported Hardware for DeepSparse](https://github.com/neuralmagic/deepsparse/tree/main/docs/user-guide/hardware-support.md)
+Developed in collaboration with IST Austria, [our recent paper](https://arxiv.org/abs/2310.06927) details a new technique called **Sparse Fine-Tuning**, which allows us to prune MPT-7B to 60% sparsity during fine-tuning without drop in accuracy. With our new support for LLMs, DeepSparse accelerates the sparse-quantized model 7x over the dense baseline:
 
-DeepSparse is tested on Python versions 3.8-3.10, ONNX versions 1.5.0-1.12.0, ONNX opset version 11 or higher, and manylinux compliant systems. Please note that DeepSparse is only supported natively on Linux. For those using Mac or Windows, running Linux in a Docker or virtual machine is necessary to use DeepSparse.
+<div align="center">
+    <img src="https://github.com/neuralmagic/deepsparse/assets/3195154/8687401c-f479-4999-ba6b-e01c747dace9" width="60%"/>
+</div>
+
+> [Learn more about our Sparse Fine-Tuning research.](https://github.com/neuralmagic/deepsparse/blob/main/research/mpt#sparse-finetuned-llms-with-deepsparse)
+
+> [Check out the model running live on Hugging Face.](https://huggingface.co/spaces/neuralmagic/sparse-mpt-7b-gsm8k)
+
+### LLM Roadmap
+
+Following this initial launch, we are rapidly expanding our support for LLMs, including:
+
+1. Productizing Sparse Fine-Tuning: Enable external users to apply sparse fine-tuning to their datasets via SparseML.
+2. Expanding model support: Apply our sparse fine-tuning results to Llama 2 and Mistral models.
+3. Pushing for higher sparsity: Improving our pruning algorithms to reach even higher sparsity.
+
+## Computer Vision and NLP Models
+
+In addition to LLMs, DeepSparse supports many variants of CNNs and Transformer models, such as BERT, ViT, ResNet, EfficientNet, YOLOv5/8, and many more! Take a look at the [Computer Vision](https://sparsezoo.neuralmagic.com/?modelSet=computer_vision) and [Natural Language Processing](https://sparsezoo.neuralmagic.com/?modelSet=natural_language_processing) domains of [SparseZoo](https://sparsezoo.neuralmagic.com/), our home for optimized models.
+
+### Installation
+
+Install via [PyPI](https://pypi.org/project/deepsparse/) ([optional dependencies detailed here](https://github.com/neuralmagic/deepsparse/tree/main/docs/user-guide/installation.md)):
+
+```bash
+pip install deepsparse 
+```
+
+To experiment with the latest features, there is a nightly build available using `pip install deepsparse-nightly` or you can clone and install from source using `pip install -e path/to/deepsparse`.
+
+#### System Requirements
+- Hardware: [x86 AVX2, AVX-512, AVX-512 VNNI and ARM v8.2+](https://github.com/neuralmagic/deepsparse/tree/main/docs/user-guide/hardware-support.md)
+- Operating System: Linux
+- Python: 3.8-3.11
+- ONNX versions 1.5.0-1.15.0, ONNX opset version 11 or higher
+
+For those using Mac or Windows, we recommend using Linux containers with Docker.
 
 ## Deployment APIs
 
 DeepSparse includes three deployment APIs:
 
-- **Engine** is the lowest-level API. With Engine, you pass tensors and receive the raw logits.
+- **Engine** is the lowest-level API. With Engine, you compile an ONNX model, pass tensors as input, and receive the raw outputs.
 - **Pipeline** wraps the Engine with pre- and post-processing. With Pipeline, you pass raw data and receive the prediction.
 - **Server** wraps Pipelines with a REST API using FastAPI. With Server, you send raw data over HTTP and receive the prediction.
 
 ### Engine
 
-The example below downloads a 90% pruned-quantized BERT model for sentiment analysis in ONNX format from SparseZoo, compiles the model, and runs inference on randomly generated input.
+The example below downloads a 90% pruned-quantized BERT model for sentiment analysis in ONNX format from SparseZoo, compiles the model, and runs inference on randomly generated input. Users can provide their own ONNX models, whether dense or sparse.
 
 ```python
 from deepsparse import Engine
-from deepsparse.utils import generate_random_inputs, model_to_path
 
 # download onnx, compile
 zoo_stub = "zoo:nlp/sentiment_analysis/obert-base/pytorch/huggingface/sst2/pruned90_quant-none"
-batch_size = 1
-compiled_model = Engine(model=zoo_stub, batch_size=batch_size)
+compiled_model = Engine(model=zoo_stub, batch_size=1)
 
 # run inference (input is raw numpy tensors, output is raw scores)
-inputs = generate_random_inputs(model_to_path(zoo_stub), batch_size)
+inputs = compiled_model.generate_random_inputs()
 output = compiled_model(inputs)
 print(output)
 
 # > [array([[-0.3380675 ,  0.09602544]], dtype=float32)] << raw scores
 ```
 
-### DeepSparse Pipelines
+### Pipeline
 
-Pipeline is the default API for interacting with DeepSparse. Similar to Hugging Face Pipelines, DeepSparse Pipelines wrap Engine with pre- and post-processing (as well as other utilities), enabling you to send raw data to DeepSparse and receive the post-processed prediction.
-
-The example below downloads a 90% pruned-quantized BERT model for sentiment analysis in ONNX format from SparseZoo, sets up a pipeline, and runs inference on sample data.
+Pipelines wrap Engine with pre- and post-processing, enabling you to pass raw data and receive the post-processed prediction. The example below downloads a 90% pruned-quantized BERT model for sentiment analysis in ONNX format from SparseZoo, sets up a pipeline, and runs inference on sample data.
 
 ```python
 from deepsparse import Pipeline
@@ -151,15 +165,9 @@ print(prediction)
 # > labels=['positive'] scores=[0.9954759478569031]
 ```
 
-#### Additional Resources 
-- Check out the [Use Cases Page](https://github.com/neuralmagic/deepsparse/tree/main/docs/use-cases) for more details on supported tasks.
-- Check out the [Pipelines User Guide](https://github.com/neuralmagic/deepsparse/tree/main/docs/user-guide/deepsparse-pipelines.md) for more usage details.
+### Server
 
-### DeepSparse Server
-
-Server wraps Pipelines with REST APIs, enabling you to stand up model serving endpoint running DeepSparse. This enables you to send raw data to DeepSparse over HTTP and receive the post-processed predictions.
-
-DeepSparse Server is launched from the command line, configured via arguments or a server configuration file. The following downloads a 90% pruned-quantized BERT model for sentiment analysis in ONNX format from SparseZoo and launches a sentiment analysis endpoint:
+Server wraps Pipelines with REST APIs, enabling you to set up a model-serving endpoint running DeepSparse. This enables you to send raw data to DeepSparse over HTTP and receive the post-processed predictions. DeepSparse Server is launched from the command line and configured via arguments or a server configuration file. The following downloads a 90% pruned-quantized BERT model for sentiment analysis in ONNX format from SparseZoo and launches a sentiment analysis endpoint:
 
 ```bash
 deepsparse.server \
@@ -180,103 +188,70 @@ print(response.text)
 # {"labels":["positive"],"scores":[0.9965094327926636]}
 ```
 
-#### Additional Resources 
-- Check out the [Use Cases Page](https://github.com/neuralmagic/deepsparse/tree/main/docs/use-cases) for more details on supported tasks.
-- Check out the [Server User Guide](https://github.com/neuralmagic/deepsparse/tree/main/docs/user-guide/deepsparse-server.md) for more usage details.
+### Additional Resources
+- [Use Cases Page](https://github.com/neuralmagic/deepsparse/tree/main/docs/use-cases) for more details on supported tasks
+- [Pipelines User Guide](https://github.com/neuralmagic/deepsparse/tree/main/docs/user-guide/deepsparse-pipelines.md) for Pipeline documentation
+- [Server User Guide](https://github.com/neuralmagic/deepsparse/tree/main/docs/user-guide/deepsparse-server.md) for Server documentation
+- [Benchmarking User Guide](https://github.com/neuralmagic/deepsparse/tree/main/docs/user-guide/deepsparse-benchmarking.md) for benchmarking documentation
+- [Cloud Deployments and Demos](https://github.com/neuralmagic/deepsparse/tree/main/examples/)
+- [User Guide](https://github.com/neuralmagic/deepsparse/tree/main/docs/user-guide) for more detailed documentation
 
-## ONNX
-
-DeepSparse accepts models in the ONNX format. ONNX models can be passed in one of two ways:
-
-- **SparseZoo Stub**: [SparseZoo](https://sparsezoo.neuralmagic.com/) is an open-source repository of sparse models. The examples on this page use SparseZoo stubs to identify models and download them for deployment in DeepSparse.
-
-- **Local ONNX File**: Users can provide their own ONNX models, whether dense or sparse. For example:
-
-```bash
-wget https://github.com/onnx/models/raw/main/vision/classification/mobilenet/model/mobilenetv2-7.onnx
-```
-
-```python
-from deepsparse import Engine
-from deepsparse.utils import generate_random_inputs
-onnx_filepath = "mobilenetv2-7.onnx"
-batch_size = 16
-
-# Generate random sample input
-inputs = generate_random_inputs(onnx_filepath, batch_size)
-
-# Compile and run
-compiled_model = Engine(model=onnx_filepath, batch_size=batch_size)
-outputs = compiled_model(inputs)
-print(outputs[0].shape)
-# (16, 1000) << batch, num_classes
-```
-
-## Inference Modes
-
-DeepSparse offers different inference scenarios based on your use case.
-
-**Single-stream** scheduling: the latency/synchronous scenario, requests execute serially. [`default`]
-
-<img src="https://raw.githubusercontent.com/neuralmagic/deepsparse/main/docs/old/source/single-stream.png" alt="single stream diagram" />
-
-It's highly optimized for minimum per-request latency, using all of the system's resources provided to it on every request it gets.
-
-**Multi-stream** scheduling: the throughput/asynchronous scenario, requests execute in parallel.
-
-<img src="https://raw.githubusercontent.com/neuralmagic/deepsparse/main/docs/old/source/multi-stream.png" alt="multi stream diagram" />
-
-The most common use cases for the multi-stream scheduler are where parallelism is low with respect to core count, and where requests need to be made asynchronously without time to batch them.
-
-- [Check out the Scheduler User Guide](https://github.com/neuralmagic/deepsparse/tree/main/docs/user-guide/scheduler.md) for more details.
 
 ## Product Usage Analytics
-DeepSparse Community Edition gathers basic usage telemetry including, but not limited to, Invocations, Package, Version, and IP Address for Product Usage Analytics purposes. Review Neural Magic's [Products Privacy Policy](https://neuralmagic.com/legal/) for further details on how we process this data.
 
-To disable Product Usage Analytics, run the command:
+DeepSparse gathers basic usage telemetry, including, but not limited to, Invocations, Package, Version, and IP Address, for Product Usage Analytics purposes. Review Neural Magic's [Products Privacy Policy](https://neuralmagic.com/legal/) for further details on how we process this data. 
+
+To disable Product Usage Analytics, run:
 ```bash
 export NM_DISABLE_ANALYTICS=True
 ```
 
-Confirm that telemetry is shut off through info logs streamed with engine invocation by looking for the phrase "Skipping Neural Magic's latest package version check." For additional assistance, reach out through the [DeepSparse GitHub Issue queue](https://github.com/neuralmagic/deepsparse/issues).
-
-## Additional Resources
-- [Benchmarking Performance](https://github.com/neuralmagic/deepsparse/tree/main/docs/user-guide/deepsparse-benchmarking.md)
-- [User Guide](https://github.com/neuralmagic/deepsparse/tree/main/docs/user-guide)
-- [Use Cases](https://github.com/neuralmagic/deepsparse/tree/main/docs/use-cases)
-- [Cloud Deployments and Demos](https://github.com/neuralmagic/deepsparse/tree/main/examples/)
-
-#### Versions
-- [DeepSparse](https://pypi.org/project/deepsparse) | stable
-- [DeepSparse-Nightly](https://pypi.org/project/deepsparse-nightly/) | nightly (dev)
-- [GitHub](https://github.com/neuralmagic/deepsparse/releases) | releases
-
-#### Info
-- [Blog](https://www.neuralmagic.com/blog/) 
-- [Resources](https://www.neuralmagic.com/resources/)
+Confirm that telemetry is shut off through info logs streamed with engine invocation by looking for the phrase "Skipping Neural Magic's latest package version check."
 
 ## Community
 
-### Be Part of the Future... And the Future is Sparse!
+### Get In Touch
 
-Contribute with code, examples, integrations, and documentation as well as bug reports and feature requests! [Learn how here.](https://github.com/neuralmagic/deepsparse/blob/main/CONTRIBUTING.md)
+- [Contribution Guide](https://github.com/neuralmagic/deepsparse/blob/main/CONTRIBUTING.md)
+- [Community Slack](https://join.slack.com/t/discuss-neuralmagic/shared_invite/zt-q1a1cnvo-YBoICSIw3L1dmQpjBeDurQ)
+- [GitHub Issue Queue](https://github.com/neuralmagic/deepsparse/issues) 
+- [Subscribe To Our Newsletter](https://neuralmagic.com/subscribe/)
+- [Blog](https://www.neuralmagic.com/blog/) 
 
-For user help or questions about DeepSparse, sign up or log in to our **[Neural Magic Community Slack](https://join.slack.com/t/discuss-neuralmagic/shared_invite/zt-q1a1cnvo-YBoICSIw3L1dmQpjBeDurQ)**. We are growing the community member by member and happy to see you there. Bugs, feature requests, or additional questions can also be posted to our [GitHub Issue Queue.](https://github.com/neuralmagic/deepsparse/issues) You can get the latest news, webinar and event invites, research papers, and other ML Performance tidbits by [subscribing](https://neuralmagic.com/subscribe/) to the Neural Magic community.
-
-For more general questions about Neural Magic, complete this [form.](http://neuralmagic.com/contact/)
+For more general questions about Neural Magic, [complete this form.](http://neuralmagic.com/contact/)
 
 ### License
 
-[DeepSparse Community](https://docs.neuralmagic.com/products/deepsparse) is licensed under the [Neural Magic DeepSparse Community License.](https://github.com/neuralmagic/deepsparse/blob/main/LICENSE-NEURALMAGIC)
-Some source code, example files, and scripts included in the deepsparse GitHub repository or directory are licensed under the [Apache License Version 2.0](https://github.com/neuralmagic/deepsparse/blob/main/LICENSE) as noted.
+- **DeepSparse Community** is licensed under the [Neural Magic DeepSparse Community License.](https://github.com/neuralmagic/deepsparse/blob/main/LICENSE-NEURALMAGIC)
+Some source code, example files, and scripts included in the DeepSparse GitHub repository or directory are licensed under the [Apache License Version 2.0](https://github.com/neuralmagic/deepsparse/blob/main/LICENSE) as noted.
 
-[DeepSparse Enterprise](https://docs.neuralmagic.com/products/deepsparse-ent) requires a Trial License or [can be fully licensed](https://neuralmagic.com/legal/master-software-license-and-service-agreement/) for production, commercial applications.
+- **DeepSparse Enterprise** requires a Trial License or [can be fully licensed](https://neuralmagic.com/legal/master-software-license-and-service-agreement/) for production, commercial applications.
 
 ### Cite
 
 Find this project useful in your research or other communications? Please consider citing:
 
 ```bibtex
+@misc{kurtic2023sparse,
+      title={Sparse Fine-Tuning for Inference Acceleration of Large Language Models}, 
+      author={Eldar Kurtic and Denis Kuznedelev and Elias Frantar and Michael Goin and Dan Alistarh},
+      year={2023},
+      url={https://arxiv.org/abs/2310.06927},
+      eprint={2310.06927},
+      archivePrefix={arXiv},
+      primaryClass={cs.CL}
+}
+
+@misc{kurtic2022optimal,
+      title={The Optimal BERT Surgeon: Scalable and Accurate Second-Order Pruning for Large Language Models}, 
+      author={Eldar Kurtic and Daniel Campos and Tuan Nguyen and Elias Frantar and Mark Kurtz and Benjamin Fineran and Michael Goin and Dan Alistarh},
+      year={2022},
+      url={https://arxiv.org/abs/2203.07259},
+      eprint={2203.07259},
+      archivePrefix={arXiv},
+      primaryClass={cs.CL}
+}
+
 @InProceedings{
     pmlr-v119-kurtz20a, 
     title = {Inducing and Exploiting Activation Sparsity for Fast Inference on Deep Neural Networks}, 
@@ -295,10 +270,7 @@ Find this project useful in your research or other communications? Please consid
 }
 
 @article{DBLP:journals/corr/abs-2111-13445,
-  author    = {Eugenia Iofinova and
-               Alexandra Peste and
-               Mark Kurtz and
-               Dan Alistarh},
+  author    = {Eugenia Iofinova and Alexandra Peste and Mark Kurtz and Dan Alistarh},
   title     = {How Well Do Sparse Imagenet Models Transfer?},
   journal   = {CoRR},
   volume    = {abs/2111.13445},

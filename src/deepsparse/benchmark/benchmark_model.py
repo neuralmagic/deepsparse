@@ -22,8 +22,9 @@ usage: deepsparse.benchmark [-h] [-b BATCH_SIZE] [-i INPUT_SHAPES]
                             [-t TIME] [-w WARMUP_TIME] [-nstreams NUM_STREAMS]
                             [-seq_len SEQUENCE_LENGTH]
                             [-input_ids_len INPUT_IDS_LENGTH]
-                            [-pin {none,core,numa}] [-e ENGINE] [-q]
-                            [-x EXPORT_PATH]
+                            [-pin {none,core,numa}] [-e ENGINE]
+                            [--no-internal-kv-cache] [-q] [-x EXPORT_PATH]
+                            [--disable-kv-cache-overrides]
                             model_path
 
 Benchmark ONNX models in the DeepSparse Engine
@@ -80,9 +81,17 @@ optional arguments:
                         <path to python script>:<Engine Class name>. This
                         engine class will be dynamically imported during
                         runtime
+  --no-internal-kv-cache, --no_internal_kv_cache
+                        DeepSparse engine only - If not present, and model has
+                        KV cache, KV Cache state will be managed within the
+                        compiled deepsparse model. This is preferred when
+                        applicable for best performance. Set flag to disable
   -q, --quiet           Lower logging verbosity
   -x EXPORT_PATH, --export_path EXPORT_PATH
                         Store results into a JSON file
+  --disable-kv-cache-overrides, --disable_kv_cache_overrides
+                        If set, it will not alter the model
+                        with kv cache overrides
 
 ##########
 Example on a BERT from SparseZoo:
@@ -132,6 +141,7 @@ from deepsparse.log import set_logging_level
 from deepsparse.utils import (
     generate_random_inputs,
     has_model_kv_cache,
+    infer_sequence_length,
     model_to_path,
     override_onnx_input_shapes,
     overwrite_onnx_model_inputs_for_kv_cache_models,
@@ -268,12 +278,13 @@ def parse_args():
         ),
     )
     parser.add_argument(
-        "--internal-kv-cache",
-        "--internal_kv_cache",
+        "--no-internal-kv-cache",
+        "--no_internal_kv_cache",
         help=(
-            "DeepSparse engine only - If True, and a model with KV cache, "
+            "DeepSparse engine only - If not present, and model has KV cache, "
             "KV Cache state will be managed within the compiled deepsparse "
-            "model. This is preferred when applicable for best performance"
+            "model. This is preferred when applicable for best performance. Set "
+            "flag to disable"
         ),
         action="store_true",
         default=False,
@@ -291,6 +302,13 @@ def parse_args():
         help="Store results into a JSON file",
         type=str,
         default=None,
+    )
+    parser.add_argument(
+        "--disable-kv-cache-overrides",
+        "--disable_kv_cache_overrides",
+        help=("If set, it will not alter the model with kv cache overrides"),
+        action="store_true",
+        default=False,
     )
 
     return parser.parse_args()
@@ -328,6 +346,7 @@ def benchmark_model(
     internal_kv_cache: bool = False,
     quiet: bool = False,
     export_path: Optional[str] = None,
+    disable_kv_cache_overrides: bool = False,
 ) -> Dict:
     if quiet:
         set_logging_level(logging.WARN)
@@ -345,7 +364,9 @@ def benchmark_model(
     model_path = model_to_path(model_path)
 
     cached_outputs = None
-    if sequence_length and input_ids_length and has_model_kv_cache(model_path):
+    if not disable_kv_cache_overrides and has_model_kv_cache(model_path):
+        if not sequence_length:
+            sequence_length = infer_sequence_length(model_path)
         if input_ids_length > sequence_length:
             raise ValueError(
                 f"input_ids_length: {input_ids_length} "
@@ -474,9 +495,10 @@ def main():
         input_ids_length=args.input_ids_length,
         thread_pinning=args.thread_pinning,
         engine=args.engine,
-        internal_kv_cache=args.internal_kv_cache,
+        internal_kv_cache=not args.no_internal_kv_cache,
         quiet=args.quiet,
         export_path=args.export_path,
+        disable_kv_cache_overrides=args.disable_kv_cache_overrides,
     )
 
     # Results summary
