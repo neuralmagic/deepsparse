@@ -28,7 +28,7 @@ logger = logging.getLogger(__name__)
 DEFAULT_MODEL_NAME = "zeroshot/bge-small-en-v1.5-quant"
 
 
-class SentenceTransformer:
+class DeepSparseSentenceTransformer:
     """
     Loads or creates a SentenceTransformer-compatible model that can be used to map
     text to embeddings.
@@ -289,3 +289,6 @@ class SentenceTransformer:
         return torch.sum(token_embeddings * input_mask_expanded, 1) / torch.clamp(
             input_mask_expanded.sum(1), min=1e-9
         )
+
+# for backwards compatibility
+SentenceTransformer = DeepSparseSentenceTransformer

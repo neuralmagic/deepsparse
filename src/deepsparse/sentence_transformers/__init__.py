@@ -33,4 +33,4 @@ except ImportError:
     )
 
 
-from .sentence_transformer import SentenceTransformer
+from .sentence_transformer import DeepSparseSentenceTransformer, SentenceTransformer
