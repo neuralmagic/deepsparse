@@ -18,9 +18,7 @@ import string
 import time
 
 import sentence_transformers
-from deepsparse.sentence_transformers import (
-    SentenceTransformer as DeepSparseSentenceTransformer,
-)
+from deepsparse.sentence_transformers import DeepSparseSentenceTransformer
 
 
 def generate_random_sentence(length=700):
