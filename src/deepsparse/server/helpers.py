@@ -86,6 +86,10 @@ def prep_outputs_for_serialization(pipeline_outputs: Any):
     if isinstance(pipeline_outputs, BaseModel):
         for field_name in pipeline_outputs.__fields__.keys():
             field_value = getattr(pipeline_outputs, field_name)
+            if field_name == "generations":
+                if isinstance(field_value[0].score, numpy.ndarray):
+                    # numpy arrays aren't JSON serializable
+                    field_value[0].score = field_value[0].score.tolist()
             if isinstance(field_value, numpy.ndarray):
                 # numpy arrays aren't JSON serializable
                 setattr(pipeline_outputs, field_name, field_value.tolist())
