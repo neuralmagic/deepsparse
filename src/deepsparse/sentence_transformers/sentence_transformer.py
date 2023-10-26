@@ -160,11 +160,13 @@ class SentenceTransformer:
         ):
             sentences_batch = sentences_sorted[start_index : start_index + batch_size]
 
+            model_inputs = self.tokenize(sentences_batch)
+
             if self.buckets and batch_size == 1:
                 # Use bucketing for batch size 1
                 # Select the model based on the bucketing logic
                 # TODO: tokenize ahead of time and simply add padding
-                seq_length = len(self.tokenize(sentences_batch)[0])
+                seq_length = len(model_inputs[0])
                 selected_bucket = self._select_bucket(seq_length)
 
                 # Tokenize using the selected bucket size
@@ -174,7 +176,6 @@ class SentenceTransformer:
                 model = self.models[selected_bucket]
             else:
                 # Use dynamic shape
-                model_inputs = self.tokenize(sentences_batch)
                 model = self.dyn_model
 
             # Run the inference
