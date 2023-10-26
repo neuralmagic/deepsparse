@@ -290,5 +290,6 @@ class DeepSparseSentenceTransformer:
             input_mask_expanded.sum(1), min=1e-9
         )
 
+
 # for backwards compatibility
 SentenceTransformer = DeepSparseSentenceTransformer
