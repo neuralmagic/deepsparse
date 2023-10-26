@@ -13,12 +13,14 @@
 # limitations under the License.
 from typing import Any, Optional, Sequence, Union
 
-import numpy
 import transformers
 
 from deepsparse.transformers.pipelines.text_generation import FinishReason
 from deepsparse.v2.operators import Operator
 from deepsparse.v2.utils import Context, InferenceState, PipelineState
+
+
+__all__ = ["GenerateNewTokenOperator"]
 
 
 class GenerateNewTokenOperator(Operator):
@@ -27,11 +29,6 @@ class GenerateNewTokenOperator(Operator):
     ):
         self.force_max_tokens = force_max_tokens
         self.tokenizer = tokenizer
-
-    def can_operate(self, inp: Any, context: Context, inference_state: InferenceState):
-        if inference_state.current_state.get("in_generation"):
-            return True
-        return False
 
     def _stop_token_generated(
         self, token, stop_tokens: Union[None, str, Sequence[str]]
@@ -45,6 +42,11 @@ class GenerateNewTokenOperator(Operator):
         )
         return decoded_token in stop_tokens
 
+    def can_operate(self, inp: Any, context: Context, inference_state: InferenceState):
+        if inference_state.current_state.get("in_generation") is True:
+            return True
+        return False
+
     def run(
         self,
         inp: Any,
@@ -52,62 +54,45 @@ class GenerateNewTokenOperator(Operator):
         inference_state: InferenceState,
         pipeline_state: PipelineState,
     ):
+
         logits = inp.get("logits")
-        in_generation = True
         token_generator = inference_state.current_state.get("token_generator")
         token = token_generator.generate(logits=logits[0, -1, :])
+        finish_reason = None
 
-        generated_tokens = inference_state.current_state.get("generated_tokens")
-        generated_logits = inference_state.current_state.get("generated_logits")
-        finished_reason = inference_state.current_state.get("finished_reason")
-        max_tokens = inference_state.current_state.get("max_tokens")
         callback = inference_state.current_state.get("callback")
         stop = inference_state.current_state.get("stop")
 
-        generated_tokens.append(token)
-        generated_logits.append(logits)
-
         if token == self.tokenizer.eos_token_id and not self.force_max_tokens:
-            finished_reason.append(FinishReason.STOP)
-            in_generation = False
+            finish_reason = FinishReason.STOP
 
         if self._stop_token_generated(token, stop_tokens=stop):
             print(
                 "Stop token %s generated. Stopping generation."
                 % self.tokenizer.decode(token)
             )
-            finished_reason.append(FinishReason.STOP)
-            in_generation = False
+            finish_reason = FinishReason.STOP
 
         if callback is not None and callback(token) is False:
             print(
                 "callback %s returned False, stopping generation."
                 % callback.__qualname__
             )
-            finished_reason.append(FinishReason.CALLBACK)
-            in_generation = False
+            finish_reason = FinishReason.CALLBACK
 
-        if len(inference_state.current_state.get("generated_tokens")) == max_tokens:
-            finished_reason.append(
-                inference_state.current_state.get("length_finish_reason")
-            )
-            in_generation = False
+        max_tokens = inference_state.current_state.get("max_tokens")
+        if len(inference_state.current_state.get("generated_tokens")) + 1 == max_tokens:
+            finish_reason = inference_state.current_state.get("length_finish_reason")
 
-        if in_generation is False:
-            if len(finished_reason) == 0:
-                finished_reason.append(FinishReason.LENGTH)
-
-            generated_tokens = numpy.array([generated_tokens])
-            generated_logits[0] = numpy.expand_dims(generated_logits[0], axis=0)
-            generated_logits = numpy.concatenate(generated_logits, axis=1)
-
-        state_update = {  # TODO: check if necessary
-            "finished_reason": finished_reason,
-            "in_generation": in_generation,
-            "generated_tokens": generated_tokens,
-            "generated_logits": generated_logits,
+        state_update = {
             "token_generator": token_generator,
         }
-        output = dict(inp)
-        output.update({"tokens": token_generator.tokens})
+
+        new_generation = {
+            "logits": logits,
+            "new_token": token,
+            "finish_reason": finish_reason,
+        }
+        output = {"tokens": token_generator.tokens, "kv_cache": inp.get("kv_cache")}
+        output.update(new_generation)
         return output, state_update

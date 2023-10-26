@@ -31,11 +31,6 @@ class ProcessOutputs(Operator):
     def __init__(self, tokenizer):
         self.tokenizer = tokenizer
 
-    def can_operate(self, inp: Any, context: Context, inference_state: InferenceState):
-        if inference_state.current_state.get("in_generation") is False:
-            return True
-        return False
-
     def _create_generated_text_output(
         self,
         sequence: str,
@@ -63,18 +58,16 @@ class ProcessOutputs(Operator):
         pipeline_state: PipelineState,
     ):
         generation_config = inference_state.current_state.get("generation_config")
-        generated_tokens = inference_state.current_state.get("generated_tokens")
+        generated_tokens = inp.generated_tokens
         generated_logits = (
-            inference_state.current_state.get("generated_logits")
-            if generation_config.output_scores
-            else None
+            inp.generated_logits if generation_config.output_scores else None
         )
-        finished_reason = inference_state.current_state.get("finished_reason")
+        finished_reason = inp.finished_reason
         sequences = self.tokenizer.batch_decode(
             generated_tokens, skip_special_tokens=True
         )
 
-        # finished_reason = [f[0] for f in finished_reason]
+        finished_reason = [f for f in finished_reason if f]
 
         if generated_logits is not None:
             generations = list(
@@ -94,4 +87,7 @@ class ProcessOutputs(Operator):
             prompts=inference_state.current_state.get("prompts"),
             generations=generations,
         )
+
+        for k, _ in inference_state.current_state.items():
+            print(k)
         return outputs, {}

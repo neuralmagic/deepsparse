@@ -118,4 +118,5 @@ class ProcessInputsTextGeneration(Operator):
         # this will allow us to split/join more easily when processing multiple prompts
         # in parallel
         tokens = input_ids[attention_mask.nonzero()].tolist()
+        print("tokens", tokens)
         return {"tokens": tokens}, inference_state_update
