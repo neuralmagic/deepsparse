@@ -43,10 +43,10 @@ class ImageClassificationPipeline(Pipeline):
         if not engine_kwargs.get("model_path"):
             raise ValueError("engine_kwargs must include model_path path")
 
-        preproces = ImageClassificationPreProcess(
-            model_path=engine_kwargs.get("model_path"), image_size=image_size
-        )
         engine = EngineOperator(**engine_kwargs)
+        preproces = ImageClassificationPreProcess(
+            model_path=engine.model_path, image_size=image_size
+        )
         postprocess = ImageClassificationPostProcess(
             top_k=top_k, class_names=class_names
         )

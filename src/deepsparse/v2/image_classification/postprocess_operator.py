@@ -61,7 +61,7 @@ class ImageClassificationPostProcess(Operator):
 
     def run(self, inp: Any, context: Optional[Context]) -> Dict:
         labels, scores = [], []
-
+        inp = inp.engine_outputs
         for prediction_batch in inp[0]:
             label = (-prediction_batch).argsort()[: self.top_k]
             score = prediction_batch[label]

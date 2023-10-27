@@ -54,8 +54,8 @@ class EngineOperator(Operator):
         engine_context: Optional[Context] = None,
     ):
 
-        model_path = model_to_path(model_path)
         self._batch_size = batch_size
+        self.model_path = model_to_path(model_path)
         self.engine_context = engine_context
 
         if self.engine_context is not None:
@@ -76,7 +76,7 @@ class EngineOperator(Operator):
             engine_args["scheduler"] = scheduler
             engine_args["num_streams"] = num_streams
 
-        self.engine = self._create_engine(model_path, engine_type, engine_args)
+        self.engine = self._create_engine(self.model_path, engine_type, engine_args)
 
     def _create_engine(
         self, onnx_file_path: str, engine_type: str, engine_args: Dict
@@ -116,12 +116,13 @@ class EngineOperator(Operator):
         )
 
     def run(self, inp: Any, context: Optional[Context]) -> Any:
+        inp = inp.engine_inputs
         batches, orig_batch_size = self.expand_inputs(engine_inputs=inp)
         batches_outputs = list(map(self.engine, batches))
         engine_outputs = self.condense_inputs(
             batch_outputs=batches_outputs, orig_batch_size=orig_batch_size
         )
-        return engine_outputs
+        return {"engine_outputs": engine_outputs}
 
     def expand_inputs(self, **kwargs):
         return split_engine_inputs(kwargs["engine_inputs"], self._batch_size)

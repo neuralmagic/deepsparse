@@ -93,7 +93,7 @@ class ImageClassificationPreProcess(Operator):
             image_batch -= numpy.asarray(IMAGENET_RGB_MEANS).reshape((-1, 3, 1, 1))
             image_batch /= numpy.asarray(IMAGENET_RGB_STDS).reshape((-1, 3, 1, 1))
 
-        return [image_batch]
+        return {"engine_inputs": [image_batch]}
 
     def _preprocess_image(self, image) -> numpy.ndarray:
         if isinstance(image, List):
