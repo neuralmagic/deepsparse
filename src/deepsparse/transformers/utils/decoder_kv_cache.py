@@ -13,9 +13,7 @@
 # limitations under the License.
 
 from typing import Any, Dict
-
 import numpy
-
 from deepsparse.engine import LIB
 
 
@@ -86,7 +84,7 @@ class DecoderKVCache:
         state: Dict[str, Any],
         input_ids_len: int,
         increment_total_num_processed_tokens: int = True,
-    ):
+    ) -> bool:
         """
         Updating the session is identical with taking the kv cache
         output from the forward pass and restructuring it, so it
@@ -102,6 +100,9 @@ class DecoderKVCache:
         :param increment_total_num_processed_tokens: If set to True,
             the total number of processed tokens will be incremented
             by the input_ids_len.
+        :return: True if the cache buffer is full, i.e we cannot update
+            the session without overflowing the capacity of the cache.
+            False otherwise.
         """
         if increment_total_num_processed_tokens:
             self.total_num_processed_tokens += input_ids_len
@@ -109,72 +110,31 @@ class DecoderKVCache:
         input_state_capacity = state[list(state.keys())[0]].shape[
             self._sequence_len_axis
         ]
-        num_entries_to_delete = input_ids_len
-
-        # compute the number of blank (padded) entries in the cache
-        num_padded_entries = max(
-            0, input_state_capacity - self.total_num_processed_tokens
-        )
-        # compute how many of those entries need to be deleted
-        num_padded_entries_to_delete = min(num_padded_entries, num_entries_to_delete)
-
-        # if we had fewer padded entries than num_entries_to_delete,
-        # we additionally are forced to delete some non-padded entries (the oldest ones)
-        num_non_padded_entries_to_delete = max(
-            0, num_entries_to_delete - num_padded_entries
-        )
+        if self.total_num_processed_tokens > input_state_capacity:
+            # if the total number of processed tokens is greater than
+            # the capacity of the input state, we need to terminate
+            # inference
+            return True
 
         for name, cache_array in state.items():
-            if num_padded_entries_to_delete:
-                cache_array = self.remove_padded_entries(
-                    cache_array, num_padded_entries_to_delete
-                )
-            if num_non_padded_entries_to_delete:
-                cache_array = self.remove_non_padded_entries(
-                    cache_array, num_non_padded_entries_to_delete
-                )
+            cache_array = self.remove_entries_from_the_front(cache_array, input_ids_len)
             state[name] = numpy.ascontiguousarray(cache_array)
 
         self._state = state
+        return False
 
-    def remove_padded_entries(
-        self, cache_array: numpy.ndarray, num_padded_entries_to_delete: int
+    def remove_entries_from_the_front(
+        self, cache_array: numpy.ndarray, num_entries_to_delete: int
     ):
         """
-        Remove the num_padded_entries_to_delete entries from the cache array.
-        This function assumes that the cache_array has the number
-        of padded (blank) entries that is equal/larger than
-        num_padded_entries_to_delete.
+        Remove entries from the front of the cache array.
 
         :param cache_array: The cache array to be modified.
-        :param num_padded_entries_to_delete: The number of padded entries to delete.
+        :param num_entries_to_delete: The number of entries to be deleted
+            from the cache array.
         """
-        return cache_array[:, :, num_padded_entries_to_delete:, :]
+        new_cache_array = cache_array[:,:,num_entries_to_delete:,:]
 
-    def remove_non_padded_entries(
-        self, cache_array: numpy.ndarray, num_non_padded_entries_to_delete: int
-    ):
-        """
-        Remove the num_non_padded_entries_to_delete entries from the cache array.
-        This function assumes that the cache_array has no padded (blank) entries and
-        thus we are forced to delete the oldest entries from the cache.
-
-        If self._freeze_first_position is set to True, that means that the oldest
-        entry in the cache_array is the one that corresponds to the BOS token. Because
-        we want to keep that entry in the cache, we will delete the oldest entry
-        starting from the second oldest entry.
-        """
-        new_cache_array = cache_array[
-            :,
-            :,
-            int(self._freeze_first_position) + num_non_padded_entries_to_delete :,
-            :,
-        ]
-        if self._freeze_first_position:
-            bos_entries = cache_array[:, :, :1, :]
-            new_cache_array = numpy.concatenate(
-                [bos_entries, new_cache_array], axis=self._sequence_len_axis
-            )
         return new_cache_array
 
     def set_capacity(self, capacity: int):
@@ -198,7 +158,7 @@ class DecoderKVCache:
         state = self.cached_inputs
 
         if capacity_difference > 0:
-            self.update(
+            return self.update(
                 state,
                 input_ids_len=capacity_difference,
                 increment_total_num_processed_tokens=False,
@@ -209,10 +169,9 @@ class DecoderKVCache:
                 state, num_additional_entries=abs(capacity_difference)
             )
             self._state = state
+            return False
         else:
-            pass
-
-        return
+            return False
 
     def _expand_capacity(
         self, state: Dict[str, Any], num_additional_entries: int, padding_value: int = 0

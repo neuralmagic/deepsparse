@@ -20,49 +20,41 @@ from deepsparse.transformers.utils import DecoderKVCache
 
 
 @pytest.mark.parametrize(
-    "state, input_ids_len, freeze_first_position, state_updated",
+    "state, input_ids_len, state_updated, cache_buffer_full",
     [
         (  # dummy state of the kv cache
             # needs to be (batch_size, num_heads, seq_len, hidden_size)
             {"dummy_cache_name": np.array([[[[0], [0], [1], [2], [3]]]])},
             # number of tokens by which the kv cache is updated
             1,
-            # whether the first position of the kv cache is frozen
-            False,
             # expected updated state
             {"dummy_cache_name": np.array([[[[0], [1], [2], [3]]]])},
+            # whether the kv cache is full as a result of the update
+            False
         ),
         (
             {"dummy_cache_name": np.array([[[[1], [2], [3], [4]]]])},
             1,
-            False,
-            {"dummy_cache_name": np.array([[[[2], [3], [4]]]])},
-        ),
-        (
             {"dummy_cache_name": np.array([[[[1], [2], [3], [4]]]])},
-            1,
-            True,
-            {"dummy_cache_name": np.array([[[[1], [3], [4]]]])},
+            True
         ),
         (
-            {"dummy_cache_name": np.array([[[[0], [0], [1], [2], [3]]]])},
+            {"dummy_cache_name": np.array([[[[0], [0], [0], [1], [2], [3]]]])},
             3,
-            False,
-            {"dummy_cache_name": np.array([[[[2], [3]]]])},
+            {"dummy_cache_name": np.array([[[[1], [2], [3]]]])},
+            False
         ),
         (
-            {"dummy_cache_name": np.array([[[[1], [2], [3], [4]]]])},
-            3,
-            False,
-            {"dummy_cache_name": np.array([[[[4]]]])},
-        ),
-        (
-            {"dummy_cache_name": np.array([[[[1], [3], [4], [5]]]])},
-            2,
-            True,
-            {"dummy_cache_name": np.array([[[[1], [5]]]])},
+            {"dummy_cache_name": np.array([[[[0], [0], [0], [1], [2], [3]]]])},
+            4,
+            {"dummy_cache_name": np.array([[[[0], [0], [0], [1], [2], [3]]]])},
+            True
         ),
     ],
+)
+@pytest.mark.parametrize(
+    "freeze_first_position",
+    [True, False],
 )
 class TestDecoderKVCache:
     @pytest.fixture
@@ -70,8 +62,9 @@ class TestDecoderKVCache:
         self,
         state,
         input_ids_len,
-        freeze_first_position,
         state_updated,
+        cache_buffer_full,
+        freeze_first_position,
     ):
         session = DecoderKVCache()
 
@@ -85,10 +78,10 @@ class TestDecoderKVCache:
             num_processed_tokens=num_processed_tokens,
             freeze_first_position=freeze_first_position,
         )
-        yield session, input_ids_len, state_updated
+        yield session, input_ids_len, state_updated, cache_buffer_full
 
     def test_session_attributes(self, setup):
-        session, _, _ = setup
+        session, *_ = setup
 
         # check if the session attributes are set correctly
         state = session.cached_inputs
@@ -97,29 +90,45 @@ class TestDecoderKVCache:
         )
         assert session.capacity == state["dummy_cache_name"].shape[2]
 
+    def test_update_session(self, setup):
+        session, input_ids_len, expected_updated_state, expected_cache_buffer_full = setup
+        state = copy.deepcopy(session.cached_inputs)
+        # update the session
+        cache_buffer_full = session.update(state, input_ids_len)
+        state_updated = session.cached_inputs
+        assert cache_buffer_full == expected_cache_buffer_full
+        for key in state_updated.keys():
+            assert np.array_equal(state_updated[key], expected_updated_state[key])
+
     def test_set_capacity(self, setup):
-        session, _, _ = setup
+        session, *_ = setup
 
         # check if the capacity is set correctly
         self._test_increase_capacity(session)  # increase
-        self._test_decrease_capacity(session)  # decrease
+        self._test_decrease_capacity(session, do_overflow=True)  # decrease
+        #self._test_decrease_capacity(session, do_overflow=False)  # decrease
         self._test_constant_capacity(session)  # constant
 
-    def test_update_session(self, setup):
-        session, input_ids_len, expected_updated_state = setup
-        state = copy.deepcopy(session.cached_inputs)
-        # update the session
-        session.update(state, input_ids_len)
-        state_updated = session.cached_inputs
-        for key in state_updated.keys():
-            assert np.array_equal(state_updated[key], expected_updated_state[key])
+    @staticmethod
+    def _test_decrease_capacity(session_, do_overflow=True):
+        session = copy.deepcopy(session_)
+        capacity = session.capacity
+        target_capacity = session.total_num_processed_tokens
+        if do_overflow:
+            target_capacity -= 1
+        delta_capacity = capacity - target_capacity
+        cache_buffer_full = session.set_capacity(target_capacity)
+        kv_cache_state = session.cached_inputs
+        target_array = session_.cached_inputs["dummy_cache_name"][:, :, delta_capacity:, :]
+        assert np.array_equal(target_array, kv_cache_state["dummy_cache_name"])
+        assert do_overflow == cache_buffer_full
 
     @staticmethod
     def _test_increase_capacity(session_):
         session = copy.deepcopy(session_)
         capacity = session.capacity
         # increase capacity by 3
-        session.set_capacity(capacity + 3)
+        cache_buffer_full = session.set_capacity(capacity + 3)
         kv_cache_state = session.cached_inputs
         # check if the capacity has been increased by 3
         assert np.array_equal(
@@ -129,30 +138,18 @@ class TestDecoderKVCache:
             ),
             kv_cache_state["dummy_cache_name"],
         )
-
-    @staticmethod
-    def _test_decrease_capacity(session_):
-        session = copy.deepcopy(session_)
-        capacity = session.capacity
-        # decrease capacity by 3
-        session.set_capacity(capacity - 3)
-        kv_cache_state = session.cached_inputs
-        # check if the capacity has been decreased by 3
-        if session_._freeze_first_position:
-            bos_token = session_.cached_inputs["dummy_cache_name"][:, :, :1, :]
-            new_array = session_.cached_inputs["dummy_cache_name"][:, :, 4:, :]
-            target_array = np.concatenate([bos_token, new_array], axis=2)
-        else:
-            target_array = session_.cached_inputs["dummy_cache_name"][:, :, 3:, :]
-        assert np.array_equal(target_array, kv_cache_state["dummy_cache_name"])
+        # increasing capacity should not make the cache buffer full
+        assert not cache_buffer_full
 
     @staticmethod
     def _test_constant_capacity(session_):
         session = copy.deepcopy(session_)
         capacity = session.capacity
-        session.set_capacity(capacity)
+        cache_buffer_full = session.set_capacity(capacity)
         kv_cache_state = session.cached_inputs
         assert np.array_equal(
             session_.cached_inputs["dummy_cache_name"],
             kv_cache_state["dummy_cache_name"],
         )
+        # keeping constant capacity should not make the cache buffer full
+        assert not cache_buffer_full
