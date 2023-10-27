@@ -39,12 +39,18 @@ class PrepareGeneration(Operator):
         kv_cache = inp.get("kv_cache")
         tokens = inp.get("tokens")
 
+        found = False
+        for c in context.stages_executed:
+            if c.operator.__class__.__name__ == "PrepareforSingleEngine":
+                found = True
+
         # If the number of prompt tokens is greater than what we've processed,
         # don't start generation. Should be equal when started as all prompt logits
-        # should be accounted for.
-        if len(tokens) > kv_cache.total_num_processed_tokens:
-            return False
-        return True
+        # should be accounted for and we should have updated the kv_cache for the single
+        # token engine.
+        if found and len(tokens) == kv_cache.total_num_processed_tokens:
+            return True
+        return False
 
     @staticmethod
     def set_generated_length(

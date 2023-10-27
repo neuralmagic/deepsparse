@@ -160,9 +160,9 @@ class TextGenerationPipeline(Pipeline):
             "multi_engine": "compile_logits",
             "compile_logits": [
                 "multi_engine_prefill",
+                "prep_for_generation",
                 "prepare_single_engine",
                 "autoregressive_preprocess",
-                "prep_for_generation",
             ],
             "prepare_single_engine": [
                 "prep_for_generation",
