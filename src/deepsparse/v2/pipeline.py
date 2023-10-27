@@ -27,10 +27,15 @@ __all__ = ["Pipeline"]
 class Pipeline(Operator):
     """
     Pipeline accepts a series of operators, schedulers, and a router. Calling a pipeline
-    will use the router to run through all the defined operators.
+    will use the router to run through all the defined operators. The operators should
+    be implemented using the Operator class and each implemented Operator should be
+    responsible for a functional component of the pipelines. The flow of inputs/outputs
+    between the operators and the steps in the pipeline should be defined by the router,
+    (based off of the Router class), which dicates the next operator in the pipeline.
+    Execution of the operators will be handled by the provided schedulers.
 
     :param ops: Operators to run within the pipeline. Can either be a list of operators
-    or dictionary of operators.
+        or dictionary of operators.
     :param router: A Router which dictates the next operator to call.
     :param schedulers: A list of schedulers to run operators.
 
@@ -90,7 +95,8 @@ class Pipeline(Operator):
         """
         :param return_context: if True, returns tuple of the pipeline output
             and entire context. Default False
-        :return: output of the pipeline stages ran with the router for the given input
+        :return: output of the pipeline operators ran with the router for the given
+        input
         """
         if len(args) > 1:
             raise ValueError(
@@ -119,9 +125,7 @@ class Pipeline(Operator):
 
         if router_validation is False:
             # default error message
-            stage_types = [type(stage) for stage in self.ops]
-            raise ValueError(
-                f"Invalid Router: {type(self.router)} for stages: {stage_types}"
-            )
+            op_types = [type(op) for op in self.ops]
+            raise ValueError(f"Invalid Router: {type(self.router)} for ops: {op_types}")
         elif isinstance(router_validation, str):
-            raise ValueError(f"Invalid Router for stages: {router_validation}")
+            raise ValueError(f"Invalid Router for operators: {router_validation}")

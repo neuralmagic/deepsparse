@@ -39,6 +39,12 @@ __all__ = ["ImageClassificationPostProcess"]
 
 
 class ImageClassificationPostProcess(Operator):
+    """
+    Image Classification post-processing Operator. This Operator is responsible for
+    processing outputs from the engine and returning the classification results to
+    the user, using the ImageClassifcationOutput structure.
+    """
+
     input_schema = None
     output_schema = ImageClassificationOutput
 

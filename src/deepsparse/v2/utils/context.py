@@ -13,18 +13,16 @@
 # limitations under the License.
 
 
-from typing import Callable, List, NamedTuple
-
-from deepsparse.v2.utils.types import OperatorSchema
+from typing import Any, Callable, List, NamedTuple
 
 
 __all__ = ["Context"]
 
 
-class StageInfo(NamedTuple):
+class OperatorInfo(NamedTuple):
     operator: Callable
-    input: OperatorSchema
-    output: OperatorSchema
+    input: Any
+    output: Any
 
 
 class Context:
@@ -34,9 +32,9 @@ class Context:
     """
 
     def __init__(self):
-        self.stages_executed: List[StageInfo] = []
+        self.stages_executed: List[OperatorInfo] = []
 
-    def update(self, operator: Callable, input: OperatorSchema, output: OperatorSchema):
+    def update(self, operator: Callable, input: Any, output: Any):
         self.stages_executed.append(
-            StageInfo(operator=operator, input=input, output=output)
+            OperatorInfo(operator=operator, input=input, output=output)
         )

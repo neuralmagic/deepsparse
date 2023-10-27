@@ -25,8 +25,8 @@ __all__ = ["Operator"]
 
 class Operator(ABC):
     """
-    Base operator class - an operator should be defined for each functional part of the
-    pipeline.
+    Base operator class - an operator should be defined for each aotmic, functional
+    part of the pipeline.
     """
 
     # expected structured input and output types, to be defined by child classes

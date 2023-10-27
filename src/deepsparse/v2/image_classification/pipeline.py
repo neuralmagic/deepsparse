@@ -12,11 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import logging
 from typing import Dict, Optional, Tuple, Union
 
-from deepsparse.utils import model_to_path
-from deepsparse.v2.image_classification import (
+from deepsparse.v2.image_classification.postprocess_operator import (
     ImageClassificationPostProcess,
+)
+from deepsparse.v2.image_classification.preprocess_operator import (
     ImageClassificationPreProcess,
 )
 from deepsparse.v2.operators.engine_operator import EngineOperator
@@ -25,36 +27,29 @@ from deepsparse.v2.routers.router import LinearRouter
 from deepsparse.v2.schedulers.scheduler import OperatorScheduler
 
 
+_LOGGER = logging.getLogger(__name__)
+
 __all__ = ["ImageClassificationPipeline"]
 
 
 class ImageClassificationPipeline(Pipeline):
     def __init__(
         self,
-        model_path: str,
+        engine_kwargs: Dict,
         class_names: Union[None, str, Dict[str, str]] = None,
         image_size: Optional[Tuple[int]] = None,
         top_k: int = 1,
-        engine_kwargs: Dict = None,
     ):
-        model_path = model_to_path(model_path)
-
-        if not engine_kwargs:
-            engine_kwargs = {}
-        elif engine_kwargs.get("model_path") != model_path:
-            # TODO: swap to use logger
-            print(f"Updating engine_kwargs to use {model_path}")
-
-        engine_kwargs["model_path"] = model_path
+        if not engine_kwargs.get("model_path"):
+            raise ValueError("engine_kwargs must include model_path path")
 
         preproces = ImageClassificationPreProcess(
-            model_path=model_path, image_size=image_size
+            model_path=engine_kwargs.get("model_path"), image_size=image_size
         )
+        engine = EngineOperator(**engine_kwargs)
         postprocess = ImageClassificationPostProcess(
             top_k=top_k, class_names=class_names
         )
-
-        engine = EngineOperator(**engine_kwargs)
 
         ops = [preproces, engine, postprocess]
         router = LinearRouter(end_route=len(ops))

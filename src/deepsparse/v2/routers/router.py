@@ -25,7 +25,7 @@ __all__ = ["Router", "LinearRouter"]
 class Router:
     """
     Routers dicate the next operator to run. Each Router must implement a next function,
-    which dicates the index or key of the next operator to run.
+    which dictates the index or key of the next operator to run.
 
     :param start_route: the start index or key of the router
     :param end_route: the end index or key of the router

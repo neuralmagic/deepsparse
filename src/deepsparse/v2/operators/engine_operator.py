@@ -14,9 +14,11 @@
 
 from typing import Any, Dict, List, Optional, Union
 
+from pydantic import BaseModel, Field
+
 from deepsparse import Context, Engine, MultiModelEngine, Scheduler
 from deepsparse.benchmark import ORTEngine
-from deepsparse.utils import join_engine_outputs, split_engine_inputs
+from deepsparse.utils import join_engine_outputs, model_to_path, split_engine_inputs
 from deepsparse.v2.operators import Operator
 
 
@@ -28,7 +30,18 @@ SUPPORTED_PIPELINE_ENGINES = [DEEPSPARSE_ENGINE, ORT_ENGINE]
 __all__ = ["EngineOperator"]
 
 
+class EngineOperatorInputs(BaseModel):
+    engine_inputs: List = Field(description="engine_inputs")
+
+
+class EngineOperatorOuputs(BaseModel):
+    engine_outputs: List = Field(description="engine outputs")
+
+
 class EngineOperator(Operator):
+    input_schema = EngineOperatorInputs
+    output_schema = EngineOperatorOuputs
+
     def __init__(
         self,
         model_path: str,
@@ -41,6 +54,7 @@ class EngineOperator(Operator):
         engine_context: Optional[Context] = None,
     ):
 
+        model_path = model_to_path(model_path)
         self._batch_size = batch_size
         self.engine_context = engine_context
 

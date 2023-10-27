@@ -38,6 +38,11 @@ __all__ = ["ImageClassificationPreProcess"]
 
 
 class ImageClassificationPreProcess(Operator):
+    """
+    Image Classification pre-processing operator. This Operator is expected to process
+    the user inputs and prepare them for the engine. Inputs to this Operator are
+    expected to follow the ImageClassificationInput schema.
+    """
 
     input_schema = ImageClassificationInput
     output_schema = None
