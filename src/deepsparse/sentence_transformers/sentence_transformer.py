@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import logging
-from typing import Dict, List, Tuple, Union
+from typing import Dict, List, Optional, Tuple, Union
 
 import numpy as np
 from tqdm.autonotebook import trange
@@ -28,7 +28,7 @@ logger = logging.getLogger(__name__)
 DEFAULT_MODEL_NAME = "zeroshot/bge-small-en-v1.5-quant"
 
 
-class SentenceTransformer:
+class DeepSparseSentenceTransformer:
     """
     Loads or creates a SentenceTransformer-compatible model that can be used to map
     text to embeddings.
@@ -42,6 +42,8 @@ class SentenceTransformer:
         this should be set to 512 for most models. Any text that exceeds this
         token length will be truncated.
     :param use_auth_token: HuggingFace authentication token to download private models.
+    :param buckets: Create static buckets less than max_seq_length automaticly if True,
+        manually specified if a List of lengths are passed in, or fully dynamic if False
     """
 
     def __init__(
@@ -50,16 +52,51 @@ class SentenceTransformer:
         export: bool = False,
         max_seq_length: int = 512,
         use_auth_token: Union[bool, str, None] = None,
+        buckets: Union[bool, List[int]] = True,
     ):
-
         self.model_name_or_path = model_name_or_path
-        self.model = DeepSparseModelForFeatureExtraction.from_pretrained(
-            model_name_or_path, export=export, use_auth_token=use_auth_token
-        )
-        self.model.compile(batch_size=0)
         self.tokenizer = get_preprocessor(model_name_or_path)
-
         self._max_seq_length = max_seq_length
+        # TODO: support faster bulk execution with batch size > 1
+        self._static_batch_size = 1
+
+        self.dyn_model = DeepSparseModelForFeatureExtraction.from_pretrained(
+            model_name_or_path,
+            export=export,
+            use_auth_token=use_auth_token,
+        )
+        self.dyn_model.reshape(input_shapes="[0,0]")
+        self.dyn_model.compile(batch_size=0)
+
+        if buckets:
+            # Initialize a model for each bucket
+            self.buckets = [int(self._max_seq_length / 4 * i) for i in range(1, 5)]
+            self.models = {}
+            for bucket in self.buckets:
+                self.models[
+                    bucket
+                ] = DeepSparseModelForFeatureExtraction.from_pretrained(
+                    model_name_or_path,
+                    export=export,
+                    use_auth_token=use_auth_token,
+                )
+                self.models[bucket].reshape(
+                    input_shapes=f"[{self._static_batch_size},{bucket}]"
+                )
+                self.models[bucket].compile(batch_size=self._static_batch_size)
+        else:
+            self.buckets = None
+            self.models = None
+
+    def _select_bucket(self, seq_length: int) -> int:
+        """
+        Selects the appropriate model based on the input sequence length.
+        """
+        for bucket in self.buckets:
+            if seq_length <= bucket:
+                return bucket
+        # default to the maximum if seq_length exceeds all buckets
+        return self._max_seq_length
 
     def encode(
         self,
@@ -124,7 +161,25 @@ class SentenceTransformer:
             sentences_batch = sentences_sorted[start_index : start_index + batch_size]
 
             model_inputs = self.tokenize(sentences_batch)
-            model_output = self.model(**model_inputs)
+
+            if self.buckets and batch_size == 1:
+                # Use bucketing for batch size 1
+                # Select the model based on the bucketing logic
+                # TODO: tokenize ahead of time and simply add padding
+                seq_length = len(model_inputs[0])
+                selected_bucket = self._select_bucket(seq_length)
+
+                # Tokenize using the selected bucket size
+                model_inputs = self.tokenize(
+                    sentences_batch, target_length=selected_bucket
+                )
+                model = self.models[selected_bucket]
+            else:
+                # Use dynamic shape
+                model = self.dyn_model
+
+            # Run the inference
+            model_output = model(**model_inputs)
 
             out_features = {}
             out_features["sentence_embedding"] = self.mean_pooling(
@@ -189,11 +244,31 @@ class SentenceTransformer:
         else:
             return sum([len(t) for t in text])  # Sum of length of individual strings
 
-    def tokenize(self, texts: Union[List[str], List[Dict], List[Tuple[str, str]]]):
+    def tokenize(
+        self,
+        texts: Union[List[str], List[Dict], List[Tuple[str, str]]],
+        target_length: Optional[int] = None,
+    ) -> List[torch.Tensor]:
         """
         Tokenizes the texts
         """
-        return self.tokenizer(texts, padding=True, truncation=True, return_tensors="pt")
+        if target_length:
+            # Make sure to pad the tokens to the specified length
+            return self.tokenizer(
+                texts,
+                max_length=target_length,
+                padding="max_length",
+                truncation=True,
+                return_tensors="pt",
+            )
+        else:
+            # No padding needed
+            return self.tokenizer(
+                texts,
+                truncation=True,
+                max_length=self._max_seq_length,
+                return_tensors="pt",
+            )
 
     def mean_pooling(
         self, model_output: torch.Tensor, attention_mask: torch.Tensor
@@ -214,3 +289,7 @@ class SentenceTransformer:
         return torch.sum(token_embeddings * input_mask_expanded, 1) / torch.clamp(
             input_mask_expanded.sum(1), min=1e-9
         )
+
+
+# for backwards compatibility
+SentenceTransformer = DeepSparseSentenceTransformer

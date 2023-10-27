@@ -130,7 +130,7 @@ def overwrite_transformer_onnx_model_inputs(
 
     # Save modified model
     if inplace:
-        _LOGGER.info(
+        _LOGGER.debug(
             f"Overwriting in-place the input shapes of the transformer model at {path}"
         )
         save_onnx(model, path)
