@@ -283,3 +283,8 @@ Find this project useful in your research or other communications? Please consid
   bibsource = {dblp computer science bibliography, https://dblp.org}
 }
 ```
+# All Thanks To Our Contributors
+
+<a href="https://github.com/neuralmagic/deepsparse/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=neuralmagic/deepsparse" />
+</a>
