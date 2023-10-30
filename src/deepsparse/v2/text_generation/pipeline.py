@@ -18,6 +18,7 @@ from deepsparse.transformers.utils.helpers import process_generation_config
 from deepsparse.v2.pipeline import Pipeline
 from deepsparse.v2.routers import GraphRouter
 from deepsparse.utils.onnx import default_cached_outputs
+from deepsparse.v2.pipeline import Pipeline
 from deepsparse.v2.routers import LinearRouter, TextGenerationRouter
 from deepsparse.v2.schedulers import OperatorScheduler
 from deepsparse.v2.text_generation import (
@@ -35,10 +36,11 @@ from deepsparse.v2.text_generation import (
     ProcessOutputs,
     TokenGeneratorOperator,
 )
+from deepsparse.v2.transformers.helpers import setup_transformers_pipeline
 from deepsparse.v2.utils import PipelineState
 
 
-class TextGenerationPipelineNoCache(TransformersPipeline):
+class TextGenerationPipelineNoCache(Pipeline):
     def __init__(
         self,
         model_path: str,
@@ -48,13 +50,17 @@ class TextGenerationPipelineNoCache(TransformersPipeline):
         **kwargs,
     ):
 
-        self.model_path = self.setup_onnx_file_path(
-            model_path, sequence_length, onnx_model_name
+        (
+            self.model_path,
+            self.config,
+            self.tokenizer,
+            engine_kwargs,
+        ) = setup_transformers_pipeline(
+            model_path,
+            sequence_length,
+            onnx_model_name=onnx_model_name,
+            engine_kwargs=engine_kwargs,
         )
-        if not engine_kwargs:
-            engine_kwargs = {}
-        engine_kwargs["model_path"] = self.model_path
-
         self.verify_no_kv_cache_present()
 
         # TODO: Setup the operators of this pipeline
@@ -102,15 +108,17 @@ class TextGenerationPipeline(TransformersPipeline):
         engine_kwargs: Optional[Dict] = None,
         **kwargs,
     ):
+        (
+            self.model_path,
+            self.config,
+            self.tokenizer,
+            engine_kwargs,
+        ) = setup_transformers_pipeline(
+            model_path, sequence_length, engine_kwargs=engine_kwargs
+        )
 
         pipeline_state = PipelineState()
         pipeline_state_vals = {}
-        engine_kwargs = engine_kwargs or {}
-
-        self.model_path = self.setup_onnx_file_path(model_path, sequence_length)
-        if not engine_kwargs:
-            engine_kwargs = {}
-        engine_kwargs["model_path"] = self.model_path
 
         if internal_kv_cache and engine_kwargs.get("engine_type") == "onnxruntime":
             internal_kv_cache = False
