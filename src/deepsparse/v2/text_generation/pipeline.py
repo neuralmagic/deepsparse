@@ -12,11 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Dict
+from typing import Any, Dict, Optional
 
 from deepsparse.transformers.utils.helpers import process_generation_config
 from deepsparse.v2.pipeline import Pipeline
 from deepsparse.v2.routers import GraphRouter
+from deepsparse.utils.onnx import default_cached_outputs
+from deepsparse.v2.routers import LinearRouter, TextGenerationRouter
 from deepsparse.v2.schedulers import OperatorScheduler
 from deepsparse.v2.text_generation import (
     AutoRegressiveOperatorPreprocess,
@@ -36,7 +38,59 @@ from deepsparse.v2.text_generation import (
 from deepsparse.v2.utils import PipelineState
 
 
-class TextGenerationPipeline(Pipeline):
+class TextGenerationPipelineNoCache(TransformersPipeline):
+    def __init__(
+        self,
+        model_path: str,
+        sequence_length: int = 1024,
+        engine_kwargs: Optional[Dict] = None,
+        onnx_model_name: Optional[str] = None,
+        **kwargs,
+    ):
+
+        self.model_path = self.setup_onnx_file_path(
+            model_path, sequence_length, onnx_model_name
+        )
+        if not engine_kwargs:
+            engine_kwargs = {}
+        engine_kwargs["model_path"] = self.model_path
+
+        self.verify_no_kv_cache_present()
+
+        # TODO: Setup the operators of this pipeline
+        ops = []
+        router = LinearRouter(route=ops)
+        scheduler = [OperatorScheduler()]
+        super().__init__(
+            **kwargs,
+            ops=ops,
+            router=router,
+            schedulers=scheduler,
+        )
+
+    def run(self, inp: Any, **kwargs):
+        # we need to set the fixed_sequences_length flag to True
+        # for the non-kv cache pipeline
+        inp.update(dict(fixed_sequences_length=True))
+        return super().run(inp, **kwargs)
+
+    def verify_no_kv_cache_present(self) -> bool:
+        """
+        Verifies that the ONNX model does not have
+        KV cache inputs/outputs present.
+
+        :return: True if compatible, False otherwise
+        """
+        is_kv_cache_present = any(default_cached_outputs(self.model_path))
+        if is_kv_cache_present:
+            raise ValueError(
+                f"The model: {self.model_path} has KV cache inputs/outputs present. "
+                "Please use the TextGenerationPipeline instead."
+            )
+        return not is_kv_cache_present
+
+
+class TextGenerationPipeline(TransformersPipeline):
     def __init__(
         self,
         model_path: str,
@@ -45,22 +99,18 @@ class TextGenerationPipeline(Pipeline):
         internal_kv_cache: bool = True,
         force_max_tokens: bool = False,
         generation_config=None,
-        engine_kwargs: Dict = None,
+        engine_kwargs: Optional[Dict] = None,
+        **kwargs,
     ):
 
         pipeline_state = PipelineState()
         pipeline_state_vals = {}
+        engine_kwargs = engine_kwargs or {}
 
-        # TODO: The code below will be replaced with a transformers set-up Operator.
-        self.tokenizer = None
-        model_path = self.setup_onnx_file_path(model_path, sequence_length)
-        self.tokenizer.padding_side = "left"
-        if not self.tokenizer.pad_token:
-            self.tokenizer.pad_token = self.tokenizer.eos_token
-
+        self.model_path = self.setup_onnx_file_path(model_path, sequence_length)
         if not engine_kwargs:
             engine_kwargs = {}
-        engine_kwargs["model_path"] = model_path
+        engine_kwargs["model_path"] = self.model_path
 
         if internal_kv_cache and engine_kwargs.get("engine_type") == "onnxruntime":
             internal_kv_cache = False
@@ -80,7 +130,7 @@ class TextGenerationPipeline(Pipeline):
         )
 
         # NOTE: Currently using pipeline state. Can swap to simply pass in the
-        # attributes to the specific Operator that neeed them, as class attributes.
+        # attributes to the specific Operator that need them, as class attributes.
         pipeline_state_vals[
             "onnx_input_names_no_cache"
         ] = single_engine_operator.onnx_input_names_no_cache
@@ -178,47 +228,8 @@ class TextGenerationPipeline(Pipeline):
         )
         scheduler = [OperatorScheduler()]
         super().__init__(
-            ops=ops, router=router, schedulers=scheduler, pipeline_state=pipeline_state
+            ops=ops,
+            router=router,
+            schedulers=scheduler,
+            **kwargs,
         )
-
-    # TODO: Move to be part of a generic transformers set-up Operator.
-    def setup_onnx_file_path(self, model_path, sequence_length) -> str:
-        import logging
-
-        import transformers
-        from transformers import AutoTokenizer
-
-        from deepsparse.transformers.helpers import get_deployment_path
-
-        """
-        Parses ONNX model from the `model_path` provided. It additionally
-        creates config and tokenizer objects from the `deployment path`,
-        derived from the `model_path` provided.
-
-        :return: file path to the processed ONNX file for the engine to compile
-        """
-        deployment_path, onnx_path = get_deployment_path(model_path)
-
-        hf_logger = logging.getLogger("transformers")
-        hf_logger_level = hf_logger.level
-        hf_logger.setLevel(logging.ERROR)
-        self.config = transformers.PretrainedConfig.from_pretrained(
-            deployment_path,
-            finetuning_task=self.task if hasattr(self, "task") else None,
-        )
-        hf_logger.setLevel(hf_logger_level)
-
-        self._trust_remote_code = False
-        self.tokenizer = AutoTokenizer.from_pretrained(
-            deployment_path,
-            trust_remote_code=self._trust_remote_code,
-            model_max_length=sequence_length,
-        )
-
-        if not self.config or not self.tokenizer:
-            raise RuntimeError(
-                "Invalid config or tokenizer provided. Please provide "
-                "paths to the files or ensure they exist in the `model_path` provided. "
-                "See `tokenizer` and `config` arguments for details."
-            )
-        return onnx_path

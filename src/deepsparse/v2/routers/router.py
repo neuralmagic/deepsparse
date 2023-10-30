@@ -73,12 +73,12 @@ class Router:
 
 class LinearRouter(Router):
     """
-    LinearRouterruns a list of Operators in sequential order. end_route should
+    LinearRouter runs a list of Operators in sequential order. end_route should
     be the length of the list and the start_route should be the start index.
     """
 
-    def __init__(self, end_route: int, start_route: int = 0):
-        super().__init__(end_route=end_route, start_route=start_route)
+    def __init__(self, route: List[Operator]):
+        super().__init__(end_route=len(route), start_route=0, route=route)
 
     def next(
         self, past: int, ops: Optional[List[Operator]] = None, inp: Optional[Any] = None
