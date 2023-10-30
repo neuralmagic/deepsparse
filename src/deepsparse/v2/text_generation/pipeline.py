@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Dict
+from typing import Dict, Optional
 
 from deepsparse.transformers.utils.helpers import process_generation_config
 from deepsparse.v2.pipeline import Pipeline
@@ -46,7 +46,7 @@ class TextGenerationPipeline(Pipeline):
         internal_kv_cache: bool = True,
         force_max_tokens: bool = False,
         generation_config=None,
-        engine_kwargs: Dict = None,
+        **engine_kwargs,
     ):
 
         pipeline_state = PipelineState()
