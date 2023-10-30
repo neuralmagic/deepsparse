@@ -34,7 +34,7 @@ class AutoRegressiveOperatorPreprocess(Operator):
         self.sequence_length = sequence_length
         self.prompt_sequence_length = prompt_sequence_length
 
-    def can_operate(self, inp: Any, context: Context, inference_state: InferenceState):
+    def can_operate(self, inp: Any, context: Context):
         """
         Can run this Operator if the number of tokens left to process is greater than
         0 but less than the self.promt_sequence_length. Also, thie Operator can only
@@ -43,9 +43,20 @@ class AutoRegressiveOperatorPreprocess(Operator):
         tokens = inp.get("tokens")
         kv_cache = inp.get("kv_cache")
 
-        # Check if in active generation
-        if inference_state.current_state.get("in_generation") is False:
+        found = False
+        for c in context.stages_executed:
+            if c.operator.__class__.__name__ == "PrepareGeneration":
+                found = True
+
+        if found and inp.get("in_generation"):
+            return True
+
+        if found and not inp.get("in_generation"):
             return False
+
+        # Check if in active generation
+        if not inp.get("in_generation"):
+            return True
 
         # Check if in prompt inference
         found = False
@@ -99,4 +110,5 @@ class AutoRegressiveOperatorPreprocess(Operator):
             "engine_inputs": engine_inputs,
             "kv_cache": kv_cache,
             "tokens": tokens,
+            "in_generation": inp.get("in_generation"),
         }, {}

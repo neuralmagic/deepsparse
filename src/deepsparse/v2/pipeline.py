@@ -95,9 +95,7 @@ class Pipeline(Operator):
                 output=operator_output,
             )
 
-            next_step = self.router.next(
-                next_step, self.ops, context, operator_output, inference_state
-            )
+            next_step = self.router.next(next_step, self.ops, context, operator_output)
             inp = operator_output
 
         return operator_output, context

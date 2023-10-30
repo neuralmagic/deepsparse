@@ -30,7 +30,7 @@ class PrepareforSingleEngine(Operator):
         self.prompt_sequence_length = prompt_sequence_length
         self.sequence_length = sequence_length
 
-    def can_operate(self, inp: Any, context: Context, inference_state: InferenceState):
+    def can_operate(self, inp: Any, context: Context):
         # Don't rerun if in autoregessive loop
         for c in context.stages_executed:
             if c.operator.__class__.__name__ == "AutoRegressiveOperatorPreprocess":

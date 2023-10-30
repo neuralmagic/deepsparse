@@ -118,9 +118,7 @@ class Operator(ABC):
         """
         raise NotImplementedError
 
-    def can_operate(
-        self, inp: Any, context: Context, inference_state: InferenceState
-    ) -> bool:
+    def can_operate(self, inp: Any, context: Context) -> bool:
         """
         Whether or not the given operator can run, based on input, context, or state
         """

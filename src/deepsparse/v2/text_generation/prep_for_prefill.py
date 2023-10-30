@@ -56,4 +56,8 @@ class PrepareforPrefill(Operator):
                 "output_names": output_names,
             },
         )
-        return {"tokens": inp.get("tokens"), "kv_cache": kv_cache.kv_cache}, {}
+        return {
+            "tokens": inp.get("tokens"),
+            "kv_cache": kv_cache.kv_cache,
+            "in_generation": False,
+        }, {}

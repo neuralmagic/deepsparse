@@ -17,7 +17,7 @@ from abc import abstractmethod
 from typing import Any, Dict, List, Optional, Union
 
 from deepsparse.v2.operators import Operator
-from deepsparse.v2.utils import Context, InferenceState
+from deepsparse.v2.utils import Context
 
 
 __all__ = ["Router", "LinearRouter", "TextGenerationRouter"]
@@ -48,8 +48,8 @@ class Router:
         self,
         past: Union[str, int],
         ops: Union[List[Operator], Dict[str, Operator]],
+        context: Optional[Context],
         inp: Optional[Any],
-        inference_state: Optional[InferenceState],
     ) -> Union[str, int]:
         """
         Determines the index or dictionary key for the next operator which should run.
@@ -57,8 +57,8 @@ class Router:
         :param past: the previous index or key. This should uniquely determine the next
         operator to run
         :param ops: list or dictionary of operators
+        :param context: Context for the given pipeline
         :param inp: operator input
-        :param inference_state: state variables stores in InferenceState
         :returns: the next index or dictionary key for the next operator to run
         """
         raise NotImplementedError
@@ -83,8 +83,8 @@ class LinearRouter(Router):
         self,
         past: int,
         ops: List[Operator],
+        context: Optional[Context],
         inp: Optional[Any],
-        inference_state: Optional[InferenceState],
     ) -> int:
         new_index = past + 1
         if new_index < self.END_ROUTE:
@@ -143,7 +143,6 @@ class TextGenerationRouter(Router):
         ops: Dict[str, Operator],
         context: Context,
         inp: Any,
-        inference_state: InferenceState,
     ) -> int:
         node = past
         if isinstance(self.route[node], str):
@@ -151,7 +150,7 @@ class TextGenerationRouter(Router):
         else:
             for neighbour_node in self.route[node]:
                 neighbour_node_op = ops[neighbour_node]
-                if neighbour_node_op.can_operate(inp, context, inference_state):
+                if neighbour_node_op.can_operate(inp, context):
                     return neighbour_node
             raise ValueError("Cannot operate on any of the nodes")
 

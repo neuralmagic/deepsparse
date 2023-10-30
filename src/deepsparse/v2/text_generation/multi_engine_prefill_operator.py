@@ -50,7 +50,7 @@ class MultiEnginePrefill(Operator):
             OnnxInputNames.POSITIONS.value: self._case_positions,
         }
 
-    def can_operate(self, inp: Any, context: Context, inference_state: InferenceState):
+    def can_operate(self, inp: Any, context: Context):
         """
         Can only run if the number of prompt tokens left to process is greater than
         or equal to the self.prompt_sequence_length.
@@ -132,4 +132,5 @@ class MultiEnginePrefill(Operator):
             "engine_inputs": engine_inputs,
             "kv_cache": kv_cache,
             "tokens": tokens,
+            "in_generation": inp.get("in_generation"),
         }, {}
