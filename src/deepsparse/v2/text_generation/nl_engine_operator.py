@@ -36,6 +36,7 @@ class NlEngineInput(BaseModel):
     engine_inputs: List = Field(description="engine inputs")
     kv_cache: Any = Field(description="kv_cache object")
     tokens: List = Field(description="tokens")
+    in_generation: bool = Field(description="in_generation")
 
 
 

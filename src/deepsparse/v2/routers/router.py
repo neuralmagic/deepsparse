@@ -59,6 +59,7 @@ class Router:
         :param past: the previous index or key. This should uniquely determine the next
             operator to run
         :param ops: list or dictionary of operators
+        :param context: Context for the given pipeline
         :param inp: operator input
         :returns: the next index or dictionary key for the next operator to run
         """

@@ -35,7 +35,7 @@ class PrepareGeneration(Operator):
         self.sequence_length = sequence_length
         self.token_generator_creator = token_generator
 
-    def can_operate(self, inp: Any, context: Context, inference_state: InferenceState):
+    def can_operate(self, inp: Any, context: Context):
         kv_cache = inp.get("kv_cache")
         tokens = inp.get("tokens")
 
@@ -103,7 +103,8 @@ class PrepareGeneration(Operator):
         pipeline_state: PipelineState,
     ):
         prompt_logits = inference_state.current_state.get("prompt_logits")
-        # TODO: clean this up such that dont have to keep writing current_state everyhere
+        # TODO: clean this up such that dont have to keep writing current_state
+        # everywhere
 
         generation_config = inference_state.current_state.get("generation_config")
         include_prompt_logits = inference_state.current_state.get(
@@ -136,7 +137,6 @@ class PrepareGeneration(Operator):
         state_update = {
             "max_tokens": max_tokens,
             "length_finish_reason": length_finish_reason,
-            "in_generation": True,
             "generated_tokens": [token_generator.tokens[-1]],
             "generated_logits": [prompt_logits]
             if include_prompt_logits
@@ -145,5 +145,9 @@ class PrepareGeneration(Operator):
             "token_generator": token_generator,
         }
 
-        output = {"tokens": token_generator.tokens, "kv_cache": inp.get("kv_cache")}
+        output = {
+            "tokens": token_generator.tokens,
+            "kv_cache": inp.get("kv_cache"),
+            "in_generation": True,
+        }
         return output, state_update

@@ -47,10 +47,13 @@ class CompileGeneratedTokens(Operator):
 
         state_update = {  # TODO: check if necessary
             "finished_reason": finished_reason,
-            "in_generation": in_generation,
             "generated_tokens": generated_tokens,
             "generated_logits": generated_logits,
         }
 
-        output = {"tokens": inp.get("tokens"), "kv_cache": inp.get("kv_cache")}
+        output = {
+            "tokens": inp.get("tokens"),
+            "kv_cache": inp.get("kv_cache"),
+            "in_generation": in_generation,
+        }
         return output, state_update

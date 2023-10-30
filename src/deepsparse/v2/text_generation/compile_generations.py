@@ -33,8 +33,8 @@ class CompileGenerations(BaseModel):
 class CompileGenerations(Operator):
     output_schema = CompileGenerations
 
-    def can_operate(self, inp: Any, context: Context, inference_state: InferenceState):
-        if inference_state.current_state.get("in_generation") is False:
+    def can_operate(self, inp: Any, context: Context):
+        if not inp.get("in_generation"):
             return True
         return False
 

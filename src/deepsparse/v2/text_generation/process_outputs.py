@@ -88,6 +88,4 @@ class ProcessOutputs(Operator):
             generations=generations,
         )
 
-        for k, _ in inference_state.current_state.items():
-            print(k)
         return outputs, {}

@@ -27,6 +27,19 @@ class CompilePromptLogits(Operator):
     take prompt logits from each iteration run and update the inference state.
     """
 
+    def can_operate(self, inp: Any, context: Context):
+        if inp.get("in_generation"):
+            return False
+
+        found = False
+        for c in context.stages_executed:
+            if c.operator.__class__.__name__ == "PrepareGeneration":
+                return True
+
+        if not found:
+            return True
+        return False
+        
     def run(self, logits, inference_state: InferenceState, **kwargs):
         logit_type = "prompt_logits"
 

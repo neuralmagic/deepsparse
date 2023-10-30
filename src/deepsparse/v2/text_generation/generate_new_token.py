@@ -42,8 +42,8 @@ class GenerateNewTokenOperator(Operator):
         )
         return decoded_token in stop_tokens
 
-    def can_operate(self, inp: Any, context: Context, inference_state: InferenceState):
-        if inference_state.current_state.get("in_generation") is True:
+    def can_operate(self, inp: Any, context: Context):
+        if inp.get("in_generation"):
             return True
         return False
 

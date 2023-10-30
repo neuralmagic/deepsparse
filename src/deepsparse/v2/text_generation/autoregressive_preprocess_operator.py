@@ -50,6 +50,22 @@ class AutoRegressiveOperatorPreprocess(Operator):
         tokens = inp.get("tokens")
         kv_cache = inp.get("kv_cache")
 
+        if found and inp.get("in_generation"):
+            return True
+
+        if found and not inp.get("in_generation"):
+            return False
+
+        # Check if in active generation
+        if not inp.get("in_generation"):
+            return True
+
+        # Check if in prompt inference
+        found = False
+        for c in context.stages_executed:
+            if c.operator.__class__.__name__ == "PrepareforSingleEngine":
+                found = True
+
         remaining_tokens = len(tokens) - kv_cache.total_num_processed_tokens
         if remaining_tokens > 0 and remaining_tokens < self.prompt_sequence_length:
             return True
@@ -91,4 +107,5 @@ class AutoRegressiveOperatorPreprocess(Operator):
             "engine_inputs": engine_inputs,
             "kv_cache": kv_cache,
             "tokens": tokens,
+            "in_generation": inp.get("in_generation"),
         }
