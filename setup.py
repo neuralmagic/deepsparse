@@ -147,7 +147,7 @@ _openpifpaf_integration_deps = [
 _yolov8_integration_deps = _yolo_integration_deps + ["ultralytics==8.0.124"]
 _transformers_integration_deps = [
     "transformers<4.35",
-    "datasets<2.13",
+    "datasets<=2.14.6",
     "scikit-learn",
     "seqeval",
 ]
