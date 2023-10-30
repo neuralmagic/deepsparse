@@ -12,21 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Dict
+from typing import Any, Dict, Optional
 
 from deepsparse.transformers.utils.helpers import process_generation_config
-from deepsparse.v2.pipeline import Pipeline
-from deepsparse.v2.routers import TextGenerationRouter
+from deepsparse.v2.routers import LinearRouter, TextGenerationRouter
 from deepsparse.v2.schedulers import OperatorScheduler
 from deepsparse.v2.text_generation import (
     AutoRegressiveOperatorPreprocess,
     CompileGeneratedTokens,
     CompileGenerations,
     CompilePromptLogits,
+    ComputeEngineInputs,
     GenerateNewTokenOperator,
     KVCacheCreator,
-    MultiEnginePrefill,
     NLEngineOperator,
+    NLEngineOperatorNoCache,
     PrepareforPrefill,
     PrepareforSingleEngine,
     PrepareGeneration,
@@ -34,10 +34,69 @@ from deepsparse.v2.text_generation import (
     ProcessOutputs,
     TokenGeneratorOperator,
 )
+from deepsparse.v2.transformers.pipeline import TransformersPipeline
 from deepsparse.v2.utils import PipelineState
 
 
-class TextGenerationPipeline(Pipeline):
+__all__ = [
+    "TextGenerationPipeline",
+    "TextGenerationPipelineNoCache",
+]
+
+
+class TextGenerationPipelineNoCache(TransformersPipeline):
+    def __init__(
+        self,
+        model_path: str,
+        sequence_length: int = 32,
+        engine_kwargs: Optional[Dict] = None,
+        onnx_model_name: Optional[str] = None,
+    ):
+
+        model_path = self.setup_onnx_file_path(
+            model_path, sequence_length, onnx_model_name=onnx_model_name
+        )
+        self.check_if_compatible(model_path)
+        self.tokenizer.padding_side = "left"
+        if not self.tokenizer.pad_token:
+            self.tokenizer.pad_token = self.tokenizer.eos_token
+
+        if engine_kwargs is None:
+            engine_kwargs = {}
+        engine_kwargs["model_path"] = model_path
+
+        token_generator = TokenGeneratorOperator()
+
+        # Setup the operators of this pipeline
+        ops = [
+            ProcessInputsTextGeneration(
+                sequence_length=sequence_length, tokenizer=self.tokenizer
+            ),
+            NLEngineOperatorNoCache(sequence_length=sequence_length, **engine_kwargs),
+            ProcessOutputs(tokenizer=self.tokenizer),
+        ]
+
+        router = LinearRouter(route=ops)
+        scheduler = [OperatorScheduler()]
+        super().__init__(ops=ops, router=router, schedulers=scheduler)
+
+    def run(self, inp: Any, **kwargs):
+        inp.update(dict(fixed_sequences_length=True))
+        out, _ = super().run(inp, **kwargs)
+        return out, {}
+
+    @staticmethod
+    def check_if_compatible(model_path: str) -> bool:
+        """
+        Check if the model is compatible with the pipeline
+
+        :param model_path: path to the model
+        :return: True if compatible, False otherwise
+        """
+        pass
+
+
+class TextGenerationPipeline(TransformersPipeline):
     def __init__(
         self,
         model_path: str,
@@ -53,7 +112,6 @@ class TextGenerationPipeline(Pipeline):
         pipeline_state_vals = {}
 
         # TODO: The code below will be replaced with a transformers set-up Operator.
-        self.tokenizer = None
         model_path = self.setup_onnx_file_path(model_path, sequence_length)
         self.tokenizer.padding_side = "left"
         if not self.tokenizer.pad_token:
@@ -81,7 +139,7 @@ class TextGenerationPipeline(Pipeline):
         )
 
         # NOTE: Currently using pipeline state. Can swap to simply pass in the
-        # attributes to the specific Operator that neeed them, as class attributes.
+        # attributes to the specific Operator that need them, as class attributes.
         pipeline_state_vals[
             "onnx_input_names_no_cache"
         ] = multi_engine_operator.onnx_input_names_no_cache
@@ -123,11 +181,11 @@ class TextGenerationPipeline(Pipeline):
             sequence_length=sequence_length,
             prompt_sequence_length=prompt_sequence_length,
         )
-        token_generater = TokenGeneratorOperator()
+        token_generator = TokenGeneratorOperator()
         prep_for_generation = PrepareGeneration(
             sequence_length=sequence_length,
             prompt_sequence_length=prompt_sequence_length,
-            token_generator=token_generater,
+            token_generator=token_generator,
         )
         generate_new_token = GenerateNewTokenOperator(
             tokenizer=self.tokenizer, force_max_tokens=force_max_tokens
@@ -190,45 +248,3 @@ class TextGenerationPipeline(Pipeline):
         super().__init__(
             ops=ops, router=router, schedulers=scheduler, pipeline_state=pipeline_state
         )
-
-    # TODO: Move to be part of a generic transformers set-up Operator.
-    def setup_onnx_file_path(self, model_path, sequence_length) -> str:
-        import logging
-
-        import transformers
-        from transformers import AutoTokenizer
-
-        from deepsparse.transformers.helpers import get_deployment_path
-
-        """
-        Parses ONNX model from the `model_path` provided. It additionally
-        creates config and tokenizer objects from the `deployment path`,
-        derived from the `model_path` provided.
-
-        :return: file path to the processed ONNX file for the engine to compile
-        """
-        deployment_path, onnx_path = get_deployment_path(model_path)
-
-        hf_logger = logging.getLogger("transformers")
-        hf_logger_level = hf_logger.level
-        hf_logger.setLevel(logging.ERROR)
-        self.config = transformers.PretrainedConfig.from_pretrained(
-            deployment_path,
-            finetuning_task=self.task if hasattr(self, "task") else None,
-        )
-        hf_logger.setLevel(hf_logger_level)
-
-        self._trust_remote_code = False
-        self.tokenizer = AutoTokenizer.from_pretrained(
-            deployment_path,
-            trust_remote_code=self._trust_remote_code,
-            model_max_length=sequence_length,
-        )
-
-        if not self.config or not self.tokenizer:
-            raise RuntimeError(
-                "Invalid config or tokenizer provided. Please provide "
-                "paths to the files or ensure they exist in the `model_path` provided. "
-                "See `tokenizer` and `config` arguments for details."
-            )
-        return onnx_path

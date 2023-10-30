@@ -14,7 +14,7 @@
 import logging
 import pathlib
 import uuid
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 import numpy
 from transformers import AutoTokenizer, GenerationConfig
@@ -33,6 +33,7 @@ __all__ = [
     "override_config",
     "process_generation_config",
     "validate_session_ids",
+    "compute_engine_inputs",
 ]
 
 _LOGGER = logging.getLogger(__name__)
@@ -375,3 +376,62 @@ def create_causal_mask(
     causal_mask[:, :, :, :num_zeros] = 0
 
     return causal_mask
+
+
+def get_compute_func(input_name: str) -> Callable:
+    return {
+        "input_ids": compute_input_ids,
+        "attention_mask": compute_attention_mask,
+        "positions": compute_positions,
+    }.get(input_name)
+
+
+def compute_engine_inputs(onnx_input_names, **kwargs):
+    engine_inputs = []
+    for input_name in onnx_input_names:
+        compute_func = get_compute_func(input_name)
+        if compute_func is None:
+            logging.debug(f"")
+        if input_name == "causal_mask":
+            continue
+        if input_name.startswith("past_key_values"):
+            continue
+        engine_inputs.append(compute_func(**kwargs))
+
+    if "causal_mask" in onnx_input_names:
+        input_ids, attention_mask, *_ = engine_inputs
+        print(input_ids)
+        print(attention_mask)
+        engine_inputs.append(create_causal_mask(input_ids, attention_mask))
+    return engine_inputs
+
+
+def compute_input_ids(token_batch, **kwargs):
+    return numpy.array([token_batch])
+
+
+def compute_attention_mask(
+    sequence_length: int,
+    prompt_sequence_length: int,
+    num_total_processed_tokens: int,
+    **kwargs,
+):
+    attention_mask = numpy.zeros((1, sequence_length), dtype=numpy.int64)
+    num_attention_entries_to_unmask = min(
+        num_total_processed_tokens + prompt_sequence_length, sequence_length
+    )
+    attention_mask[:, -num_attention_entries_to_unmask:] = 1
+    return attention_mask
+
+
+def compute_positions(
+    num_total_processed_tokens: int, prompt_sequence_length: int, **kwargs
+):
+    return (
+        numpy.arange(
+            num_total_processed_tokens,
+            num_total_processed_tokens + prompt_sequence_length,
+        )
+        .reshape(1, -1)
+        .astype(numpy.int64)
+    )

@@ -41,14 +41,14 @@ class Pipeline(Operator):
         ops: Union[Dict[str, Operator], List[Operator]],
         router: Router,
         schedulers: List[OperatorScheduler],
-        pipeline_state: PipelineState,
+        pipeline_state: Optional[PipelineState] = None,
     ):
 
         self.ops = ops
         self.router = router
         self.schedulers = schedulers
         self.validate()
-        self.pipeline_state = pipeline_state
+        self.pipeline_state = pipeline_state or PipelineState()
 
         # SchedulerGroup handles running all schedulers in order of priority
         self._scheduler_group = SchedulerGroup(self.schedulers)
@@ -134,7 +134,7 @@ class Pipeline(Operator):
         if return_context:
             return pipeline_output, context
 
-        return pipeline_output
+        return pipeline_output, {}
 
     def validate(self):
         """

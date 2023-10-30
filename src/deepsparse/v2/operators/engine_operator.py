@@ -40,7 +40,7 @@ class EngineOperator(Operator):
         scheduler: Scheduler = None,
         input_shapes: List[List[int]] = None,
         engine_context: Optional[EngineContext] = None,
-        engine_kwargs: Dict = None,
+        engine_kwargs: Optional[Dict] = None,
     ):
         self._batch_size = 1
         self.engine_context = engine_context
@@ -63,7 +63,7 @@ class EngineOperator(Operator):
             engine_args["scheduler"] = scheduler
             engine_args["num_streams"] = num_streams
 
-        engine_args.update(engine_kwargs)
+        engine_args.update(engine_kwargs if engine_kwargs is not None else {})
 
         self.engine = self._create_engine(model_path, engine_type, engine_args)
 

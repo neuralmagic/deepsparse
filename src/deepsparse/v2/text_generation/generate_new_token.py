@@ -25,7 +25,9 @@ __all__ = ["GenerateNewTokenOperator"]
 
 class GenerateNewTokenOperator(Operator):
     def __init__(
-        self, tokenizer: transformers.PreTrainedTokenizerBase, force_max_tokens: bool
+        self,
+        tokenizer: transformers.PreTrainedTokenizerBase,
+        force_max_tokens: bool = False,
     ):
         self.force_max_tokens = force_max_tokens
         self.tokenizer = tokenizer

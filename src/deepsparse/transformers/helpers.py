@@ -28,7 +28,7 @@ import onnx
 from onnx import ModelProto
 
 from deepsparse.log import get_main_logger
-from deepsparse.utils.onnx import _MODEL_DIR_ONNX_NAME, truncate_onnx_model
+from deepsparse.utils.onnx import MODEL_ONNX_NAME, truncate_onnx_model
 from sparsezoo import Model
 from sparsezoo.utils import save_onnx
 
@@ -44,7 +44,9 @@ __all__ = [
 _LOGGER = get_main_logger()
 
 
-def get_deployment_path(model_path: str) -> Tuple[str, str]:
+def get_deployment_path(
+    model_path: str, onnx_model_name: Optional[str] = None
+) -> Tuple[str, str]:
     """
     Returns the path to the deployment directory
     for the given model path and the path to the mandatory
@@ -56,6 +58,7 @@ def get_deployment_path(model_path: str) -> Tuple[str, str]:
     :return: path to the deployment directory and path to the ONNX file inside
         the deployment directory
     """
+    onnx_model_name = onnx_model_name or MODEL_ONNX_NAME
     if os.path.isfile(model_path):
         # return the parent directory of the ONNX file
         return os.path.dirname(model_path), model_path
@@ -63,13 +66,13 @@ def get_deployment_path(model_path: str) -> Tuple[str, str]:
     if os.path.isdir(model_path):
         model_files = os.listdir(model_path)
 
-        if _MODEL_DIR_ONNX_NAME not in model_files:
+        if onnx_model_name not in model_files:
             raise ValueError(
-                f"{_MODEL_DIR_ONNX_NAME} not found in transformers model directory "
+                f"{onnx_model_name} not found in transformers model directory "
                 f"{model_path}. Be sure that an export of the model is written to "
-                f"{os.path.join(model_path, _MODEL_DIR_ONNX_NAME)}"
+                f"{os.path.join(model_path, onnx_model_name)}"
             )
-        return model_path, os.path.join(model_path, _MODEL_DIR_ONNX_NAME)
+        return model_path, os.path.join(model_path, onnx_model_name)
 
     elif model_path.startswith("zoo:"):
         zoo_model = Model(model_path)
@@ -77,15 +80,15 @@ def get_deployment_path(model_path: str) -> Tuple[str, str]:
         for deployment_file in zoo_model.deployment.files:
             # force download of any missing files in deployment directory
             deployment_file.path
-        return deployment_path, os.path.join(deployment_path, _MODEL_DIR_ONNX_NAME)
+        return deployment_path, os.path.join(deployment_path, onnx_model_name)
     elif model_path.startswith("hf:"):
         from huggingface_hub import snapshot_download
 
         deployment_path = snapshot_download(repo_id=model_path.replace("hf:", "", 1))
-        onnx_path = os.path.join(deployment_path, _MODEL_DIR_ONNX_NAME)
+        onnx_path = os.path.join(deployment_path, onnx_model_name)
         if not os.path.isfile(onnx_path):
             raise ValueError(
-                f"{_MODEL_DIR_ONNX_NAME} not found in transformers model directory "
+                f"{onnx_model_name} not found in transformers model directory "
                 f"{deployment_path}. Be sure that an export of the model is written to "
                 f"{onnx_path}"
             )

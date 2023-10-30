@@ -55,12 +55,12 @@ class ProcessInputsTextGeneration(Operator):
     def __init__(
         self,
         tokenizer: transformers.PreTrainedTokenizerBase,
-        generation_config: Union[
-            str, pathlib.Path, Dict, transformers.GenerationConfig
-        ],
         sequence_length: int,
+        generation_config: Union[
+            str, pathlib.Path, Dict, transformers.GenerationConfig, None
+        ] = None,
     ):
-        self.generation_config = generation_config
+        self.generation_config = generation_config or {}
         self.tokenizer = tokenizer
         self.sequence_length = sequence_length
 
@@ -125,5 +125,9 @@ class ProcessInputsTextGeneration(Operator):
         # this will allow us to split/join more easily when processing multiple prompts
         # in parallel
         tokens = input_ids[attention_mask.nonzero()].tolist()
-        print("tokens", tokens)
-        return {"tokens": tokens}, inference_state_update
+
+        return {
+            "tokens": tokens,
+            "input_ids": input_ids,
+            "attention_mask": attention_mask,
+        }, inference_state_update

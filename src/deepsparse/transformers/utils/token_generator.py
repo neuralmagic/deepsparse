@@ -12,11 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import List
+from typing import List, Optional
 
 import numpy
 
 from deepsparse.utils.data import numpy_softmax
+
+
+_MIN_FLOAT = numpy.finfo(numpy.float32).min
 
 
 class TokenGenerator:
@@ -29,7 +32,7 @@ class TokenGenerator:
     def __init__(
         self,
         logits_shape: int,
-        tokens: List[int] = [],
+        tokens: Optional[List[int]] = None,
         deterministic: bool = True,
         sampling_temperature: float = 1.0,
         top_k: int = 0,
@@ -61,7 +64,7 @@ class TokenGenerator:
         self.top_p = top_p
         self.frequency_penalty = frequency_penalty
         self.presence_penalty = presence_penalty
-        self.tokens = tokens
+        self.tokens = [] if tokens is None else tokens
 
         self._initialize_token_frequencies()
 
@@ -115,7 +118,7 @@ class TokenGenerator:
 
     # from https://gist.github.com/thomwolf/1a5a29f6962089e871b94cbd09daf31
     def apply_top_k(
-        self, logits: numpy.ndarray, filter_value=-float("Inf")
+        self, logits: numpy.ndarray, filter_value=_MIN_FLOAT
     ) -> numpy.ndarray:
         """
         Keep top_k logits based on its value. All other values
@@ -134,7 +137,7 @@ class TokenGenerator:
     def apply_top_p(
         self,
         logits: numpy.ndarray,
-        filter_value=-float("Inf"),
+        filter_value=_MIN_FLOAT,
         min_tokens_to_keep: int = 1,
     ) -> numpy.ndarray:
         """
@@ -148,15 +151,16 @@ class TokenGenerator:
         logits_shape = logits.shape
         logits = logits.reshape(logits.shape[-1])
 
-        sorted_indices = numpy.argsort(logits)[::-1]
+        sorted_indices = numpy.argsort(logits)
         sorted_logits = logits[sorted_indices]
         logit_cumulative_probs = numpy.cumsum(numpy_softmax(sorted_logits))
 
         # Remove tokens with cumulative top_p above the threshold
         # (token with 0 are kept)
-        sorted_indices_to_remove = logit_cumulative_probs > self.top_p
+        sorted_indices_to_remove = logit_cumulative_probs <= (1 - self.top_p)
         # Keep at least min_tokens_to_keep
-        sorted_indices_to_remove[..., -min_tokens_to_keep:] = 0
+        if min_tokens_to_keep:
+            sorted_indices_to_remove[..., -min_tokens_to_keep:] = 0
 
         # scatter sorted tensors to original indexing
         indices_to_remove = sorted_indices[sorted_indices_to_remove]
@@ -168,5 +172,5 @@ class TokenGenerator:
 
     def _initialize_token_frequencies(self):
         unique_tokens, frequencies = numpy.unique(self.tokens, return_counts=True)
-        for token, frequnecies in zip(unique_tokens, frequencies):
-            self.token_frequencies[token] += frequnecies
+        for token, freq in zip(unique_tokens, frequencies):
+            self.token_frequencies[token] += freq

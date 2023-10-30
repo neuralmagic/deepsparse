@@ -27,8 +27,8 @@ __all__ = ["TokenGeneratorOperator"]
 class TokenGeneratorOperatorInput(BaseModel):
     logits_shape: Any = Field(description="shape")
     tokens: Any = Field(description="tokens", default=[])
-    deterministic: bool = Field(description="deterministic")
-    sampling_temperature: int = Field(description="sampling temperature")
+    deterministic: bool = Field(description="deterministic", default=False)
+    sampling_temperature: int = Field(description="sampling temperature", default=1)
     kwargs: dict = Field(description="kwargs", default={})
 
 
@@ -45,8 +45,8 @@ class TokenGeneratorOperator(Operator):
         token_generator = TokenGenerator(
             logits_shape=inp.logits_shape,
             deterministic=inp.deterministic,
-            tokens=inp.tokens,
             sampling_temperature=inp.sampling_temperature,
             **inp.kwargs,
         )
+
         return {"token_generator": token_generator}, {}

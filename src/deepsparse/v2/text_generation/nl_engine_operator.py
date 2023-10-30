@@ -16,8 +16,12 @@ import copy
 import os
 from typing import Any, List, Optional, Tuple
 
+import numpy
 from pydantic import BaseModel, Field
 
+from deepsparse.transformers.helpers import overwrite_transformer_onnx_model_inputs
+from deepsparse.transformers.pipelines.text_generation import FinishReason
+from deepsparse.transformers.utils.token_generator import TokenGenerator
 from deepsparse.utils.onnx import (
     CACHE_INPUT_PREFIX,
     overwrite_onnx_model_inputs_for_kv_cache_models,
@@ -26,13 +30,57 @@ from deepsparse.v2.operators.engine_operator import DEEPSPARSE_ENGINE, EngineOpe
 from deepsparse.v2.utils import Context, InferenceState, PipelineState
 
 
-__all__ = ["NLEngineOperator"]
+__all__ = ["NLEngineOperator", "NLEngineOperatorNoCache"]
 
 
 class NlEngineInput(BaseModel):
     engine_inputs: List = Field(description="engine inputs")
     kv_cache: Any = Field(description="kv_cache object")
     tokens: List = Field(description="tokens")
+
+
+class NLEngineOperatorNoCache(EngineOperator):
+    def __init__(self, sequence_length, **kwargs):
+        model_path, *_ = overwrite_transformer_onnx_model_inputs(
+            path=kwargs.get("model_path"),
+            max_length=sequence_length,
+            batch_size=kwargs.get("batch_size", 1),
+        )
+        super().__init__(**kwargs)
+
+    def run(
+        self,
+        inp: NlEngineInput,
+        context: Optional[Context],
+        pipeline_state: PipelineState,
+        inference_state: InferenceState,
+    ) -> Any:
+
+        input_ids = inp.get("input_ids")
+        attention_mask = inp.get("attention_mask")
+
+        logits, _ = super().run(
+            [input_ids, attention_mask],
+            context=context,
+            pipeline_state=pipeline_state,
+            inference_state=inference_state,
+        )
+        logits = numpy.concatenate(logits)
+
+        token_generator = TokenGenerator(
+            logits_shape=logits[-1].shape[-1],
+            deterministic=True,
+            sampling_temperature=1,
+            **inference_state.current_state,
+        )
+        for logit in logits:
+            token_generator.generate(logit)
+
+        return {
+            "tokens": numpy.array([token_generator.tokens]),
+            "generated_logits": logits,
+            "finished_reason": [FinishReason.LENGTH],
+        }, {}
 
 
 class NLEngineOperator(EngineOperator):
