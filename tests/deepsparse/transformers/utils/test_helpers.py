@@ -16,10 +16,84 @@ import numpy
 
 import pytest
 from deepsparse.transformers.utils.helpers import (
+    compute_engine_inputs,
     create_causal_mask,
     initialize_kv_cache_state,
     validate_session_ids,
 )
+
+
+@pytest.mark.parametrize(
+    "onnx_input_names, "
+    "token_batch, "
+    "prompt_sequence_length, "
+    "sequence_length,  "
+    "num_total_processed_tokens, "
+    "expected_engine_inputs",
+    [
+        (
+            ["input_ids", "attention_mask", "positions"],
+            [1, 2, 3],
+            3,
+            6,
+            2,
+            [
+                numpy.array([[1, 2, 3]]),
+                numpy.array([[0, 1, 1, 1, 1, 1]]),
+                numpy.array([[2, 3, 4]]),
+            ],
+        ),
+        (
+            ["input_ids", "attention_mask", "positions", "causal_mask"],
+            [1, 2, 3],
+            3,
+            6,
+            2,
+            [
+                numpy.array([[1, 2, 3]]),
+                numpy.array([[0, 1, 1, 1, 1, 1]]),
+                numpy.array([[2, 3, 4]]),
+                create_causal_mask(
+                    input_ids=numpy.array([[1, 2, 3]]),
+                    attention_mask=numpy.array([[0, 1, 1, 1, 1, 1]]),
+                ),
+            ],
+        ),
+        (
+            ["input_ids", "attention_mask", "positions", "causal_mask"],
+            [15],
+            1,
+            5,
+            3,
+            [
+                numpy.array([[15]]),
+                numpy.array([[0, 1, 1, 1, 1]]),
+                numpy.array([[3]]),
+                create_causal_mask(
+                    input_ids=numpy.array([[15]]),
+                    attention_mask=numpy.array([[0, 1, 1, 1, 1]]),
+                ),
+            ],
+        ),
+    ],
+)
+def test_compute_engine_inputs(
+    onnx_input_names,
+    token_batch,
+    prompt_sequence_length,
+    sequence_length,
+    num_total_processed_tokens,
+    expected_engine_inputs,
+):
+    engine_inputs = compute_engine_inputs(
+        onnx_input_names=onnx_input_names,
+        token_batch=token_batch,
+        prompt_sequence_length=prompt_sequence_length,
+        sequence_length=sequence_length,
+        num_total_processed_tokens=num_total_processed_tokens,
+    )
+    for x, y in zip(engine_inputs, expected_engine_inputs):
+        assert numpy.array_equal(x, y)
 
 
 @pytest.mark.parametrize(
