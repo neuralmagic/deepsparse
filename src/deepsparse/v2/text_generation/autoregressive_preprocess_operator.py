@@ -66,30 +66,16 @@ class AutoRegressiveOperatorPreprocess(Operator):
 
         num_total_processed_tokens = kv_cache.total_num_processed_tokens
         new_token = tokens[num_total_processed_tokens]
-        engine_input_names = pipeline_state.current_state.get(
-            "onnx_input_names_no_cache"
+
+        engine_inputs = compute_engine_inputs(
+            onnx_input_names=pipeline_state.current_state.get(
+                "onnx_input_names_no_cache"
+            ),
+            token_batch=[new_token],
+            prompt_sequence_length=1,
+            sequence_length=self.sequence_length,
+            num_total_processed_tokens=num_total_processed_tokens,
         )
-
-        # padding is added to left, so attention mask is 1s from the
-        # right up to the number of total tokens (prompt + generated)
-        attention_mask = numpy.zeros((1, self.sequence_length), dtype=numpy.int64)
-        num_attention_entries_to_unmask = min(
-            num_total_processed_tokens + 1, self.sequence_length
-        )  # cap by seq len
-        attention_mask[:, -num_attention_entries_to_unmask:] = 1
-        positions = numpy.array([[num_total_processed_tokens]], dtype=numpy.int64)
-        input_ids = numpy.array([[new_token]])
-        causal_mask = create_causal_mask(input_ids, attention_mask)
-
-        engine_inputs_map = dict(
-            input_ids=input_ids,
-            attention_mask=attention_mask,
-            causal_mask=causal_mask,
-            positions=positions,
-        )
-
-        engine_inputs = [engine_inputs_map[name] for name in engine_input_names]
-
         return {
             "engine_inputs": engine_inputs,
             "kv_cache": kv_cache,
