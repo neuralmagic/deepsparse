@@ -13,7 +13,9 @@
 # limitations under the License.
 
 from typing import Any, Dict
+
 import numpy
+
 from deepsparse.engine import LIB
 
 
@@ -100,59 +102,72 @@ class DecoderKVCache:
         :param increment_total_num_processed_tokens: If set to True,
             the total number of processed tokens will be incremented
             by the input_ids_len.
-        :return: True if the cache buffer is full, i.e we cannot update
+        :return: can we continue filling the cache buffer? This variable
+            is True if the cache buffer is not full, i.e we can update
             the session without overflowing the capacity of the cache.
-            False otherwise.
+            Overflowing the capacity of the state means that we have
+            processed more tokens then the current capacity of the
+            state. False otherwise.
         """
-        if increment_total_num_processed_tokens:
-            self.total_num_processed_tokens += input_ids_len
+        can_continue_updates = True
 
         input_state_capacity = state[list(state.keys())[0]].shape[
             self._sequence_len_axis
         ]
-        if self.total_num_processed_tokens > input_state_capacity:
+        if self.total_num_processed_tokens + input_ids_len > input_state_capacity:
             # if the total number of processed tokens is greater than
             # the capacity of the input state, we need to terminate
             # inference
-            return True
+            can_continue_updates = False
+            return can_continue_updates
+
+        if increment_total_num_processed_tokens:
+            self.total_num_processed_tokens += input_ids_len
 
         for name, cache_array in state.items():
             cache_array = self.remove_entries_from_the_front(cache_array, input_ids_len)
             state[name] = numpy.ascontiguousarray(cache_array)
 
         self._state = state
-        return False
+
+        return can_continue_updates
 
     def remove_entries_from_the_front(
         self, cache_array: numpy.ndarray, num_entries_to_delete: int
     ):
         """
-        Remove entries from the front of the cache array.
+        Remove entries from the front (right-hand side)
+        of the cache array.
 
         :param cache_array: The cache array to be modified.
         :param num_entries_to_delete: The number of entries to be deleted
-            from the cache array.
+            from the cache array from the front
         """
-        new_cache_array = cache_array[:,:,num_entries_to_delete:,:]
+        return cache_array[:, :, num_entries_to_delete:, :]
 
-        return new_cache_array
-
-    def set_capacity(self, capacity: int):
+    def set_capacity(self, capacity: int) -> bool:
         """
         Enforce a new total capacity for the state
         of cached inputs.
 
-        This means popping the old entries if the new
-        total capacity should lesser than the current one
-
-        or
-
-        Padding the state blank entries if the new
-        total capacity should be greater than the current one
+        This means either:
+         -  removing the entries from the front (right-hand
+            side) of the cache array. If there are no "blank"
+            entries in the cache array to remove, this function
+            will return False
+         -  expanding the capacity of the cache array. This
+            means adding new "blank" entries to the front
+            (right-hand side) of the cache array.
+         - doing nothing. This means that the capacity of the
+            cache array is already equal to the desired capacity.
 
         :param capacity: The new length of the
-            self._state in the
-            `self._sequence_length_axis` dimension
+            self._state in the `self._sequence_length_axis`
+            dimension
+         :return: kv_cache_full. This variable is True if the
+            cache buffer is full, i.e we cannot update the session
+            without overflowing the capacity of the cache.
+            False otherwise.
         """
         capacity_difference = self.capacity - capacity
         state = self.cached_inputs
@@ -169,9 +184,9 @@ class DecoderKVCache:
                 state, num_additional_entries=abs(capacity_difference)
             )
             self._state = state
-            return False
-        else:
-            return False
+            return True
+
+        return capacity >= self.total_num_processed_tokens
 
     def _expand_capacity(
         self, state: Dict[str, Any], num_additional_entries: int, padding_value: int = 0
@@ -187,8 +202,8 @@ class DecoderKVCache:
     def capacity(self) -> int:
         """
         Return the maximum number of kv cache entries
-        that the decoder can hold, until the old entries
-        start to get erased to make place for new entries
+        that the decoder can hold, until there is no
+        more space left in the cache.
 
         :return: the maximum number of kv cache entries
             that the decoder can hold
