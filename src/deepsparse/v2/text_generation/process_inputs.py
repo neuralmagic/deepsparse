@@ -124,4 +124,7 @@ class ProcessInputsTextGeneration(Operator):
         # TODO: move this step to prep_for_prefill and add attention mask to the output
         # this will allow us to split/join more easily when processing multiple prompts
         # in parallel
-        return {"input_ids": input_ids, "attention_mask": attention_mask}, inference_state_update
+        return {
+            "input_ids": input_ids,
+            "attention_mask": attention_mask,
+        }, inference_state_update

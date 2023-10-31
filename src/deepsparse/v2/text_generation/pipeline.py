@@ -24,6 +24,7 @@ from deepsparse.v2.text_generation import (
     CompileGenerations,
     CompilePromptLogits,
     GenerateNewTokenOperator,
+    JoinOutput,
     KVCacheCreator,
     MultiEnginePrefill,
     NLEngineOperator,
@@ -33,10 +34,8 @@ from deepsparse.v2.text_generation import (
     ProcessInputsTextGeneration,
     ProcessOutputs,
     TokenGeneratorOperator,
-    JoinOutput
 )
 from deepsparse.v2.utils import PipelineState
-from deepsparse.utils import split_engine_inputs
 
 
 class TextGenerationPipeline(Pipeline):
@@ -154,7 +153,7 @@ class TextGenerationPipeline(Pipeline):
             "process_outputs": process_outputs,
             "compile_generations": compile_generations,
             "compile_generated_tokens": compile_generated_tokens,
-            "join_output": join_output
+            "join_output": join_output,
         }
 
         routes = {
@@ -191,17 +190,29 @@ class TextGenerationPipeline(Pipeline):
         }
 
         router = TextGenerationRouter(
-            end_route="STOP", start_route="process_input", route=routes, split_route="SPLIT", end_split="JOIN"
+            end_route="STOP",
+            start_route="process_input",
+            route=routes,
+            split_route="SPLIT",
+            end_split="JOIN",
         )
         scheduler = [OperatorScheduler()]
         super().__init__(
             ops=ops, router=router, schedulers=scheduler, pipeline_state=pipeline_state
         )
 
-    def expand_inputs(self, items, batch_size):
-        items = [items.get(key) for key in items.keys()]
-        out, orig_batch_size =  split_engine_inputs(items, batch_size ) 
-        combined_batches = [{"input_ids": b[0], "attention_mask": b[1]} for b in out]
+    def expand_inputs(self, *args, **kwargs):
+        items = args[0]
+        if not isinstance(items, dict):
+            items = dict(items)
+
+        # Get the keys for the different inputs to split
+        keys = list(items.keys())
+        # Each key will store the same number of values/batches
+        orig_batch_size = len(items[keys[0]])
+        combined_batches = [
+            {key: items[key][i] for key in keys} for i in range(orig_batch_size)
+        ]
         return combined_batches, orig_batch_size
 
     def condense_inputs(self, *args, **kwargs):

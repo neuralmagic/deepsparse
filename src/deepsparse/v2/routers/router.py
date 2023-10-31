@@ -137,7 +137,7 @@ class TextGenerationRouter(Router):
     def __init__(self, end_route: str, start_route: str, route: Dict, **kwargs):
         super().__init__(end_route=end_route, start_route=start_route, route=route)
         self.SPLIT_ROUTE = kwargs.get("split_route")
-        self.END_SPLIT = kwargs.get("end_split") 
+        self.END_SPLIT = kwargs.get("end_split")
 
     def next(
         self,

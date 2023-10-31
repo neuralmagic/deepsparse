@@ -17,7 +17,6 @@ from typing import Any, Dict, List, Optional, Union
 from deepsparse import Context as EngineContext
 from deepsparse import Engine, MultiModelEngine, Scheduler
 from deepsparse.benchmark import ORTEngine
-from deepsparse.utils import join_engine_outputs, split_engine_inputs
 from deepsparse.v2.operators import Operator
 from deepsparse.v2.utils import Context, InferenceState, PipelineState
 
@@ -111,5 +110,6 @@ class EngineOperator(Operator):
         pipeline_state: PipelineState,
         inference_state: InferenceState,
     ) -> Any:
-        batches_outputs = list(map(self.engine, inp))
+
+        batches_outputs = self.engine(inp)
         return batches_outputs, {}

@@ -13,14 +13,24 @@
 # limitations under the License.
 
 from typing import Any, Optional
+
+import numpy
+
 from deepsparse.v2.operators import Operator
 from deepsparse.v2.utils import Context, InferenceState, PipelineState
-import numpy
+
 
 __all__ = ["JoinOutput"]
 
+
 class JoinOutput(Operator):
-    def run(self, inp: Any, context: Optional[Context], inference_state: InferenceState, pipeline_state: PipelineState):
+    def run(
+        self,
+        inp: Any,
+        context: Optional[Context],
+        inference_state: InferenceState,
+        pipeline_state: PipelineState,
+    ):
         batch_outputs = [x for x in inp[0]]
         generated_tokens = [x.generated_tokens for x in batch_outputs]
         generated_logits = [x.generated_logits for x in batch_outputs]
@@ -28,5 +38,8 @@ class JoinOutput(Operator):
         generated_tokens = numpy.stack(generated_tokens).squeeze(1)
         generated_logits = numpy.stack(generated_logits).squeeze(1)
 
-      
-        return {"generated_tokens": generated_tokens, "generated_logits": generated_logits, "finished_reason": finished_reason}, {}
+        return {
+            "generated_tokens": generated_tokens,
+            "generated_logits": generated_logits,
+            "finished_reason": finished_reason,
+        }, {}
