@@ -68,14 +68,19 @@ class Operator(ABC):
         if self.has_input_schema():
             if len(args) > 1:
                 raise ValueError(
-                    f"The operator requires an {self.input_schema}."
-                    "The values for the schema must be provided in the form of a"
-                    "dictionary or an instance of the input_schema object"
+                    f"The operator requires an {self.input_schema}. Too many arguments"
+                    "provided."
                 )
             elif args and isinstance(args[0], self.input_schema):
                 inference_input = args[0]
             elif kwargs:
                 inference_input = self.input_schema(**kwargs)
+            else:
+                raise ValueError(
+                    "Can't resolve inputs. The values for the schema must be provided"
+                    "in the form of a dictionary or an instance of the input_schema"
+                    "object"
+                )
 
             run_output = self.run(inference_input)
         else:
