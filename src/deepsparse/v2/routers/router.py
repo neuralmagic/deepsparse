@@ -13,11 +13,14 @@
 # limitations under the License.
 
 
+import logging
 from abc import abstractmethod
 from typing import Dict, List, Union
 
 from deepsparse.v2.operators import Operator
 
+
+_LOGGER = logging.getLogger(__name__)
 
 __all__ = ["Router", "LinearRouter"]
 
@@ -82,7 +85,7 @@ class LinearRouter(Router):
             returned
         """
         if len(operators) < 1:
-            # TODO: log
+            _LOGGER.info("No operators provided")
             return False
 
         for idx in range(len(operators) - 1):
@@ -95,13 +98,10 @@ class LinearRouter(Router):
                 continue
 
             if current_output_schema != next_input_schema:
-                # TODO: Log error message below
-                """
-                return (
+                _LOGGER.info(
                     f"Operator at idx {idx}: {type(operators[idx])} has invalid "
                     f"output schema {current_output_schema} for next operator "
                     f"{type(operators[idx + 1])} which requires {next_input_schema}"
                 )
-                """
                 return False
         return True
