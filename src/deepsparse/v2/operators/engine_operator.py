@@ -34,13 +34,13 @@ class EngineOperatorInputs(BaseModel):
     engine_inputs: List = Field(description="engine_inputs")
 
 
-class EngineOperatorOuputs(BaseModel):
+class EngineOperatorOutputs(BaseModel):
     engine_outputs: List = Field(description="engine outputs")
 
 
 class EngineOperator(Operator):
     input_schema = EngineOperatorInputs
-    output_schema = EngineOperatorOuputs
+    output_schema = EngineOperatorOutputs
 
     def __init__(
         self,

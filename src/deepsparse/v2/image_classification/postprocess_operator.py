@@ -58,7 +58,7 @@ class ImageClassificationPostProcess(Operator):
         else:
             self._class_names = None
 
-    def run(self, inp: "EngineOperatorOuput", **kwargs) -> Dict:  # noqa: F821
+    def run(self, inp: "EngineOperatorOutput", **kwargs) -> Dict:  # noqa: F821
         labels, scores = [], []
         inp = inp.engine_outputs
         for prediction_batch in inp[0]:
