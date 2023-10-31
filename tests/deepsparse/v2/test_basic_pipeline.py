@@ -1,14 +1,29 @@
+# Copyright (c) 2021 - present / Neuralmagic, Inc. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """
 Simple example and test of a dummy pipeline
 """
+
+from typing import Dict
 
 from pydantic import BaseModel
 
 from deepsparse.v2 import Pipeline
 from deepsparse.v2.operators import Operator
-from deepsparse.v2.routers import Router
+from deepsparse.v2.routers import LinearRouter
 from deepsparse.v2.schedulers import OperatorScheduler
-from deepsparse.v2.utils import Context, OperatorSchema
 
 
 class IntSchema(BaseModel):
@@ -19,21 +34,21 @@ class AddOneOperator(Operator):
     input_schema = IntSchema
     output_schema = IntSchema
 
-    def run(self, inp: IntSchema, context: Context) -> OperatorSchema:
-        return IntSchema(value=inp.value + 1)
+    def run(self, inp: IntSchema) -> Dict:
+        return {"value": inp.value + 1}
 
 
 class AddTwoOperator(Operator):
     input_schema = IntSchema
     output_schema = IntSchema
 
-    def run(self, inp: IntSchema, context: Context) -> OperatorSchema:
-        return IntSchema(value=inp.value + 2)
+    def run(self, inp: IntSchema) -> Dict:
+        return {"value": inp.value + 2}
 
 
 AddThreePipeline = Pipeline(
-    stages=[AddOneOperator(), AddTwoOperator()],
-    router=Router(),
+    ops=[AddOneOperator(), AddTwoOperator()],
+    router=LinearRouter(end_route=2),
     schedulers=[OperatorScheduler()],
 )
 
