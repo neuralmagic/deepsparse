@@ -147,10 +147,15 @@ class NLEngineOperator(EngineOperator):
             for name, array in zip(self.onnx_input_names_cached, kv_cache_state)
         }
 
-        kv_cache.update(
+        can_continue_updates = kv_cache.update(
             state=kv_cache_state,
             input_ids_len=input_ids_len,
         )
+        if not can_continue_updates:
+            raise RuntimeError(
+                "The kv_cache buffer is full. To increase the buffer size, "
+                "increase the value of the `sequence_length` argument of the operator."
+            )
 
     @property
     def onnx_input_names_no_cache(self) -> List[str]:
