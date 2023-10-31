@@ -68,7 +68,6 @@ class TextGenerationPipelineNoCache(Pipeline):
         router = LinearRouter(route=ops)
         scheduler = [OperatorScheduler()]
         super().__init__(
-            **kwargs,
             ops=ops,
             router=router,
             schedulers=scheduler,
