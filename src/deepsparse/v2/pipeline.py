@@ -18,7 +18,6 @@ from typing import Dict, List, Union
 from deepsparse.v2.operators import Operator
 from deepsparse.v2.routers import Router
 from deepsparse.v2.schedulers import OperatorScheduler, SchedulerGroup
-from deepsparse.v2.utils import Context
 
 
 __all__ = ["Pipeline"]

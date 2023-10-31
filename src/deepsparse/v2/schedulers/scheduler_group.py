@@ -14,7 +14,7 @@
 
 
 from concurrent.futures import Future
-from typing import Any, List
+from typing import List
 
 from deepsparse.v2.operators import Operator
 from deepsparse.v2.schedulers.scheduler import OperatorScheduler
