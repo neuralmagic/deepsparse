@@ -17,8 +17,6 @@ from typing import Any, Optional, Type
 
 from pydantic import BaseModel
 
-from deepsparse.v2.utils import Context
-
 
 __all__ = ["Operator"]
 
@@ -56,7 +54,6 @@ class Operator(ABC):
     def __call__(
         self,
         *args,
-        context: Context,
         **kwargs,
     ) -> Any:
         """
@@ -68,36 +65,28 @@ class Operator(ABC):
         :param kwargs: kwargs when not initializing from an instantiated schema
         :return: operator output
         """
-        if len(args) > 1:
-            raise ValueError(
-                f"Only 1 unnamed arg may be supplied to an Operator, found {len(args)}"
-            )
-
-        if len(args) == 1:
-            if self.input_schema is None:
-                inference_input = args[0]
-            elif self.input_schema is not None and isinstance(
-                args[0], self.input_schema
-            ):
-                inference_input = args[0]
-            else:
+        if self.has_input_schema():
+            if len(args) > 1:
                 raise ValueError(
-                    f"1 arg supplied to Operator {self.__class__.__name__} but was not "
-                    f"of expected type {self.input_schema}, found {type(args[0])}"
+                    f"The operator requires an {self.input_schema}."
+                    "The values for the schema must be provided in the form of a"
+                    "dictionary or an instance of the input_schema object"
                 )
-        elif self.has_input_schema():
-            inference_input = self.input_schema(**kwargs)
-        else:
-            inference_input = kwargs
+            elif args and isinstance(args[0], self.input_schema):
+                inference_input = args[0]
+            elif kwargs:
+                inference_input = self.input_schema(**kwargs)
 
-        run_output = self.run(inp=inference_input, context=context)
+            run_output = self.run(inference_input)
+        else:
+            run_output = self.run(*args, **kwargs)
 
         if self.has_output_schema():
             return self.output_schema(**run_output)
         return run_output
 
     @abstractmethod
-    def run(self, inp: Any, context: Optional[Context]) -> Any:
+    def run(self, *args, **kwargs) -> Any:
         """
         :param inp: operator input, as the defined input schema if applicable
         :param context: pipeline context of already run operators

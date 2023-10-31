@@ -13,13 +13,12 @@
 # limitations under the License.
 
 import json
-from typing import Any, Dict, List, Optional, Union
+from typing import Dict, List, Union
 
 import numpy
 from pydantic import BaseModel, Field
 
 from deepsparse.v2.operators import Operator
-from deepsparse.v2.utils import Context
 
 
 class ImageClassificationOutput(BaseModel):
@@ -59,7 +58,7 @@ class ImageClassificationPostProcess(Operator):
         else:
             self._class_names = None
 
-    def run(self, inp: Any, context: Optional[Context]) -> Dict:
+    def run(self, inp: "EngineOperatorOuput", **kwargs) -> Dict:  # noqa: F821
         labels, scores = [], []
         inp = inp.engine_outputs
         for prediction_batch in inp[0]:

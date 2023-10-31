@@ -24,7 +24,6 @@ from deepsparse.v2 import Pipeline
 from deepsparse.v2.operators import Operator
 from deepsparse.v2.routers import LinearRouter
 from deepsparse.v2.schedulers import OperatorScheduler
-from deepsparse.v2.utils import Context
 
 
 class IntSchema(BaseModel):
@@ -35,7 +34,7 @@ class AddOneOperator(Operator):
     input_schema = IntSchema
     output_schema = IntSchema
 
-    def run(self, inp: IntSchema, context: Context) -> Dict:
+    def run(self, inp: IntSchema) -> Dict:
         return {"value": inp.value + 1}
 
 
@@ -43,7 +42,7 @@ class AddTwoOperator(Operator):
     input_schema = IntSchema
     output_schema = IntSchema
 
-    def run(self, inp: IntSchema, context: Context) -> Dict:
+    def run(self, inp: IntSchema) -> Dict:
         return {"value": inp.value + 2}
 
 

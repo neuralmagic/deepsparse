@@ -13,12 +13,11 @@
 # limitations under the License.
 
 
-from typing import Any, Dict, List, Optional, Union
+from typing import Dict, List, Union
 
 from deepsparse.v2.operators import Operator
 from deepsparse.v2.routers import Router
 from deepsparse.v2.schedulers import OperatorScheduler, SchedulerGroup
-from deepsparse.v2.utils import Context
 
 
 __all__ = ["Pipeline"]
@@ -56,7 +55,7 @@ class Pipeline(Operator):
         # SchedulerGroup handles running all schedulers in order of priority
         self._scheduler_group = SchedulerGroup(self.schedulers)
 
-    def run(self, inp: Any, context: Optional[Context]):
+    def run(self, *args, **kwargs):
         """
         Run through the operators using the provided router and scheduler. Update the
         context to reflect each step of the router. The input to a given operator is the
@@ -69,53 +68,35 @@ class Pipeline(Operator):
 
         """
         next_step = self.router.START_ROUTE
+        operator_output = None
         while next_step != self.router.END_ROUTE:
             # Either a dictionary key or valid index
             operator = self.ops[next_step]
-
-            output_future = self._scheduler_group.submit(
-                operator=operator, operator_input=inp, context=context
-            )
+            if next_step == self.router.START_ROUTE:
+                output_future = self._scheduler_group.submit(
+                    *args, operator=operator, **kwargs
+                )
+            else:
+                if isinstance(operator_output, dict):
+                    output_future = self._scheduler_group.submit(
+                        operator=operator, **operator_output
+                    )
+                else:
+                    output_future = self._scheduler_group.submit(
+                        operator_output, operator=operator
+                    )
 
             # wait for future to resolve
             operator_output = output_future.result()
-
-            # update context
-            context.update(
-                operator=operator,
-                input=inp,
-                output=operator_output,
-            )
-
             next_step = self.router.next(next_step, self.ops)
-            inp = operator_output
-        return operator_output, context
+        return operator_output
 
-    def __call__(self, *args, return_context: bool = False, **kwargs):
+    def __call__(self, *args, **kwargs):
         """
-        :param return_context: if True, returns tuple of the pipeline output
-            and entire context. Default False
         :return: output of the pipeline operators ran with the router for the given
         input
         """
-        if len(args) > 1:
-            raise ValueError(
-                "Only 1 unnamed arg may be supplied to a Pipeline, the input expected"
-                "for the first Operator."
-            )
-        if args and kwargs:
-            raise ValueError(
-                "Pipeline can only run either a in-line arguments or a "
-                f"series of kwargs, found {len(args)} args and {len(kwargs)} kwargs"
-            )
-
-        pipeline_input = kwargs or args[0]
-        pipeline_output, context = self.run(inp=pipeline_input, context=Context())
-
-        if return_context:
-            return pipeline_output, context
-
-        return pipeline_output
+        return self.run(*args, **kwargs)
 
     def validate(self):
         """

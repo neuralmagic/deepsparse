@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import logging
+import warnings
 from typing import Dict, Optional, Tuple, Union
 
 from deepsparse.v2.image_classification.postprocess_operator import (
@@ -35,13 +36,17 @@ __all__ = ["ImageClassificationPipeline"]
 class ImageClassificationPipeline(Pipeline):
     def __init__(
         self,
-        engine_kwargs: Dict,
+        model_path: str,
+        engine_kwargs: Optional[Dict] = None,
         class_names: Union[None, str, Dict[str, str]] = None,
         image_size: Optional[Tuple[int]] = None,
         top_k: int = 1,
     ):
-        if not engine_kwargs.get("model_path"):
-            raise ValueError("engine_kwargs must include model_path path")
+        if not engine_kwargs:
+            engine_kwargs = {}
+            engine_kwargs["model_path"] = model_path
+        elif engine_kwargs.get("model_path") != model_path:
+            warnings.warn(f"Updating engine_kwargs to include {model_path}")
 
         engine = EngineOperator(**engine_kwargs)
         preproces = ImageClassificationPreProcess(

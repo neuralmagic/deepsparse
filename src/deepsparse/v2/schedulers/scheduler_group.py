@@ -14,11 +14,10 @@
 
 
 from concurrent.futures import Future
-from typing import Any, List
+from typing import List
 
 from deepsparse.v2.operators import Operator
 from deepsparse.v2.schedulers.scheduler import OperatorScheduler
-from deepsparse.v2.utils import Context
 
 
 __all__ = ["SchedulerGroup"]
@@ -35,12 +34,7 @@ class SchedulerGroup(OperatorScheduler):
     def __init__(self, schedulers: List[OperatorScheduler]):
         self.schedulers = schedulers
 
-    def submit(
-        self,
-        operator: Operator,
-        operator_input: Any,
-        context: Context,
-    ) -> Future:
+    def submit(self, *args, operator: Operator, **kwargs) -> Future:
         """
         :param operator: operator to run
         :param operator_input: input schema to the operator
@@ -48,10 +42,10 @@ class SchedulerGroup(OperatorScheduler):
         :return: future referencing the asynchronously run output of the operator
         """
         for scheduler in self.schedulers:
-            if scheduler.can_process(operator, operator_input):
-                return scheduler.submit(operator, operator_input, context)
+            if scheduler.can_process(*args, operator=operator, **kwargs):
+                return scheduler.submit(*args, operator=operator, **kwargs)
 
-    def can_process(self, operator: Operator, operator_input: Any) -> bool:
+    def can_process(self, *args, operator: Operator, **kwargs) -> bool:
         """
         :param operator: operator to check
         :param operator_input: operator_input to check
@@ -59,6 +53,6 @@ class SchedulerGroup(OperatorScheduler):
             SchedulerGroup always returns True
         """
         return any(
-            scheduler.can_process(operator, operator_input)
+            scheduler.can_process(*args, operator=operator, **kwargs)
             for scheduler in self.schedulers
         )

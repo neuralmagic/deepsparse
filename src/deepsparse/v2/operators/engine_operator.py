@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Any, Dict, List, Optional, Union
+from typing import Dict, List, Optional, Union
 
 from pydantic import BaseModel, Field
 
@@ -115,7 +115,7 @@ class EngineOperator(Operator):
             f"{SUPPORTED_PIPELINE_ENGINES}"
         )
 
-    def run(self, inp: Any, context: Optional[Context]) -> Any:
+    def run(self, inp: EngineOperatorInputs) -> Dict:
         inp = inp.engine_inputs
         batches, orig_batch_size = self.expand_inputs(engine_inputs=inp)
         batches_outputs = list(map(self.engine, batches))
