@@ -111,17 +111,5 @@ class EngineOperator(Operator):
         pipeline_state: PipelineState,
         inference_state: InferenceState,
     ) -> Any:
-        batches, orig_batch_size = self.expand_inputs(engine_inputs=inp)
-        batches_outputs = list(map(self.engine, batches))
-        engine_outputs = self.condense_inputs(
-            batch_outputs=batches_outputs, orig_batch_size=orig_batch_size
-        )
-        return engine_outputs, {}
-
-    def expand_inputs(self, **kwargs):
-        return split_engine_inputs(kwargs["engine_inputs"], self._batch_size)
-
-    def condense_inputs(self, **kwargs):
-        batch_outputs = kwargs["batch_outputs"]
-        orig_batch_size = kwargs["orig_batch_size"]
-        return join_engine_outputs(batch_outputs, orig_batch_size)
+        batches_outputs = list(map(self.engine, inp))
+        return batches_outputs, {}

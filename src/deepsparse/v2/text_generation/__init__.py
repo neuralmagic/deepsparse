@@ -24,6 +24,7 @@ from .prep_for_prefill import *
 from .prep_for_single_engine import *
 from .process_inputs import *
 from .process_outputs import *
+from .join_output import *
 
 
 from .token_generator import *  # isort:skip

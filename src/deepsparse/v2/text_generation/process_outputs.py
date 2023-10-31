@@ -58,16 +58,15 @@ class ProcessOutputs(Operator):
         pipeline_state: PipelineState,
     ):
         generation_config = inference_state.current_state.get("generation_config")
-        generated_tokens = inp.generated_tokens
+        generated_tokens = inp.get("generated_tokens")
         generated_logits = (
-            inp.generated_logits if generation_config.output_scores else None
+            inp.get("generated_logits") if generation_config.output_scores else None
         )
-        finished_reason = inp.finished_reason
+        finished_reason = [f[-1] for f in inp.get("finished_reason")]
+
         sequences = self.tokenizer.batch_decode(
             generated_tokens, skip_special_tokens=True
         )
-
-        finished_reason = [f for f in finished_reason if f]
 
         if generated_logits is not None:
             generations = list(

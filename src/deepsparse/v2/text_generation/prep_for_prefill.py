@@ -56,8 +56,9 @@ class PrepareforPrefill(Operator):
                 "output_names": output_names,
             },
         )
+        tokens = inp.get("input_ids")[inp.get("attention_mask").nonzero()].tolist()
         return {
-            "tokens": inp.get("tokens"),
+            "tokens": tokens,
             "kv_cache": kv_cache.kv_cache,
             "in_generation": False,
         }, {}

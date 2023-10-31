@@ -19,6 +19,9 @@ from deepsparse.v2.operators import Operator
 from deepsparse.v2.routers import Router
 from deepsparse.v2.schedulers import OperatorScheduler, SchedulerGroup
 from deepsparse.v2.utils import Context, InferenceState, PipelineState
+from functools import partial
+from concurrent.futures import ThreadPoolExecutor
+import copy
 
 
 __all__ = ["Pipeline"]
@@ -53,6 +56,62 @@ class Pipeline(Operator):
         # SchedulerGroup handles running all schedulers in order of priority
         self._scheduler_group = SchedulerGroup(self.schedulers)
 
+    
+    def _run_sequential(self, inp, inference_state, context, pipeline_state, start, end):
+        next_step = start
+        while next_step != end:
+            print("Running", next_step)
+            operator = self.ops[next_step]
+            operator_output, state_update = operator(
+                context=context,
+                pipeline_state=self.pipeline_state,
+                inference_state=inference_state,
+                **inp,
+            )
+
+            inference_state.update_state(state_update)
+            context.update(
+                operator=operator,
+                input=inp,
+                output=operator_output,
+            )
+
+            next_step = self.router.next(next_step, self.ops, context, operator_output)
+            inp = operator_output
+        return inp
+
+
+    def _apply_split(self, 
+            inp: Any,
+            context: Optional[Context],
+            inference_state: InferenceState
+        ):
+
+        batches, orig_batch_size = self.expand_inputs(
+            inp, 1
+        )
+        run_with_state = partial(
+            self._run_sequential, 
+            pipeline_state=self.pipeline_state, 
+            start=self.router.route[self.router.SPLIT_ROUTE],
+            end=self.router.END_SPLIT
+        )
+        inference_state_list = [
+            copy.deepcopy(inference_state) for x in range(len(batches))
+        ]
+        context_state_list = [
+            copy.deepcopy(context) for x in range(len(batches))
+        ]
+
+        threadpool = ThreadPoolExecutor(max_workers=8) # should just use scheduler
+        outputs = list(
+            threadpool.map(
+                run_with_state, batches, inference_state_list, context_state_list
+            )
+        )
+        outputs = self.condense_inputs(outputs)
+        return outputs
+
     def run(
         self,
         inp: Any,
@@ -72,10 +131,12 @@ class Pipeline(Operator):
         """
         next_step = self.router.START_ROUTE
         while next_step != self.router.END_ROUTE:
-
-            operator = self.ops[next_step]
             print("Currently running", next_step)
-
+            if next_step == self.router.SPLIT_ROUTE:
+                inp = self._apply_split(inp, context, inference_state)
+                next_step = self.router.route[self.router.END_SPLIT]
+            
+            operator = self.ops[next_step]
             output_future = self._scheduler_group.submit(
                 operator=operator,
                 operator_input=inp,
@@ -133,6 +194,18 @@ class Pipeline(Operator):
             return pipeline_output, context
 
         return pipeline_output
+
+    def expand_inputs(self, *args, **kwargs):
+        """
+        Generic function to handle expanding values.
+        """
+        raise NotImplementedError
+
+    def condense_inputs(self, *args, **kwargs):
+        """
+        Generic function to handle condensing values.
+        """
+        raise NotImplementedError
 
     def validate(self):
         """

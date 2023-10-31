@@ -33,8 +33,10 @@ from deepsparse.v2.text_generation import (
     ProcessInputsTextGeneration,
     ProcessOutputs,
     TokenGeneratorOperator,
+    JoinOutput
 )
 from deepsparse.v2.utils import PipelineState
+from deepsparse.utils import split_engine_inputs
 
 
 class TextGenerationPipeline(Pipeline):
@@ -132,9 +134,10 @@ class TextGenerationPipeline(Pipeline):
         generate_new_token = GenerateNewTokenOperator(
             tokenizer=self.tokenizer, force_max_tokens=force_max_tokens
         )
-        process_output = ProcessOutputs(tokenizer=self.tokenizer)
+        process_outputs = ProcessOutputs(tokenizer=self.tokenizer)
         compile_generations = CompileGenerations()
         compile_generated_tokens = CompileGeneratedTokens()
+        join_output = JoinOutput()
 
         ops = {
             "process_input": process_inputs,
@@ -148,13 +151,15 @@ class TextGenerationPipeline(Pipeline):
             "autoregressive_preprocess": autoregressive_preprocess,
             "prep_for_generation": prep_for_generation,
             "generate_new_token": generate_new_token,
-            "process_outputs": process_output,
+            "process_outputs": process_outputs,
             "compile_generations": compile_generations,
             "compile_generated_tokens": compile_generated_tokens,
+            "join_output": join_output
         }
 
         routes = {
-            "process_input": "prepare_prefill",
+            "process_input": "SPLIT",
+            "SPLIT": "prepare_prefill",
             "prepare_prefill": ["multi_engine_prefill", "prepare_single_engine"],
             "multi_engine_prefill": "multi_engine",
             "multi_engine": "compile_logits",
@@ -179,17 +184,28 @@ class TextGenerationPipeline(Pipeline):
                 "autoregressive_preprocess",
                 "compile_generations",
             ],
-            "compile_generations": "process_outputs",
+            "compile_generations": "JOIN",
+            "JOIN": "join_output",
+            "join_output": "process_outputs",
             "process_outputs": "STOP",
         }
 
         router = TextGenerationRouter(
-            end_route="STOP", start_route="process_input", route=routes
+            end_route="STOP", start_route="process_input", route=routes, split_route="SPLIT", end_split="JOIN"
         )
         scheduler = [OperatorScheduler()]
         super().__init__(
             ops=ops, router=router, schedulers=scheduler, pipeline_state=pipeline_state
         )
+
+    def expand_inputs(self, items, batch_size):
+        items = [items.get(key) for key in items.keys()]
+        out, orig_batch_size =  split_engine_inputs(items, batch_size ) 
+        combined_batches = [{"input_ids": b[0], "attention_mask": b[1]} for b in out]
+        return combined_batches, orig_batch_size
+
+    def condense_inputs(self, *args, **kwargs):
+        return args[0], kwargs
 
     # TODO: Move to be part of a generic transformers set-up Operator.
     def setup_onnx_file_path(self, model_path, sequence_length) -> str:

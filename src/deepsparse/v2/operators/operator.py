@@ -124,18 +124,6 @@ class Operator(ABC):
         """
         raise NotImplementedError
 
-    def expand_inputs(self, **kwargs):
-        """
-        Generic function to handle expanding values.
-        """
-        raise NotImplementedError
-
-    def condense_inputs(self, **kwargs):
-        """
-        Generic function to handle condensing values.
-        """
-        raise NotImplementedError
-
     def yaml(self):
         pass
 

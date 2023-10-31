@@ -109,7 +109,7 @@ class NLEngineOperator(EngineOperator):
         else:
             # run the engine without the LIB.kv_cache object
             out, _ = super().run(
-                inputs,
+                inp=inputs,
                 context=context,
                 pipeline_state=pipeline_state,
                 inference_state=inference_state,
