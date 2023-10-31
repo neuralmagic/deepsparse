@@ -115,9 +115,9 @@ class DecoderKVCache:
             self._sequence_len_axis
         ]
         if self.total_num_processed_tokens + input_ids_len > input_state_capacity:
-            # if the total number of processed tokens is greater than
-            # the capacity of the input state, we need to terminate
-            # inference
+            # if the potential total number of processed tokens after
+            # the update is greater than the capacity of the input state,
+            # we need to terminate the inference
             can_continue_updates = False
             return can_continue_updates
 
