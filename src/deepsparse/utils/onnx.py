@@ -549,7 +549,7 @@ def overwrite_onnx_model_inputs_for_kv_cache_models(
         else:
             raise ValueError(f"Unexpected external input name: {external_input.name}")
 
-    _LOGGER.info(
+    _LOGGER.debug(
         "Overwriting in-place the input shapes "
         f"of the transformer model at {onnx_file_path}"
     )
