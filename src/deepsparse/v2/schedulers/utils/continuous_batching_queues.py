@@ -14,8 +14,8 @@
 
 from concurrent.futures import Future
 from queue import Queue
+from threading import Condition, Lock
 from time import time
-from threading import Lock
 from typing import Any, Callable, Dict, List, NamedTuple, Optional, Tuple
 
 
@@ -117,6 +117,9 @@ class ContinuousBatchingQueues:
         self._queues = {}  # Dict[Any, ContinuousBatchingQueue]
         self._mutex = Lock()
 
+        # add condition for wait/notify when an item is added to any queue
+        self._item_added = Condition(self._mutex)
+
     def __contains__(self, key: Any) -> bool:
         """
         :param key: key to look up
@@ -150,6 +153,7 @@ class ContinuousBatchingQueues:
 
         with self._mutex:
             self._queues[key].put(entry)
+            self._item_added.notify()
 
     def has_next_batch(self) -> bool:
         """
@@ -161,6 +165,7 @@ class ContinuousBatchingQueues:
     def pop_batch(
         self,
         select_fn: Callable[[Dict[Any, ContinuousBatchingQueue]], Any] = None,
+        block: bool = True,
     ) -> Tuple[Any, List[QueueEntry]]:
         """
         :param select_fn: function that takes in a dictionary of queue key
@@ -170,19 +175,24 @@ class ContinuousBatchingQueues:
             If not provided, the default select_fn will return the queue that
             can fill the largest batch size, or the queue that has the first item
             with the longest wait time if that time is over 100ms.
+        :param block: if True, will wait for a valid batch to be in a queue before
+            popping and returning, if False, will raise an error if a full batch
+            cannot be popped. Default True
         :return: Tuple of the queue key (EngineOperator) and
             batch of QueueEntry objects as a list that have been popped and should
             be run as a batch
         """
         with self._mutex:
-            valid_queues = self._filter_empty_queues()
-
-            if not valid_queues:
-                raise RuntimeError(
-                    "Cannot pop_batch when no queues have enough items to fill "
-                    "a valid batch size, check with has_next_batch before calling "
-                    "pop_batch"
-                )
+            while not (valid_queues := self._filter_empty_queues()):
+                if block:
+                    # wait to search for a valid queue again until a new item is added
+                    self._item_added.wait()
+                else:
+                    raise RuntimeError(
+                        "Cannot pop_batch when no queues have enough items to fill "
+                        "a valid batch size, check with has_next_batch before calling "
+                        "pop_batch"
+                    )
 
             select_fn = select_fn or _default_select_fn
             selected_key = select_fn(valid_queues)

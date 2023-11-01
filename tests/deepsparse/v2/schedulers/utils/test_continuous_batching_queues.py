@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import time
+from threading import Thread
 
 import pytest
 from deepsparse.v2.schedulers.utils import (
@@ -142,3 +143,35 @@ def test_queues_pop_batch_time_elapsed_priority():
     popped_key, popped_batch = queues.pop_batch()
     assert popped_key == "key_1"
     assert len(popped_batch) == 2
+
+
+def test_queues_pop_batch_blocking():
+    queues = ContinuousBatchingQueues()
+    queues.add_queue("key_1", [2])
+
+    def test_fn():
+        # pop batch and block until true
+        key, batch = queues.pop_batch(block=True)
+        # compare to expected results
+        assert key == "key_1"
+        assert batch == [1, 2]
+
+    # start a thread to pop batch
+    # it should hang indefinitely because block=True and there are no items yet in queue
+    thread = Thread(target=queues.pop_batch)
+    thread.start()
+
+    # confirm thread is still running
+    assert thread.is_alive()
+    time.sleep(0.15)
+    # sleep and confirm thread is still hanging
+    assert thread.is_alive()
+
+    # confirm thread still runs after a single insertion (min batch size is 2)
+    queues.add_queue_item("key_1", 1)
+    assert thread.is_alive()
+
+    # add a second item and assert thread finishes
+    queues.add_queue_item("key_1", 2)
+    time.sleep(0.1)
+    assert not thread.is_alive()
