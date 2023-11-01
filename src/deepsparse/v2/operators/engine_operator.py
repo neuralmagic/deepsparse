@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from copy import deepcopy
 from typing import Dict, List, Optional, Union
 
 from pydantic import BaseModel, Field
@@ -32,6 +33,13 @@ __all__ = ["EngineOperator"]
 
 class EngineOperatorInputs(BaseModel):
     engine_inputs: List = Field(description="engine_inputs")
+    engine: Optional[Engine] = Field(
+        description="override the engine to run forward pass with",
+        default=None,
+    )
+
+    class Config:
+        arbitrary_types_allowed = True
 
 
 class EngineOperatorOutputs(BaseModel):
@@ -76,21 +84,33 @@ class EngineOperator(Operator):
             engine_args["scheduler"] = scheduler
             engine_args["num_streams"] = num_streams
 
-        self.engine = self._create_engine(self.model_path, engine_type, engine_args)
+        self._engine_args = engine_args
+        self._engine_type = engine_type
 
-    def _create_engine(
-        self, onnx_file_path: str, engine_type: str, engine_args: Dict
+        self.engine = self.create_engine()
+
+    @property
+    def batch_size(self) -> int:
+        """
+        :return: the batch size this engine operator is compiled at
+        """
+        return self._batch_size
+
+    def create_engine(
+        self,
+        **kwargs,
     ) -> Union[Engine, MultiModelEngine, ORTEngine]:
         """
         Create an inference engine for a given ONNX model
 
-        :param onnx_file_path: path to ONNX model file
-        :param engine_type: type of engine to create.
-        :param engine_args: arguments to pass to engine constructor
-        :param context: context to use for engine
+        :param kwargs: overrides to engine_args used as kwargs for engine
+            constructor/compilation
         :return: inference engine
         """
-        engine_type = engine_type.lower()
+        onnx_file_path = self.model_path
+        engine_args = deepcopy(self._engine_args)
+        engine_args.update(kwargs)
+        engine_type = self._engine_type.lower()
 
         if engine_type == DEEPSPARSE_ENGINE:
             if self.engine_context is not None and isinstance(
@@ -116,6 +136,12 @@ class EngineOperator(Operator):
         )
 
     def run(self, inp: EngineOperatorInputs) -> Dict:
+        if inp.engine:
+            # run with custom engine, do not split/join since custom engine
+            # may run at any batch size, returning here as code below has a
+            # planned refactor
+            engine_outputs = inp.engine(inp.engine_inputs)
+            return {"engine_outputs": engine_outputs}
         inp = inp.engine_inputs
         batches, orig_batch_size = self.expand_inputs(engine_inputs=inp)
         batches_outputs = list(map(self.engine, batches))
