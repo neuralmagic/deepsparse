@@ -104,7 +104,7 @@ class ContinuousBatchingQueue(Queue):
 
 class ContinuousBatchingQueues:
     """
-    Collection of Queues designed to support continuous batching.
+    Threadsafe collection of Queues designed to support continuous batching.
     Each Queue should be keyed by an operator where possible, however keys
     are kept generic.
 
