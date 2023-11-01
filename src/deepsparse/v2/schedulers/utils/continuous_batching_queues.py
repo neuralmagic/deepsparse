@@ -15,6 +15,7 @@
 from concurrent.futures import Future
 from queue import Queue
 from time import time
+from threading import Lock
 from typing import Any, Callable, Dict, List, NamedTuple, Optional, Tuple
 
 
@@ -110,20 +111,19 @@ class ContinuousBatchingQueues:
     On request for next - a job will be returned with an operator key and
     a batch of inputs. The default heuristic for the next job will be
     a combination of wait time and largest batch that can be run
-
-    ContinuousBatchingQueues is not thread safe, access to ContinuousBatchingQueues
-    should be controlled with locks where possible
     """
 
     def __init__(self):
         self._queues = {}  # Dict[Any, ContinuousBatchingQueue]
+        self._mutex = Lock()
 
-    def has_key(self, key: Any) -> bool:
+    def __contains__(self, key: Any) -> bool:
         """
         :param key: key to look up
         :return: True if the given key has a queue in this group
         """
-        return key in self._queues
+        with self._mutex:
+            return key in self._queues
 
     def add_queue(self, key: Any, batch_sizes: List[int]):
         """
@@ -132,7 +132,8 @@ class ContinuousBatchingQueues:
         :param key: key to identify queue with, preferably the engine operator
         :param batch_sizes: batch sizes that the operator can be run at
         """
-        self._queues[key] = ContinuousBatchingQueue(batch_sizes=batch_sizes)
+        with self._mutex:
+            self._queues[key] = ContinuousBatchingQueue(batch_sizes=batch_sizes)
 
     def add_queue_item(self, key: Any, item: Any, future: Optional[Future] = None):
         """
@@ -142,17 +143,20 @@ class ContinuousBatchingQueues:
         :param item: item to add in queue
         :param future: optional future that should be used for resolution of value
         """
-        if key not in self._queues:
+        if key not in self:
             raise KeyError(f"Cannot add item to queue for unregistered key {key}")
 
         entry = QueueEntry(value=item, future=future, entry_time_ms=_current_time_ms())
-        self._queues[key].put(entry)
+
+        with self._mutex:
+            self._queues[key].put(entry)
 
     def has_next_batch(self) -> bool:
         """
         :return: true if any Queue has enough entries to fill a valid batch size
         """
-        return any(queue.has_batch() for queue in self._queues.values())
+        with self._mutex:
+            return any(queue.has_batch() for queue in self._queues.values())
 
     def pop_batch(
         self,
@@ -170,19 +174,20 @@ class ContinuousBatchingQueues:
             batch of QueueEntry objects as a list that have been popped and should
             be run as a batch
         """
-        valid_queues = self._filter_empty_queues()
+        with self._mutex:
+            valid_queues = self._filter_empty_queues()
 
-        if not valid_queues:
-            raise RuntimeError(
-                "Cannot pop_batch when no queues have enough items to fill "
-                "a valid batch size, check with has_next_batch before calling "
-                "pop_batch"
-            )
+            if not valid_queues:
+                raise RuntimeError(
+                    "Cannot pop_batch when no queues have enough items to fill "
+                    "a valid batch size, check with has_next_batch before calling "
+                    "pop_batch"
+                )
 
-        select_fn = select_fn or _default_select_fn
-        selected_key = select_fn(valid_queues)
+            select_fn = select_fn or _default_select_fn
+            selected_key = select_fn(valid_queues)
 
-        return selected_key, self._queues[selected_key].pop_batch()
+            return selected_key, self._queues[selected_key].pop_batch()
 
     def _filter_empty_queues(self) -> Dict[Any, ContinuousBatchingQueue]:
         return {key: queue for key, queue in self._queues.items() if queue.has_batch()}
