@@ -17,7 +17,6 @@ from concurrent.futures import Future
 
 import numpy
 
-from deepsparse import compile_model
 from deepsparse.v2.operators import EngineOperator
 from deepsparse.v2.schedulers.utils import (
     ContinuousBatchingExecutorThread,
