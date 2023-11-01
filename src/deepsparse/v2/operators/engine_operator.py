@@ -33,9 +33,13 @@ __all__ = ["EngineOperator"]
 
 class EngineOperatorInputs(BaseModel):
     engine_inputs: List = Field(description="engine_inputs")
-    _engine: Optional[Engine] = Field(
-        description="override the engine to run forward pass with"
+    engine: Optional[Engine] = Field(
+        description="override the engine to run forward pass with",
+        default=None,
     )
+
+    class Config:
+        arbitrary_types_allowed = True
 
 
 class EngineOperatorOutputs(BaseModel):
@@ -132,13 +136,13 @@ class EngineOperator(Operator):
         )
 
     def run(self, inp: EngineOperatorInputs) -> Dict:
-        inp = inp.engine_inputs
-        if inp._engine:
+        if inp.engine:
             # run with custom engine, do not split/join since custom engine
             # may run at any batch size, returning here as code below has a
             # planned refactor
-            engine_outputs = inp._engine(inp)
+            engine_outputs = inp.engine(inp.engine_inputs)
             return {"engine_outputs": engine_outputs}
+        inp = inp.engine_inputs
         batches, orig_batch_size = self.expand_inputs(engine_inputs=inp)
         batches_outputs = list(map(self.engine, batches))
         engine_outputs = self.condense_inputs(
