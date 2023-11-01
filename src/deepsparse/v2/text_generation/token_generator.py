@@ -11,42 +11,20 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-from typing import Any, Optional
-
-from pydantic import BaseModel, Field
-
 from deepsparse.transformers.utils.token_generator import TokenGenerator
 from deepsparse.v2.operators import Operator
-from deepsparse.v2.utils import Context, InferenceState, PipelineState
 
 
 __all__ = ["TokenGeneratorOperator"]
 
 
-class TokenGeneratorOperatorInput(BaseModel):
-    logits_shape: Any = Field(description="shape")
-    tokens: Any = Field(description="tokens", default=[])
-    deterministic: bool = Field(description="deterministic")
-    sampling_temperature: int = Field(description="sampling temperature")
-    kwargs: dict = Field(description="kwargs", default={})
-
-
 class TokenGeneratorOperator(Operator):
-    input_schema = TokenGeneratorOperatorInput
-
-    def run(
-        self,
-        inp: Any,
-        context: Optional[Context],
-        inference_state: InferenceState,
-        pipeline_state: PipelineState,
-    ):
+    def run(self, logits_shape, deterministic, tokens, sampling_temperature, **kwargs):
         token_generator = TokenGenerator(
-            logits_shape=inp.logits_shape,
-            deterministic=inp.deterministic,
-            tokens=inp.tokens,
-            sampling_temperature=inp.sampling_temperature,
-            **inp.kwargs,
+            logits_shape=logits_shape,
+            deterministic=deterministic,
+            tokens=tokens,
+            sampling_temperature=sampling_temperature,
+            **kwargs,
         )
-        return {"token_generator": token_generator}, {}
+        return {"token_generator": token_generator}

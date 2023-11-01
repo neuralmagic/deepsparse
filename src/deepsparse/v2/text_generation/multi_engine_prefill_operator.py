@@ -97,7 +97,6 @@ class MultiEnginePrefill(Operator):
         )
 
     def run(self, tokens: Any, kv_cache: Any, pipeline_state: PipelineState, **kwargs):
-
         onnx_input_names_no_cache = pipeline_state.current_state.get(
             "onnx_input_names_no_cache"
         )

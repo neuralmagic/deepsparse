@@ -36,8 +36,7 @@ class NlEngineInput(BaseModel):
     engine_inputs: List = Field(description="engine inputs")
     kv_cache: Any = Field(description="kv_cache object")
     tokens: List = Field(description="tokens")
-    in_generation: bool = Field(description="in_generation")
-
+    in_generation: bool = Field(description="in_generation", default=None)
 
 
 class NLEngineOperator(EngineOperator):
@@ -50,6 +49,7 @@ class NLEngineOperator(EngineOperator):
     """
 
     input_schema = NlEngineInput
+    output_schema = None
 
     def __init__(
         self,
@@ -120,7 +120,12 @@ class NLEngineOperator(EngineOperator):
             kv_cache=kv_cache,
         )
 
-        output = {"logits": logits, "kv_cache": kv_cache, "tokens": inp.tokens}
+        output = {
+            "logits": logits,
+            "kv_cache": kv_cache,
+            "tokens": inp.tokens,
+            "in_generation": inp.in_generation,
+        }
         return output
 
     def _add_kv_cache_to_input(self, engine_input, kv_cache):

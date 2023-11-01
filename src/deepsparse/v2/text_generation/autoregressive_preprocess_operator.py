@@ -26,6 +26,7 @@ _LOGGER = logging.getLogger(__name__)
 
 __all__ = ["AutoRegressiveOperatorPreprocess"]
 
+
 class AutoRegressiveOperatorPreprocess(Operator):
     def __init__(self, sequence_length: int, prompt_sequence_length: int):
         """
@@ -50,29 +51,18 @@ class AutoRegressiveOperatorPreprocess(Operator):
         tokens = inp.get("tokens")
         kv_cache = inp.get("kv_cache")
 
-        if found and inp.get("in_generation"):
+        if inp.get("in_generation"):
             return True
-
-        if found and not inp.get("in_generation"):
-            return False
-
-        # Check if in active generation
-        if not inp.get("in_generation"):
-            return True
-
-        # Check if in prompt inference
-        found = False
-        for c in context.stages_executed:
-            if c.operator.__class__.__name__ == "PrepareforSingleEngine":
-                found = True
 
         remaining_tokens = len(tokens) - kv_cache.total_num_processed_tokens
-        if remaining_tokens > 0 and remaining_tokens < self.prompt_sequence_length:
+        can_process = (
+            remaining_tokens > 0 and remaining_tokens < self.prompt_sequence_length
+        )
+        if can_process and inp.get("in_generation") is None:
             return True
         return False
 
     def run(self, tokens: Any, kv_cache: Any, pipeline_state: PipelineState, **kwargs):
-
         if not self.set_capacity:
             self.set_capacity = True
             kv_cache.set_capacity(self.sequence_length - 1)
@@ -107,5 +97,5 @@ class AutoRegressiveOperatorPreprocess(Operator):
             "engine_inputs": engine_inputs,
             "kv_cache": kv_cache,
             "tokens": tokens,
-            "in_generation": inp.get("in_generation"),
+            "in_generation": kwargs.get("in_generation"),
         }

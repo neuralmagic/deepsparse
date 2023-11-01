@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import datetime
-from typing import Any, Optional
+from typing import Optional
 
 import numpy
 
@@ -22,7 +22,8 @@ from deepsparse.transformers.pipelines.text_generation import (
     TextGenerationOutput,
 )
 from deepsparse.v2.operators import Operator
-from deepsparse.v2.utils import Context, InferenceState, PipelineState
+from deepsparse.v2.text_generation.compile_generations import CompileGenerationsOutput
+from deepsparse.v2.utils import InferenceState
 
 
 class ProcessOutputs(Operator):
@@ -51,11 +52,7 @@ class ProcessOutputs(Operator):
         )
 
     def run(
-        self,
-        inp: Any,
-        context: Optional[Context],
-        inference_state: InferenceState,
-        pipeline_state: PipelineState,
+        self, inp: CompileGenerationsOutput, inference_state: InferenceState, **kwargs
     ):
         generation_config = inference_state.current_state.get("generation_config")
         generated_tokens = inp.generated_tokens
@@ -88,4 +85,4 @@ class ProcessOutputs(Operator):
             generations=generations,
         )
 
-        return outputs, {}
+        return outputs

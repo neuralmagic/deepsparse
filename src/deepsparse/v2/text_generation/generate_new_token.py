@@ -11,13 +11,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from typing import Any, Optional, Sequence, Union
+from typing import Any, Sequence, Union
 
 import transformers
 
 from deepsparse.transformers.pipelines.text_generation import FinishReason
 from deepsparse.v2.operators import Operator
-from deepsparse.v2.utils import Context, InferenceState, PipelineState
+from deepsparse.v2.utils import InferenceState
 
 
 __all__ = ["GenerateNewTokenOperator"]
@@ -42,20 +42,12 @@ class GenerateNewTokenOperator(Operator):
         )
         return decoded_token in stop_tokens
 
-    def can_operate(self, inp: Any, context: Context):
+    def can_operate(self, inp: Any):
         if inp.get("in_generation"):
             return True
         return False
 
-    def run(
-        self,
-        inp: Any,
-        context: Optional[Context],
-        inference_state: InferenceState,
-        pipeline_state: PipelineState,
-    ):
-
-        logits = inp.get("logits")
+    def run(self, logits, kv_cache, inference_state: InferenceState, **kwargs):
         token_generator = inference_state.current_state.get("token_generator")
         token = token_generator.generate(logits=logits[0, -1, :])
         finish_reason = None
@@ -93,6 +85,6 @@ class GenerateNewTokenOperator(Operator):
             "new_token": token,
             "finish_reason": finish_reason,
         }
-        output = {"tokens": token_generator.tokens, "kv_cache": inp.get("kv_cache")}
+        output = {"tokens": token_generator.tokens, "kv_cache": kv_cache}
         output.update(new_generation)
         return output, state_update

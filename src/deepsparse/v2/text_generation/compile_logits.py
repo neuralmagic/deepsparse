@@ -13,6 +13,8 @@
 # limitations under the License.
 
 
+from typing import Any
+
 from deepsparse.v2.operators import Operator
 from deepsparse.v2.utils import InferenceState
 
@@ -27,19 +29,11 @@ class CompilePromptLogits(Operator):
     take prompt logits from each iteration run and update the inference state.
     """
 
-    def can_operate(self, inp: Any, context: Context):
-        if inp.get("in_generation"):
-            return False
-
-        found = False
-        for c in context.stages_executed:
-            if c.operator.__class__.__name__ == "PrepareGeneration":
-                return True
-
-        if not found:
+    def can_operate(self, inp: Any):
+        if inp.get("in_generation") is None:
             return True
         return False
-        
+
     def run(self, logits, inference_state: InferenceState, **kwargs):
         logit_type = "prompt_logits"
 

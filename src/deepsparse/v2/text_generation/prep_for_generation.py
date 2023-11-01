@@ -11,14 +11,14 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from typing import Any, Optional
+from typing import Any
 
 import numpy
 
 from deepsparse.transformers.pipelines.text_generation import FinishReason
 from deepsparse.v2.operators import Operator
 from deepsparse.v2.text_generation import TokenGeneratorOperator
-from deepsparse.v2.utils import Context, InferenceState, PipelineState
+from deepsparse.v2.utils import InferenceState
 
 
 __all__ = ["PrepareGeneration"]
@@ -35,20 +35,15 @@ class PrepareGeneration(Operator):
         self.sequence_length = sequence_length
         self.token_generator_creator = token_generator
 
-    def can_operate(self, inp: Any, context: Context):
+    def can_operate(self, inp: Any):
         kv_cache = inp.get("kv_cache")
         tokens = inp.get("tokens")
-
-        found = False
-        for c in context.stages_executed:
-            if c.operator.__class__.__name__ == "PrepareforSingleEngine":
-                found = True
 
         # If the number of prompt tokens is greater than what we've processed,
         # don't start generation. Should be equal when started as all prompt logits
         # should be accounted for and we should have updated the kv_cache for the single
         # token engine.
-        if found and len(tokens) == kv_cache.total_num_processed_tokens:
+        if len(tokens) == kv_cache.total_num_processed_tokens:
             return True
         return False
 
@@ -96,13 +91,10 @@ class PrepareGeneration(Operator):
         )
 
     def run(
-        self,
-        inp: Any,
-        context: Optional[Context],
-        inference_state: InferenceState,
-        pipeline_state: PipelineState,
+        self, tokens: Any, kv_cache: Any, inference_state: InferenceState, **kwargs
     ):
         prompt_logits = inference_state.current_state.get("prompt_logits")
+        prompt_logits = numpy.concatenate(prompt_logits, axis=1)
         # TODO: clean this up such that dont have to keep writing current_state
         # everywhere
 
@@ -111,17 +103,12 @@ class PrepareGeneration(Operator):
             "include_prompt_logits"
         )
 
-        token_generator_creator_output, _ = self.token_generator_creator(
-            context=context,
-            pipeline_state=pipeline_state,
-            inference_state=inference_state,
-            **{
-                "logits_shape": prompt_logits[0, -1, :].shape,
-                "deterministic": not generation_config.do_sample,
-                "sampling_temperature": generation_config.temperature,
-                "kwargs": inference_state.current_state,
-                "tokens": inp.get("tokens"),
-            },
+        token_generator_creator_output = self.token_generator_creator.run(
+            logits_shape=prompt_logits[0, -1, :].shape,
+            deterministic=not generation_config.do_sample,
+            sampling_temperature=generation_config.temperature,
+            tokens=tokens,
+            **inference_state.current_state,
         )
         token_generator = token_generator_creator_output.get("token_generator")
         token_generator.generate(prompt_logits[0, -1, :])
@@ -147,7 +134,7 @@ class PrepareGeneration(Operator):
 
         output = {
             "tokens": token_generator.tokens,
-            "kv_cache": inp.get("kv_cache"),
+            "kv_cache": kv_cache,
             "in_generation": True,
         }
         return output, state_update

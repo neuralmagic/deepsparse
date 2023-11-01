@@ -28,7 +28,6 @@ from deepsparse.v2.text_generation import (
     MultiEnginePrefill,
     NLEngineOperator,
     PrepareforPrefill,
-    PrepareforSingleEngine,
     PrepareGeneration,
     ProcessInputsTextGeneration,
     ProcessOutputs,
@@ -84,12 +83,12 @@ class TextGenerationPipeline(Pipeline):
         # attributes to the specific Operator that neeed them, as class attributes.
         pipeline_state_vals[
             "onnx_input_names_no_cache"
-        ] = multi_engine_operator.onnx_input_names_no_cache
-        pipeline_state_vals["cache_shape"] = multi_engine_operator.cache_shape
-        pipeline_state_vals["output_names"] = multi_engine_operator.output_names
+        ] = single_engine_operator.onnx_input_names_no_cache
+        pipeline_state_vals["cache_shape"] = single_engine_operator.cache_shape
+        pipeline_state_vals["output_names"] = single_engine_operator.output_names
         pipeline_state_vals[
             "kv_cache_data_type"
-        ] = multi_engine_operator.kv_cache_data_type
+        ] = single_engine_operator.kv_cache_data_type
         pipeline_state.create_state(pipeline_state_vals)
 
         process_inputs = ProcessInputsTextGeneration(
@@ -115,12 +114,6 @@ class TextGenerationPipeline(Pipeline):
             sequence_length=sequence_length,
         )
         compile_prompt_logits = CompilePromptLogits()
-        """
-        prep_for_single_engine = PrepareforSingleEngine(
-            prompt_sequence_length=prompt_sequence_length,
-            sequence_length=sequence_length,
-        )
-        """
         autoregressive_preprocess = AutoRegressiveOperatorPreprocess(
             sequence_length=sequence_length,
             prompt_sequence_length=prompt_sequence_length,
