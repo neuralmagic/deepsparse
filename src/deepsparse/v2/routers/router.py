@@ -32,6 +32,7 @@ class Router:
 
     :param start_route: the start index or key of the router
     :param end_route: the end index or key of the router
+    :param route: the route that the router has to traverse through
 
     """
 
@@ -56,10 +57,9 @@ class Router:
         Determines the index or dictionary key for the next operator which should run.
 
         :param past: the previous index or key. This should uniquely determine the next
-        operator to run
+            operator to run
         :param ops: list or dictionary of operators
         :param inp: operator input
-        :param inference_state: state variables stores in InferenceState
         :returns: the next index or dictionary key for the next operator to run
         """
         raise NotImplementedError

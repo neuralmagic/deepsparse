@@ -65,7 +65,9 @@ class Operator(ABC):
 
         :param args: an unnamed arg may only be provided if it is of the type of the
             input_schema
-        :param context: pipeline context to pass to operator
+        :param inference_state: inference_state for the pipeline.
+        :param pipeline_state: pipeline_state for the pipeline. The values in the state
+            are created during pipeline creation and are read-only during inference.
         :param kwargs: kwargs when not initializing from an instantiated schema
         :return: operator output
         """
@@ -105,8 +107,6 @@ class Operator(ABC):
     @abstractmethod
     def run(self, *args, **kwargs) -> Any:
         """
-        :param inp: operator input, as the defined input schema if applicable
-        :param context: pipeline context of already run operators
         :return: result of this operator as the defined output schema if applicable
         """
         raise NotImplementedError

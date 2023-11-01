@@ -28,7 +28,7 @@ class Pipeline(Operator):
     """
     Pipeline accepts a series of operators, schedulers, and a router. Calling a pipeline
     will use the router to run through all the defined operators. The operators should
-    be implemented using the Operator class and each implemented Operator should be
+    be implemented using the Operator class and each implemented operator should be
     responsible for a functional component of the pipelines. The flow of inputs/outputs
     between the operators and the steps in the pipeline should be defined by the router,
     (based off of the Router class), which dicates the next operator in the pipeline.
@@ -38,6 +38,7 @@ class Pipeline(Operator):
         or dictionary of operators.
     :param router: A Router which dictates the next operator to call.
     :param schedulers: A list of schedulers to run operators.
+    :param pipeline_state: pipeline_state created during pipeline initialization
 
     """
 
@@ -69,9 +70,9 @@ class Pipeline(Operator):
         Run through the operators using the provided router and scheduler.
         The input to a given operator is the output of the previous operator.
 
-        :param inp: input to the operator. expected to be of any type that is
-        expected by the operator.
-
+        :param inference_state: inference_state for the pipeline.
+        :param pipeline_state: pipeline_state for the pipeline. The values in the state
+            are created during pipeline creation and are read-only during inference.
         """
         next_step = self.router.START_ROUTE
         operator_output = None
@@ -115,8 +116,11 @@ class Pipeline(Operator):
 
     def __call__(self, *args, **kwargs):
         """
+        Consolidate any provided inference_state or pipeline_state objects and pass
+        any other operator inputs to run().
+
         :return: output of the pipeline operators ran with the router for the given
-        input
+            input
         """
         if kwargs.get("inference_state"):
             inference_state = kwargs.pop("inference_state")
