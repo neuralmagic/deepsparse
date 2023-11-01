@@ -111,13 +111,11 @@ class ContinuousBatchingQueues:
     On request for next - a job will be returned with an operator key and
     a batch of inputs. The default heuristic for the next job will be
     a combination of wait time and largest batch that can be run
-
-    :param mutex: Optional Lock object to be shared between continuous batching runners
     """
 
-    def __init__(self, mutex: Optional[Lock] = None):
+    def __init__(self):
         self._queues = {}  # Dict[Any, ContinuousBatchingQueue]
-        self._mutex = mutex or Lock()
+        self._mutex = Lock()
 
         # add condition for wait/notify when an item is added to any queue
         self._item_added = Condition(self._mutex)
