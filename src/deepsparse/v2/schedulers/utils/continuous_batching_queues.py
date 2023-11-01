@@ -118,6 +118,13 @@ class ContinuousBatchingQueues:
     def __init__(self):
         self._queues = {}  # Dict[Any, ContinuousBatchingQueue]
 
+    def has_key(self, key: Any) -> bool:
+        """
+        :param key: key to look up
+        :return: True if the given key has a queue in this group
+        """
+        return key in self._queues
+
     def add_queue(self, key: Any, batch_sizes: List[int]):
         """
         Adds a queue for a single operator that can be run at multiple batch sizes
