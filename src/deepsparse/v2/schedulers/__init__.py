@@ -1,4 +1,5 @@
 # flake8: noqa
+# isort: skip_file
 
 # Copyright (c) 2021 - present / Neuralmagic, Inc. All Rights Reserved.
 #
@@ -16,3 +17,4 @@
 
 from .scheduler import *
 from .scheduler_group import *
+from .continuous_batching_scheduler import *
