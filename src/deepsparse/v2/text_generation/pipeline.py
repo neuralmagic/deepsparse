@@ -17,7 +17,7 @@ from typing import Dict
 from deepsparse.transformers.utils.helpers import process_generation_config
 from deepsparse.v2.operators import Operator
 from deepsparse.v2.pipeline import Pipeline
-from deepsparse.v2.routers import TextGenerationRouter
+from deepsparse.v2.routers import GraphRouter
 from deepsparse.v2.schedulers import OperatorScheduler
 from deepsparse.v2.text_generation import (
     AutoRegressiveOperatorPreprocess,
@@ -26,7 +26,6 @@ from deepsparse.v2.text_generation import (
     MultiEnginePrefill,
     NLEngineOperator,
     PrepareforPrefill,
-    PrepareforSingleEngine,
     ProcessInputsTextGeneration,
 )
 from deepsparse.v2.utils import PipelineState
@@ -79,12 +78,12 @@ class TextGenerationPipeline(Pipeline):
         # attributes to the specific Operator that neeed them, as class attributes.
         pipeline_state_vals[
             "onnx_input_names_no_cache"
-        ] = multi_engine_operator.onnx_input_names_no_cache
-        pipeline_state_vals["cache_shape"] = multi_engine_operator.cache_shape
-        pipeline_state_vals["output_names"] = multi_engine_operator.output_names
+        ] = single_engine_operator.onnx_input_names_no_cache
+        pipeline_state_vals["cache_shape"] = single_engine_operator.cache_shape
+        pipeline_state_vals["output_names"] = single_engine_operator.output_names
         pipeline_state_vals[
             "kv_cache_data_type"
-        ] = multi_engine_operator.kv_cache_data_type
+        ] = single_engine_operator.kv_cache_data_type
         pipeline_state.create_state(pipeline_state_vals)
 
         process_inputs = ProcessInputsTextGeneration(
@@ -110,10 +109,12 @@ class TextGenerationPipeline(Pipeline):
             sequence_length=sequence_length,
         )
         compile_prompt_logits = CompilePromptLogits()
+        """
         prep_for_single_engine = PrepareforSingleEngine(
             prompt_sequence_length=prompt_sequence_length,
             sequence_length=sequence_length,
         )
+        """
         autoregressive_preprocess = AutoRegressiveOperatorPreprocess(
             sequence_length=sequence_length,
             prompt_sequence_length=prompt_sequence_length,
@@ -128,29 +129,26 @@ class TextGenerationPipeline(Pipeline):
             "prepare_prefill": engine_inputs_for_prefill,
             "multi_engine_prefill": multi_engine_prefill,
             "compile_logits": compile_prompt_logits,
-            "prepare_single_engine": prep_for_single_engine,
             "autoregressive_preprocess": autoregressive_preprocess,
             "final_step": final_step,
         }
 
         routes = {
             "process_input": "prepare_prefill",
-            "prepare_prefill": ["multi_engine_prefill", "prepare_single_engine"],
+            "prepare_prefill": ["multi_engine_prefill", "autoregressive_preprocess"],
             "multi_engine_prefill": "multi_engine",
             "multi_engine": "compile_logits",
             "compile_logits": [
                 "multi_engine_prefill",
-                "prepare_single_engine",
                 "autoregressive_preprocess",
                 "final_step",
             ],
-            "prepare_single_engine": "autoregressive_preprocess",
             "autoregressive_preprocess": "single_engine",
             "single_engine": "compile_logits",
             "final_step": "STOP",
         }
 
-        router = TextGenerationRouter(
+        router = GraphRouter(
             end_route="STOP", start_route="process_input", route=routes
         )
         scheduler = [OperatorScheduler()]
@@ -208,6 +206,8 @@ class FinalStep(Operator):
         return True
 
     def run(self, *args, **kwargs):
+        import numpy
+
         inference_state = kwargs.get("inference_state")
         prompt_logits = inference_state.current_state.get("prompt_logits")
-        return prompt_logits, {}
+        return numpy.concatenate(prompt_logits, axis=1)

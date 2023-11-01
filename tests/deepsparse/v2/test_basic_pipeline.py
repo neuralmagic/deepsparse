@@ -34,7 +34,7 @@ class AddOneOperator(Operator):
     input_schema = IntSchema
     output_schema = IntSchema
 
-    def run(self, inp: IntSchema) -> Dict:
+    def run(self, inp: IntSchema, **kwargs) -> Dict:
         return {"value": inp.value + 1}
 
 
@@ -42,7 +42,7 @@ class AddTwoOperator(Operator):
     input_schema = IntSchema
     output_schema = IntSchema
 
-    def run(self, inp: IntSchema) -> Dict:
+    def run(self, inp: IntSchema, **kwargs) -> Dict:
         return {"value": inp.value + 2}
 
 

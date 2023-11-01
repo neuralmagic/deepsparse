@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import pathlib
-from typing import Any, Dict, Optional, Union
+from typing import Dict, Union
 
 import transformers
 
@@ -24,7 +24,6 @@ from deepsparse.transformers.utils.helpers import (
     repeat_inputs,
 )
 from deepsparse.v2.operators import Operator
-from deepsparse.v2.utils import Context, InferenceState, PipelineState
 
 
 class GenerationDefaults:
@@ -64,13 +63,7 @@ class ProcessInputsTextGeneration(Operator):
         self.tokenizer = tokenizer
         self.sequence_length = sequence_length
 
-    def run(
-        self,
-        inp: Any,
-        context: Optional[Context],
-        pipeline_state: PipelineState,
-        inference_state: InferenceState,
-    ):
+    def run(self, inp: TextGenerationInput, **kwargs):
         generation_config = check_and_return_generation_config(
             self.generation_config, inp.generation_config, GenerationDefaults()
         )

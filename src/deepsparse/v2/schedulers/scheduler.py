@@ -14,7 +14,6 @@
 
 
 from concurrent.futures import Future, ThreadPoolExecutor
-from typing import Any
 
 from deepsparse.v2.operators import Operator
 
@@ -37,19 +36,30 @@ class OperatorScheduler:
     def __init__(self, max_workers: int = 1):
         self._threadpool = ThreadPoolExecutor(max_workers=max_workers)
 
-    def submit(self, *args, operator: Operator, **kwargs) -> Future:
+    def submit(
+        self,
+        *args,
+        operator: Operator,
+        **kwargs,
+    ) -> Future:
         """
         :param operator: operator to run
-        :param operator_input: input schema to the operator
-        :param context: context of already run operators
         :return: future referencing the asynchronously run output of the operator
         """
-        return self._threadpool.submit(operator, *args, **kwargs)
+        return self._threadpool.submit(
+            operator,
+            *args,
+            **kwargs,
+        )
 
-    def can_process(self, *args, operator: Operator, **kwargs) -> bool:
+    def can_process(
+        self,
+        *args,
+        operator: Operator,
+        **kwargs,
+    ) -> bool:
         """
         :param operator: operator to check
-        :param operator_input: operator_input to check
         :return: True if this Operator can process the given operator and input.
             Base OperatorScheduler always returns True
         """

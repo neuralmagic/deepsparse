@@ -12,15 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import logging
 from enum import Enum
-from typing import Any, Optional
+from typing import Any
 
 import numpy
 
 from deepsparse.transformers.utils.helpers import create_causal_mask
 from deepsparse.v2.operators import Operator
-from deepsparse.v2.utils import Context, InferenceState, PipelineState
+from deepsparse.v2.utils import PipelineState
 
+
+_LOGGER = logging.getLogger(__name__)
 
 __all__ = ["MultiEnginePrefill"]
 
@@ -49,8 +52,12 @@ class MultiEnginePrefill(Operator):
             OnnxInputNames.ATTN_MASK.value: self._case_attn_mask,
             OnnxInputNames.POSITIONS.value: self._case_positions,
         }
+        _LOGGER.warn(
+            "This operator requires the PipelineState to be set-up with the "
+            "onnx_input_names_no_cache attribute set from the NLEngineOperator."
+        )
 
-    def can_operate(self, inp: Any, context: Context, inference_state: InferenceState):
+    def can_operate(self, inp: Any):
         """
         Can only run if the number of prompt tokens left to process is greater than
         or equal to the self.prompt_sequence_length.
@@ -89,15 +96,8 @@ class MultiEnginePrefill(Operator):
             .astype(numpy.int64)
         )
 
-    def run(
-        self,
-        inp: Any,
-        context: Optional[Context],
-        pipeline_state: PipelineState,
-        inference_state: InferenceState,
-    ):
-        tokens = inp.get("tokens")
-        kv_cache = inp.get("kv_cache")
+    def run(self, tokens: Any, kv_cache: Any, pipeline_state: PipelineState, **kwargs):
+
         onnx_input_names_no_cache = pipeline_state.current_state.get(
             "onnx_input_names_no_cache"
         )
@@ -132,4 +132,4 @@ class MultiEnginePrefill(Operator):
             "engine_inputs": engine_inputs,
             "kv_cache": kv_cache,
             "tokens": tokens,
-        }, {}
+        }

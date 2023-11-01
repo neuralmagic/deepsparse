@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Any, Optional
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -22,7 +22,6 @@ from deepsparse.transformers.utils.helpers import (
     prepends_bos_token,
 )
 from deepsparse.v2.operators import Operator
-from deepsparse.v2.utils import Context, InferenceState, PipelineState
 
 
 __all__ = ["KVCacheCreator"]
@@ -43,24 +42,18 @@ class KVCacheCreator(Operator):
     output_schema = KVCacheCreatorOutput
 
     def __init__(
-        self, tokenizer, sequence_length, prompt_sequence_length, internal_kv_cache
+        self,
+        tokenizer,
+        sequence_length: int,
+        prompt_sequence_length: int,
+        internal_kv_cache: bool,
     ):
         self.tokenizer = tokenizer
         self.prompt_sequence_length = prompt_sequence_length
         self.internal_kv_cache = internal_kv_cache
         self.sequence_length = sequence_length
 
-    def run(
-        self,
-        inp: Any,
-        context: Optional[Context],
-        pipeline_state: PipelineState,
-        inference_state: InferenceState,
-    ):
-        cache_shape = inp.cache_shape
-        kv_cache_data_type = inp.kv_cache_data_type
-        output_names = inp.output_names
-
+    def run(self, cache_shape, kv_cache_data_type: str, output_names: list, **kwargs):
         kv_cache_state = initialize_kv_cache_state(
             cache_shape=cache_shape,
             kv_cache_data_type=kv_cache_data_type,
@@ -74,4 +67,4 @@ class KVCacheCreator(Operator):
             state=kv_cache_state,
             freeze_first_position=prepends_bos_token(self.tokenizer),
         )
-        return {"kv_cache": kv_cache}, {}
+        return {"kv_cache": kv_cache}

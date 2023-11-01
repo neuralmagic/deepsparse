@@ -1,5 +1,3 @@
-<<<<<<< HEAD
-=======
 # Copyright (c) 2021 - present / Neuralmagic, Inc. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,9 +18,7 @@ from .kv_cache_operator import *
 from .multi_engine_prefill_operator import *
 from .nl_engine_operator import *
 from .prep_for_prefill import *
-from .prep_for_single_engine import *
 from .process_inputs import *
 
 
 from .pipeline import *  # isort:skip
->>>>>>> updates func

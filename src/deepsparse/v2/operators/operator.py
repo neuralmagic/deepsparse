@@ -17,6 +17,8 @@ from typing import Any, Optional, Type
 
 from pydantic import BaseModel
 
+from deepsparse.v2.utils import InferenceState, PipelineState
+
 
 __all__ = ["Operator"]
 
@@ -54,6 +56,8 @@ class Operator(ABC):
     def __call__(
         self,
         *args,
+        inference_state: InferenceState,
+        pipeline_state: PipelineState,
         **kwargs,
     ) -> Any:
         """
@@ -81,10 +85,18 @@ class Operator(ABC):
                     "in the form of a dictionary or an instance of the input_schema"
                     "object"
                 )
-
-            run_output = self.run(inference_input)
+            run_output = self.run(
+                inference_input,
+                inference_state=inference_state,
+                pipeline_state=pipeline_state,
+            )
         else:
-            run_output = self.run(*args, **kwargs)
+            run_output = self.run(
+                *args,
+                inference_state=inference_state,
+                pipeline_state=pipeline_state,
+                **kwargs,
+            )
 
         if self.has_output_schema():
             return self.output_schema(**run_output)
@@ -99,13 +111,11 @@ class Operator(ABC):
         """
         raise NotImplementedError
 
-    def can_operate(
-        self, inp: Any, context: Context, inference_state: InferenceState
-    ) -> bool:
+    def can_operate(self, inp: Any) -> bool:
         """
-        Whether or not the given operator can run, based on input, context, or state
+        Whether or not the given operator can run, based on input
         """
-        raise NotImplementedError
+        return True
 
     def expand_inputs(self, **kwargs):
         """

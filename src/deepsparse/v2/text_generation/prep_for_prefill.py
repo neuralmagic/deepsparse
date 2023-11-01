@@ -12,11 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Any, Optional
+import logging
+from typing import Any
 
 from deepsparse.v2.operators import Operator
-from deepsparse.v2.utils import Context, InferenceState, PipelineState
+from deepsparse.v2.utils import PipelineState
 
+
+_LOGGER = logging.getLogger(__name__)
 
 __all__ = ["PrepareforPrefill"]
 
@@ -26,34 +29,29 @@ class PrepareforPrefill(Operator):
         """
         Operator before prefill. Responsible for creating the kv_cache based on engine
         variables. Currently, this operator expects that the kv_cache_creator is
-        provided during initization and then uses pipeline state to run the
+        provided during initization and then uses pipeline_state to run the
         kv_cache_operator.
         """
         # NOTE: Alternatively, we can initialize the kv_cache_creater operator here,
         # instead of at the pipeline level.
         self.kv_cache_creator = kv_cache_creator
 
-    def run(
-        self,
-        inp: Any,
-        context: Optional[Context],
-        pipeline_state: PipelineState,
-        inference_state: InferenceState,
-    ):
+        _LOGGER.warn(
+            "This operator requires the PipelineState to be set-up with the "
+            "cache_shape, output_names, kv_cache_data_type attributes to be set "
+            "from the NLEngineOperator"
+        )
+
+    def run(self, tokens: Any, pipeline_state: PipelineState, **kwargs):
         # NOTE: Can potentially just be class attributes instead of relying on
         # pipeline state.
         cache_shape = pipeline_state.current_state.get("cache_shape")
         data_type = pipeline_state.current_state.get("kv_cache_data_type")
         output_names = pipeline_state.current_state.get("output_names")
 
-        kv_cache, _ = self.kv_cache_creator(
-            context=context,
-            pipeline_state=pipeline_state,
-            inference_state=inference_state,
-            **{
-                "cache_shape": cache_shape,
-                "kv_cache_data_type": data_type,
-                "output_names": output_names,
-            },
-        )
-        return {"tokens": inp.get("tokens"), "kv_cache": kv_cache.kv_cache}, {}
+        kv_cache = self.kv_cache_creator.run(
+            cache_shape=cache_shape,
+            kv_cache_data_type=data_type,
+            output_names=output_names,
+        ).get("kv_cache")
+        return {"tokens": tokens, "kv_cache": kv_cache}

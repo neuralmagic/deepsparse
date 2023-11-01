@@ -12,14 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Any, Optional
+import logging
+from typing import Any
 
 import numpy
 
 from deepsparse.transformers.utils.helpers import create_causal_mask
 from deepsparse.v2.operators import Operator
-from deepsparse.v2.utils import Context, InferenceState, PipelineState
+from deepsparse.v2.utils import PipelineState
 
+
+_LOGGER = logging.getLogger(__name__)
 
 __all__ = ["AutoRegressiveOperatorPreprocess"]
 
@@ -33,40 +36,37 @@ class AutoRegressiveOperatorPreprocess(Operator):
         """
         self.sequence_length = sequence_length
         self.prompt_sequence_length = prompt_sequence_length
+        self.set_capacity = False
 
-    def can_operate(self, inp: Any, context: Context, inference_state: InferenceState):
+        _LOGGER.warn(
+            "This operator requires the PipelineState to be set-up with the "
+            "onnx_input_names_no_cache attribute set from the NLEngineOperator."
+        )
+
+    def can_operate(self, inp: Any) -> bool:
         """
         Can run this Operator if the number of tokens left to process is greater than
-        0 but less than the self.promt_sequence_length. Also, thie Operator can only
-        run after PrepareforSingleEngine as it requires the kv_cache to be updated.
+        0 but less than the self.prompt_sequence_length.
         """
         tokens = inp.get("tokens")
         kv_cache = inp.get("kv_cache")
 
-        found = False
-        for c in context.stages_executed:
-            if c.operator.__class__.__name__ == "PrepareforSingleEngine":
-                found = True
-
         remaining_tokens = len(tokens) - kv_cache.total_num_processed_tokens
-        if found and (
-            remaining_tokens > 0 and remaining_tokens < self.prompt_sequence_length
-        ):
+        if remaining_tokens > 0 and remaining_tokens < self.prompt_sequence_length:
             return True
         return False
 
-    def run(
-        self,
-        inp: Any,
-        context: Optional[Context],
-        inference_state: InferenceState,
-        pipeline_state: PipelineState,
-    ):
-        kv_cache = inp.get("kv_cache")
-        tokens = inp.get("tokens")
+    def run(self, tokens: Any, kv_cache: Any, pipeline_state: PipelineState, **kwargs):
+
+        if not self.set_capacity:
+            self.set_capacity = True
+            kv_cache.set_capacity(self.sequence_length - 1)
 
         num_total_processed_tokens = kv_cache.total_num_processed_tokens
         new_token = tokens[num_total_processed_tokens]
+        engine_input_names = pipeline_state.current_state.get(
+            "onnx_input_names_no_cache"
+        )
 
         # padding is added to left, so attention mask is 1s from the
         # right up to the number of total tokens (prompt + generated)
@@ -85,10 +85,8 @@ class AutoRegressiveOperatorPreprocess(Operator):
             causal_mask=causal_mask,
             positions=positions,
         )
-        
-        engine_inputs = [
-            engine_inputs_map[name] for name in engine_input_names
-        ]
+
+        engine_inputs = [engine_inputs_map[name] for name in engine_input_names]
 
         onnx_input_names_no_cache = pipeline_state.current_state.get(
             "onnx_input_names_no_cache"
@@ -99,4 +97,4 @@ class AutoRegressiveOperatorPreprocess(Operator):
             "engine_inputs": engine_inputs,
             "kv_cache": kv_cache,
             "tokens": tokens,
-        }, {}
+        }

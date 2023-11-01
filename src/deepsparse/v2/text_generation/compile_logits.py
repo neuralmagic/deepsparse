@@ -13,12 +13,8 @@
 # limitations under the License.
 
 
-from typing import Any, Optional
-
-import numpy as np
-
 from deepsparse.v2.operators import Operator
-from deepsparse.v2.utils import Context, InferenceState, PipelineState
+from deepsparse.v2.utils import InferenceState
 
 
 __all__ = ["CompilePromptLogits"]
@@ -31,21 +27,17 @@ class CompilePromptLogits(Operator):
     take prompt logits from each iteration run and update the inference state.
     """
 
-    def run(
-        self,
-        inp: Any,
-        context: Optional[Context],
-        pipeline_state: PipelineState,
-        inference_state: InferenceState,
-    ):
+    def run(self, logits, inference_state: InferenceState, **kwargs):
         logit_type = "prompt_logits"
-        logits = inp.get("logits")
 
         if inference_state.current_state.get(logit_type) is not None:
             current_logits = inference_state.current_state.get(logit_type).copy()
-            current_logits = np.concatenate((current_logits, logits), axis=1)
+            current_logits.append(logits)
         else:
-            current_logits = logits
+            current_logits = [logits]
 
         state_update = {logit_type: current_logits}
-        return inp, state_update
+        return {
+            "kv_cache": kwargs.get("kv_cache"),
+            "tokens": kwargs.get("tokens"),
+        }, state_update

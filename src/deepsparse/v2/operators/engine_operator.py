@@ -59,7 +59,7 @@ class EngineOperator(Operator):
         num_streams: int = None,
         scheduler: Scheduler = None,
         input_shapes: List[List[int]] = None,
-        engine_context: Optional[Context] = None,
+        engine_context: Optional[EngineContext] = None,
         engine_kwargs: Dict = None,
     ):
         self.model_path = model_to_path(model_path)
@@ -114,12 +114,12 @@ class EngineOperator(Operator):
 
         if engine_type == DEEPSPARSE_ENGINE:
             if self.engine_context is not None and isinstance(
-                self.engine_context, Context
+                self.engine_context, EngineContext
             ):
                 engine_args.pop("num_cores", None)
                 engine_args.pop("scheduler", None)
                 engine_args.pop("num_streams", None)
-                engine_args["context"] = self.engien_context
+                engine_args["context"] = self.engine_context
                 return MultiModelEngine(
                     model=onnx_file_path,
                     **engine_args,
@@ -135,7 +135,7 @@ class EngineOperator(Operator):
             f"{SUPPORTED_PIPELINE_ENGINES}"
         )
 
-    def run(self, inp: EngineOperatorInputs) -> Dict:
+    def run(self, inp: EngineOperatorInputs, **kwargs) -> Dict:
         if inp.engine:
             # run with custom engine, do not split/join since custom engine
             # may run at any batch size, returning here as code below has a

@@ -18,7 +18,7 @@ from typing import Dict, List, Union
 from deepsparse.v2.operators import Operator
 from deepsparse.v2.routers import Router
 from deepsparse.v2.schedulers import OperatorScheduler, SchedulerGroup
-from deepsparse.v2.utils import Context
+from deepsparse.v2.utils import InferenceState, PipelineState
 
 
 __all__ = ["Pipeline"]
@@ -40,27 +40,34 @@ class Pipeline(Operator):
     :param schedulers: A list of schedulers to run operators.
 
     """
-    
+
     def __init__(
         self,
         ops: Union[Dict[str, Operator], List[Operator]],
         router: Router,
         schedulers: List[OperatorScheduler],
+        pipeline_state: PipelineState = None,
     ):
 
         self.ops = ops
         self.router = router
         self.schedulers = schedulers
+        self.pipeline_state = pipeline_state
         self.validate()
 
         # SchedulerGroup handles running all schedulers in order of priority
         self._scheduler_group = SchedulerGroup(self.schedulers)
 
-    def run(self, *args, **kwargs):
+    def run(
+        self,
+        *args,
+        inference_state: InferenceState,
+        pipeline_state: PipelineState,
+        **kwargs,
+    ):
         """
-        Run through the operators using the provided router and scheduler. Update the
-        context to reflect each step of the router. The input to a given operator is the
-        output of the previous operator.
+        Run through the operators using the provided router and scheduler.
+        The input to a given operator is the output of the previous operator.
 
         :param inp: input to the operator. expected to be of any type that is
         expected by the operator.
@@ -68,43 +75,41 @@ class Pipeline(Operator):
         """
         next_step = self.router.START_ROUTE
         operator_output = None
+
         while next_step != self.router.END_ROUTE:
             # Either a dictionary key or valid index
             operator = self.ops[next_step]
             if next_step == self.router.START_ROUTE:
                 output_future = self._scheduler_group.submit(
-                    *args, operator=operator, **kwargs
+                    *args,
+                    inference_state=inference_state,
+                    operator=operator,
+                    pipeline_state=pipeline_state,
+                    **kwargs,
                 )
             else:
                 if isinstance(operator_output, dict):
                     output_future = self._scheduler_group.submit(
-                        operator=operator, **operator_output
+                        inference_state=inference_state,
+                        operator=operator,
+                        pipeline_state=pipeline_state,
+                        **operator_output,
                     )
                 else:
                     output_future = self._scheduler_group.submit(
-                        operator_output, operator=operator
+                        operator_output,
+                        inference_state=inference_state,
+                        pipeline_state=pipeline_state,
+                        operator=operator,
                     )
-                    
-            # print("Current State", inference_state.current_state)
 
-            """
-            output_future = self._scheduler_group.submit(
-                operator=operator,
-                operator_input=inp,
-                context=context,
-                pipeline_state=self.pipeline_state,
-                inference_state=inference_state,
-            )
-            """
+            operator_output = output_future.result()
+            if isinstance(operator_output, tuple):
+                state_update = operator_output[-1]
+                operator_output = operator_output[0]
+                inference_state.update_state(state_update)
 
-            # wait for future to resolve
-            operator_output, state_update = output_future.result()
-            inference_state.update_state(state_update)
-
-            next_step = self.router.next(
-                next_step, self.ops, context, operator_output, inference_state
-            )
-            inp = operator_output
+            next_step = self.router.next(next_step, self.ops, operator_output)
 
         return operator_output
 
@@ -113,6 +118,18 @@ class Pipeline(Operator):
         :return: output of the pipeline operators ran with the router for the given
         input
         """
+        if kwargs.get("inference_state"):
+            inference_state = kwargs.pop("inference_state")
+        else:
+            inference_state = InferenceState()
+            inference_state.create_state({})
+
+        if "pipeline_state" in kwargs:
+            self.pipeline_state = kwargs.get("pipeline_state")
+
+        kwargs["inference_state"] = inference_state
+        kwargs["pipeline_state"] = self.pipeline_state
+
         return self.run(*args, **kwargs)
 
     def validate(self):
