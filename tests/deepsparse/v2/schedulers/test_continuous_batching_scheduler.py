@@ -26,11 +26,6 @@ def test_continuous_batching_executor_thread():
     # concurrent requests guarantee batched execution is out of scope
     scheduler = ContinuousBatchingScheduler()
 
-    # have worker thread exit itself cleanly after loop
-    # if not set, then on next blocking call to pop_batch pytest will hang
-    # even after test completion due to blocked lock
-    scheduler._threads[0].stop_next()
-
     # mobilenet model with batch_size=2
     engine_operator = EngineOperator(
         "zoo:mobilenet_v2-1.0-imagenet-base",
