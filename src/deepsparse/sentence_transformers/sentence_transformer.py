@@ -265,6 +265,7 @@ class DeepSparseSentenceTransformer:
             # No padding needed
             return self.tokenizer(
                 texts,
+                padding=True,
                 truncation=True,
                 max_length=self._max_seq_length,
                 return_tensors="pt",
