@@ -40,15 +40,8 @@ def test_continuous_batching_executor_thread():
     # thread not started yet
     assert not worker_thread.is_alive()
 
-    # start
+    # start and assert thread is alive
     worker_thread.start()
-
-    # have thread exit itself cleanly after loop
-    # if not set, then on next blocking call to pop_batch pytest will hang
-    # even after test completion due to blocked lock
-    worker_thread.stop_next()
-
-    # assert worker is alive
     assert worker_thread.is_alive()
 
     # create first input and add it to queue
@@ -88,6 +81,3 @@ def test_continuous_batching_executor_thread():
     # TODO: test that the correct bs1 item is returned (can test against bs1 engine)
     assert_batch_size_one(result_1.engine_outputs)
     assert_batch_size_one(result_2.engine_outputs)
-
-    # make sure thread stopped as expected
-    assert not worker_thread.is_alive()

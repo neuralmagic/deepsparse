@@ -49,25 +49,11 @@ class ContinuousBatchingExecutorThread(Thread):
         self._should_stop = False
 
         super().__init__(target=self._working_loop)
-
-    def start(self, *args, **kwargs):
-        self._should_stop = False
-        super().start(*args, **kwargs)
-
-    def stop_next(self):
-        """
-        Stops the working loop after the next execution
-        """
-        if self.is_alive():
-            self._should_stop = True
-
-    @property
-    def should_stop(self):
-        return self._should_stop
+        self.daemon = True  # worker thread should exit when main thread exits
 
     def _working_loop(self):
         # indefinitely wait for batch, run batch, split and resolve futures
-        while not self.should_stop:
+        while True:
             # wait for next batch to be available
             engine_operator, batch = self._queues.pop_batch(block=True)
 
