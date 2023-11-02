@@ -76,15 +76,17 @@ def get_deployment_path(model_path: str) -> Tuple[str, str]:
         deployment_path = zoo_model.deployment_directory_path
         return deployment_path, os.path.join(deployment_path, _MODEL_DIR_ONNX_NAME)
     elif model_path.startswith("hf:"):
+        # load Hugging Face model from stub
         from huggingface_hub import snapshot_download
 
         deployment_path = snapshot_download(repo_id=model_path.replace("hf:", "", 1))
         onnx_path = os.path.join(deployment_path, _MODEL_DIR_ONNX_NAME)
         if not os.path.isfile(onnx_path):
             raise ValueError(
-                f"{_MODEL_DIR_ONNX_NAME} not found in transformers model directory "
-                f"{deployment_path}. Be sure that an export of the model is written to "
-                f"{onnx_path}"
+                f"Could not find the ONNX model file '{_MODEL_DIR_ONNX_NAME}' in the "
+                f"Hugging Face Hub repository located at {deployment_path}. Please "
+                f"ensure the model has been correctly exported to ONNX format and "
+                f"exists in the repository."
             )
         return deployment_path, onnx_path
     else:
