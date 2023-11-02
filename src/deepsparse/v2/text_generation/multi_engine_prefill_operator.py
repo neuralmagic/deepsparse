@@ -97,6 +97,7 @@ class MultiEnginePrefill(Operator):
         )
 
     def run(self, tokens: Any, kv_cache: Any, pipeline_state: PipelineState, **kwargs):
+        kv_cache.set_capacity(self.sequence_length - self.prompt_sequence_length)
         onnx_input_names_no_cache = pipeline_state.current_state.get(
             "onnx_input_names_no_cache"
         )

@@ -36,7 +36,6 @@ class AutoRegressiveOperatorPreprocess(Operator):
         """
         self.sequence_length = sequence_length
         self.prompt_sequence_length = prompt_sequence_length
-        self.set_capacity = False
 
         _LOGGER.warn(
             "This operator requires the PipelineState to be set-up with the "
@@ -63,11 +62,7 @@ class AutoRegressiveOperatorPreprocess(Operator):
         return False
 
     def run(self, tokens: Any, kv_cache: Any, pipeline_state: PipelineState, **kwargs):
-        if not self.set_capacity or (
-            self.set_capacity and kwargs.get("in_generation") is None
-        ):
-            self.set_capacity = True
-            kv_cache.set_capacity(self.sequence_length - 1)
+        kv_cache.set_capacity(self.sequence_length - 1)
 
         num_total_processed_tokens = kv_cache.total_num_processed_tokens
         new_token = tokens[num_total_processed_tokens]
