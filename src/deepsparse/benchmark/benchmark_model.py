@@ -402,11 +402,10 @@ def benchmark_model(
                 f"set the flag: --no-internal-kv-cache"
             )
 
-        if engine == DEEPSPARSE_ENGINE:
-            _LOGGER.info(
-                f"Benchmarking Engine: {engine} with "
-                f"{'internal' if internal_kv_cache else 'external'} KV cache management"
-            )
+        _LOGGER.info(
+            f"Benchmarking Engine: {engine} with "
+            f"{'internal' if internal_kv_cache else 'external'} KV cache management"
+        )
     else:
         input_ids_length = None
         sequence_length = None
