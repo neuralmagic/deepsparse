@@ -47,7 +47,6 @@ class TextGenerationPipeline(Pipeline):
         generation_config=None,
         engine_kwargs: Dict = None,
     ):
-
         pipeline_state = PipelineState()
         pipeline_state_vals = {}
 
@@ -177,7 +176,10 @@ class TextGenerationPipeline(Pipeline):
         )
         scheduler = [OperatorScheduler()]
         super().__init__(
-            ops=ops, router=router, schedulers=scheduler, pipeline_state=pipeline_state
+            ops=ops,
+            router=router,
+            schedulers=scheduler,
+            pipeline_state=pipeline_state,
         )
 
     # TODO: Move to be part of a generic transformers set-up Operator.

@@ -13,7 +13,8 @@
 # limitations under the License.
 
 
-from typing import Dict, List, Union
+import asyncio
+from typing import Any, Dict, List, Union
 
 from deepsparse.v2.operators import Operator
 from deepsparse.v2.routers import Router
@@ -59,6 +60,83 @@ class Pipeline(Operator):
         # SchedulerGroup handles running all schedulers in order of priority
         self._scheduler_group = SchedulerGroup(self.schedulers)
 
+    async def run_async(
+        self,
+        *args,
+        inference_state: InferenceState,
+        pipeline_state: PipelineState,
+        **kwargs,
+    ):
+        """
+        Run through the operators using the provided router and scheduler.
+        The input to a given operator is the output of the previous operator.
+
+        :param inference_state: inference_state for the pipeline.
+        :param pipeline_state: pipeline_state for the pipeline. The values in the state
+            are created during pipeline creation and are read-only during inference.
+        """
+        loop = asyncio.get_event_loop()
+
+        next_step = self.router.START_ROUTE
+        operator_output = None
+
+        while next_step != self.router.END_ROUTE:
+            # Either a dictionary key or valid index
+            operator = self.ops[next_step]
+            if next_step == self.router.START_ROUTE:
+                output_future = self._scheduler_group.submit(
+                    *args,
+                    inference_state=inference_state,
+                    operator=operator,
+                    loop=loop,
+                    pipeline_state=pipeline_state,
+                    **kwargs,
+                )
+            else:
+                output_future = self._send_to_scheduler(
+                    operator=operator,
+                    inference_state=inference_state,
+                    pipeline_state=pipeline_state,
+                    operator_input=operator_output,
+                    loop=loop,
+                )
+
+            await output_future
+            operator_output = output_future.result()
+            if isinstance(operator_output, tuple):
+                state_update = operator_output[-1]
+                operator_output = operator_output[0]
+                inference_state.update_state(state_update)
+
+            next_step = self.router.next(next_step, self.ops, operator_output)
+        return operator_output
+
+    def _send_to_scheduler(
+        self,
+        operator: Operator,
+        inference_state: InferenceState,
+        pipeline_state: PipelineState,
+        operator_input: Any,
+        loop=None,
+    ):
+        if isinstance(operator_input, dict):
+            output_future = self._scheduler_group.submit(
+                loop=loop,
+                inference_state=inference_state,
+                operator=operator,
+                pipeline_state=pipeline_state,
+                **operator_input,
+            )
+        else:
+            output_future = self._scheduler_group.submit(
+                operator_input,
+                loop=loop,
+                inference_state=inference_state,
+                pipeline_state=pipeline_state,
+                operator=operator,
+            )
+        return output_future
+
     def run(
         self,
         *args,
@@ -89,20 +167,12 @@ class Pipeline(Operator):
                     **kwargs,
                 )
             else:
-                if isinstance(operator_output, dict):
-                    output_future = self._scheduler_group.submit(
-                        inference_state=inference_state,
-                        operator=operator,
-                        pipeline_state=pipeline_state,
-                        **operator_output,
-                    )
-                else:
-                    output_future = self._scheduler_group.submit(
-                        operator_output,
-                        inference_state=inference_state,
-                        pipeline_state=pipeline_state,
-                        operator=operator,
-                    )
+                output_future = self._send_to_scheduler(
+                    operator=operator,
+                    inference_state=inference_state,
+                    pipeline_state=pipeline_state,
+                    operator_input=operator_output,
+                )
 
             operator_output = output_future.result()
             if isinstance(operator_output, tuple):
