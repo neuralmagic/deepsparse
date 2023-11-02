@@ -138,6 +138,21 @@ def model_to_path(model: Union[str, Model, File]) -> str:
         # get the downloaded_path -- will auto download if not on local system
         model = model.path
 
+    if isinstance(model, str) and model.startswith("hf:"):
+        # load Hugging Face model from stub
+        from huggingface_hub import snapshot_download
+
+        deployment_path = snapshot_download(repo_id=model.replace("hf:", "", 1))
+        onnx_path = os.path.join(deployment_path, _MODEL_DIR_ONNX_NAME)
+        if not os.path.isfile(onnx_path):
+            raise ValueError(
+                f"Could not find the ONNX model file '{_MODEL_DIR_ONNX_NAME}' in the "
+                f"Hugging Face Hub repository located at {deployment_path}. Please "
+                f"ensure the model has been correctly exported to ONNX format and "
+                f"exists in the repository."
+            )
+        return onnx_path
+
     if not isinstance(model, str):
         raise ValueError("unsupported type for model: {}".format(type(model)))
 
