@@ -14,10 +14,35 @@
 
 from typing import Optional
 
+from transformers import AutoModelForCausalLM
+
 from deepsparse import Pipeline
 from lm_eval import evaluator
 from lm_eval.base import BaseLM
-from typing import Union
+
+
+def integration_eval(
+    target,
+    target_args,
+    datasets,
+    batch_size,
+    splits=None,
+    metrics=None,
+    engine_type=None,
+    engine_args=None,
+    **kwargs,
+):
+    model = initialize_model(target, target_args)
+
+    evaluator.simple_evaluate(
+        model=model,
+        model_args=kwargs.get("model_args", target_args),
+        tasks=kwargs.get("tasks", datasets),
+        batch_size=batch_size,
+        **kwargs,
+    )
+
+    return True
 
 
 class DeepSparseLM(BaseLM):
@@ -74,45 +99,7 @@ class DeepSparseLM(BaseLM):
         return self.tokenizer.decode(tokens)
 
 
-def integration_eval(
-        target: Union[str, "Module"],
-        target_args,
-        datasets,
-        splits,
-        metrics,
-        batch_size,
-        engine,
-        engine_args,
-        **kwargs,
-):
-
-    if isinstance(target, str):
-        target = DeepSparseLM(stub=target)
-    else:
-        pass # model is a torch.Module
-
-    results = evaluator.simple_evaluate(
-          model=kwargs.get("model", target),
-          model_args=kwargs.get("model_args", target_args),
-          tasks=kwargs.get("tasks", datasets),
-    #     num_fewshot=num_fewshot,
-    #     batch_size=batch_size,
-    #     max_batch_size=max_batch_size,
-    #     device=device,
-    #     no_cache=no_cache,
-    #     limit=limit,
-    #     description_dict=description_dict,
-    #     decontamination_ngrams_path=decontamination_ngrams_path,
-    #     check_integrity=check_integrity,
-    #     write_out=write_out,
-    #     output_base_path=output_base_path,
-          **kwargs,
-    )
-
-
-if __name__ == "__main__":
-    target = "hf:mgoin/TinyStories-1M-deepsparse"
-    datasets = ["hellaswag"]
-    target_args = ""
-    limit = 2 # testing purposes
-    integration_eval(target=target, datasets=datasets, target_args=target_args, limit=limit, splits=None, metrics=None, batch_size=1, engine=None, engine_args=None)
+def initialize_model(target, target_args):
+    # creates model: Union[DeepSparseLM, Module]
+    # given the target
+    return AutoModelForCausalLM.from_pretrained(target)
