@@ -16,8 +16,10 @@ import argparse
 import random
 import string
 from time import perf_counter
-from sentence_transformers import SentenceTransformer
+
 from deepsparse.sentence_transformers import DeepSparseSentenceTransformer
+from sentence_transformers import SentenceTransformer
+
 
 def generate_random_sentence(length):
     # Generate a random sentence of a given length.
@@ -30,7 +32,7 @@ def generate_random_sentence(length):
             k=length,
         )
     )
-    
+
 
 def benchmark_model(model, sentences, batch_size):
     # Benchmark the encoding time for a model with a given list of sentences.
@@ -38,6 +40,7 @@ def benchmark_model(model, sentences, batch_size):
     _ = model.encode(sentences, batch_size=batch_size)
     elapsed_time = perf_counter() - start_time
     return elapsed_time
+
 
 def main(args):
     # Generate a list of random sentences
@@ -52,7 +55,7 @@ def main(args):
     standard_latency = benchmark_model(standard_model, sentences, args.batch_size)
     standard_throughput = len(sentences) / standard_latency * args.batch_size
     print(
-        f"[SentenceTransformer]\n" 
+        f"\n[SentenceTransformer]\n"
         f"Batch size: {args.batch_size}, Sentence length: {args.length}\n"
         f"Latency: {args.num_sentences} sentences in {standard_latency:.2f} seconds\n"
         f"Throughput: {standard_throughput:.2f} sentences/second"
@@ -61,11 +64,12 @@ def main(args):
     deepsparse_latency = benchmark_model(deepsparse_model, sentences, args.batch_size)
     deepsparse_throughput = len(sentences) / deepsparse_latency * args.batch_size
     print(
-        f"[DeepSparse Optimized]\n" 
+        f"\n[DeepSparse Optimized]\n"
         f"Batch size: {args.batch_size}, Sentence length: {args.length}\n"
         f"Latency: {args.num_sentences} sentences in {deepsparse_latency:.2f} seconds\n"
         f"Throughput: {deepsparse_throughput:.2f} sentences/second"
     )
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
