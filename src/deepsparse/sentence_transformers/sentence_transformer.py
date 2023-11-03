@@ -65,12 +65,16 @@ class DeepSparseSentenceTransformer:
             export=export,
             use_auth_token=use_auth_token,
         )
-        self.dyn_model.reshape(input_shapes="[0,0]")
+        self.dyn_model.reshape(input_shapes="[-1,-1]")
         self.dyn_model.compile(batch_size=0)
 
         if buckets:
             # Initialize a model for each bucket
-            self.buckets = [int(self._max_seq_length / 4 * i) for i in range(1, 5)]
+            self.buckets = (
+                buckets
+                if isinstance(buckets, list)
+                else [int(self._max_seq_length / 4 * i) for i in range(1, 5)]
+            )
             self.models = {}
             for bucket in self.buckets:
                 self.models[
