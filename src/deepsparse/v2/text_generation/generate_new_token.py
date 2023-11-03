@@ -30,18 +30,6 @@ class GenerateNewTokenOperator(Operator):
         self.force_max_tokens = force_max_tokens
         self.tokenizer = tokenizer
 
-    def _stop_token_generated(
-        self, token, stop_tokens: Union[None, str, Sequence[str]]
-    ) -> bool:
-        if stop_tokens is None:
-            return False
-
-        decoded_token = self.tokenizer.decode(token)
-        decoded_token = (
-            decoded_token if decoded_token.isspace() else decoded_token.strip()
-        )
-        return decoded_token in stop_tokens
-
     def can_operate(self, inp: Any):
         if inp.get("in_generation"):
             return True
@@ -88,3 +76,15 @@ class GenerateNewTokenOperator(Operator):
         output = {"tokens": token_generator.tokens, "kv_cache": kv_cache}
         output.update(new_generation)
         return output, state_update
+
+    def _stop_token_generated(
+        self, token, stop_tokens: Union[None, str, Sequence[str]]
+    ) -> bool:
+        if stop_tokens is None:
+            return False
+
+        decoded_token = self.tokenizer.decode(token)
+        decoded_token = (
+            decoded_token if decoded_token.isspace() else decoded_token.strip()
+        )
+        return decoded_token in stop_tokens
