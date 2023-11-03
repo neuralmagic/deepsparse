@@ -1,0 +1,8 @@
+cadence: "nightly"
+model_path: "zoo:nlg/text_generation/opt-1.3b/pytorch/huggingface/opt_pretrain/base-none"
+torch_model_name: "facebook/opt-1.3b"
+task: ["text-generation"]
+prompt: "Didn't know what time it was, the lights were low\n I leaned back on my radio"
+has_bos_token: True
+precision: 0.0001
+internal_kv_cache: [True, False]
