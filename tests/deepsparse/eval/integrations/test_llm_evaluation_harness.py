@@ -21,6 +21,6 @@ from src.deepsparse.eval.integrations.llm_evaluation_harness import integration_
     [("roneneldan/TinyStories-1M", ["hellaswag"], 1)],
 )
 def test_integration_eval(target, datasets, batch_size):
-    out = integration_eval(
+    assert integration_eval(
         target=target, datasets=datasets, batch_size=1, target_args=None, limit=5
     )
