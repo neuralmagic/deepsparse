@@ -28,7 +28,7 @@ from deepsparse.v2.operators import Operator
 
 class GenerationDefaults:
     num_return_sequences = 1
-    max_length = 1024
+    max_length = 100
     max_new_tokens = None
     output_scores = False
     top_k = 0

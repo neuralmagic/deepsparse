@@ -36,7 +36,6 @@ class AutoRegressiveOperatorPreprocess(Operator):
         """
         self.sequence_length = sequence_length
         self.prompt_sequence_length = prompt_sequence_length
-        self.set_capacity = False
 
         _LOGGER.warn(
             "This operator requires the PipelineState to be set-up with the "
@@ -51,16 +50,19 @@ class AutoRegressiveOperatorPreprocess(Operator):
         tokens = inp.get("tokens")
         kv_cache = inp.get("kv_cache")
 
+        if inp.get("in_generation"):
+            return True
+
         remaining_tokens = len(tokens) - kv_cache.total_num_processed_tokens
-        if remaining_tokens > 0 and remaining_tokens < self.prompt_sequence_length:
+        can_process = (
+            remaining_tokens > 0 and remaining_tokens < self.prompt_sequence_length
+        )
+        if can_process and inp.get("in_generation") is None:
             return True
         return False
 
     def run(self, tokens: Any, kv_cache: Any, pipeline_state: PipelineState, **kwargs):
-
-        if not self.set_capacity:
-            self.set_capacity = True
-            kv_cache.set_capacity(self.sequence_length - 1)
+        kv_cache.set_capacity(self.sequence_length - 1)
 
         num_total_processed_tokens = kv_cache.total_num_processed_tokens
         new_token = tokens[num_total_processed_tokens]
@@ -88,13 +90,9 @@ class AutoRegressiveOperatorPreprocess(Operator):
 
         engine_inputs = [engine_inputs_map[name] for name in engine_input_names]
 
-        onnx_input_names_no_cache = pipeline_state.current_state.get(
-            "onnx_input_names_no_cache"
-        )
-        engine_inputs = [engine_inputs_map[name] for name in onnx_input_names_no_cache]
-
         return {
             "engine_inputs": engine_inputs,
             "kv_cache": kv_cache,
             "tokens": tokens,
+            "in_generation": kwargs.get("in_generation"),
         }

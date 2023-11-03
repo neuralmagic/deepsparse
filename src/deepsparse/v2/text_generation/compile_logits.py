@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from typing import Any
 
 from deepsparse.v2.operators import Operator
 from deepsparse.v2.utils import InferenceState
@@ -26,6 +27,11 @@ class CompilePromptLogits(Operator):
     prompt logits for each token or multi-token batch processed. This operator will
     take prompt logits from each iteration run and update the inference state.
     """
+
+    def can_operate(self, inp: Any):
+        if inp.get("in_generation") is None:
+            return True
+        return False
 
     def run(self, logits, inference_state: InferenceState, **kwargs):
         logit_type = "prompt_logits"
