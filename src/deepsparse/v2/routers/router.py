@@ -15,14 +15,14 @@
 
 import logging
 from abc import abstractmethod
-from typing import Dict, List, Union
+from typing import Any, Dict, List, Optional, Union
 
 from deepsparse.v2.operators import Operator
 
 
 _LOGGER = logging.getLogger(__name__)
 
-__all__ = ["Router", "LinearRouter"]
+__all__ = ["Router", "LinearRouter", "GraphRouter"]
 
 
 class Router:
@@ -32,23 +32,34 @@ class Router:
 
     :param start_route: the start index or key of the router
     :param end_route: the end index or key of the router
+    :param route: the route that the router has to traverse through
 
     """
 
-    def __init__(self, end_route: Union[str, int], start_route: Union[str, int]):
+    def __init__(
+        self,
+        end_route: Union[str, int],
+        start_route: Union[str, int],
+        route: Optional[Dict] = None,
+    ):
         self.START_ROUTE = start_route
         self.END_ROUTE = end_route
+        self.route = route
 
     @abstractmethod
     def next(
-        self, past: Union[str, int], ops: Union[List[Operator], Dict[str, Operator]]
+        self,
+        past: Union[str, int],
+        ops: Optional[Union[List[Operator], Dict[str, Operator]]],
+        inp: Optional[Any],
     ) -> Union[str, int]:
         """
         Determines the index or dictionary key for the next operator which should run.
 
         :param past: the previous index or key. This should uniquely determine the next
-        operator to run
+            operator to run
         :param ops: list or dictionary of operators
+        :param inp: operator input
         :returns: the next index or dictionary key for the next operator to run
         """
         raise NotImplementedError
@@ -69,7 +80,9 @@ class LinearRouter(Router):
     def __init__(self, end_route: int, start_route: int = 0):
         super().__init__(end_route=end_route, start_route=start_route)
 
-    def next(self, past: int, ops: List[Operator]) -> int:
+    def next(
+        self, past: int, ops: Optional[List[Operator]] = None, inp: Optional[Any] = None
+    ) -> int:
         new_index = past + 1
         if new_index < self.END_ROUTE:
             return new_index
@@ -105,3 +118,35 @@ class LinearRouter(Router):
                 )
                 return False
         return True
+
+
+class GraphRouter(Router):
+    """
+    Router for a DAG. Expects graphs be presented in the form of a dictionary, where
+    keys are the nodes of the graph and the values are the connected nodes. For
+    nodes with multiple ouput edges, all the nodes will be visited and the first node
+    where `can_operate` returns True will run. Paths should be deterministic.
+    """
+
+    def __init__(self, end_route: str, start_route: str, route: Dict):
+        super().__init__(end_route=end_route, start_route=start_route, route=route)
+
+    def next(
+        self,
+        past: str,
+        ops: Dict[str, Operator],
+        inp: Any,
+    ) -> int:
+        node = past
+        if isinstance(self.route[node], str):
+            return self.route[node]
+        else:
+            for neighbour_node in self.route[node]:
+                neighbour_node_op = ops[neighbour_node]
+                if neighbour_node_op.can_operate(inp):
+                    return neighbour_node
+            raise ValueError("Cannot operate on any of the nodes")
+
+    @staticmethod
+    def validate(ops) -> bool:
+        pass

@@ -18,6 +18,7 @@ from typing import Dict, List, Union
 from deepsparse.v2.operators import Operator
 from deepsparse.v2.routers import Router
 from deepsparse.v2.schedulers import OperatorScheduler, SchedulerGroup
+from deepsparse.v2.utils import InferenceState, PipelineState
 
 
 __all__ = ["Pipeline"]
@@ -27,7 +28,7 @@ class Pipeline(Operator):
     """
     Pipeline accepts a series of operators, schedulers, and a router. Calling a pipeline
     will use the router to run through all the defined operators. The operators should
-    be implemented using the Operator class and each implemented Operator should be
+    be implemented using the Operator class and each implemented operator should be
     responsible for a functional component of the pipelines. The flow of inputs/outputs
     between the operators and the steps in the pipeline should be defined by the router,
     (based off of the Router class), which dicates the next operator in the pipeline.
@@ -37,6 +38,7 @@ class Pipeline(Operator):
         or dictionary of operators.
     :param router: A Router which dictates the next operator to call.
     :param schedulers: A list of schedulers to run operators.
+    :param pipeline_state: pipeline_state created during pipeline initialization
 
     """
 
@@ -45,57 +47,93 @@ class Pipeline(Operator):
         ops: Union[Dict[str, Operator], List[Operator]],
         router: Router,
         schedulers: List[OperatorScheduler],
+        pipeline_state: PipelineState = None,
     ):
 
         self.ops = ops
         self.router = router
         self.schedulers = schedulers
+        self.pipeline_state = pipeline_state
         self.validate()
 
         # SchedulerGroup handles running all schedulers in order of priority
         self._scheduler_group = SchedulerGroup(self.schedulers)
 
-    def run(self, *args, **kwargs):
+    def run(
+        self,
+        *args,
+        inference_state: InferenceState,
+        pipeline_state: PipelineState,
+        **kwargs,
+    ):
         """
-        Run through the operators using the provided router and scheduler. Update the
-        context to reflect each step of the router. The input to a given operator is the
-        output of the previous operator.
+        Run through the operators using the provided router and scheduler.
+        The input to a given operator is the output of the previous operator.
 
-        :param inp: input to the operator. expected to be of any type that is
-        expected by the operator.
-        :param context: context to store the current the inputs, outputs, and operator
-        for each step of the router.
-
+        :param inference_state: inference_state for the pipeline.
+        :param pipeline_state: pipeline_state for the pipeline. The values in the state
+            are created during pipeline creation and are read-only during inference.
         """
         next_step = self.router.START_ROUTE
         operator_output = None
+
         while next_step != self.router.END_ROUTE:
             # Either a dictionary key or valid index
             operator = self.ops[next_step]
             if next_step == self.router.START_ROUTE:
                 output_future = self._scheduler_group.submit(
-                    *args, operator=operator, **kwargs
+                    *args,
+                    inference_state=inference_state,
+                    operator=operator,
+                    pipeline_state=pipeline_state,
+                    **kwargs,
                 )
             else:
                 if isinstance(operator_output, dict):
                     output_future = self._scheduler_group.submit(
-                        operator=operator, **operator_output
+                        inference_state=inference_state,
+                        operator=operator,
+                        pipeline_state=pipeline_state,
+                        **operator_output,
                     )
                 else:
                     output_future = self._scheduler_group.submit(
-                        operator_output, operator=operator
+                        operator_output,
+                        inference_state=inference_state,
+                        pipeline_state=pipeline_state,
+                        operator=operator,
                     )
 
-            # wait for future to resolve
             operator_output = output_future.result()
-            next_step = self.router.next(next_step, self.ops)
+            if isinstance(operator_output, tuple):
+                state_update = operator_output[-1]
+                operator_output = operator_output[0]
+                inference_state.update_state(state_update)
+
+            next_step = self.router.next(next_step, self.ops, operator_output)
+
         return operator_output
 
     def __call__(self, *args, **kwargs):
         """
+        Consolidate any provided inference_state or pipeline_state objects and pass
+        any other operator inputs to run().
+
         :return: output of the pipeline operators ran with the router for the given
-        input
+            input
         """
+        if kwargs.get("inference_state"):
+            inference_state = kwargs.pop("inference_state")
+        else:
+            inference_state = InferenceState()
+            inference_state.create_state({})
+
+        if "pipeline_state" in kwargs:
+            self.pipeline_state = kwargs.get("pipeline_state")
+
+        kwargs["inference_state"] = inference_state
+        kwargs["pipeline_state"] = self.pipeline_state
+
         return self.run(*args, **kwargs)
 
     def validate(self):
