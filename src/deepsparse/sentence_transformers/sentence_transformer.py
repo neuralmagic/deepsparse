@@ -257,7 +257,8 @@ class DeepSparseSentenceTransformer:
         Tokenizes the texts
         """
         if target_length:
-            # Make sure to pad the tokens to the specified length
+            # Static length:
+            # Make sure to pad and truncate tokens to the specified length
             return self.tokenizer(
                 texts,
                 max_length=target_length,
@@ -266,12 +267,14 @@ class DeepSparseSentenceTransformer:
                 return_tensors="pt",
             )
         else:
-            # No padding needed
+            # Dynamic length:
+            # Pad only to the maximum sequence length of the batch, 
+            # and truncate to _max_seq_length if needed
             return self.tokenizer(
                 texts,
+                max_length=self._max_seq_length,
                 padding=True,
                 truncation=True,
-                max_length=self._max_seq_length,
                 return_tensors="pt",
             )
 
