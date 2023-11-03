@@ -1,0 +1,72 @@
+[
+    {
+        "doc_id": 0,
+        "prompt_0": "Personal Care and Style: How to increase breast size with a bra. Check your bra size. Wearing a bra that is too big will not make your breasts look larger. That is why it is important to wear the right size bra for you. You can visit a lingerie shop and have them measure you to help you fit a bra to your size, or measure yourself before you shop for a new bra to ensure that you get a good fit. Use a flexible tape measure, like one found in a sewing kit.",
+        "prompt_1": "Personal Care and Style: How to increase breast size with a bra. Check your bra size. Wearing a bra that is too big will not make your breasts look larger. That is why it is important to wear the right size bra for you. This is why it is important to keep your breasts under protection when in the shower and only wear bras that are larger than your breast size. If you are not wearing a bra, try wearing something that is a little bigger.",
+        "prompt_2": "Personal Care and Style: How to increase breast size with a bra. Check your bra size. Wearing a bra that is too big will not make your breasts look larger. That is why it is important to wear the right size bra for you. For a girl, a bra with a support strap will be easier for her, because most women are unable to pull through bra straps and bras that are too small will not be able to support breasts from side-to-side. Many bras have even been created that cover the breast side, and can be sent to other women in the world to make them look bigger.",
+        "prompt_3": "Personal Care and Style: How to increase breast size with a bra. Check your bra size. Wearing a bra that is too big will not make your breasts look larger. That is why it is important to wear the right size bra for you. Choose a color that is flattering to your breast type and specific event, in addition to those that make you uncomfortable. Look for sports bras made from natural material, such as spandex or lycra, as this is a more breathable bra.",
+        "logit_0": -335.1022033691406,
+        "truth": 0,
+        "logit_1": -254.9882049560547,
+        "logit_2": -467.9929504394531,
+        "logit_3": -416.8702392578125,
+        "acc": "0.0",
+        "acc_norm": "0.0"
+    },
+    {
+        "doc_id": 1,
+        "prompt_0": "Washing face: A girl stands in front of a bathroom mirror and vigorously rubs her face. The girl turns on the faucet. The girl spits toothpaste into the sink.",
+        "prompt_1": "Washing face: A girl stands in front of a bathroom mirror and vigorously rubs her face. The girl turns on the faucet. The girl then splashes water on her face several times.",
+        "prompt_2": "Washing face: A girl stands in front of a bathroom mirror and vigorously rubs her face. The girl turns on the faucet. The girl runs water over her face.",
+        "prompt_3": "Washing face: A girl stands in front of a bathroom mirror and vigorously rubs her face. The girl turns on the faucet. The girl dries her face off and shaves her face with the razor.",
+        "logit_0": -41.52943420410156,
+        "truth": 1,
+        "logit_1": -38.05970764160156,
+        "logit_2": -32.77101135253906,
+        "logit_3": -63.651336669921875,
+        "acc": "0.0",
+        "acc_norm": "1.0"
+    },
+    {
+        "doc_id": 2,
+        "prompt_0": "Home and Garden: How to paint basement stairs. Remove any carpet or overlaid material from your basement stairs. Remove staples left from the carpet installation with pliers. Look over all areas of the stairs to find holes and deep scratches.  Get rid of any floating debris and knock out any plumbing fixtures, doors or fittings. Also be sure to remove any railings, cabinets, or sections attached to the basement above ground.",
+        "prompt_1": "Home and Garden: How to paint basement stairs. Remove any carpet or overlaid material from your basement stairs. Remove staples left from the carpet installation with pliers. Look over all areas of the stairs to find holes and deep scratches.  Pound on the stripped carpet with a hammer. In most cases, you'll encounter gentle taps caused by hammering along the floor.",
+        "prompt_2": "Home and Garden: How to paint basement stairs. Remove any carpet or overlaid material from your basement stairs. Remove staples left from the carpet installation with pliers. Look over all areas of the stairs to find holes and deep scratches.  Use putty or wood filler and a putty knife to fill in holes. If you have a cement staircase, you will want to fill holes with epoxy.",
+        "prompt_3": "Home and Garden: How to paint basement stairs. Remove any carpet or overlaid material from your basement stairs. Remove staples left from the carpet installation with pliers. Look over all areas of the stairs to find holes and deep scratches. Remove any tread tiles or other fixtures that are covered. Keep the stairs cool so that water and moisture can flow freely in the stairs and help them to dry.",
+        "logit_0": -300.3254699707031,
+        "truth": 2,
+        "logit_1": -203.7941131591797,
+        "logit_2": -250.84689331054688,
+        "logit_3": -212.7465362548828,
+        "acc": "0.0",
+        "acc_norm": "0.0"
+    },
+    {
+        "doc_id": 3,
+        "prompt_0": "Zumba: A dance team dressed in black with pink letters shows a routine put to reggae music. The women jump bounce in place before the lyrics of the song starts. When the lyrics start they go into an intricate dance routine that fits with the song.",
+        "prompt_1": "Zumba: A dance team dressed in black with pink letters shows a routine put to reggae music. The women jump bounce in place before the lyrics of the song starts. When the lyrics change, they are all standing preparing the floor.",
+        "prompt_2": "Zumba: A dance team dressed in black with pink letters shows a routine put to reggae music. The women jump bounce in place before the lyrics of the song starts. When the lyrics are done, they smile and cheer over each other.",
+        "prompt_3": "Zumba: A dance team dressed in black with pink letters shows a routine put to reggae music. The women jump bounce in place before the lyrics of the song starts. When the lyrics finally fade the cheerleaders enter the pit, make a pile and cheer continuously.",
+        "logit_0": -68.76483154296875,
+        "truth": 0,
+        "logit_1": -51.47377395629883,
+        "logit_2": -34.055912017822266,
+        "logit_3": -126.84423828125,
+        "acc": "0.0",
+        "acc_norm": "0.0"
+    },
+    {
+        "doc_id": 4,
+        "prompt_0": "Family Life: How to deal with a child not wanting to go to school. Track how often they resist school. There are some times that it's common for students not to want to go to school. They may feel that something happening outside of school is more appealing. If the child is very close up with their teachers, see if they respond favorably to their behavior. Sometimes the child may respond badly about school until parents explain the problem a few times.",
+        "prompt_1": "Family Life: How to deal with a child not wanting to go to school. Track how often they resist school. There are some times that it's common for students not to want to go to school. They may feel that something happening outside of school is more appealing. Or, they may have a specific, but temporary, reason for not wanting to go. In other situations, it seems that there's no specific reason the child doesn't want to go to school.",
+        "prompt_2": "Family Life: How to deal with a child not wanting to go to school. Track how often they resist school. There are some times that it's common for students not to want to go to school. They may feel that something happening outside of school is more appealing. High school kids may resist school if they think this day is safer at school. Try to figure out if you child enjoys going to school and he does not love high school.",
+        "prompt_3": "Family Life: How to deal with a child not wanting to go to school. Track how often they resist school. There are some times that it's common for students not to want to go to school. They may feel that something happening outside of school is more appealing. Sometimes parents will also whine that school won't be good enough, when in reality the intention is to make things better. This can cause emotions to go awry.",
+        "logit_0": -214.05413818359375,
+        "truth": 1,
+        "logit_1": -190.4203338623047,
+        "logit_2": -208.94769287109375,
+        "logit_3": -201.8904266357422,
+        "acc": "1.0",
+        "acc_norm": "1.0"
+    }
+]

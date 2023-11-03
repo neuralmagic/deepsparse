@@ -11,14 +11,20 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""
+Integration of the `llm_evaluation_harness`:
+https://github.com/EleutherAI/lm-evaluation-harness
+"""
 
-from typing import Optional
+import json
+import os
+from typing import Any, Dict
 
-from transformers import AutoModelForCausalLM
-
-from deepsparse import Pipeline
+import torch
+from deepsparse import DEEPSPARSE_ENGINE, ORT_ENGINE, Pipeline
 from lm_eval import evaluator
 from lm_eval.base import BaseLM
+from src.deepsparse.eval.utils import initialize_model_from_target
 
 
 def integration_eval(
@@ -26,80 +32,171 @@ def integration_eval(
     target_args,
     datasets,
     batch_size,
-    splits=None,
-    metrics=None,
-    engine_type=None,
-    engine_args=None,
+    engine_type,
+    splits,
+    metrics,
+    engine_args,
     **kwargs,
 ):
-    model = initialize_model(target, target_args)
+    """
+    Reimplementation of:
+    https://github.com/EleutherAI/lm-evaluation-harness/blob/master/main.py
+    that is compatible with our evaluation module
+    """
+    # [START]
+    # The code that sets up the interface between deepsparse and llm_evaluation_harness
+    if engine_type in [DEEPSPARSE_ENGINE, ORT_ENGINE]:
+        model = DeepSparseLM(target, target_args)
+    else:
+        model = initialize_model_from_target(target, engine_type, **target_args)
 
-    evaluator.simple_evaluate(
+    tasks = datasets
+    # [END]
+
+    # [START]
+    # The code below is being adapted from:
+    # https://github.com/EleutherAI/lm-evaluation-harness/blob/master/main.py
+
+    provide_description = kwargs.get("provide_description", False)
+    limit = kwargs.get("limit", None)
+    model_args = kwargs.get("model_args", "")
+    num_fewshot = kwargs.get("num_fewshot", 0)
+    max_batch_size = kwargs.get("max_batch_size", None)
+    device = kwargs.get("device", None)
+    no_cache = kwargs.get("no_cache", False)
+    decontamination_ngrams_path = kwargs.get("decontamination_ngrams_path", None)
+    check_integrity = kwargs.get("check_integrity", True)
+    write_out = kwargs.get("write_out", True)
+    output_base_path = kwargs.get("output_base_path", None)
+
+    assert not provide_description  # not implemented
+
+    if kwargs.get("limit"):
+        print(
+            "WARNING: --limit SHOULD ONLY BE USED FOR TESTING. "
+            "REAL METRICS SHOULD NOT BE COMPUTED USING LIMIT."
+        )
+
+    print(f"Selected Tasks: {tasks}")
+
+    description_dict = {}
+    if kwargs.get("description_dict_path"):
+        with open(kwargs.get("description_dict_path"), "r") as f:
+            description_dict = json.load(f)
+
+    results = evaluator.simple_evaluate(
         model=model,
-        model_args=kwargs.get("model_args", target_args),
-        tasks=kwargs.get("tasks", datasets),
+        tasks=tasks,
+        description_dict=description_dict,
         batch_size=batch_size,
-        **kwargs,
+        model_args=model_args,
+        num_fewshot=num_fewshot,
+        max_batch_size=max_batch_size,
+        device=device,
+        no_cache=no_cache,
+        limit=limit,
+        decontamination_ngrams_path=decontamination_ngrams_path,
+        check_integrity=check_integrity,
+        write_out=write_out,
+        output_base_path=output_base_path,
     )
 
-    return True
+    dumped = json.dumps(results, indent=2)
+    print(dumped)
+
+    output_path = kwargs.get("output_path", None)
+    if output_path:
+        dirname = os.path.dirname(output_path)
+        if dirname:
+            os.makedirs(dirname, exist_ok=True)
+        with open(output_path, "w") as f:
+            f.write(dumped)
+
+    batch_sizes = ",".join(map(str, results["config"]["batch_sizes"]))
+    print(
+        f"{model} ({model_args}), "
+        f"limit: {limit}, "
+        f"provide_description: {provide_description}, "
+        f"num_fewshot: {num_fewshot}, "
+        f"batch_size: {batch_size}{f' ({batch_sizes})' if batch_sizes else ''}"
+    )
+    print(evaluator.make_table(results))
+    # [END]
+
+    # TODO: Add here the code to return the results in the format expected by the
+    # evaluator module
+
+    return results
 
 
 class DeepSparseLM(BaseLM):
-    # potentially create pipeline inside of this class
-    def __init__(self, stub, max_length: Optional[int] = None):
-        self.model = Pipeline.create(task="text_generation", model_path=stub)
+    # Default max sequence length setting for when no `max_length` is provided
+    DEFAULT_MAX_LENGTH = 2048
+    """
+    A wrapper around the Deepsparse pipeline to make it compatible with the
+    llm_evaluation_harness. DeepSparseLM is a subclass of BaseLM, uses the
+    same interface as the other models in llm_evaluation_harness.
 
-        self.default_max_length = 1024
-        self._max_length = max_length
+    :param target: The target to be evaluated
+    :param target_args: The arguments for the target
+    """
 
-    @classmethod
-    def from_pipeline(cls, pipeline: Pipeline):
-        return cls(pipeline)
+    def __init__(self, target: str, target_args: Dict[str, Any]):
+        self.model = Pipeline.create(task="text_generation", model_path=target)
+        self._max_length = target_args.get("max_length", self.DEFAULT_MAX_LENGTH)
 
     @property
     def batch_size(self):
         return self.model._batch_size
 
     @property
-    def eot_token(self) -> str:
-        pass
-
-    def _model_call(self, inps):
-        # Isn't used because we override _loglikelihood_tokens
-        raise NotImplementedError()
-
-    def _model_generate(self, context, max_length, eos_token_id):
-        # Isn't used because we override greedy_until
-        raise NotImplementedError()
-
-    def _loglikelihood_tokens(self, requests, **kwargs):
-        pass
-
-    @property
-    def device(self):
-        return "cpu"
-
-    @property
-    def eot_token_id(self) -> int:
-        pass
-
-    @property
-    def max_gen_toks(self):
-        pass
-
-    @property
     def max_length(self):
         return self._max_length or self.default_max_length
 
-    def tok_encode(self, string: str):
+    def tok_encode(self, string):
         return self.model.tokenizer.encode(string)
 
     def tok_decode(self, tokens):
         return self.tokenizer.decode(tokens)
 
+    def _model_call(self, inps) -> "torch.Tensor":
+        """
+        Override the _model_call method to use the
+        Deepsparse pipeline for logits generation.
 
-def initialize_model(target, target_args):
-    # creates model: Union[DeepSparseLM, Module]
-    # given the target
-    return AutoModelForCausalLM.from_pretrained(target)
+        :param inps: The input tokens passed from
+            the llm_evaluation_harness
+        :return: The torch tensor with logits for
+            the input tokens. The shape of the logits
+            tensor is (batch_size, seq_len, vocab_size)
+        """
+        # TODO: Enable batching the inps and then passing them
+        # all at once to the pipeline for faster inference
+
+        # encode the tokens to strings
+        prompt = self.model.tokenizer.decode(inps.numpy()[0])
+
+        # run the model to map the prompt to logits
+        out = self.model(
+            prompt=prompt,
+            max_new_tokens=0,
+            include_prompt_logits=True,
+            output_scores=True,
+        )
+        logits_numpy = out.generations[0].score[None, ...]
+        return torch.from_numpy(logits_numpy)
+
+    def _model_generate(self, context, max_length, eos_token_id):
+        pass
+
+    @property
+    def device(self):
+        pass
+
+    @property
+    def eot_token_id(self):
+        pass
+
+    @property
+    def max_gen_toks(self):
+        pass

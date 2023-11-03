@@ -19,7 +19,7 @@ on a requested dataset
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Union
 
-from pipeline import DEEPSPARSE_ENGINE, ORT_ENGINE, TORCHSCRIPT_ENGINE, Pipeline
+from pipeline import DEEPSPARSE_ENGINE, ORT_ENGINE, TORCHSCRIPT_ENGINE
 from src.deepsparse.eval.registry import EVAL_REGISTRY
 
 
