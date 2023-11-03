@@ -15,6 +15,7 @@
 from typing import Dict
 
 from deepsparse.transformers.utils.helpers import process_generation_config
+
 from deepsparse.v2.pipeline import Pipeline
 from deepsparse.v2.routers import GraphRouter
 from deepsparse.v2.schedulers import OperatorScheduler
@@ -114,6 +115,7 @@ class TextGenerationPipeline(Pipeline):
             sequence_length=sequence_length,
         )
         compile_prompt_logits = CompilePromptLogits()
+
         autoregressive_preprocess = AutoRegressiveOperatorPreprocess(
             sequence_length=sequence_length,
             prompt_sequence_length=prompt_sequence_length,

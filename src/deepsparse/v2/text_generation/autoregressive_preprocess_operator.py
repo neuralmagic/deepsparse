@@ -95,4 +95,5 @@ class AutoRegressiveOperatorPreprocess(Operator):
             "kv_cache": kv_cache,
             "tokens": tokens,
             "in_generation": kwargs.get("in_generation"),
+
         }
