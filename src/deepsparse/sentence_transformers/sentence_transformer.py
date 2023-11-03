@@ -268,7 +268,7 @@ class DeepSparseSentenceTransformer:
             )
         else:
             # Dynamic length:
-            # Pad only to the maximum sequence length of the batch, 
+            # Pad only to the maximum sequence length of the batch,
             # and truncate to _max_seq_length if needed
             return self.tokenizer(
                 texts,
