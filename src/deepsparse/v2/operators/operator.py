@@ -17,6 +17,8 @@ from typing import Any, Optional, Type
 
 from pydantic import BaseModel
 
+from deepsparse.v2.utils import InferenceState, PipelineState
+
 
 __all__ = ["Operator"]
 
@@ -54,6 +56,8 @@ class Operator(ABC):
     def __call__(
         self,
         *args,
+        inference_state: InferenceState,
+        pipeline_state: PipelineState,
         **kwargs,
     ) -> Any:
         """
@@ -61,7 +65,9 @@ class Operator(ABC):
 
         :param args: an unnamed arg may only be provided if it is of the type of the
             input_schema
-        :param context: pipeline context to pass to operator
+        :param inference_state: inference_state for the pipeline.
+        :param pipeline_state: pipeline_state for the pipeline. The values in the state
+            are created during pipeline creation and are read-only during inference.
         :param kwargs: kwargs when not initializing from an instantiated schema
         :return: operator output
         """
@@ -81,10 +87,18 @@ class Operator(ABC):
                     "in the form of a dictionary or an instance of the input_schema"
                     "object"
                 )
-
-            run_output = self.run(inference_input)
+            run_output = self.run(
+                inference_input,
+                inference_state=inference_state,
+                pipeline_state=pipeline_state,
+            )
         else:
-            run_output = self.run(*args, **kwargs)
+            run_output = self.run(
+                *args,
+                inference_state=inference_state,
+                pipeline_state=pipeline_state,
+                **kwargs,
+            )
 
         if self.has_output_schema():
             return self.output_schema(**run_output)
@@ -93,11 +107,15 @@ class Operator(ABC):
     @abstractmethod
     def run(self, *args, **kwargs) -> Any:
         """
-        :param inp: operator input, as the defined input schema if applicable
-        :param context: pipeline context of already run operators
         :return: result of this operator as the defined output schema if applicable
         """
         raise NotImplementedError
+
+    def can_operate(self, inp: Any) -> bool:
+        """
+        Whether or not the given operator can run, based on input
+        """
+        return True
 
     def expand_inputs(self, **kwargs):
         """

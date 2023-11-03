@@ -34,25 +34,44 @@ class SchedulerGroup(OperatorScheduler):
     def __init__(self, schedulers: List[OperatorScheduler]):
         self.schedulers = schedulers
 
-    def submit(self, *args, operator: Operator, **kwargs) -> Future:
+    def submit(
+        self,
+        *args,
+        operator: Operator,
+        **kwargs,
+    ) -> Future:
         """
         :param operator: operator to run
-        :param operator_input: input schema to the operator
-        :param context: context of already run operators
         :return: future referencing the asynchronously run output of the operator
         """
         for scheduler in self.schedulers:
-            if scheduler.can_process(*args, operator=operator, **kwargs):
-                return scheduler.submit(*args, operator=operator, **kwargs)
+            if scheduler.can_process(
+                *args,
+                operator=operator,
+                **kwargs,
+            ):
+                return scheduler.submit(
+                    *args,
+                    operator=operator,
+                    **kwargs,
+                )
 
-    def can_process(self, *args, operator: Operator, **kwargs) -> bool:
+    def can_process(
+        self,
+        *args,
+        operator: Operator,
+        **kwargs,
+    ) -> bool:
         """
         :param operator: operator to check
-        :param operator_input: operator_input to check
         :return: True if this Operator can process the given operator and input.
             SchedulerGroup always returns True
         """
         return any(
-            scheduler.can_process(*args, operator=operator, **kwargs)
+            scheduler.can_process(
+                *args,
+                operator=operator,
+                **kwargs,
+            )
             for scheduler in self.schedulers
         )

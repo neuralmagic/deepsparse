@@ -17,7 +17,8 @@ from typing import Dict, List, Optional, Union
 
 from pydantic import BaseModel, Field
 
-from deepsparse import Context, Engine, MultiModelEngine, Scheduler
+from deepsparse import Context as EngineContext
+from deepsparse import Engine, MultiModelEngine, Scheduler
 from deepsparse.benchmark import ORTEngine
 from deepsparse.utils import join_engine_outputs, model_to_path, split_engine_inputs
 from deepsparse.v2.operators import Operator
@@ -54,16 +55,15 @@ class EngineOperator(Operator):
         self,
         model_path: str,
         engine_type: str = DEEPSPARSE_ENGINE,
-        batch_size: Optional[int] = 1,
         num_cores: int = None,
         num_streams: int = None,
         scheduler: Scheduler = None,
         input_shapes: List[List[int]] = None,
-        engine_context: Optional[Context] = None,
+        engine_context: Optional[EngineContext] = None,
+        engine_kwargs: Dict = None,
     ):
-
-        self._batch_size = batch_size
         self.model_path = model_to_path(model_path)
+        self._batch_size = 1
         self.engine_context = engine_context
 
         if self.engine_context is not None:
@@ -87,7 +87,7 @@ class EngineOperator(Operator):
         self._engine_args = engine_args
         self._engine_type = engine_type
 
-        self.engine = self.create_engine()
+        self.engine = self.create_engine(**engine_kwargs)
 
     @property
     def batch_size(self) -> int:
@@ -114,12 +114,12 @@ class EngineOperator(Operator):
 
         if engine_type == DEEPSPARSE_ENGINE:
             if self.engine_context is not None and isinstance(
-                self.engine_context, Context
+                self.engine_context, EngineContext
             ):
                 engine_args.pop("num_cores", None)
                 engine_args.pop("scheduler", None)
                 engine_args.pop("num_streams", None)
-                engine_args["context"] = self.engien_context
+                engine_args["context"] = self.engine_context
                 return MultiModelEngine(
                     model=onnx_file_path,
                     **engine_args,
@@ -135,7 +135,7 @@ class EngineOperator(Operator):
             f"{SUPPORTED_PIPELINE_ENGINES}"
         )
 
-    def run(self, inp: EngineOperatorInputs) -> Dict:
+    def run(self, inp: EngineOperatorInputs, **kwargs) -> Dict:
         if inp.engine:
             # run with custom engine, do not split/join since custom engine
             # may run at any batch size, returning here as code below has a
