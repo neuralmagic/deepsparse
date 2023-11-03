@@ -11,21 +11,20 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# flake8: noqa
-from .autoregressive_preprocess_operator import *
-from .compile_generated_tokens import *
-from .compile_generations import *
-from .compile_logits import *
-from .generate_new_token import *
-from .kv_cache_operator import *
-from .multi_engine_prefill_operator import *
-from .nl_engine_operator import *
-from .prep_for_prefill import *
-from .process_inputs import *
-from .process_outputs import *
+from deepsparse.transformers.utils.token_generator import TokenGenerator
+from deepsparse.v2.operators import Operator
 
 
-from .token_generator import *  # isort:skip
-from .prep_for_generation import *  # isort:skip
+__all__ = ["TokenGeneratorOperator"]
 
-from .pipeline import *  # isort:skip
+
+class TokenGeneratorOperator(Operator):
+    def run(self, logits_shape, deterministic, tokens, sampling_temperature, **kwargs):
+        token_generator = TokenGenerator(
+            logits_shape=logits_shape,
+            deterministic=deterministic,
+            tokens=tokens,
+            sampling_temperature=sampling_temperature,
+            **kwargs,
+        )
+        return {"token_generator": token_generator}
