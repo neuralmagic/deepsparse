@@ -89,6 +89,7 @@ class EngineOperator(Operator):
 
         if not engine_kwargs:
             engine_kwargs = {}
+
         self.engine = self.create_engine(**engine_kwargs)
 
     @property
