@@ -42,13 +42,20 @@ class PrepareforPrefill(Operator):
             "from the NLEngineOperator"
         )
 
-    def run(self, tokens: Any, pipeline_state: PipelineState, **kwargs):
+    def run(
+        self,
+        input_ids: Any,
+        attention_mask: Any,
+        pipeline_state: PipelineState,
+        **kwargs,
+    ):
         # NOTE: Can potentially just be class attributes instead of relying on
         # pipeline state.
         cache_shape = pipeline_state.current_state.get("cache_shape")
         data_type = pipeline_state.current_state.get("kv_cache_data_type")
         output_names = pipeline_state.current_state.get("output_names")
 
+        tokens = input_ids[attention_mask.nonzero()].tolist()
         kv_cache = self.kv_cache_creator.run(
             cache_shape=cache_shape,
             kv_cache_data_type=data_type,

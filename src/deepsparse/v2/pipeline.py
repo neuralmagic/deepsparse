@@ -13,7 +13,9 @@
 # limitations under the License.
 
 
-from typing import Dict, List, Union
+import copy
+from functools import partial
+from typing import Any, Dict, List, Union
 
 from deepsparse.v2.operators import Operator
 from deepsparse.v2.routers import Router
@@ -59,6 +61,55 @@ class Pipeline(Operator):
         # SchedulerGroup handles running all schedulers in order of priority
         self._scheduler_group = SchedulerGroup(self.schedulers)
 
+    def _run_sequential(
+        self,
+        inp: Any,
+        inference_state: InferenceState,
+        pipeline_state: PipelineState,
+        start: str,
+        end: str,
+    ):
+        # TODO: somehow refactor to prevent repeat code.
+        next_step = start
+        while next_step != end:
+            operator = self.ops[next_step]
+            if isinstance(inp, dict):
+                operator_output = operator(
+                    pipeline_state=pipeline_state,
+                    inference_state=inference_state,
+                    **inp,
+                )
+            else:
+                operator_output = operator(
+                    inp, pipeline_state=pipeline_state, inference_state=inference_state
+                )
+            if isinstance(operator_output, tuple):
+                state_update = operator_output[-1]
+                operator_output = operator_output[0]
+                inference_state.update_state(state_update)
+
+            next_step = self.router.next(next_step, self.ops, operator_output)
+            inp = operator_output
+        return inp
+
+    def _apply_split(self, inp: Any, inference_state: InferenceState):
+
+        batches, orig_batch_size = self.expand_inputs(inp, 1)
+        run_with_state = partial(
+            self._run_sequential,
+            pipeline_state=self.pipeline_state,
+            start=self.router.route[self.router.SPLIT_ROUTE],
+            end=self.router.END_SPLIT,
+        )
+        inference_state_list = [
+            copy.deepcopy(inference_state) for x in range(len(batches))
+        ]
+        outputs = self._scheduler_group.map(
+            batches, inference_state_list, func=run_with_state
+        )
+        outputs = self.condense_inputs(outputs)
+        return outputs
+
     def run(
         self,
         *args,
@@ -78,7 +129,11 @@ class Pipeline(Operator):
         operator_output = None
 
         while next_step != self.router.END_ROUTE:
-            # Either a dictionary key or valid index
+            # Split_Route should be after Start_Route
+            if next_step == self.router.SPLIT_ROUTE:
+                operator_output = self._apply_split(operator_output, inference_state)
+                next_step = self.router.route[self.router.END_SPLIT]
+
             operator = self.ops[next_step]
             if next_step == self.router.START_ROUTE:
                 output_future = self._scheduler_group.submit(
@@ -135,6 +190,18 @@ class Pipeline(Operator):
         kwargs["pipeline_state"] = self.pipeline_state
 
         return self.run(*args, **kwargs)
+
+    def expand_inputs(self, *args, **kwargs):
+        """
+        Generic function to handle expanding values.
+        """
+        raise NotImplementedError
+
+    def condense_inputs(self, *args, **kwargs):
+        """
+        Generic function to handle condensing values.
+        """
+        raise NotImplementedError
 
     def validate(self):
         """
