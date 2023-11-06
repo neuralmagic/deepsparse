@@ -42,7 +42,7 @@ for sentence, embedding in zip(sentences, embeddings):
 
 ## Benchmarking Performance
 
-There is a `benchmark_encoding.py` script located in this directory that compares a standard model running in both SentenceTransformers and DeepSparse, with a sparsified model in DeepSparse. Here is an example run on an 4 core SPR CPU with the base model being `BAAI/bge-small-en-v1.5`:
+There is a `benchmark_encoding.py` script located in this directory that compares a standard model running in both SentenceTransformers and DeepSparse, with a sparsified model in DeepSparse. Make sure to install SentenceTransformers as well if you want to perform this comparison yourself: `pip install sentence_transformers`. Here is an example run on an 4 core SPR CPU with the base model being `BAAI/bge-small-en-v1.5`:
 ```bash
 python benchmark_encoding.py --base_model BAAI/bge-small-en-v1.5 --sparse_model zeroshot/bge-small-en-v1.5-quant
 
