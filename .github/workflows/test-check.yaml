@@ -97,6 +97,6 @@ jobs:
       - name: "Clean sparsezoo directory"
         run: rm -r sparsezoo/
       - name: ⚙️ Install dependencies
-        run: pip install .[dev,server,image_classification,transformers,haystack]
+        run: pip install .[dev,haystack]
       - name: Run integrations tests
         run: make test_integrations

@@ -20,7 +20,7 @@ from tests.helpers import run_command
 
 @pytest.fixture(scope="session", autouse=True)
 def install_reqs():
-    run_command(
+    res = run_command(
         [
             sys.executable,
             "-m",
@@ -31,6 +31,8 @@ def install_reqs():
             "rich>=12.2.0",
         ]
     )
+    if res.stdout is not None:
+        print(f"\n==== install_reqs output ====\n{res.stdout}")
 
 
 @pytest.mark.smoke
