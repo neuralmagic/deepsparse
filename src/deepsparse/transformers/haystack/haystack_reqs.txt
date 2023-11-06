@@ -60,7 +60,7 @@ pillow
 pdf2image==1.14.0
 onnxruntime
 onnxruntime_tools
-ray>=1.9.1,<2
+ray
 aiorwlock>=1.3.0,<2
 grpcio==1.43.0
 beir
