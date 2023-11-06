@@ -19,7 +19,6 @@ from typing import Any, Callable, List, Optional, Union
 from pydantic import BaseModel, Field
 
 
-DATA_LOGGING_REGISTRY = defaultdict(lambda: defaultdict(str))
 
 
 class EvaluationRegistryEntry(BaseModel):
