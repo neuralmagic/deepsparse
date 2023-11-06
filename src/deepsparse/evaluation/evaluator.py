@@ -19,7 +19,7 @@ on a requested dataset
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Union
 
-from src.deepsparse.evaluation.registry import BaseEvaluationRegistry
+from src.deepsparse.evaluation.registry import EvaluationRegistry
 from src.deepsparse.pipeline import DEEPSPARSE_ENGINE, ORT_ENGINE, TORCHSCRIPT_ENGINE
 
 
@@ -57,7 +57,7 @@ def evaluate(
     target: str,
     datasets: Union[str, List[str]],
     integration: str,
-    evaluation_registry: BaseEvaluationRegistry,
+    evaluation_registry: EvaluationRegistry,
     engine_type: Union[DEEPSPARSE_ENGINE, ORT_ENGINE, TORCHSCRIPT_ENGINE, None] = None,
     batch_size: int = 1,
     target_args: Optional[Dict] = None,
