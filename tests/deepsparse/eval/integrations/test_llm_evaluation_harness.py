@@ -17,15 +17,25 @@ from src.deepsparse.eval.integrations.llm_evaluation_harness import integration_
 
 
 @pytest.mark.parametrize(
-    "target_onnx, target_torch,datasets, batch_size",
+    "target_onnx, target_torch",
     [
         (
             "hf:mgoin/TinyStories-1M-deepsparse",
             "roneneldan/TinyStories-1M",
-            ["hellaswag"],
-            3,
         )
     ],
+)
+@pytest.mark.parametrize(
+    "datasets",
+    [
+        ["hellaswag"],
+        ["hellaswag", "gsm8k"],
+        "hellaswag",
+    ],
+)
+@pytest.mark.parametrize(
+    "batch_size",
+    [1, 3],
 )
 def test_integration_eval_onnx_matches_torch(
     target_onnx, target_torch, datasets, batch_size
@@ -35,7 +45,7 @@ def test_integration_eval_onnx_matches_torch(
         datasets=datasets,
         batch_size=batch_size,
         target_args={},
-        limit=5,
+        limit=10,
         engine_type="torch",
         splits=None,
         metrics=None,
@@ -47,13 +57,14 @@ def test_integration_eval_onnx_matches_torch(
         datasets=datasets,
         batch_size=batch_size,
         target_args={},
-        limit=5,
+        limit=10,
         engine_type="onnxruntime",
         splits=None,
         metrics=None,
         engine_args=None,
         no_cache=True,  # avoid saving files when running tests
     )
+    datasets = datasets if isinstance(datasets, list) else [datasets]
     for dataset in datasets:
         for key, value in out_torch["results"][dataset].items():
             assert value == out_onnx["results"][dataset][key]

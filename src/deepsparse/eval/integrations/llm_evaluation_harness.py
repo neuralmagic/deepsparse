@@ -18,11 +18,12 @@ https://github.com/EleutherAI/lm-evaluation-harness
 
 import json
 import os
-from typing import Any, Dict
+
+import numpy
 
 import torch
 from deepsparse import DEEPSPARSE_ENGINE, ORT_ENGINE, Pipeline
-from lm_eval import evaluator
+from lm_eval import evaluator, tasks, utils
 from lm_eval.base import BaseLM
 from src.deepsparse.eval.utils import initialize_model_from_target
 
@@ -46,11 +47,12 @@ def integration_eval(
     # [START]
     # The code that sets up the interface between deepsparse and llm_evaluation_harness
     if engine_type in [DEEPSPARSE_ENGINE, ORT_ENGINE]:
-        model = DeepSparseLM(target, target_args)
+        model = DeepSparseLM(target, batch_size, **target_args)
     else:
         model = initialize_model_from_target(target, engine_type, **target_args)
 
-    tasks = datasets
+    datasets = (",").join(datasets) if isinstance(datasets, list) else datasets
+
     # [END]
 
     # [START]
@@ -77,7 +79,12 @@ def integration_eval(
             "REAL METRICS SHOULD NOT BE COMPUTED USING LIMIT."
         )
 
-    print(f"Selected Tasks: {tasks}")
+    if datasets is None:
+        task_names = tasks.ALL_TASKS
+    else:
+        task_names = utils.pattern_match(datasets.split(","), tasks.ALL_TASKS)
+
+    print(f"Selected Tasks: {task_names}")
 
     description_dict = {}
     if kwargs.get("description_dict_path"):
@@ -86,7 +93,7 @@ def integration_eval(
 
     results = evaluator.simple_evaluate(
         model=model,
-        tasks=tasks,
+        tasks=task_names,
         description_dict=description_dict,
         batch_size=batch_size,
         model_args=model_args,
@@ -141,13 +148,14 @@ class DeepSparseLM(BaseLM):
     :param target_args: The arguments for the target
     """
 
-    def __init__(self, target: str, target_args: Dict[str, Any]):
+    def __init__(self, target: str, batch_size: int = 1, **kwargs):
         self.model = Pipeline.create(task="text_generation", model_path=target)
-        self._max_length = target_args.get("max_length", self.DEFAULT_MAX_LENGTH)
+        self._max_length = kwargs.get("max_length", self.DEFAULT_MAX_LENGTH)
+        self._batch_size = batch_size
 
     @property
     def batch_size(self):
-        return self.model._batch_size
+        return self._batch_size
 
     @property
     def max_length(self):
@@ -157,7 +165,7 @@ class DeepSparseLM(BaseLM):
         return self.model.tokenizer.encode(string)
 
     def tok_decode(self, tokens):
-        return self.tokenizer.decode(tokens)
+        return self.model.tokenizer.decode(tokens)
 
     def _model_call(self, inps) -> "torch.Tensor":
         """
@@ -174,7 +182,7 @@ class DeepSparseLM(BaseLM):
         # all at once to the pipeline for faster inference
 
         # encode the tokens to strings
-        prompt = self.model.tokenizer.decode(inps.numpy()[0])
+        prompt = self.model.tokenizer.batch_decode(inps.numpy())
 
         # run the model to map the prompt to logits
         out = self.model(
@@ -183,11 +191,18 @@ class DeepSparseLM(BaseLM):
             include_prompt_logits=True,
             output_scores=True,
         )
-        logits_numpy = out.generations[0].score[None, ...]
+        logits_numpy = numpy.stack([generation.score for generation in out.generations])
         return torch.from_numpy(logits_numpy)
 
     def _model_generate(self, context, max_length, eos_token_id):
-        pass
+        # encode the tokens to strings
+        prompt = self.model.tokenizer.batch_decode(context.numpy())
+        out = self.model(
+            prompt=prompt, max_new_tokens=max_length, force_max_tokens=True
+        )
+        return numpy.array(
+            [self.model.tokenizer(prompt[0] + out.generations[0].text)["input_ids"]]
+        )
 
     @property
     def device(self):
@@ -199,4 +214,4 @@ class DeepSparseLM(BaseLM):
 
     @property
     def max_gen_toks(self):
-        pass
+        return 0
