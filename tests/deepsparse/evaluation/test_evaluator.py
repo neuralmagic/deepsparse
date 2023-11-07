@@ -13,33 +13,55 @@
 # limitations under the License.
 
 from src.deepsparse.evaluation.evaluator import evaluate
-from src.deepsparse.evaluation.registry import BaseEvaluationRegistry
+from src.deepsparse.evaluation.output_evaluation import (
+    Dataset,
+    EvalSample,
+    Evaluation,
+    Metric,
+)
+from src.deepsparse.evaluation.registry import EvaluationRegistry
 
 
-class TestEvaluationRegistry(BaseEvaluationRegistry):
-    def get(self, *args, **kwargs):
-        always_true = lambda *args, **kwargs: True  # noqa E731
-        return always_true
+def return_true(*args, **kwargs):
+    return True
 
-    def put(self, *args, **kwargs):
-        pass
+
+def return_list_of_evaluations(*args, **kwargs):
+    return [
+        Evaluation(
+            task="task_1",
+            dataset=Dataset(
+                type="type_1", name="name_1", config="config_1", split="split_1"
+            ),
+            metrics=[Metric(name="metric_name_1", value=1.0)],
+            samples=[EvalSample(input=5, output=5)],
+        )
+    ]
+
+
+@EvaluationRegistry.register()
+def dummy_integration_returns_boolean(*args, **kwargs):
+    return return_true
+
+
+@EvaluationRegistry.register()
+def dummy_integration(*args, **kwargs):
+    return return_list_of_evaluations
 
 
 def test_evaluate():
-    output = evaluate(
+    result = evaluate(
         target="",
         datasets="",
-        integration="",
-        evaluation_registry=TestEvaluationRegistry(),
+        integration="dummy_integration",
     )
-    assert isinstance(output)
+    assert [isinstance(result_, Evaluation) for result_ in result]
 
 
-def test_evaluate_arbitrary_result_structure():
-    assert evaluate(
+def test_evaluate_preserve_original_result_structure():
+    result = evaluate(
         target="",
         datasets="",
-        integration="",
-        evaluation_registry=TestEvaluationRegistry(),
-        original_result_structure=True,
+        integration="dummy_integration_returns_boolean",
     )
+    assert isinstance(result, bool)

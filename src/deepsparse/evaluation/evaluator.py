@@ -19,15 +19,17 @@ on a requested dataset
 from typing import Any, Dict, List, Optional, Union
 
 from src.deepsparse.evaluation.output_evaluation import Evaluation
-from src.deepsparse.evaluation.registry import BaseEvaluationRegistry
+from src.deepsparse.evaluation.registry import EvaluationRegistry
 from src.deepsparse.pipeline import DEEPSPARSE_ENGINE, ORT_ENGINE, TORCHSCRIPT_ENGINE
+
+
+__all__ = ["evaluate"]
 
 
 def evaluate(
     target: str,
     datasets: Union[str, List[str]],
     integration: str,
-    evaluation_registry: BaseEvaluationRegistry,
     engine_type: Union[DEEPSPARSE_ENGINE, ORT_ENGINE, TORCHSCRIPT_ENGINE, None] = None,
     batch_size: int = 1,
     target_args: Optional[Dict] = None,
@@ -46,38 +48,34 @@ def evaluate(
     :param integration: The name of the evaluation integration to use.
         Must be a valid integration name that is registered in the
         evaluation registry.
-    :param evaluation_registry: The evaluation registry to use for
-        looking up the evaluation integration.
     :param engine_type: The engine to use for the evaluation.
     :param batch_size: The batch size to use for the evaluation.
-    :param target_args: The arguments to alter the
+    :param target_args: Optional arguments to alter the
         behavior of the evaluated target.
-    :param engine_args: The arguments to pass to the engine.
+    :param engine_args: Optional arguments to pass to the engine.
     :param splits: Specifies the name of the splits to evaluate on.
     :param metrics: Specifies the name of the metrics to evaluate on.
     :param original_result_structure: Specifies whether to return the
         original result structure from the evaluation integration. If
-        False, the results will be returned as a list of Evaluation objects.
+        False (default), the results will be returned as a list of Evaluation objects.
     :param kwargs: Additional arguments to pass to the evaluation integration.
     :return: A list of Evaluation objects containing the results of the evaluation.
     """
 
     # TODO: Implement a function that checks for valid target
     # TODO: Implement a function that checks for valid engine_type
-    # TODO: Implement evaluation registry
-    # TODO: Clarify the type of missing arguments
 
-    eval_integration = evaluation_registry.get(target, integration, datasets)
+    eval_integration = EvaluationRegistry.load_from_registry(integration)
 
     return eval_integration(
         target=target,
-        target_args=target_args,
         datasets=datasets,
+        engine_type=engine_type,
+        batch_size=batch_size,
+        target_args=target_args,
+        engine_args=engine_args,
         splits=splits,
         metrics=metrics,
-        batch_size=batch_size,
-        engine_type=engine_type,
-        engine_args=engine_args,
         original_result_structure=original_result_structure,
         **kwargs,
     )
