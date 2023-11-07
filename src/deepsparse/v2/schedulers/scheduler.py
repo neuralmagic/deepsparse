@@ -14,7 +14,6 @@
 
 
 from concurrent.futures import Future, ThreadPoolExecutor
-from typing import Callable
 
 from deepsparse.v2.operators import Operator
 
@@ -52,22 +51,6 @@ class OperatorScheduler:
             *args,
             **kwargs,
         )
-
-    def can_map(self, *args):
-        """
-        args containing list of inputs to be used for each worker. This function if we
-        have sufficient workes available
-        """
-        if len(args[0]) <= self._threadpool._max_workers:
-            return True
-        return False
-
-    def map(self, *args, func: Callable):
-        """
-        :param func: Callable to run as part of the map function
-        args containing a list of function variables to map
-        """
-        return list(self._threadpool.map(func, *args))
 
     def can_process(
         self,

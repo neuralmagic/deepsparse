@@ -41,9 +41,13 @@ class Router:
         end_route: Union[str, int],
         start_route: Union[str, int],
         route: Optional[Dict] = None,
+        split_route: str = "SPLIT",
+        join_route: str = "JOIN",
     ):
         self.START_ROUTE = start_route
         self.END_ROUTE = end_route
+        self.SPLIT_ROUTE = split_route
+        self.JOIN_ROUTE = join_route
         self.route = route
 
     @abstractmethod
@@ -79,6 +83,9 @@ class LinearRouter(Router):
 
     def __init__(self, end_route: int, start_route: int = 0):
         super().__init__(end_route=end_route, start_route=start_route)
+        self.SPLIT_ROUTE = None
+        self.JOIN_ROUTE = None
+        _LOGGER.warn("SPLIT and JOIN are not yet supported for the LinearRouter.")
 
     def next(
         self, past: int, ops: Optional[List[Operator]] = None, inp: Optional[Any] = None
@@ -129,9 +136,9 @@ class GraphRouter(Router):
     """
 
     def __init__(self, end_route: str, start_route: str, route: Dict, **kwargs):
-        super().__init__(end_route=end_route, start_route=start_route, route=route)
-        self.SPLIT_ROUTE = kwargs.get("split_route")
-        self.END_SPLIT = kwargs.get("end_split")
+        super().__init__(
+            end_route=end_route, start_route=start_route, route=route, **kwargs
+        )
 
     def next(
         self,

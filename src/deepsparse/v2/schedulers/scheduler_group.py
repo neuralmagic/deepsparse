@@ -58,11 +58,10 @@ class SchedulerGroup(OperatorScheduler):
 
     def map(self, *args, func: Callable):
         """
-        :param operator: operator to run
-        :return: list of outputs from multiple workers
+        :param func: generic callable run for each arg
+        :return: list of futures for each submit
         """
-        for scheduler in self.schedulers:
-            if scheduler.can_map(
-                args[0],
-            ):
-                return scheduler.map(*args, func=func)
+        futures = []
+        for _, values in enumerate(zip(*args)):
+            futures.append(self.submit(*values, operator=func))
+        return futures
