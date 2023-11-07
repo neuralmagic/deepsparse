@@ -13,22 +13,21 @@
 # limitations under the License.
 
 from src.deepsparse.evaluation.evaluator import evaluate
-from src.deepsparse.evaluation.registry import BaseEvaluationRegistry
+from src.deepsparse.evaluation.registry import EvaluationRegistry
 
 
-class TestEvaluationRegistry(BaseEvaluationRegistry):
-    def get(self, *args, **kwargs):
-        always_true = lambda *args, **kwargs: True  # noqa E731
-        return always_true
+def always_true(*args, **kwargs):
+    return True
 
-    def put(self, *args, **kwargs):
-        pass
+
+@EvaluationRegistry.register()
+def dummy_integration(*args, **kwargs):
+    return always_true
 
 
 def test_evaluate():
     assert evaluate(
         target="",
         datasets="",
-        integration="",
-        evaluation_registry=TestEvaluationRegistry(),
+        integration="dummy_integration",
     )

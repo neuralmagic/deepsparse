@@ -12,22 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from abc import ABC, abstractmethod
-from typing import Any, Callable, List, Union
+from sparsezoo.utils.registry import RegistryMixin
 
 
-class BaseEvaluationRegistry(ABC):
-    """
-    Interface for evaluation registry. The detailed implementation will be
-    handled in a separate PR.
-    """
+__all__ = ["EvaluationRegistry"]
 
-    @abstractmethod
-    def get(
-        self, target: str, integration: str, datasets: Union[List[str], str]
-    ) -> Callable[..., Any]:
-        raise NotImplementedError
 
-    @abstractmethod
-    def put(self, eval_func: Callable[..., Any]):
-        raise NotImplementedError
+class EvaluationRegistry(RegistryMixin):
+    pass
