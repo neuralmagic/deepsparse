@@ -56,7 +56,7 @@ class EvaluationRegistry(RegistryMixin):
 
     ```python
     @EvaluationRegistry.register(name="get_rodent", alias="get_squirrel")
-    def this_function_name_will_be_omitted(*args, **kwargs):
+    def this_function_name_will_not_be_registered(*args, **kwargs):
         return "squirrel"
     ```
     """
