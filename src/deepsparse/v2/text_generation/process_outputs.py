@@ -79,6 +79,15 @@ class ProcessOutputs(Operator):
             generations = list(
                 map(self._create_generated_text_output, sequences, finished_reason)
             )
+
+        num_preds = generation_config.num_return_sequences
+        if num_preds > 1:
+            grouped_generations = [
+                generations[n : n + num_preds]
+                for n in range(0, len(generations), num_preds)
+            ]
+            generations = grouped_generations
+
         outputs = dict(
             created=datetime.datetime.now(),
             prompts=inference_state.current_state.get("prompts"),
