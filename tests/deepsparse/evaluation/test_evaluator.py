@@ -26,9 +26,21 @@ class TestEvaluationRegistry(BaseEvaluationRegistry):
 
 
 def test_evaluate():
-    assert evaluate(
+    output = evaluate(
         target="",
         datasets="",
         integration="",
         evaluation_registry=TestEvaluationRegistry(),
     )
+    assert output
+    assert isinstance(output)
+
+def test_evaluate_arbitrary_result_structure():
+    assert evaluate(
+        target="",
+        datasets="",
+        integration="",
+        evaluation_registry=TestEvaluationRegistry(),
+        original_result_structure=True
+    )
+
