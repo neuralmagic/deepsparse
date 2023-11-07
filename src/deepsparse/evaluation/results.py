@@ -22,6 +22,7 @@ from pydantic import BaseModel
 from src.deepsparse.utils.data import prep_for_serialization
 
 
+# TODO: Finish docstrings
 class Metric(BaseModel):
     name: str
     value: float
@@ -40,8 +41,6 @@ class EvalSample(BaseModel):
 
 
 class Evaluation(BaseModel):
-    # TODO: How to handle serialization of the
-    # data structure (to yaml and json)
     task: str
     dataset: Dataset
     metrics: List[Metric]
@@ -72,14 +71,14 @@ def save_evaluation(
         NotImplementedError("Currently only json and yaml formats are supported")
 
 
-def _save_to_json(evaluations: List[OrderedDict], save_path: Optional[str]):
+def _save_to_json(evaluations: List[OrderedDict], save_path: Optional[str]) -> str:
     data = json.dumps(evaluations)
     if save_path:
         _save(data, save_path, expected_ext=".json")
     return data
 
 
-def _save_to_yaml(evaluations: List[OrderedDict], save_path: Optional[str]):
+def _save_to_yaml(evaluations: List[OrderedDict], save_path: Optional[str]) -> str:
     # required to properly process OrderedDicts
     yaml.add_representer(
         OrderedDict,
@@ -93,7 +92,7 @@ def _save_to_yaml(evaluations: List[OrderedDict], save_path: Optional[str]):
     return data
 
 
-def _save(data: Any, save_path: str, expected_ext: str):
+def _save(data: str, save_path: str, expected_ext: str):
     if not save_path.endswith("expected_ext"):
         raise ValueError("save_path must end " f"with extension: {expected_ext}")
     with open(save_path, "w") as f:

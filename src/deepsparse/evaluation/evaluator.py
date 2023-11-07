@@ -18,8 +18,8 @@ on a requested dataset
 
 from typing import Any, Dict, List, Optional, Union
 
-from src.deepsparse.evaluation.output_evaluation import Evaluation
 from src.deepsparse.evaluation.registry import EvaluationRegistry
+from src.deepsparse.evaluation.results import Evaluation
 from src.deepsparse.pipeline import DEEPSPARSE_ENGINE, ORT_ENGINE, TORCHSCRIPT_ENGINE
 
 
@@ -36,7 +36,7 @@ def evaluate(
     engine_args: Optional[Dict] = None,
     splits: Union[List[str], str, None] = None,
     metrics: Union[List[str], str, None] = None,
-    original_result_structure: bool = False,
+    enforce_result_structure: bool = True,
     **kwargs,
 ) -> Union[List[Evaluation], Any]:
     """
@@ -55,9 +55,11 @@ def evaluate(
     :param engine_args: Optional arguments to pass to the engine.
     :param splits: Specifies the name of the splits to evaluate on.
     :param metrics: Specifies the name of the metrics to evaluate on.
-    :param original_result_structure: Specifies whether to return the
-        original result structure from the evaluation integration. If
-        False (default), the results will be returned as a list of Evaluation objects.
+    :param enforce_result_structure: Specifies whether to unify all the
+        results into the predefined Evaluation structure. If True, the
+        results will be returned as a list of Evaluation objects.
+        Otherwise, the result will preserve the original result structure
+        from the evaluation integration.
     :param kwargs: Additional arguments to pass to the evaluation integration.
     :return: A list of Evaluation objects containing the results of the evaluation.
     """
@@ -67,7 +69,7 @@ def evaluate(
 
     eval_integration = EvaluationRegistry.load_from_registry(integration)
 
-    return eval_integration(
+    result = eval_integration(
         target=target,
         datasets=datasets,
         engine_type=engine_type,
@@ -76,6 +78,17 @@ def evaluate(
         engine_args=engine_args,
         splits=splits,
         metrics=metrics,
-        original_result_structure=original_result_structure,
+        original_result_structure=enforce_result_structure,
         **kwargs,
     )
+
+    if enforce_result_structure:
+        if isinstance(result, list) and all(
+            isinstance(result_, Evaluation) for result_ in result
+        ):
+            return result
+        else:
+            raise ValueError(
+                "The evaluation integration must return a list of Evaluation objects "
+                "when enforce_result_structure is True."
+            )

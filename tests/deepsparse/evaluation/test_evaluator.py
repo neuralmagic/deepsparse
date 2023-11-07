@@ -13,13 +13,8 @@
 # limitations under the License.
 
 from src.deepsparse.evaluation.evaluator import evaluate
-from src.deepsparse.evaluation.output_evaluation import (
-    Dataset,
-    EvalSample,
-    Evaluation,
-    Metric,
-)
 from src.deepsparse.evaluation.registry import EvaluationRegistry
+from src.deepsparse.evaluation.results import Dataset, EvalSample, Evaluation, Metric
 
 
 def return_true(*args, **kwargs):
