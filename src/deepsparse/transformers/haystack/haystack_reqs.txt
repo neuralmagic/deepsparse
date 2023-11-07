@@ -16,7 +16,7 @@
 # deepsparse/transformers/haystack/__init__.py
 
 importlib-metadata
-torch==1.13.1
+torch>=1.12.1
 requests
 pydantic
 nltk
