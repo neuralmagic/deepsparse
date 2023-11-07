@@ -28,7 +28,7 @@ from deepsparse.v2.operators import Operator
 
 class GenerationDefaults:
     num_return_sequences = 1
-    max_length = 100
+    max_length = 10
     max_new_tokens = None
     output_scores = False
     top_k = 0
@@ -54,10 +54,11 @@ class ProcessInputsTextGeneration(Operator):
     def __init__(
         self,
         tokenizer: transformers.PreTrainedTokenizerBase,
+        sequence_length: int,
         generation_config: Union[
             str, pathlib.Path, Dict, transformers.GenerationConfig
-        ],
-        sequence_length: int,
+        ] = None,
+        
     ):
         self.generation_config = generation_config
         self.tokenizer = tokenizer

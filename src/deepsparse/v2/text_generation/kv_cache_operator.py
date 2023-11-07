@@ -24,7 +24,7 @@ from deepsparse.transformers.utils.helpers import (
 from deepsparse.v2.operators import Operator
 
 
-__all__ = ["KVCacheCreator"]
+__all__ = ["KVCacheCreator", "KVCacheCreatorInput"]
 
 
 class KVCacheCreatorOutput(BaseModel):
@@ -61,6 +61,7 @@ class KVCacheCreator(Operator):
             length=self.sequence_length - self.prompt_sequence_length,
             empty=bool(self.internal_kv_cache),
         )
+        print(kv_cache_state.get("past_key_values.0.key").shape)
 
         kv_cache = DecoderKVCache(self.internal_kv_cache)
         kv_cache.setup(

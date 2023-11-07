@@ -14,6 +14,7 @@
 from typing import Any
 
 import numpy
+import copy
 
 from deepsparse.transformers.pipelines.text_generation import FinishReason
 from deepsparse.v2.operators import Operator
@@ -107,7 +108,7 @@ class PrepareGeneration(Operator):
             logits_shape=prompt_logits[0, -1, :].shape,
             deterministic=not generation_config.do_sample,
             sampling_temperature=generation_config.temperature,
-            tokens=tokens,
+            tokens=copy.copy(tokens),
             **inference_state.current_state,
         )
         token_generator = token_generator_creator_output.get("token_generator")
@@ -131,7 +132,6 @@ class PrepareGeneration(Operator):
             "finished_reason": [],
             "token_generator": token_generator,
         }
-
         output = {
             "tokens": token_generator.tokens,
             "kv_cache": kv_cache,

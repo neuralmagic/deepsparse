@@ -323,4 +323,3 @@ def test_compile_logits(mock_logits, mock_inference_state):
         inference_state=mock_inference_state
     )
     assert len(state.get("prompt_logits")) == len([mock_logits]) + 1
-    print(state.get("prompt_logits"))
