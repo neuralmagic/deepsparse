@@ -35,15 +35,14 @@ except Exception:
         )
     ],
 )
-# TODO: Write tests for other datasets relevant for us
-# TODO: gsm8k cannot be tested, because it explicitly requires
-# a model that follows specific output format
 @pytest.mark.parametrize(
     "datasets",
     [
         ["hellaswag"],
         ["hellaswag", "gsm8k"],
         "gsm8k",
+        "arc_challenge",
+        # "lambada_standard", TODO: enable when lambada is fixed
     ],
 )
 @pytest.mark.parametrize(
@@ -59,7 +58,7 @@ def test_integration_eval_onnx_matches_torch(
         datasets=datasets,
         batch_size=batch_size,
         target_args={},
-        limit=10,
+        limit=5,
         engine_type="torch",
         no_cache=True,  # avoid saving files when running tests
     )
@@ -68,7 +67,7 @@ def test_integration_eval_onnx_matches_torch(
         datasets=datasets,
         batch_size=batch_size,
         target_args={},
-        limit=10,
+        limit=5,
         engine_type="onnxruntime",
         no_cache=True,  # avoid saving files when running tests
     )

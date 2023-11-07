@@ -18,44 +18,55 @@ https://github.com/EleutherAI/lm-evaluation-harness
 """
 
 import json
+import logging
+from typing import Any, Dict, List, Optional, Union
 
 import numpy
+from pydantic import BaseModel, Field
 
 import torch
-from deepsparse import DEEPSPARSE_ENGINE, ORT_ENGINE, Pipeline
+from src.deepsparse import DEEPSPARSE_ENGINE, ORT_ENGINE, Pipeline
 from src.deepsparse.evaluation.utils import initialize_model_from_target
+
+
+_LOGGER = logging.getLogger(__name__)
 
 
 # check lm-evaluation-harness installation
 try:
-    from lm_eval import evaluator, tasks, utils
-    from lm_eval.base import BaseLM
+    from lm_eval import base, evaluator, tasks, utils
 
     _lm_eval_import_error = None
 except Exception as _lm_eval_import_err:
     _lm_eval_import_error = _lm_eval_import_err
     raise ValueError(
-        f"{_lm_eval_import_error} Unable to import lm_eval. "
-        f"To install it refer to the github repository: "
+        f"{_lm_eval_import_error}. Unable to import lm_eval. "
+        f"To install the dependency refer to the appropriate github repository: "
         f"https://github.com/EleutherAI/lm-evaluation-harness"
     )
 
 
 def integration_eval(
-    target,
-    target_args,
-    datasets,
-    batch_size,
-    engine_type,
+    target: str,
+    datasets: Union[List, str],
+    batch_size: int,
+    target_args: Dict[str, Any],
+    engine_type: Optional[str] = None,
     **kwargs,
-):
-    # TODO: Finish docstrings
-    # TODO: Maybe give an option to return the original format of the
-    # result from this function
+) -> Dict[str, Any]:
     """
     Reimplementation of:
     https://github.com/EleutherAI/lm-evaluation-harness/blob/master/main.py
-    that is compatible with our evaluation module
+    that is compatible with deepsparse.evaluator.py
+
+    :param target: the model name
+    :param datasets: the datasets to evaluate on
+    :param batch_size: the batch size to use for evaluation
+    :param target_args: optional arguments to alter the behavior of the target
+    :param engine_type: the engine type to use for evaluation
+    :param kwargs: additional arguments to alter the behavior of the evaluation
+
+    :return the evaluation results
     """
     # [START]
     # The code that sets up the interface between deepsparse and llm_evaluation_harness
@@ -65,30 +76,13 @@ def integration_eval(
         model = initialize_model_from_target(target, engine_type, **target_args)
 
     datasets = (",").join(datasets) if isinstance(datasets, list) else datasets
-
     # [END]
 
     # [START]
     # The code below is being adapted from:
     # https://github.com/EleutherAI/lm-evaluation-harness/blob/master/main.py
-
-    # TODO: Maybe  find a nicer way to establish default arguments
-    provide_description = kwargs.get("provide_description", False)
-    limit = kwargs.get("limit", None)
-    model_args = kwargs.get("model_args", "")
-    num_fewshot = kwargs.get("num_fewshot", 0)
-    max_batch_size = kwargs.get("max_batch_size", None)
-    device = kwargs.get("device", None)
-    no_cache = kwargs.get("no_cache", False)
-    decontamination_ngrams_path = kwargs.get("decontamination_ngrams_path", None)
-    check_integrity = kwargs.get("check_integrity", True)
-    write_out = kwargs.get("write_out", True)
-    output_base_path = kwargs.get("output_base_path", None)
-
-    assert not provide_description  # not implemented
-
     if kwargs.get("limit"):
-        print(
+        _LOGGER.warning(
             "WARNING: --limit SHOULD ONLY BE USED FOR TESTING. "
             "REAL METRICS SHOULD NOT BE COMPUTED USING LIMIT."
         )
@@ -98,62 +92,74 @@ def integration_eval(
     else:
         task_names = utils.pattern_match(datasets.split(","), tasks.ALL_TASKS)
 
-    print(f"Selected Tasks: {task_names}")
+    _LOGGER.info(f"Selected Tasks: {task_names}")
 
     description_dict = {}
     if kwargs.get("description_dict_path"):
         with open(kwargs.get("description_dict_path"), "r") as f:
             description_dict = json.load(f)
 
-    results = evaluator.simple_evaluate(
+    evaluator_input = EvaluatorInputSchema(
         model=model,
         tasks=task_names,
         description_dict=description_dict,
         batch_size=batch_size,
-        model_args=model_args,
-        num_fewshot=num_fewshot,
-        max_batch_size=max_batch_size,
-        device=device,
-        no_cache=no_cache,
-        limit=limit,
-        decontamination_ngrams_path=decontamination_ngrams_path,
-        check_integrity=check_integrity,
-        write_out=write_out,
-        output_base_path=output_base_path,
+        **kwargs,
     )
 
-    # TODO: We should remove this code, otherwise
-    # we write files to disk
-
-    # dumped = json.dumps(results, indent=2)
-    # print(dumped)
-    #
-    # output_path = kwargs.get("output_path", None)
-    # if output_path:
-    #     dirname = os.path.dirname(output_path)
-    #     if dirname:
-    #         os.makedirs(dirname, exist_ok=True)
-    #     with open(output_path, "w") as f:
-    #         f.write(dumped)
+    results = evaluator.simple_evaluate(**evaluator_input.dict())
 
     batch_sizes = ",".join(map(str, results["config"]["batch_sizes"]))
-    print(
-        f"{model} ({model_args}), "
-        f"limit: {limit}, "
-        f"provide_description: {provide_description}, "
-        f"num_fewshot: {num_fewshot}, "
+
+    _LOGGER.info(
+        f"{model} ({evaluator_input.model_args}), "
+        f"limit: {evaluator_input.limit}, "
+        f"num_fewshot: {evaluator_input.num_fewshot}, "
         f"batch_size: {batch_size}{f' ({batch_sizes})' if batch_sizes else ''}"
     )
-    print(evaluator.make_table(results))
+    _LOGGER.info(evaluator.make_table(results))
     # [END]
-
-    # TODO: Add here the code to return the results in the format expected by the
-    # evaluator module; potentially remove prints from the code above
 
     return results
 
 
-class DeepSparseLM(BaseLM):
+class EvaluatorInputSchema(BaseModel):
+    model: Any = Field(description="The name of the model.")
+    tasks: List[str] = Field(
+        description="The task (or multiple tasks) to evaluate the target on."
+    )
+    description_dict: Optional[Dict[str, Any]] = Field(
+        None, description="Description dict."
+    )
+    batch_size: int = Field(description="The batch size to use for evaluation.")
+    model_args: str = Field(
+        "", description="Additional arguments for the evaluated model."
+    )
+    num_fewshot: int = Field(0, description="The number of few shots to use.")
+    max_batch_size: Optional[int] = Field(
+        None, description="Maximal batch size to try with --batch_size auto."
+    )
+    device: Optional[str] = Field(None, description="Device to use for evaluation.")
+    no_cache: bool = Field(False, description="Include this flag to prevent caching.")
+    limit: Optional[float] = Field(
+        None,
+        description="Limit the number of examples per task. If <1, "
+        "limit is a percentage of the total number of "
+        "examples.",
+    )
+    decontamination_ngrams_path: Optional[str] = Field(
+        None, description="Specify the path for decontamination n-grams."
+    )
+    check_integrity: bool = Field(
+        True, description="Include this flag to check integrity."
+    )
+    write_out: bool = Field(False, description="Include this flag to write out.")
+    output_base_path: Optional[str] = Field(
+        None, description="Specify the output base path."
+    )
+
+
+class DeepSparseLM(base.BaseLM):
     # Default max sequence length setting for when no `max_length` is provided
     DEFAULT_MAX_LENGTH = 2048
     """
