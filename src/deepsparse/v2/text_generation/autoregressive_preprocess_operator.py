@@ -15,9 +15,7 @@
 import logging
 from typing import Any
 
-import numpy
-
-from deepsparse.transformers.utils.helpers import create_causal_mask
+from deepsparse.transformers.utils.helpers import compute_engine_inputs
 from deepsparse.v2.operators import Operator
 from deepsparse.v2.utils import PipelineState
 

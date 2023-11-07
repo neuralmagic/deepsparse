@@ -12,9 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Any, Optional
 import logging
-from enum import Enum
 from typing import Any
 
 from deepsparse.transformers.utils.helpers import compute_engine_inputs
@@ -54,15 +52,8 @@ class MultiEnginePrefill(Operator):
             return True
         return False
 
-    def run(
-        self,
-        inp: Any,
-        context: Optional[Context],
-        pipeline_state: PipelineState,
-        inference_state: InferenceState,
-    ):
-        tokens = inp.get("tokens")
-        kv_cache = inp.get("kv_cache")
+    def run(self, tokens: Any, kv_cache: Any, pipeline_state: PipelineState, **kwargs):
+        kv_cache.set_capacity(self.sequence_length - self.prompt_sequence_length)
 
         num_total_processed_tokens = kv_cache.total_num_processed_tokens
         start = num_total_processed_tokens
