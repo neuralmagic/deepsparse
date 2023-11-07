@@ -83,8 +83,10 @@ class ContinuousBatchingScheduler(OperatorScheduler):
             schedule all jobs is created and started
         """
         if _GLOBAL_SCHEDULER is not None:
-            return _GLOBAL_SCHEDULER
-        return cls(max_workers=1)
+            return _GLOBAL_SCHEDULER  # noqa: F823
+
+        _GLOBAL_SCHEDULER = cls(max_workers=1)
+        return _GLOBAL_SCHEDULER
 
     @property
     def max_workers(self) -> int:
