@@ -19,7 +19,7 @@ on a requested dataset
 from typing import Any, Dict, List, Optional, Union
 
 from src.deepsparse.evaluation.registry import EvaluationRegistry
-from src.deepsparse.evaluation.results import Evaluation
+from src.deepsparse.evaluation.results import Evaluation, validate_result_structure
 from src.deepsparse.pipeline import DEEPSPARSE_ENGINE, ORT_ENGINE, TORCHSCRIPT_ENGINE
 
 
@@ -83,12 +83,9 @@ def evaluate(
     )
 
     if enforce_result_structure:
-        if isinstance(result, list) and all(
-            isinstance(result_, Evaluation) for result_ in result
-        ):
-            return result
-        else:
+        if not validate_result_structure(result):
             raise ValueError(
                 "The evaluation integration must return a list of Evaluation objects "
                 "when enforce_result_structure is True."
             )
+    return result

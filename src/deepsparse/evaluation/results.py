@@ -22,6 +22,16 @@ from pydantic import BaseModel
 from src.deepsparse.utils.data import prep_for_serialization
 
 
+__all__ = [
+    "Metric",
+    "Dataset",
+    "EvalSample",
+    "Evaluation",
+    "validate_result_structure",
+    "save_evaluation",
+]
+
+
 # TODO: Finish docstrings
 class Metric(BaseModel):
     name: str
@@ -45,6 +55,12 @@ class Evaluation(BaseModel):
     dataset: Dataset
     metrics: List[Metric]
     samples: List[EvalSample]
+
+
+def validate_result_structure(result: Any) -> bool:
+    return isinstance(result, list) and all(
+        isinstance(result_, Evaluation) for result_ in result
+    )
 
 
 def save_evaluation(
@@ -93,7 +109,7 @@ def _save_to_yaml(evaluations: List[OrderedDict], save_path: Optional[str]) -> s
 
 
 def _save(data: str, save_path: str, expected_ext: str):
-    if not save_path.endswith("expected_ext"):
-        raise ValueError("save_path must end " f"with extension: {expected_ext}")
+    if not save_path.endswith(expected_ext):
+        raise ValueError(f"save_path must end with extension: {expected_ext}")
     with open(save_path, "w") as f:
         f.write(data)

@@ -11,52 +11,37 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import pytest
 from src.deepsparse.evaluation.evaluator import evaluate
 from src.deepsparse.evaluation.registry import EvaluationRegistry
-from src.deepsparse.evaluation.results import Dataset, EvalSample, Evaluation, Metric
 
 
 def return_true(*args, **kwargs):
     return True
 
 
-def return_list_of_evaluations(*args, **kwargs):
-    return [
-        Evaluation(
-            task="task_1",
-            dataset=Dataset(
-                type="type_1", name="name_1", config="config_1", split="split_1"
-            ),
-            metrics=[Metric(name="metric_name_1", value=1.0)],
-            samples=[EvalSample(input=5, output=5)],
-        )
-    ]
-
-
 @EvaluationRegistry.register()
-def dummy_integration_returns_boolean(*args, **kwargs):
+def dummy_integration(*args, **kwargs):
     return return_true
 
 
-@EvaluationRegistry.register()
-def dummy_integration(*args, **kwargs):
-    return return_list_of_evaluations
-
-
 def test_evaluate():
-    result = evaluate(
+    # should fail because `dummy_integration`
+    # returns a function that outputs a boolean
+    # and thus is incompatible with the output type
+    # of `evaluate`
+    with pytest.raises(ValueError):
+        evaluate(
+            target="",
+            datasets="",
+            integration="dummy_integration",
+        )
+
+
+def test_evaluate_allow_original_result_structure():
+    assert evaluate(
         target="",
         datasets="",
         integration="dummy_integration",
+        enforce_result_structure=False,
     )
-    assert [isinstance(result_, Evaluation) for result_ in result]
-
-
-def test_evaluate_preserve_original_result_structure():
-    result = evaluate(
-        target="",
-        datasets="",
-        integration="dummy_integration_returns_boolean",
-    )
-    assert isinstance(result, bool)

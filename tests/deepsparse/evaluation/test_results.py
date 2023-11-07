@@ -99,7 +99,7 @@ def evaluations_yaml():
 def test_serialize_evaluation_json(tmp_path, evaluations, evaluations_json):
     path_to_file = tmp_path / "result.json"
     evaluations_serialized = save_evaluation(
-        evaluations=evaluations, format="json", save_path=path_to_file.as_posix()
+        evaluations=evaluations, save_format="json", save_path=path_to_file.as_posix()
     )
     with open(path_to_file.as_posix(), "r") as f:
         assert json.load(f)
@@ -109,7 +109,7 @@ def test_serialize_evaluation_json(tmp_path, evaluations, evaluations_json):
 def test_serialize_evaluation_yaml(tmp_path, evaluations, evaluations_yaml):
     path_to_file = tmp_path / "result.yaml"
     evaluations_serialized = save_evaluation(
-        evaluations=evaluations, format="yaml", save_path=path_to_file.as_posix()
+        evaluations=evaluations, save_format="yaml", save_path=path_to_file.as_posix()
     )
     with open(path_to_file.as_posix(), "r") as f:
         assert yaml.safe_load(f)
