@@ -17,9 +17,11 @@ on a requested dataset
 """
 
 from typing import Any, Dict, List, Optional, Union
-from src.deepsparse.evaluation.utils import Evaluation
+
+from src.deepsparse.evaluation.output_evaluation import Evaluation
 from src.deepsparse.evaluation.registry import BaseEvaluationRegistry
 from src.deepsparse.pipeline import DEEPSPARSE_ENGINE, ORT_ENGINE, TORCHSCRIPT_ENGINE
+
 
 def evaluate(
     target: str,

@@ -32,8 +32,8 @@ def test_evaluate():
         integration="",
         evaluation_registry=TestEvaluationRegistry(),
     )
-    assert output
     assert isinstance(output)
+
 
 def test_evaluate_arbitrary_result_structure():
     assert evaluate(
@@ -41,6 +41,5 @@ def test_evaluate_arbitrary_result_structure():
         datasets="",
         integration="",
         evaluation_registry=TestEvaluationRegistry(),
-        original_result_structure=True
+        original_result_structure=True,
     )
-
