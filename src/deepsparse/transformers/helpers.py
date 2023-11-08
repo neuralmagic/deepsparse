@@ -17,24 +17,26 @@ Helper functions for working with ONNX exports of transformer models and deepspa
 """
 
 
+import logging
 import os
 import re
 from pathlib import Path
 from tempfile import NamedTemporaryFile
-from typing import List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy
 import onnx
+import transformers
 from onnx import ModelProto
 
 from deepsparse.log import get_main_logger
-from deepsparse.utils.onnx import _MODEL_DIR_ONNX_NAME, truncate_onnx_model
+from deepsparse.utils.onnx import MODEL_ONNX_NAME, truncate_onnx_model
 from sparsezoo import Model
 from sparsezoo.utils import save_onnx
 
 
 __all__ = [
-    "get_deployment_path",
+    "setup_transformers_pipeline",
     "overwrite_transformer_onnx_model_inputs",
     "fix_numpy_types",
     "get_transformer_layer_init_names",
@@ -42,6 +44,81 @@ __all__ = [
 ]
 
 _LOGGER = get_main_logger()
+
+
+def setup_transformers_pipeline(
+    model_path: str,
+    sequence_length: int,
+    tokenizer_padding_side: str = "left",
+    engine_kwargs: Optional[Dict] = None,
+    onnx_model_name: Optional[str] = None,
+) -> Tuple[
+    str, transformers.PretrainedConfig, transformers.PreTrainedTokenizer, Dict[str, Any]
+]:
+    """
+    A helper function that sets up the model path, config, tokenizer,
+    and engine kwargs for a transformers model.
+    :param model_path: The path to the model to load
+    :param sequence_length: The sequence length to use for the model
+    :param tokenizer_padding_side: The side to pad on for the tokenizer,
+        either "left" or "right"
+    :param engine_kwargs: The kwargs to pass to the engine
+    :param onnx_model_name: The name of the onnx model to be loaded.
+        If not specified, defaults are used (see setup_onnx_file_path)
+    :return The model path, config, tokenizer, and engine kwargs
+    """
+    model_path, config, tokenizer = setup_onnx_file_path(
+        model_path, sequence_length, onnx_model_name
+    )
+
+    tokenizer.padding_side = tokenizer_padding_side
+    if not tokenizer.pad_token:
+        tokenizer.pad_token = tokenizer.eos_token
+
+    engine_kwargs = engine_kwargs or {}
+    engine_kwargs["model_path"] = model_path
+    return model_path, config, tokenizer, engine_kwargs
+
+
+def setup_onnx_file_path(
+    model_path: str,
+    sequence_length: int,
+    onnx_model_name: Optional[str] = None,
+) -> Tuple[str, transformers.PretrainedConfig, transformers.PreTrainedTokenizer]:
+    """
+    Parses ONNX model from the `model_path` provided. It additionally
+    creates config and tokenizer objects from the `deployment path`,
+    derived from the `model_path` provided.
+    :param model_path: path to the model to be parsed
+    :param sequence_length: maximum sequence length of the model
+    :param onnx_model_name: optionally, the precise name of the ONNX model
+        of interest may be specified. If not specified, the default ONNX model
+        name will be used (refer to `get_deployment_path` for details)
+    :return: file path to the processed ONNX file for the engine to compile
+    """
+    deployment_path, onnx_path = get_deployment_path(model_path, onnx_model_name)
+
+    hf_logger = logging.getLogger("transformers")
+    hf_logger_level = hf_logger.level
+    hf_logger.setLevel(logging.ERROR)
+
+    config = transformers.PretrainedConfig.from_pretrained(deployment_path)
+    hf_logger.setLevel(hf_logger_level)
+
+    trust_remote_code = False
+    tokenizer = transformers.AutoTokenizer.from_pretrained(
+        deployment_path,
+        trust_remote_code=trust_remote_code,
+        model_max_length=sequence_length,
+    )
+
+    if not config or not tokenizer:
+        raise RuntimeError(
+            "Invalid config or tokenizer provided. Please provide "
+            "paths to the files or ensure they exist in the `model_path` provided. "
+            "See `tokenizer` and `config` arguments for details."
+        )
+    return onnx_path, config, tokenizer
 
 
 def get_deployment_path(model_path: str) -> Tuple[str, str]:
@@ -63,26 +140,26 @@ def get_deployment_path(model_path: str) -> Tuple[str, str]:
     if os.path.isdir(model_path):
         model_files = os.listdir(model_path)
 
-        if _MODEL_DIR_ONNX_NAME not in model_files:
+        if MODEL_ONNX_NAME not in model_files:
             raise ValueError(
-                f"{_MODEL_DIR_ONNX_NAME} not found in transformers model directory "
+                f"{MODEL_ONNX_NAME} not found in transformers model directory "
                 f"{model_path}. Be sure that an export of the model is written to "
-                f"{os.path.join(model_path, _MODEL_DIR_ONNX_NAME)}"
+                f"{os.path.join(model_path, MODEL_ONNX_NAME)}"
             )
-        return model_path, os.path.join(model_path, _MODEL_DIR_ONNX_NAME)
+        return model_path, os.path.join(model_path, MODEL_ONNX_NAME)
 
     elif model_path.startswith("zoo:"):
         zoo_model = Model(model_path)
         deployment_path = zoo_model.deployment_directory_path
-        return deployment_path, os.path.join(deployment_path, _MODEL_DIR_ONNX_NAME)
+        return deployment_path, os.path.join(deployment_path, MODEL_ONNX_NAME)
     elif model_path.startswith("hf:"):
         from huggingface_hub import snapshot_download
 
         deployment_path = snapshot_download(repo_id=model_path.replace("hf:", "", 1))
-        onnx_path = os.path.join(deployment_path, _MODEL_DIR_ONNX_NAME)
+        onnx_path = os.path.join(deployment_path, MODEL_ONNX_NAME)
         if not os.path.isfile(onnx_path):
             raise ValueError(
-                f"{_MODEL_DIR_ONNX_NAME} not found in transformers model directory "
+                f"{MODEL_ONNX_NAME} not found in transformers model directory "
                 f"{deployment_path}. Be sure that an export of the model is written to "
                 f"{onnx_path}"
             )

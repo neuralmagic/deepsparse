@@ -56,12 +56,12 @@ __all__ = [
     "has_model_kv_cache",
     "CACHE_INPUT_PREFIX",
     "CACHE_OUTPUT_PREFIX",
-    "_MODEL_DIR_ONNX_NAME",
+    "MODEL_ONNX_NAME",
 ]
 
 _LOGGER = logging.getLogger(__name__)
 
-_MODEL_DIR_ONNX_NAME = "model.onnx"
+MODEL_ONNX_NAME = "model.onnx"
 CACHE_INPUT_PREFIX = "past_key_values"
 CACHE_OUTPUT_PREFIX = "present"
 
@@ -132,7 +132,7 @@ def model_to_path(model: Union[str, Model, File]) -> str:
         model.deployment_directory_path
 
         # default to the main onnx file for the model
-        model = model.deployment.get_file(_MODEL_DIR_ONNX_NAME).path
+        model = model.deployment.get_file(MODEL_ONNX_NAME).path
 
     elif File is not object and isinstance(model, File):
         # get the downloaded_path -- will auto download if not on local system
@@ -146,7 +146,7 @@ def model_to_path(model: Union[str, Model, File]) -> str:
 
     model_path = Path(model)
     if model_path.is_dir():
-        return str(model_path / _MODEL_DIR_ONNX_NAME)
+        return str(model_path / MODEL_ONNX_NAME)
 
     return model
 
