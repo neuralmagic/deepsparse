@@ -65,12 +65,16 @@ class DeepSparseSentenceTransformer:
             export=export,
             use_auth_token=use_auth_token,
         )
-        self.dyn_model.reshape(input_shapes="[0,0]")
+        self.dyn_model.reshape(input_shapes="[-1,-1]")
         self.dyn_model.compile(batch_size=0)
 
         if buckets:
             # Initialize a model for each bucket
-            self.buckets = [int(self._max_seq_length / 4 * i) for i in range(1, 5)]
+            self.buckets = (
+                buckets
+                if isinstance(buckets, list)
+                else [int(self._max_seq_length / 4 * i) for i in range(1, 5)]
+            )
             self.models = {}
             for bucket in self.buckets:
                 self.models[
@@ -253,7 +257,8 @@ class DeepSparseSentenceTransformer:
         Tokenizes the texts
         """
         if target_length:
-            # Make sure to pad the tokens to the specified length
+            # Static length:
+            # Make sure to pad and truncate tokens to the specified length
             return self.tokenizer(
                 texts,
                 max_length=target_length,
@@ -262,11 +267,14 @@ class DeepSparseSentenceTransformer:
                 return_tensors="pt",
             )
         else:
-            # No padding needed
+            # Dynamic length:
+            # Pad only to the maximum sequence length of the batch,
+            # and truncate to _max_seq_length if needed
             return self.tokenizer(
                 texts,
-                truncation=True,
                 max_length=self._max_seq_length,
+                padding=True,
+                truncation=True,
                 return_tensors="pt",
             )
 
