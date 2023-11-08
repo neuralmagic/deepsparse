@@ -114,10 +114,10 @@ def test_pipeline_for_ppl_eval(pipeline, prompt):
         max_length=1,
     )
     assert hasattr(predictions, "generations")
+    assert hasattr(predictions, "input_tokens")
     assert hasattr(predictions.generations[0], "score")
-    assert hasattr(predictions.generations[0], "input_tokens")
-    assert "input_ids" in predictions.generations[0].input_tokens
-    assert "attention_mask" in predictions.generations[0].input_tokens
+    assert "input_ids" in predictions.input_tokens
+    assert "attention_mask" in predictions.input_tokens
 
 
 def test_streaming_mode_returns_generator(pipeline, prompt):
