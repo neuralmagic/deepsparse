@@ -319,7 +319,7 @@ def test_run_single_token_engine_once(
         tokens=mock_engine_inputs[0].tolist(),
     )
     output = single_token_engine_no_internal_cache.run(inputs)
-    assert output
+    assert output.get("logits") is not None
 
 
 def test_prep_for_generation(
