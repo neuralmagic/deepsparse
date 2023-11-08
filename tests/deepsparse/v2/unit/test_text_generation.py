@@ -49,7 +49,7 @@ def text_generation_attributes():
 @pytest.fixture
 def model_attributes(text_generation_attributes):
     model_path = "hf:mgoin/TinyStories-1M-deepsparse"
-    sequence_length, prompt_sequence_length = text_generation_attributes
+    sequence_length, _ = text_generation_attributes
     deployment_path, model_path = get_deployment_path(model_path)
 
     tokenizer = AutoTokenizer.from_pretrained(
@@ -129,14 +129,14 @@ def mock_kv_cache_full():
 
 
 @pytest.fixture
-def mock_kv_cache_engine(pipeline_state, text_generation_attributes):
-    seq_len, _ = text_generation_attributes
+def mock_kv_cache_single_token_engine(pipeline_state, text_generation_attributes):
+    seq_len, prompt_seq_len = text_generation_attributes
     kv_cache = DecoderKVCache()
     kv_cache_state = initialize_kv_cache_state(
         cache_shape=pipeline_state.current_state.get("cache_shape"),
         kv_cache_data_type=pipeline_state.current_state.get("kv_cache_data_type"),
         output_names=pipeline_state.current_state.get("output_names"),
-        length=seq_len - 1,
+        length=seq_len - prompt_seq_len,
         empty=False,
     )
     kv_cache.setup(state=kv_cache_state)
@@ -235,7 +235,7 @@ def test_kv_cache_creation(
 def test_autoreg_preproces_can_run(
     text_generation_attributes, pipeline_state, mock_tokens, mock_kv_cache
 ):
-    seq_len, _ = text_generation_attributes
+    seq_len, prompt_seq_len = text_generation_attributes
     autoreg_prep = AutoRegressiveOperatorPreprocess(
         sequence_length=seq_len, prompt_sequence_length=len(mock_tokens) + 1
     )
@@ -251,7 +251,7 @@ def test_autoreg_preproces_can_run(
     )  # tokens, attention mask, causal, positions
     tokens, attention_mask, positions, causal_mask = outputs.get("engine_inputs")
 
-    assert tokens.shape[-1] == 1
+    assert tokens.shape[-1] == prompt_seq_len
     assert attention_mask.shape[-1] == seq_len
     assert positions[0] == mock_kv_cache.total_num_processed_tokens
     assert outputs.get("in_generation") is None
@@ -302,9 +302,9 @@ def test_multi_engine_preprocess_cant_operate(
     assert not multi_prep.can_operate(inputs)
 
 
-def test_run_single_engine_once(
+def test_run_single_token_engine_once(
     single_token_engine_no_internal_cache,
-    mock_kv_cache_engine,
+    mock_kv_cache_single_token_engine,
 ):
 
     mock_engine_inputs = [
@@ -315,7 +315,7 @@ def test_run_single_engine_once(
     ]
     inputs = NlEngineInput(
         engine_inputs=mock_engine_inputs,
-        kv_cache=mock_kv_cache_engine,
+        kv_cache=mock_kv_cache_single_token_engine,
         tokens=mock_engine_inputs[0].tolist(),
     )
     output = single_token_engine_no_internal_cache.run(inputs)
