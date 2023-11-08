@@ -26,6 +26,9 @@ from deepsparse.transformers.utils.helpers import (
 from deepsparse.v2.operators import Operator
 
 
+__all__ = ["ProcessInputsTextGeneration", "GenerationDefaults"]
+
+
 class GenerationDefaults:
     num_return_sequences = 1
     max_length = 10
@@ -36,9 +39,6 @@ class GenerationDefaults:
     repetition_penalty = 0.0
     do_sample = False
     temperature = 1.0
-
-
-__all__ = ["ProcessInputsTextGeneration"]
 
 
 class ProcessInputsTextGeneration(Operator):
@@ -58,7 +58,6 @@ class ProcessInputsTextGeneration(Operator):
         generation_config: Union[
             str, pathlib.Path, Dict, transformers.GenerationConfig
         ] = None,
-        
     ):
         self.generation_config = generation_config
         self.tokenizer = tokenizer
