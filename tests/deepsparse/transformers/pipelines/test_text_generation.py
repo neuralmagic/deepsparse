@@ -104,22 +104,15 @@ def test_token_generation_non_deterministic(pipeline, prompt):
     assert len(set(text_outputs)) == 3
 
 
-def test_pipeline_for_ppl_eval(self):
-    pipeline = self.get_pipeline(
-        task="text-generation",
-        model_path=self.model_stub,
-        sequence_length=self.sequence_length,
-        prompt_sequence_length=1,
-    )
-    inputs = dict(
-        prompt=self.prompt,
+def test_pipeline_for_ppl_eval(pipeline, prompt):
+    predictions = pipeline(
+        prompt,
         output_scores=True,
         return_input_tokens=True,
         fixed_sequences_length=True,
         include_prompt_logits=True,
         max_length=1,
     )
-    predictions = pipeline(**inputs)
     assert hasattr(predictions, "generations")
     assert hasattr(predictions.generations[0], "score")
     assert hasattr(predictions.generations[0], "input_tokens")
