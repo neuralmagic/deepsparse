@@ -119,7 +119,7 @@ def mock_kv_cache():
 
 
 @pytest.fixture
-def mock_kv_cache_full():
+def mock_kv_cache_three_tokens_processed():
     kv_cache = DecoderKVCache()
     kv_cache.setup(
         state={"dummy_cache_name": numpy.array([[[[0], [0], [1], [2], [3]]]])},
@@ -185,6 +185,10 @@ def mock_logits(model_attributes):
 def test_process_inputs(
     text_generation_attributes, model_attributes, small_prompt, large_prompt
 ):
+    """
+    Check if the ProcessInputsTextGeneration Operator successfully processes the
+    inputs and generation config.
+    """
     sequence_length, _ = text_generation_attributes
     tokenizer, _ = model_attributes
     process_inputs = ProcessInputsTextGeneration(
@@ -213,6 +217,10 @@ def test_nl_single_token_engine_no_internal(single_token_engine_no_internal_cach
 def test_kv_cache_creation(
     text_generation_attributes, model_attributes, pipeline_state
 ):
+    """
+    Check if the KVCacheCreator successfully creates a kv_cache object, given the
+    single_token_engine attributes stored in the pipeline_state.
+    """
     seq_length, prompt_seq_len = text_generation_attributes
     tokenizer, _ = model_attributes
     kv_cache_creator = KVCacheCreator(
@@ -235,23 +243,29 @@ def test_kv_cache_creation(
 def test_autoreg_preproces_can_run(
     text_generation_attributes, pipeline_state, mock_tokens, mock_kv_cache
 ):
-    seq_len, prompt_seq_len = text_generation_attributes
+    """
+    Check if the single-token engine preprocess operator can run based on the provided
+    tokens and prompt_sequence_length.
+    """
+
+    seq_len, _ = text_generation_attributes
     autoreg_prep = AutoRegressiveOperatorPreprocess(
         sequence_length=seq_len, prompt_sequence_length=len(mock_tokens) + 1
     )
     inputs = {"tokens": mock_tokens, "kv_cache": mock_kv_cache}
 
+    # The prompt_sequence_length is greater than the number of tokens that are to be
+    # operated on. Therefore, use the single_token_engine and can_operate() should be
+    # True.
     assert autoreg_prep.can_operate(inputs)
     outputs = autoreg_prep.run(
         tokens=mock_tokens, kv_cache=mock_kv_cache, pipeline_state=pipeline_state
     )
-
-    assert (
-        len(outputs.get("engine_inputs")) == 4
-    )  # tokens, attention mask, causal, positions
+    # Assert 4 engine inputs: tokens, attention mask, causal, positions
+    assert len(outputs.get("engine_inputs")) == 4
     tokens, attention_mask, positions, causal_mask = outputs.get("engine_inputs")
 
-    assert tokens.shape[-1] == prompt_seq_len
+    assert tokens.shape[-1] == 1
     assert attention_mask.shape[-1] == seq_len
     assert positions[0] == mock_kv_cache.total_num_processed_tokens
     assert outputs.get("in_generation") is None
@@ -260,32 +274,47 @@ def test_autoreg_preproces_can_run(
 def test_autoreg_preproces_cant_run(
     text_generation_attributes, mock_kv_cache, mock_tokens_multiple
 ):
+    """
+    Check if the single-token engine preprocess operator can run based on the provided
+    tokens and prompt_sequence_length.
+    """
+
     seq_len, _ = text_generation_attributes
     autoreg_prep = AutoRegressiveOperatorPreprocess(
         sequence_length=seq_len, prompt_sequence_length=len(mock_tokens_multiple)
     )
     inputs = {"tokens": mock_tokens_multiple, "kv_cache": mock_kv_cache}
+    # can_operate() should be False as the prompt_sequence_length is equal to the
+    # number of tokens we want to operate on. Therefore, the multi-token engine
+    # should run instead.
     assert not autoreg_prep.can_operate(inputs)
 
 
 def test_mult_engine_preprocess(
     text_generation_attributes, pipeline_state, mock_kv_cache, mock_tokens_multiple
 ):
+    """
+    Check if the multi-token engine preprocess operator can run based on the provided
+    tokens and prompt_sequence_length.
+    """
+
     seq_len, _ = text_generation_attributes
     multi_prep = MultiEnginePrefill(
         sequence_length=seq_len, prompt_sequence_length=len(mock_tokens_multiple)
     )
     inputs = {"tokens": mock_tokens_multiple, "kv_cache": mock_kv_cache}
+    # The number of tokens is equal to the prompt_sequence_length.
+    # Therefore, the multi_token_engine can run and can_operate() should be True.
     assert multi_prep.can_operate(inputs)
     outputs = multi_prep.run(
         tokens=mock_tokens_multiple,
         kv_cache=mock_kv_cache,
         pipeline_state=pipeline_state,
     )
-    assert (
-        len(outputs.get("engine_inputs")) == 4
-    )  # tokens, attention mask, causal, positions
+    # Expect 4 engine inputs: tokens, attention mask, causal, positions
+    assert len(outputs.get("engine_inputs")) == 4
     tokens, attention_mask, positions, causal_mask = outputs.get("engine_inputs")
+    # Assert proper shapes for all engine_inputs
     assert tokens.shape[-1] == len(mock_tokens_multiple)
     assert attention_mask.shape[-1] == seq_len
     assert positions.shape[-1] == len(mock_tokens_multiple)
@@ -294,11 +323,18 @@ def test_mult_engine_preprocess(
 def test_multi_engine_preprocess_cant_operate(
     text_generation_attributes, mock_kv_cache, mock_tokens
 ):
+    """
+    Check if the multi-token engine preprocess operator can run based on the provided
+    tokens and prompt_sequence_length.
+    """
     seq_len, _ = text_generation_attributes
     multi_prep = MultiEnginePrefill(
         sequence_length=seq_len, prompt_sequence_length=len(mock_tokens) + 1
     )
     inputs = {"tokens": mock_tokens, "kv_cache": mock_kv_cache}
+    # The prompt_sequence_length is one greater than the total number of tokens we're
+    # processing. Therefore, this operator should not run and can_operate() should be
+    # False.
     assert not multi_prep.can_operate(inputs)
 
 
@@ -306,6 +342,10 @@ def test_run_single_token_engine_once(
     single_token_engine_no_internal_cache,
     mock_kv_cache_single_token_engine,
 ):
+    """
+    This operator runs through the single-token NLEngine once, given engine_inputs and
+    kv_cache.
+    """
 
     mock_engine_inputs = [
         numpy.array([[15496]]),
@@ -326,9 +366,13 @@ def test_prep_for_generation(
     text_generation_attributes,
     model_attributes,
     mock_tokens_multiple,
-    mock_kv_cache_full,
+    mock_kv_cache_three_tokens_processed,
     mock_inference_state,
 ):
+    """
+    This test will assess the PrepareGeneration, which runs after prompt_inference
+    and before generation.
+    """
     seq_len, prompt_seq_len = text_generation_attributes
     tokenizer, _ = model_attributes
     prep_for_generation = PrepareGeneration(
@@ -336,7 +380,13 @@ def test_prep_for_generation(
         token_generator=TokenGeneratorOperator(),
         sequence_length=seq_len,
     )
-    inputs = {"tokens": mock_tokens_multiple, "kv_cache": mock_kv_cache_full}
+    inputs = {
+        "tokens": mock_tokens_multiple,
+        "kv_cache": mock_kv_cache_three_tokens_processed,
+    }
+    # can_operate() if the total number of prompt tokens is equal to the
+    # number of processed tokens stored in the kv_cache, indicating prompt inference is
+    # complete and generation can begin.
     assert prep_for_generation.can_operate(inputs)
 
     prompt_logits = [numpy.random.rand(1, len(mock_tokens_multiple), len(tokenizer))]
@@ -361,6 +411,11 @@ def test_generate_new_token(
     mock_inference_state,
     mock_logits,
 ):
+    """
+    This test is responsible for testing the GenerateNewTokenOperator, which generates
+    one new token, given a token_generator (stored in the inference_state) and logits
+    from the engine.
+    """
     tokenizer, _ = model_attributes
     generate_new_token = GenerateNewTokenOperator(
         force_max_tokens=False, tokenizer=tokenizer
@@ -374,14 +429,22 @@ def test_generate_new_token(
     outputs, state = generate_new_token.run(
         logits=mock_logits, kv_cache=mock_kv_cache, inference_state=mock_inference_state
     )
+    # The new_token generated/returned by ths operator should match the last token in
+    # token_generator
     assert outputs.get("new_token") == state.get("token_generator").tokens[-1]
 
 
 def test_compile_logits(mock_logits, mock_inference_state):
     mock_inference_state.update_state({"prompt_logits": [mock_logits]})
     compile_prompt_logits = CompilePromptLogits()
+    # Can operate as long as we're not in generation but in prompt_inference. This
+    # can_operate() will check for the `in_generation` flag in the input.
     assert compile_prompt_logits.can_operate({})
     output, state = compile_prompt_logits.run(
         logits=mock_logits, inference_state=mock_inference_state
     )
+    # The CompilePromptLogits is responsible for updating a list of prompt logits
+    # calculated at each step during prompt inference. After one step of running this
+    # operator, the total number of prompt_logits in the inference state should be
+    # the current length of prompt logits + 1
     assert len(state.get("prompt_logits")) == len([mock_logits]) + 1
