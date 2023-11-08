@@ -104,7 +104,7 @@ def test_token_generation_non_deterministic(pipeline, prompt):
     assert len(set(text_outputs)) == 3
 
 
-def test_pipeline_for_ppl_eval(self, ):
+def test_pipeline_for_ppl_eval(self):
     pipeline = self.get_pipeline(
         task="text-generation",
         model_path=self.model_stub,
