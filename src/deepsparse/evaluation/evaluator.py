@@ -16,14 +16,21 @@ The main entrypoint for evaluating a target
 on a requested dataset
 """
 
+import logging
 from typing import Any, Dict, List, Optional, Union
 
 from src.deepsparse.evaluation.registry import EvaluationRegistry
-from src.deepsparse.evaluation.results import Evaluation, validate_result_structure
+from src.deepsparse.evaluation.results import (
+    Evaluation,
+    print_result,
+    validate_result_structure,
+)
 from src.deepsparse.pipeline import DEEPSPARSE_ENGINE, ORT_ENGINE, TORCHSCRIPT_ENGINE
 
 
 __all__ = ["evaluate"]
+
+_LOGGER = logging.getLogger(__name__)
 
 
 def evaluate(
@@ -88,4 +95,6 @@ def evaluate(
                 "The evaluation integration must return a list of Evaluation objects "
                 "when enforce_result_structure is True."
             )
+        _LOGGER.info(f"Evaluation done. Results:\n{print_result(result)}")
+
     return result

@@ -57,7 +57,70 @@ def evaluations():
 
 @pytest.fixture()
 def evaluations_json():
-    return """[{"task": "task_1", "dataset": {"type": "type_1", "name": "name_1", "config": "config_1", "split": "split_1"}, "metrics": [{"name": "metric_name_1", "value": 1.0}], "samples": [{"input": [[5]], "output": 5}]}, {"task": "task_2", "dataset": {"type": "type_2", "name": "name_2", "config": "config_2", "split": "split_2"}, "metrics": [{"name": "metric_name_2", "value": 2.0}, {"name": "metric_name_3", "value": 3.0}], "samples": [{"input": [[10.0]], "output": 10.0}, {"input": [[20.0]], "output": 20.0}]}]"""  # noqa: E501
+    return """[
+    {
+        "task": "task_1",
+        "dataset": {
+            "type": "type_1",
+            "name": "name_1",
+            "config": "config_1",
+            "split": "split_1"
+        },
+        "metrics": [
+            {
+                "name": "metric_name_1",
+                "value": 1.0
+            }
+        ],
+        "samples": [
+            {
+                "input": [
+                    [
+                        5
+                    ]
+                ],
+                "output": 5
+            }
+        ]
+    },
+    {
+        "task": "task_2",
+        "dataset": {
+            "type": "type_2",
+            "name": "name_2",
+            "config": "config_2",
+            "split": "split_2"
+        },
+        "metrics": [
+            {
+                "name": "metric_name_2",
+                "value": 2.0
+            },
+            {
+                "name": "metric_name_3",
+                "value": 3.0
+            }
+        ],
+        "samples": [
+            {
+                "input": [
+                    [
+                        10.0
+                    ]
+                ],
+                "output": 10.0
+            },
+            {
+                "input": [
+                    [
+                        20.0
+                    ]
+                ],
+                "output": 20.0
+            }
+        ]
+    }
+]"""  # noqa: E501
 
 
 @pytest.fixture()

@@ -29,6 +29,7 @@ __all__ = [
     "Evaluation",
     "validate_result_structure",
     "save_evaluation",
+    "print_result",
 ]
 
 
@@ -63,6 +64,10 @@ def validate_result_structure(result: Any) -> bool:
     )
 
 
+def print_result(results: List[Evaluation]):
+    print(save_evaluation(results, save_format="json", save_path=None))
+
+
 def save_evaluation(
     evaluations: List[Evaluation], save_format: str = "json", save_path: str = None
 ):
@@ -76,9 +81,9 @@ def save_evaluation(
     :return: The serialized evaluations
     """
     # serialize the evaluations
-    evaluations = prep_for_serialization(evaluations)
+    evaluations: List[Evaluation] = prep_for_serialization(evaluations)
     # convert to ordered dicts to preserve order
-    evaluations = [OrderedDict(**evaluation.dict()) for evaluation in evaluations]
+    evaluations: List[OrderedDict] = evaluations_to_dicts(evaluations)
     if save_format == "json":
         return _save_to_json(evaluations, save_path)
     elif save_format == "yaml":
@@ -88,7 +93,7 @@ def save_evaluation(
 
 
 def _save_to_json(evaluations: List[OrderedDict], save_path: Optional[str]) -> str:
-    data = json.dumps(evaluations)
+    data = json.dumps(evaluations, indent=4)
     if save_path:
         _save(data, save_path, expected_ext=".json")
     return data
@@ -106,6 +111,10 @@ def _save_to_yaml(evaluations: List[OrderedDict], save_path: Optional[str]) -> s
     if save_path:
         _save(data, save_path, expected_ext=".yaml")
     return data
+
+
+def evaluations_to_dicts(evaluations: List[Evaluation]):
+    return [OrderedDict(**evaluation.dict()) for evaluation in evaluations]
 
 
 def _save(data: str, save_path: str, expected_ext: str):
