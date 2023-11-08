@@ -31,7 +31,7 @@ __all__ = ["ProcessInputsTextGeneration", "GenerationDefaults"]
 
 class GenerationDefaults:
     num_return_sequences = 1
-    max_length = 10
+    max_length = 100
     max_new_tokens = None
     output_scores = False
     top_k = 0
