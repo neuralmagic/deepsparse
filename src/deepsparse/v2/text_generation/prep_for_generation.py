@@ -30,10 +30,12 @@ class PrepareGeneration(Operator):
     def __init__(
         self,
         token_generator: TokenGeneratorOperator,
+        prompt_sequence_length: int,
         sequence_length: int,
     ):
         self.sequence_length = sequence_length
         self.token_generator_creator = token_generator
+        self.prompt_sequence_length = prompt_sequence_length
 
     def can_operate(self, inp: Any):
         kv_cache = inp.get("kv_cache")
@@ -70,7 +72,7 @@ class PrepareGeneration(Operator):
         token_generator = token_generator_creator_output.get("token_generator")
         token_generator.generate(prompt_logits[0, -1, :])
 
-        max_tokens, length_finish_reason = PrepareGeneration.set_generated_length(
+        max_tokens, length_finish_reason = set_generated_length(
             max_length=generation_config.max_length,
             prompt_tokens_length=1,
             max_new_tokens=generation_config.max_new_tokens,

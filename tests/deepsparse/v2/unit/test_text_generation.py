@@ -211,7 +211,7 @@ def test_nl_single_token_engine_no_internal(single_token_engine_no_internal_cach
 
 
 def test_kv_cache_creation(
-    pipeline_state, text_generation_attributes, model_attributes
+    text_generation_attributes, model_attributes, pipeline_state
 ):
     seq_length, prompt_seq_len = text_generation_attributes
     tokenizer, _ = model_attributes
@@ -269,7 +269,7 @@ def test_autoreg_preproces_cant_run(
 
 
 def test_mult_engine_preprocess(
-    text_generation_attributes, mock_kv_cache, mock_tokens_multiple, pipeline_state
+    text_generation_attributes, pipeline_state, mock_kv_cache, mock_tokens_multiple
 ):
     seq_len, _ = text_generation_attributes
     multi_prep = MultiEnginePrefill(
@@ -323,16 +323,18 @@ def test_run_single_engine_once(
 
 
 def test_prep_for_generation(
+    text_generation_attributes,
+    model_attributes,
     mock_tokens_multiple,
     mock_kv_cache_full,
-    text_generation_attributes,
     mock_inference_state,
-    model_attributes,
 ):
-    seq_len, _ = text_generation_attributes
+    seq_len, prompt_seq_len = text_generation_attributes
     tokenizer, _ = model_attributes
     prep_for_generation = PrepareGeneration(
-        token_generator=TokenGeneratorOperator(), sequence_length=seq_len
+        prompt_sequence_length=prompt_seq_len,
+        token_generator=TokenGeneratorOperator(),
+        sequence_length=seq_len,
     )
     inputs = {"tokens": mock_tokens_multiple, "kv_cache": mock_kv_cache_full}
     assert prep_for_generation.can_operate(inputs)
@@ -353,12 +355,11 @@ def test_prep_for_generation(
 
 
 def test_generate_new_token(
-    mock_token_generator,
     model_attributes,
+    mock_token_generator,
     mock_kv_cache,
     mock_inference_state,
     mock_logits,
-    mock_tokens,
 ):
     tokenizer, _ = model_attributes
     generate_new_token = GenerateNewTokenOperator(

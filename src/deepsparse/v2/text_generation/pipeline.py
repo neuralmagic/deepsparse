@@ -124,6 +124,7 @@ class TextGenerationPipeline(Pipeline):
         token_generator = TokenGeneratorOperator()
         prep_for_generation = PrepareGeneration(
             sequence_length=sequence_length,
+            prompt_sequence_length=prompt_sequence_length,
             token_generator=token_generator,
         )
         generate_new_token = GenerateNewTokenOperator(
