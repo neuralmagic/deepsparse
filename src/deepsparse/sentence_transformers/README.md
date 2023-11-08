@@ -1,10 +1,10 @@
 
-# DeepSparse SentenceTransformers
+# DeepSparseSentenceTransformer
 
 [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1sfN8zDK7MIyatiSIbt2xWh0i6GnaBnTR?usp=sharing)
 
 ```python
-from deepsparse.sentence_transformers import SentenceTransformer
+from deepsparse.sentence_transformers import DeepSparseSentenceTransformer
 ```
 
 [DeepSparse](https://github.com/neuralmagic/deepsparse) enhances [SentenceTransformers](https://www.sbert.net/), enabling more efficient computation of embeddings for text and images across numerous languages. This improvement hinges on advanced sparse inference methods from DeepSparse and provides performance improvements on CPUs as a result. The system, originally built on PyTorch and Transformers, gains additional muscle from DeepSparse, expanding its repertoire of pre-trained models. It's especially adept at tasks like identifying similar meanings in text, supporting applications in semantic search, paraphrase detection, and more.
@@ -22,8 +22,8 @@ pip install -U deepsparse-nightly[sentence_transformers]
 Using DeepSparse SentenceTransformers is straightforward and similar to the original:
 
 ```python
-from deepsparse.sentence_transformers import SentenceTransformer
-model = SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2', export=True)
+from deepsparse.sentence_transformers import DeepSparseSentenceTransformer
+model = DeepSparseSentenceTransformer('sentence-transformers/all-MiniLM-L6-v2', export=True)
 
 # Our sentences we like to encode
 sentences = ['This framework generates embeddings for each input sentence',
@@ -42,7 +42,7 @@ for sentence, embedding in zip(sentences, embeddings):
 
 ## Benchmarking Performance
 
-There is a `benchmark_encoding.py` script located in this directory that compares a standard model running in both SentenceTransformers and DeepSparse, with a sparsified model in DeepSparse. Here is an example run on an 4 core SPR CPU with the base model being `BAAI/bge-small-en-v1.5`:
+There is a `benchmark_encoding.py` script located in this directory that compares a standard model running in both SentenceTransformers and DeepSparse, with a sparsified model in DeepSparse. Make sure to install SentenceTransformers as well if you want to perform this comparison yourself: `pip install sentence_transformers`. Here is an example run on an 4 core SPR CPU with the base model being `BAAI/bge-small-en-v1.5`:
 ```bash
 python benchmark_encoding.py --base_model BAAI/bge-small-en-v1.5 --sparse_model zeroshot/bge-small-en-v1.5-quant
 
@@ -77,8 +77,8 @@ from mteb import MTEB
 model_name = "TaylorAI/bge-micro-v2"
 
 # DeepSparse Model Evaluation
-from deepsparse.sentence_transformers import SentenceTransformer
-model = SentenceTransformer(model_name, export=True)
+from deepsparse.sentence_transformers import DeepSparseSentenceTransformer
+model = DeepSparseSentenceTransformer(model_name, export=True)
 evaluation = MTEB(tasks=["Banking77Classification"])
 results_ds = evaluation.run(model, output_folder=f"results/ds-{model_name}")
 print(results_ds)
