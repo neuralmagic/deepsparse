@@ -66,6 +66,7 @@ class Pipeline(Operator):
         *args,
         inference_state: InferenceState,
         pipeline_state: PipelineState,
+        index: int,
         **kwargs,
     ):
         """
@@ -109,8 +110,10 @@ class Pipeline(Operator):
                 operator_output = operator_output[0]
                 inference_state.update_state(state_update)
 
+            import random
+            await asyncio.sleep(random.randint(1, 10) * 0.1)
             next_step = self.router.next(next_step, self.ops, operator_output)
-        print("OUTPUT", "OUTPUT")
+        print("OUTPUT", index)
         return operator_output
 
     def _send_to_scheduler(
