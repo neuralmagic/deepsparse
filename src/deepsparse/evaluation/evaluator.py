@@ -23,6 +23,7 @@ usage: deepsparse.eval [-h]
                         [-e ENGINE_TYPE]
                         [-s SPLITS]
                         [-m METRICS]
+                        [--enforce-result-structure]
                         target
 
 Evaluate targets on various evaluation integrations
@@ -51,6 +52,12 @@ optional arguments:
     -m METRICS, --metrics METRICS
                         The name of the metrics to evaluate on. Can be a string for a single metric
                         or a list of strings for multiple metrics.
+    --enforce_result_structure --enforce-result-structure
+                        Specifies whether to unify all the
+                        results into the predefined Evaluation structure. If True, the
+                        results will be returned as a list of Evaluation objects.
+                        Otherwise, the result will preserve the original result structure
+                        from the evaluation integration.
 
 
 
@@ -61,14 +68,10 @@ deepsparse.eval zoo:mpt-7b-mpt_pretrain-base_quantized \
                 --datasets hellaswag \
                 --integration lm-evaluation-harness \
 
-import logging
-from typing import Any, Dict, List, Optional, Union
-
 """  # noqa: E501
 
 import argparse
 import logging
-from dataclasses import dataclass
 from typing import Any, List, Optional, Union
 
 from src.deepsparse.evaluation.registry import EvaluationRegistry
@@ -135,6 +138,17 @@ def parse_args():
         "Can be a string for a single metric "
         "or a list of strings for multiple metrics.",
     )
+    parser.add_argument(
+        "--enforce-result-structure",
+        "--enforce_result_structure",
+        action="store_true",
+        help="Specifies whether to unify all the results "
+        "into the predefined Evaluation structure. "
+        "If True, the results will be returned as a "
+        "list of Evaluation objects. Otherwise, the "
+        "result will preserve the original result "
+        "structure from the evaluation integration.",
+    )
 
 
 def evaluate(
@@ -149,13 +163,11 @@ def evaluate(
     metrics: Union[List[str], str, None] = None,
     enforce_result_structure: bool = True,
     **kwargs,
-) -> List[Evaluation, Any]:
+) -> Union[List[Evaluation], Any]:
 
     _LOGGER.info(f"Target to evaluate: {target}")
     if engine_type:
-        _LOGGER.info(
-            f"A pipeline with the engine type: " f"{engine_type} will be created"
-        )
+        _LOGGER.info(f"A pipeline with the engine type: {engine_type} will be created")
     else:
         _LOGGER.info(
             "No engine type specified. The target "
@@ -175,7 +187,6 @@ def evaluate(
         f"been successfully setup: {eval_integration.__name__}"
     )
 
-    return eval_integration(
     result = eval_integration(
         target=target,
         datasets=datasets,
