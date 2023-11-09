@@ -16,44 +16,21 @@ The main entrypoint for evaluating a target
 on a requested dataset
 """
 
-from dataclasses import dataclass
+import logging
 from typing import Any, Dict, List, Optional, Union
 
 from src.deepsparse.evaluation.registry import EvaluationRegistry
+from src.deepsparse.evaluation.results import (
+    Evaluation,
+    print_result,
+    validate_result_structure,
+)
 from src.deepsparse.pipeline import DEEPSPARSE_ENGINE, ORT_ENGINE, TORCHSCRIPT_ENGINE
 
 
 __all__ = ["evaluate"]
 
-
-@dataclass
-class Metric:
-    type: str
-    value: float
-
-
-@dataclass
-class Dataset:
-    type: str
-    name: str
-    config: str
-    split: str
-
-
-@dataclass
-class EvalSample:
-    input: Any
-    output: Any
-
-
-@dataclass
-class Evaluation:
-    # TODO: How to handle serialization of the
-    # data structure (to yaml and json)
-    task: str
-    dataset: Dataset
-    metrics: List[Metric]
-    samples: List[EvalSample]
+_LOGGER = logging.getLogger(__name__)
 
 
 def evaluate(
@@ -66,8 +43,9 @@ def evaluate(
     engine_args: Optional[Dict] = None,
     splits: Union[List[str], str, None] = None,
     metrics: Union[List[str], str, None] = None,
+    enforce_result_structure: bool = True,
     **kwargs,
-) -> List[Evaluation]:
+) -> Union[List[Evaluation], Any]:
     """
     :param target: The target to evaluate. Can be a path to
         a sparsezoo stub, hugging face path, or a path to a
@@ -84,17 +62,21 @@ def evaluate(
     :param engine_args: Optional arguments to pass to the engine.
     :param splits: Specifies the name of the splits to evaluate on.
     :param metrics: Specifies the name of the metrics to evaluate on.
+    :param enforce_result_structure: Specifies whether to unify all the
+        results into the predefined Evaluation structure. If True, the
+        results will be returned as a list of Evaluation objects.
+        Otherwise, the result will preserve the original result structure
+        from the evaluation integration.
     :param kwargs: Additional arguments to pass to the evaluation integration.
     :return: A list of Evaluation objects containing the results of the evaluation.
     """
 
     # TODO: Implement a function that checks for valid target
     # TODO: Implement a function that checks for valid engine_type
-    # TODO: Implement evaluation registry
 
     eval_integration = EvaluationRegistry.load_from_registry(integration)
 
-    return eval_integration(
+    result = eval_integration(
         target=target,
         datasets=datasets,
         engine_type=engine_type,
@@ -103,5 +85,16 @@ def evaluate(
         engine_args=engine_args,
         splits=splits,
         metrics=metrics,
+        original_result_structure=enforce_result_structure,
         **kwargs,
     )
+
+    if enforce_result_structure:
+        if not validate_result_structure(result):
+            raise ValueError(
+                "The evaluation integration must return a list of Evaluation objects "
+                "when enforce_result_structure is True."
+            )
+        _LOGGER.info(f"Evaluation done. Results:\n{print_result(result)}")
+
+    return result
