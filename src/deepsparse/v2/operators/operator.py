@@ -99,7 +99,6 @@ class Operator(ABC):
                 pipeline_state=pipeline_state,
                 **kwargs,
             )
-
         if self.has_output_schema():
             return self.output_schema(**run_output)
         return run_output
@@ -116,18 +115,6 @@ class Operator(ABC):
         Whether or not the given operator can run, based on input
         """
         return True
-
-    def expand_inputs(self, **kwargs):
-        """
-        Generic function to handle expanding values.
-        """
-        raise NotImplementedError
-
-    def condense_inputs(self, **kwargs):
-        """
-        Generic function to handle condensing values.
-        """
-        raise NotImplementedError
 
     def yaml(self):
         pass

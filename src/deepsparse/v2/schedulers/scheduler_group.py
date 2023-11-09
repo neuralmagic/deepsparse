@@ -14,7 +14,7 @@
 
 
 from concurrent.futures import Future
-from typing import List
+from typing import Callable, List
 
 from deepsparse.v2.operators import Operator
 from deepsparse.v2.schedulers.scheduler import OperatorScheduler
@@ -56,22 +56,12 @@ class SchedulerGroup(OperatorScheduler):
                     **kwargs,
                 )
 
-    def can_process(
-        self,
-        *args,
-        operator: Operator,
-        **kwargs,
-    ) -> bool:
+    def map(self, *args, func: Callable):
         """
-        :param operator: operator to check
-        :return: True if this Operator can process the given operator and input.
-            SchedulerGroup always returns True
+        :param func: generic callable run for each arg
+        :return: list of futures for each submit
         """
-        return any(
-            scheduler.can_process(
-                *args,
-                operator=operator,
-                **kwargs,
-            )
-            for scheduler in self.schedulers
-        )
+        futures = []
+        for _, values in enumerate(zip(*args)):
+            futures.append(self.submit(*values, operator=func))
+        return futures
