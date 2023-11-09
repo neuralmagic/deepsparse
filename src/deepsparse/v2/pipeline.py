@@ -14,6 +14,7 @@
 
 
 import asyncio
+import time
 from typing import Any, Dict, List, Union
 
 from deepsparse.v2.operators import Operator
@@ -109,6 +110,7 @@ class Pipeline(Operator):
                 inference_state.update_state(state_update)
 
             next_step = self.router.next(next_step, self.ops, operator_output)
+        print("OUTPUT", "OUTPUT")
         return operator_output
 
     def _send_to_scheduler(
