@@ -61,7 +61,7 @@ deepsparse.eval zoo:mpt-7b-mpt_pretrain-base_quantized \
                 --datasets hellaswag \
                 --integration lm-evaluation-harness \
 
-from dataclasses import dataclass
+import logging
 from typing import Any, Dict, List, Optional, Union
 
 """  # noqa: E501
@@ -72,40 +72,17 @@ from dataclasses import dataclass
 from typing import Any, List, Optional, Union
 
 from src.deepsparse.evaluation.registry import EvaluationRegistry
+from src.deepsparse.evaluation.results import (
+    Evaluation,
+    print_result,
+    validate_result_structure,
+)
 from src.deepsparse.pipeline import DEEPSPARSE_ENGINE, ORT_ENGINE, TORCHSCRIPT_ENGINE
 
 
 __all__ = ["evaluate"]
 
 _LOGGER = logging.getLogger(__name__)
-
-
-@dataclass
-class Metric:
-    type: str
-    value: float
-
-
-@dataclass
-class Dataset:
-    type: str
-    name: str
-    config: str
-    split: str
-
-
-@dataclass
-class EvalSample:
-    input: Any
-    output: Any
-
-
-@dataclass
-class Evaluation:
-    task: str
-    dataset: Dataset
-    metrics: List[Metric]
-    samples: List[EvalSample]
 
 
 def parse_args():
@@ -170,8 +147,9 @@ def evaluate(
     batch_size: int = 1,
     splits: Union[List[str], str, None] = None,
     metrics: Union[List[str], str, None] = None,
+    enforce_result_structure: bool = True,
     **kwargs,
-) -> List[Evaluation]:
+) -> List[Evaluation, Any]:
 
     _LOGGER.info(f"Target to evaluate: {target}")
     if engine_type:
@@ -198,14 +176,26 @@ def evaluate(
     )
 
     return eval_integration(
+    result = eval_integration(
         target=target,
         datasets=datasets,
         engine_type=engine_type,
         batch_size=batch_size,
         splits=splits,
         metrics=metrics,
+        original_result_structure=enforce_result_structure,
         **kwargs,
     )
+
+    if enforce_result_structure:
+        if not validate_result_structure(result):
+            raise ValueError(
+                "The evaluation integration must return a list of Evaluation objects "
+                "when enforce_result_structure is True."
+            )
+        _LOGGER.info(f"Evaluation done. Results:\n{print_result(result)}")
+
+    return result
 
 
 def main():

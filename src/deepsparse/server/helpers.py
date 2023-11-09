@@ -13,10 +13,7 @@
 # limitations under the License.
 
 from http import HTTPStatus
-from typing import Dict, List, Optional, Union
-
-import numpy
-from pydantic import BaseModel
+from typing import Dict, List, Optional
 
 from deepsparse import (
     BaseLogger,
@@ -33,7 +30,6 @@ from fastapi.responses import JSONResponse
 __all__ = [
     "create_error_response",
     "server_logger_from_config",
-    "prep_outputs_for_serialization",
 ]
 
 
@@ -73,38 +69,6 @@ def server_logger_from_config(config: ServerConfig) -> BaseLogger:
         loggers_config=config.loggers,
         data_logging_config=_extract_data_logging_from_endpoints(config.endpoints),
     )
-
-
-def prep_outputs_for_serialization(
-    pipeline_outputs: Union[BaseModel, numpy.ndarray, list]
-) -> Union[BaseModel, list]:
-    """
-    Prepares a pipeline output for JSON serialization by converting any numpy array
-    field to a list. For large numpy arrays, this operation will take a while to run.
-
-    :param pipeline_outputs: output data to that is to be processed before
-        serialisation. Nested objects are supported.
-    :return: Pipeline_outputs with potential numpy arrays
-        converted to lists
-    """
-    if isinstance(pipeline_outputs, BaseModel):
-        for field_name in pipeline_outputs.__fields__.keys():
-            field_value = getattr(pipeline_outputs, field_name)
-            if isinstance(field_value, (numpy.ndarray, BaseModel, list)):
-                setattr(
-                    pipeline_outputs,
-                    field_name,
-                    prep_outputs_for_serialization(field_value),
-                )
-
-    elif isinstance(pipeline_outputs, numpy.ndarray):
-        pipeline_outputs = pipeline_outputs.tolist()
-
-    elif isinstance(pipeline_outputs, list):
-        for i, value in enumerate(pipeline_outputs):
-            pipeline_outputs[i] = prep_outputs_for_serialization(value)
-
-    return pipeline_outputs
 
 
 def _extract_system_logging_from_endpoints(
