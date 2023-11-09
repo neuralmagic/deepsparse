@@ -13,7 +13,10 @@
 # limitations under the License.
 
 
-from typing import Dict, List, Union
+import copy
+from concurrent.futures import Future
+from functools import partial
+from typing import Any, Callable, Dict, List, Union
 
 from deepsparse.v2.operators import Operator
 from deepsparse.v2.routers import Router
@@ -56,8 +59,87 @@ class Pipeline(Operator):
         self.pipeline_state = pipeline_state
         self.validate()
 
-        # SchedulerGroup handles running all schedulers in order of priority
         self._scheduler_group = SchedulerGroup(self.schedulers)
+
+    def _run_sequential(
+        self,
+        inp: Any,
+        inference_state: InferenceState,
+        pipeline_state: PipelineState,
+        start: str,
+        end: str,
+    ):
+        next_step = start
+        while next_step != end:
+            outputs = self._run_next_step(
+                func=self.ops[next_step],
+                next_step=next_step,
+                input=inp,
+                pipeline_state=pipeline_state,
+                inference_state=inference_state,
+            )
+            next_step, operator_output, state_update = outputs
+            if state_update:
+                inference_state.update_state(state_update)
+            inp = operator_output
+        return inp
+
+    def _apply_split(self, inp: Any, inference_state: InferenceState):
+        """
+        Split inputs using the pipeline's expand_inputs function. Inputs are split
+        into a batch size of one when a SPLIT_ROUTE node is found in a given pipeline's
+        provided router. The split batches are run asynchronously and then joined when
+        a JOIN_ROUTE node is found, using the pipeline's condense_inputs function.
+        """
+
+        batches, orig_batch_size = self.expand_inputs(inp, 1)
+        run_with_state = partial(
+            self._run_sequential,
+            pipeline_state=self.pipeline_state,
+            start=self.router.route[self.router.SPLIT_ROUTE],
+            end=self.router.JOIN_ROUTE,
+        )
+        inference_state_list = [
+            copy.deepcopy(inference_state) for x in range(len(batches))
+        ]
+        futures = self._scheduler_group.map(
+            batches,
+            inference_state_list,
+            func=run_with_state,
+        )
+        return self.condense_inputs([x.result() for x in futures])
+
+    def _run_next_step(
+        self,
+        *args,
+        func: Callable,
+        next_step: Union[str, int],
+        input: Any = None,
+        **kwargs,
+    ):
+        """
+        Generic function to run a given func, process the output and determine the next
+        step.
+        """
+        if input:
+            operator_output = (
+                func(*args, **kwargs, **input)
+                if isinstance(input, dict)
+                else func(input, *args, **kwargs)
+            )
+        else:
+            operator_output = func(*args, **kwargs)
+
+        if isinstance(operator_output, Future):
+            operator_output = operator_output.result()
+
+        state_update = None
+        if isinstance(operator_output, tuple):
+            state_update = operator_output[-1]
+            operator_output = operator_output[0]
+
+        next_step = self.router.next(next_step, self.ops, operator_output)
+        return next_step, operator_output, state_update
 
     def run(
         self,
@@ -78,40 +160,34 @@ class Pipeline(Operator):
         operator_output = None
 
         while next_step != self.router.END_ROUTE:
-            # Either a dictionary key or valid index
-            operator = self.ops[next_step]
+            # NOTE: split_route should only appear after the start route node
+            if next_step == self.router.SPLIT_ROUTE:
+                operator_output = self._apply_split(operator_output, inference_state)
+                next_step = self.router.route[self.router.JOIN_ROUTE]
+
             if next_step == self.router.START_ROUTE:
-                output_future = self._scheduler_group.submit(
+                outputs = self._run_next_step(
                     *args,
+                    next_step=next_step,
+                    func=self._scheduler_group.submit,
                     inference_state=inference_state,
-                    operator=operator,
+                    operator=self.ops[next_step],
                     pipeline_state=pipeline_state,
                     **kwargs,
                 )
             else:
-                if isinstance(operator_output, dict):
-                    output_future = self._scheduler_group.submit(
-                        inference_state=inference_state,
-                        operator=operator,
-                        pipeline_state=pipeline_state,
-                        **operator_output,
-                    )
-                else:
-                    output_future = self._scheduler_group.submit(
-                        operator_output,
-                        inference_state=inference_state,
-                        pipeline_state=pipeline_state,
-                        operator=operator,
-                    )
+                outputs = self._run_next_step(
+                    func=self._scheduler_group.submit,
+                    input=operator_output,
+                    next_step=next_step,
+                    inference_state=inference_state,
+                    operator=self.ops[next_step],
+                    pipeline_state=pipeline_state,
+                )
 
-            operator_output = output_future.result()
-            if isinstance(operator_output, tuple):
-                state_update = operator_output[-1]
-                operator_output = operator_output[0]
+            next_step, operator_output, state_update = outputs
+            if state_update:
                 inference_state.update_state(state_update)
-
-            next_step = self.router.next(next_step, self.ops, operator_output)
-
         return operator_output
 
     def __call__(self, *args, **kwargs):
@@ -135,6 +211,27 @@ class Pipeline(Operator):
         kwargs["pipeline_state"] = self.pipeline_state
 
         return self.run(*args, **kwargs)
+
+    def expand_inputs(self, *args, **kwargs):
+        """
+        Generic function to handle expanding values.
+        """
+        raise NotImplementedError(
+            "This function should be implemented for any router with split or join"
+            "nodes. expand_inputs will be called prior to the split node (stored in "
+            "the router's SPLIT_ROUTE attribute), expanding outputs for each output "
+            "such that there is a batch size of one per thread."
+        )
+
+    def condense_inputs(self, *args, **kwargs):
+        """
+        Generic function to handle condensing values.
+        """
+        raise NotImplementedError(
+            "This function should be implemented for any router with split or join "
+            "nodes. condense_inputs will be called after the join node (stored in the "
+            "router's JOIN_ROUTE attribute), condensing outputs from multiple threads."
+        )
 
     def validate(self):
         """

@@ -20,7 +20,7 @@ from pydantic import BaseModel, Field
 from deepsparse import Context as EngineContext
 from deepsparse import Engine, MultiModelEngine, Scheduler
 from deepsparse.benchmark import ORTEngine
-from deepsparse.utils import join_engine_outputs, model_to_path, split_engine_inputs
+from deepsparse.utils import model_to_path
 from deepsparse.v2.operators import Operator
 
 
@@ -145,18 +145,6 @@ class EngineOperator(Operator):
             # planned refactor
             engine_outputs = inp.engine(inp.engine_inputs)
             return {"engine_outputs": engine_outputs}
-        inp = inp.engine_inputs
-        batches, orig_batch_size = self.expand_inputs(engine_inputs=inp)
-        batches_outputs = list(map(self.engine, batches))
-        engine_outputs = self.condense_inputs(
-            batch_outputs=batches_outputs, orig_batch_size=orig_batch_size
-        )
+
+        engine_outputs = self.engine(inp.engine_inputs)
         return {"engine_outputs": engine_outputs}
-
-    def expand_inputs(self, **kwargs):
-        return split_engine_inputs(kwargs["engine_inputs"], self._batch_size)
-
-    def condense_inputs(self, **kwargs):
-        batch_outputs = kwargs["batch_outputs"]
-        orig_batch_size = kwargs["orig_batch_size"]
-        return join_engine_outputs(batch_outputs, orig_batch_size)

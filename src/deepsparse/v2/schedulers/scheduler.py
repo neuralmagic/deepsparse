@@ -14,6 +14,7 @@
 
 
 from concurrent.futures import Future, ThreadPoolExecutor
+from typing import Callable
 
 from deepsparse.v2.operators import Operator
 
@@ -64,3 +65,13 @@ class OperatorScheduler:
             Base OperatorScheduler always returns True
         """
         return True
+
+    def map(self, *args, func: Callable):
+        """
+        :param func: generic callable run for each arg
+        :return: list of futures for each submit
+        """
+        futures = []
+        for _, values in enumerate(zip(*args)):
+            futures.append(self.submit(*values, operator=func))
+        return futures
