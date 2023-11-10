@@ -14,7 +14,7 @@
 
 
 from concurrent.futures import Future
-from typing import Callable, List
+from typing import List
 
 from deepsparse.v2.operators import Operator
 from deepsparse.v2.schedulers.scheduler import OperatorScheduler
@@ -55,13 +55,3 @@ class SchedulerGroup(OperatorScheduler):
                     operator=operator,
                     **kwargs,
                 )
-
-    def map(self, *args, func: Callable):
-        """
-        :param func: generic callable run for each arg
-        :return: list of futures for each submit
-        """
-        futures = []
-        for _, values in enumerate(zip(*args)):
-            futures.append(self.submit(*values, operator=func))
-        return futures
