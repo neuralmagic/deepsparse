@@ -56,6 +56,7 @@ class EngineOperator(Operator):
         model_path: str,
         engine_type: str = DEEPSPARSE_ENGINE,
         num_cores: int = None,
+        batch_size: int = 1,
         num_streams: int = None,
         scheduler: Scheduler = None,
         input_shapes: List[List[int]] = None,
@@ -63,7 +64,7 @@ class EngineOperator(Operator):
         engine_kwargs: Dict = None,
     ):
         self.model_path = model_to_path(model_path)
-        self._batch_size = 1
+        self._batch_size = batch_size
         self.engine_context = engine_context
 
         if self.engine_context is not None:

@@ -49,6 +49,7 @@ _LOGGER = get_main_logger()
 def setup_transformers_pipeline(
     model_path: str,
     sequence_length: int,
+    batch_size: int = 1,
     tokenizer_padding_side: str = "left",
     engine_kwargs: Optional[Dict] = None,
     onnx_model_name: Optional[str] = None,
@@ -77,6 +78,7 @@ def setup_transformers_pipeline(
 
     engine_kwargs = engine_kwargs or {}
     engine_kwargs["model_path"] = model_path
+    engine_kwargs["batch_size"] = batch_size
     return model_path, config, tokenizer, engine_kwargs
 
 

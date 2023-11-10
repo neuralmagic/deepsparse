@@ -22,6 +22,7 @@ from deepsparse.utils.onnx import (
     CACHE_INPUT_PREFIX,
     overwrite_onnx_model_inputs_for_kv_cache_models,
 )
+from deepsparse.transformers.helpers import overwrite_transformer_onnx_model_inputs
 from deepsparse.v2.operators.engine_operator import (
     DEEPSPARSE_ENGINE,
     EngineOperator,
@@ -29,7 +30,7 @@ from deepsparse.v2.operators.engine_operator import (
 )
 
 
-__all__ = ["NLEngineOperator"]
+__all__ = ["NLEngineOperator", "NLEngineOperatorNoCache"]
 
 
 class NlEngineInput(BaseModel):
@@ -37,6 +38,25 @@ class NlEngineInput(BaseModel):
     kv_cache: Any = Field(description="kv_cache object")
     tokens: List = Field(description="tokens")
     in_generation: bool = Field(description="in_generation", default=None)
+
+class NlEngineInputNoCache(BaseModel):
+    input_ids: Any
+    attention_mask: Any
+
+class NLEngineOperatorNoCache(EngineOperator):
+    input_schema = NlEngineInputNoCache
+    output_schema = None
+    def __init__(self, sequence_length, **kwargs):
+        model_path, *_ = overwrite_transformer_onnx_model_inputs(   path=kwargs.get("model_path"),
+                                                                    max_length=sequence_length,
+                                                                    batch_size=kwargs.get("batch_size", 1))
+        super().__init__(**kwargs)
+
+    def run(self, inp: NlEngineInputNoCache, **kwargs) -> Any:
+        engine_inputs = [inp.input_ids, inp.attention_mask]
+        logits = super().run(EngineOperatorInputs(engine_inputs=engine_inputs), **kwargs).get("engine_outputs")
+        return {"logits": logits, "kv_cache": None}
+
 
 
 class NLEngineOperator(EngineOperator):
