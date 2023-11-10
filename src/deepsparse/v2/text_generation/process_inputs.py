@@ -41,8 +41,8 @@ class GenerationDefaults:
     temperature = 1.0
 
 
-
 __all__ = ["ProcessInputsTextGeneration"]
+
 
 class ProcessInputsTextGeneration(Operator):
     """

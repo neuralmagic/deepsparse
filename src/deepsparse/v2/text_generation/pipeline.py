@@ -15,9 +15,7 @@
 from typing import Dict
 
 from deepsparse.transformers.utils.helpers import process_generation_config
-
 from deepsparse.utils import split_engine_inputs
-
 from deepsparse.v2.pipeline import Pipeline
 from deepsparse.v2.routers import GraphRouter
 from deepsparse.v2.schedulers import OperatorScheduler

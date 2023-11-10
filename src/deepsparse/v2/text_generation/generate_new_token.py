@@ -29,7 +29,7 @@ class GenerateNewTokenOperator(Operator):
     ):
         self.force_max_tokens = force_max_tokens
         self.tokenizer = tokenizer
-        
+
     def can_operate(self, inp: Any):
         if inp.get("in_generation"):
             return True

@@ -33,7 +33,6 @@ class CompilePromptLogits(Operator):
             return True
         return False
 
-
     def run(self, logits, inference_state: InferenceState, **kwargs):
         logit_type = "prompt_logits"
 
