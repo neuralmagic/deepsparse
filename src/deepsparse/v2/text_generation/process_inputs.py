@@ -28,7 +28,6 @@ from deepsparse.v2.operators import Operator
 
 __all__ = ["ProcessInputsTextGeneration", "GenerationDefaults"]
 
-
 class GenerationDefaults:
     num_return_sequences = 1
     max_length = 100
