@@ -166,6 +166,7 @@ def test_group_name(mock_engine, group_name, pipeline_name, inputs, optional_ind
             expected_log in data_logging_logs
         ), f"Missing expected log: {expected_log}"
 
+
 yaml_config = """
 loggers:
     python:
