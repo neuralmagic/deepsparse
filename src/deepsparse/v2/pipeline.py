@@ -67,7 +67,6 @@ class Pipeline(Operator):
         *args,
         inference_state: InferenceState,
         pipeline_state: PipelineState,
-        index: int,
         **kwargs,
     ):
         """
