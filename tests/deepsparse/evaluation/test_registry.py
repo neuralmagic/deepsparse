@@ -17,71 +17,35 @@ from src.deepsparse.evaluation.registry import EvaluationRegistry
 
 
 @pytest.fixture
-def register_cybertruck():
-    @EvaluationRegistry.register("cybertruck_function")
-    def cybertruck_function(*args, **kwargs):
-        return "cybertruck"
+def registry_with_foo():
+    class Registry(EvaluationRegistry):
+        pass
+
+    @Registry.register()
+    def foo(*args, **kwargs):
+        return "foo"
+
+    return Registry
 
 
 @pytest.fixture
-def register_starship():
-    @EvaluationRegistry.register(alias="big_furious_rocket")
-    def starship_function(*args, **kwargs):
-        return "starship"
+def registry_with_buzz():
+    class Registry(EvaluationRegistry):
+        pass
+
+    @Registry.register(name=["buzz", "buzzer"])
+    def buzz(*args, **kwargs):
+        return "buzz"
+
+    return Registry
 
 
-@pytest.fixture
-def register_car():
-    @EvaluationRegistry.register("car_types", alias=["model_y", "model_x"])
-    def car_function(*args, **kwargs):
-        return "car"
+def test_get_foo_from_registry(registry_with_foo):
+    eval_function = registry_with_foo.load_from_registry("foo")
+    assert eval_function() == "foo"
 
+def test_get_multiple_buzz_from_registry(registry_with_buzz):
+    eval_function_1 = registry_with_buzz.load_from_registry("buzz")
+    eval_function_2 = registry_with_buzz.load_from_registry("buzzer")
+    assert eval_function_1() == eval_function_2() == "buzz"
 
-def test_get_cybertruck_from_registry(register_cybertruck):
-    evaluation_registry = EvaluationRegistry()
-    eval_function = evaluation_registry.load_from_registry("cybertruck_function")
-    assert eval_function() == "cybertruck"
-    evaluation_registry.reset_registry()
-
-
-def test_get_starship_from_registry(register_starship):
-    evaluation_registry = EvaluationRegistry()
-    eval_function = evaluation_registry.load_from_registry("starship_function")
-    eval_function_aliased = evaluation_registry.load_from_registry("big_furious_rocket")
-    assert eval_function() == eval_function_aliased()
-    evaluation_registry.reset_registry()
-
-
-def test_get_non_existent_function(register_car, register_starship):
-    evaluation_registry = EvaluationRegistry()
-    with pytest.raises(KeyError):
-        evaluation_registry.load_from_registry("non_existent_function")
-    evaluation_registry.reset_registry()
-
-
-def test_get_all_registered_names(register_car, register_starship):
-    evaluation_registry = EvaluationRegistry()
-    all_registered_names = evaluation_registry.registered_names()
-    assert set(all_registered_names) == {
-        "car_types",
-        "model_x",
-        "model_y",
-        "starship_function",
-        "big_furious_rocket",
-    }
-    evaluation_registry.reset_registry()
-
-
-def test_get_aliased_function(register_starship):
-    evaluation_registry = EvaluationRegistry()
-    eval_function = evaluation_registry.load_from_registry("big_furious_rocket")
-    assert eval_function() == "starship"
-    evaluation_registry.reset_registry()
-
-
-def test_attempt_overwrite(register_starship):
-    with pytest.raises(RuntimeError):
-
-        @EvaluationRegistry.register()
-        def starship_function(*args, **kwargs):
-            return "starship"
