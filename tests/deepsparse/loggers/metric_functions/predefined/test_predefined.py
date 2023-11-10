@@ -163,8 +163,9 @@ def test_group_name(mock_engine, group_name, pipeline_name, inputs, optional_ind
     data_logging_logs = set(data_logging_logs)  # Convert to a set for efficient search
 
     for expected_log in expected_logs:
-        assert expected_log in data_logging_logs, f"Missing expected log: {expected_log}"
-
+        assert (
+            expected_log in data_logging_logs
+        ), f"Missing expected log: {expected_log}"
 
 yaml_config = """
 loggers:
