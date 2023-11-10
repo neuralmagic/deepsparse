@@ -91,6 +91,10 @@ class TextGenerationInput(BaseModel):
         alias="prompt",
         description="The input sequences to generate the text from.",
     )
+    return_input_tokens: bool = Field(
+        default=False,
+        description="A flag that indicates whether to return " "the input_tokens. ",
+    )
     include_prompt_logits: bool = Field(
         default=False,
         description="A flag that indicates whether to return "
@@ -181,6 +185,15 @@ class TextGenerationOutput(BaseModel):
         "If multiple prompts are given, a list of GeneratedText is returned for each "
         "prompt provided. If streamng is enabled, the next generated token is returned."
         "Otherwise, the full generated sequence is returned."
+    )
+    input_tokens: Optional[
+        Any
+    ] = Field(  # dictionary mapping "token_ids" and "attention_mask" to numpy arrays
+        default=None,
+        description="The output of the tokenizer."
+        "Dictionary containing token_ids and attention_mask, "
+        "both mapping to arrays of size "
+        "[batch_size, sequence_length]",
     )
 
     class Config:
@@ -523,6 +536,8 @@ class TextGenerationPipeline(TransformersPipeline):
         context = dict(
             prompts=original_inputs,
             streaming=inputs.streaming,
+            return_input_tokens=inputs.return_input_tokens,
+            input_tokens=input_tokens,
             generation_config=generation_config,
             include_prompt_logits=inputs.include_prompt_logits,
             callback=inputs.callback,
@@ -644,8 +659,15 @@ class TextGenerationPipeline(TransformersPipeline):
             ]
             generations = grouped_generations
 
+        input_tokens = (
+            kwargs.get("input_tokens") if kwargs.get("return_input_tokens") else None
+        )
+
         outputs = dict(
-            created=datetime.datetime.now(), prompts=prompts, generations=generations
+            created=datetime.datetime.now(),
+            prompts=prompts,
+            generations=generations,
+            input_tokens=input_tokens,
         )
 
         if self._debug:
