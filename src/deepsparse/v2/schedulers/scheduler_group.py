@@ -60,23 +60,3 @@ class SchedulerGroup(OperatorScheduler):
                     operator=operator,
                     **kwargs,
                 )
-
-    def can_process(
-        self,
-        *args,
-        operator: Operator,
-        **kwargs,
-    ) -> bool:
-        """
-        :param operator: operator to check
-        :return: True if this Operator can process the given operator and input.
-            SchedulerGroup always returns True
-        """
-        return any(
-            scheduler.can_process(
-                *args,
-                operator=operator,
-                **kwargs,
-            )
-            for scheduler in self.schedulers
-        )

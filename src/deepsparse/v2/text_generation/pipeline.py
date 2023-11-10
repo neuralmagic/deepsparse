@@ -16,6 +16,8 @@ from typing import Dict
 
 from deepsparse.transformers.utils.helpers import process_generation_config
 
+from deepsparse.utils import split_engine_inputs
+
 from deepsparse.v2.pipeline import Pipeline
 from deepsparse.v2.routers import GraphRouter
 from deepsparse.v2.schedulers import OperatorScheduler
@@ -25,6 +27,7 @@ from deepsparse.v2.text_generation import (
     CompileGenerations,
     CompilePromptLogits,
     GenerateNewTokenOperator,
+    JoinOutput,
     KVCacheCreator,
     MultiEnginePrefill,
     NLEngineOperator,
@@ -131,6 +134,7 @@ class TextGenerationPipeline(Pipeline):
         process_output = ProcessOutputs(tokenizer=self.tokenizer)
         compile_generations = CompileGenerations()
         compile_generated_tokens = CompileGeneratedTokens()
+        join_output = JoinOutput(tokenizer=self.tokenizer)
 
         ops = {
             "process_input": process_inputs,
@@ -146,10 +150,12 @@ class TextGenerationPipeline(Pipeline):
             "process_outputs": process_output,
             "compile_generations": compile_generations,
             "compile_generated_tokens": compile_generated_tokens,
+            "join_output": join_output,
         }
 
         routes = {
-            "process_input": "prepare_prefill",
+            "process_input": "SPLIT",
+            "SPLIT": "prepare_prefill",
             "prepare_prefill": ["multi_engine_prefill", "autoregressive_preprocess"],
             "multi_engine_prefill": "multi_engine",
             "multi_engine": "compile_logits",
@@ -169,7 +175,9 @@ class TextGenerationPipeline(Pipeline):
                 "autoregressive_preprocess",
                 "compile_generations",
             ],
-            "compile_generations": "process_outputs",
+            "compile_generations": "JOIN",
+            "JOIN": "join_output",
+            "join_output": "process_outputs",
             "process_outputs": "STOP",
         }
 
@@ -183,6 +191,15 @@ class TextGenerationPipeline(Pipeline):
             schedulers=scheduler,
             pipeline_state=pipeline_state,
         )
+
+    def expand_inputs(self, items, batch_size):
+        items = [items.get(key) for key in items.keys()]
+        out, orig_batch_size = split_engine_inputs(items, batch_size)
+        combined_batches = [{"input_ids": b[0], "attention_mask": b[1]} for b in out]
+        return combined_batches, orig_batch_size
+
+    def condense_inputs(self, *args, **kwargs):
+        return args[0], kwargs
 
     # TODO: Move to be part of a generic transformers set-up Operator.
     def setup_onnx_file_path(self, model_path, sequence_length) -> str:

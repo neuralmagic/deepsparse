@@ -24,7 +24,7 @@ from deepsparse.transformers.utils.helpers import (
 from deepsparse.v2.operators import Operator
 
 
-__all__ = ["KVCacheCreator"]
+__all__ = ["KVCacheCreator", "KVCacheCreatorInput"]
 
 
 class KVCacheCreatorOutput(BaseModel):
