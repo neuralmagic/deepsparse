@@ -17,6 +17,7 @@ from .compile_generated_tokens import *
 from .compile_generations import *
 from .compile_logits import *
 from .generate_new_token import *
+from .join_output import *
 from .kv_cache_operator import *
 from .multi_engine_prefill_operator import *
 from .nl_engine_operator import *
