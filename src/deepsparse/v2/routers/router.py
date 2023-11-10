@@ -158,4 +158,5 @@ class GraphRouter(Router):
 
     @staticmethod
     def validate(ops) -> bool:
+        # TODO: still needs to be implemented for the GraphRouter
         pass
