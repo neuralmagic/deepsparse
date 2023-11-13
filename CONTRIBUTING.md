@@ -77,7 +77,7 @@ For documentation edits, include:
 
 ## Question or Problem
 
-- Sign up or log in to our [**Neural Maggic Community Slack**](https://join.slack.com/t/discuss-neuralmagic/shared_invite/zt-q1a1cnvo-YBoICSIw3L1dmQpjBeDurQ). We are growing the community member by member and happy to see you there. Post all other questions including support or how to contribute. Don’t forget to search through existing discussions to avoid duplication! Thanks!
+- Sign up or log in to our [**Neural Magic Community Slack**](https://join.slack.com/t/discuss-neuralmagic/shared_invite/zt-q1a1cnvo-YBoICSIw3L1dmQpjBeDurQ). We are growing the community member by member and happy to see you there. Post all other questions including support or how to contribute. Don’t forget to search through existing discussions to avoid duplication! Thanks!
 
 Post all other questions including support or how to contribute. Don’t forget to search through existing discussions to avoid duplication! Thanks!
 
