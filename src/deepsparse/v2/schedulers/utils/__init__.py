@@ -16,3 +16,4 @@
 # limitations under the License.
 
 from .continuous_batching_queues import *
+from .continuous_batching_executor import *
