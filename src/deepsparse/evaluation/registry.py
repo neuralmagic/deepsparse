@@ -11,6 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""
+Implementation of a registry for evaluation functions
+"""
+
+from typing import Any, Callable
 
 from sparsezoo.utils.registry import RegistryMixin
 
@@ -19,4 +24,11 @@ __all__ = ["EvaluationRegistry"]
 
 
 class EvaluationRegistry(RegistryMixin):
-    pass
+    """
+    Extends the RegistryMixin to enable registering and loading of evaluation
+    functions.
+    """
+
+    @classmethod
+    def load_from_registry(cls, name: str) -> Callable[..., Any]:
+        return cls.get_value_from_registry(name=name)
