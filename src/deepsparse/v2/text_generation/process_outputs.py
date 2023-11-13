@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import datetime
-from typing import Optional
+from typing import Any, Dict, Optional
 
 import numpy
 
@@ -22,7 +22,10 @@ from deepsparse.transformers.pipelines.text_generation import (
     TextGenerationOutput,
 )
 from deepsparse.v2.operators import Operator
-from deepsparse.v2.utils import InferenceState
+from deepsparse.v2.utils import InferenceState, PipelineState
+
+
+___all__ = ["ProcessOutputs", "ProcessOutputsStreaming"]
 
 
 class ProcessOutputs(Operator):
@@ -95,3 +98,57 @@ class ProcessOutputs(Operator):
         )
 
         return outputs
+
+
+class ProcessOutputsStreaming(ProcessOutputs):
+    output_schema = None
+
+    def can_operate(self, inp: Dict[str, Any]) -> bool:
+        return inp.get("streaming") and inp.get("in_generation")
+
+    def run(self, *args, **kwargs):
+        generation_config = kwargs["inference_state"].current_state.get(
+            "generation_config"
+        )
+        generated_logits = (
+            kwargs["inference_state"].current_state.get("generated_logits")
+            if generation_config.output_scores
+            else None
+        )
+        sequences = self.tokenizer.batch_decode(
+            kwargs["inference_state"].current_state.get("generated_tokens"),
+            skip_special_tokens=True,
+        )
+
+        if generated_logits is not None:
+            generations = list(
+                map(
+                    self._create_generated_text_output,
+                    sequences,
+                    generated_logits,
+                )
+            )
+        else:
+            generations = list(map(self._create_generated_text_output, sequences))
+        generations = generations[-1]
+        print(generations)
+        num_preds = generation_config.num_return_sequences
+        if num_preds > 1:
+            grouped_generations = [
+                generations[n : n + num_preds]
+                for n in range(0, len(generations), num_preds)
+            ]
+            generations = grouped_generations
+
+        outputs = dict(
+            created=datetime.datetime.now(),
+            prompts=kwargs["inference_state"].current_state.get("prompts"),
+            generations=generations,
+        )
+
+        output = {
+            "tokens": kwargs["tokens"],
+            "kv_cache": kwargs["kv_cache"],
+            "in_generation": kwargs["in_generation"],
+        }
+        return output, {}

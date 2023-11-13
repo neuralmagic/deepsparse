@@ -33,6 +33,7 @@ from deepsparse.v2.text_generation import (
     PrepareGeneration,
     ProcessInputsTextGeneration,
     ProcessOutputs,
+    ProcessOutputsStreaming,
     TokenGeneratorOperator,
 )
 from deepsparse.v2.utils import PipelineState
@@ -131,6 +132,7 @@ class TextGenerationPipeline(Pipeline):
             tokenizer=self.tokenizer, force_max_tokens=force_max_tokens
         )
         process_output = ProcessOutputs(tokenizer=self.tokenizer)
+        process_output_streaming = ProcessOutputsStreaming(tokenizer=self.tokenizer)
         compile_generations = CompileGenerations()
         compile_generated_tokens = CompileGeneratedTokens()
         join_output = JoinOutput(tokenizer=self.tokenizer)
@@ -150,6 +152,7 @@ class TextGenerationPipeline(Pipeline):
             "compile_generations": compile_generations,
             "compile_generated_tokens": compile_generated_tokens,
             "join_output": join_output,
+            "streaming_outputs": process_output_streaming,
         }
 
         routes = {
@@ -168,12 +171,15 @@ class TextGenerationPipeline(Pipeline):
                 "compile_logits",
                 "generate_new_token",
             ],
-            "prep_for_generation": "autoregressive_preprocess",
+            "prep_for_generation": "streaming_outputs",
+            "streaming_outputs": "autoregressive_preprocess",
             "generate_new_token": "compile_generated_tokens",
             "compile_generated_tokens": [
+                "streaming_outputs",
                 "autoregressive_preprocess",
                 "compile_generations",
             ],
+            "streaming_outputs": "autoregressive_preprocess",
             "compile_generations": "JOIN",
             "JOIN": "join_output",
             "join_output": "process_outputs",

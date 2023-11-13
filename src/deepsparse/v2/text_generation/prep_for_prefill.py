@@ -29,10 +29,10 @@ class PrepareforPrefill(Operator):
         """
         Operator before prefill. Responsible for creating the kv_cache based on engine
         variables. Currently, this operator expects that the kv_cache_creator is
-        provided during initization and then uses pipeline_state to run the
+        provided during initialization and then uses pipeline_state to run the
         kv_cache_operator.
         """
-        # NOTE: Alternatively, we can initialize the kv_cache_creater operator here,
+        # NOTE: Alternatively, we can initialize the kv_cache_creator operator here,
         # instead of at the pipeline level.
         self.kv_cache_creator = kv_cache_creator
 

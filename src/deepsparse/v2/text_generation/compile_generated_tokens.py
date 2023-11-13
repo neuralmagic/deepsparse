@@ -52,5 +52,6 @@ class CompileGeneratedTokens(Operator):
             "tokens": tokens,
             "kv_cache": kv_cache,
             "in_generation": in_generation,
+            "streaming": inference_state.current_state.get("streaming"),
         }
         return output, state_update
