@@ -12,12 +12,67 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-The main entrypoint for evaluating a target
-on a requested dataset
-"""
+Module for evaluating models on the various evaluation integrations
 
+##########
+Command help:
+usage: deepsparse.eval [-h]
+                        [-d DATASETS]
+                        [-i INTEGRATION]
+                        [-b BATCH_SIZE]
+                        [-e ENGINE_TYPE]
+                        [-s SPLITS]
+                        [-m METRICS]
+                        [--enforce-result-structure]
+                        target
+
+Evaluate targets on various evaluation integrations
+
+positional arguments:
+    target              A path to a remote/local directory containing ONNX/torch model or a SparseZoo stub
+
+optional arguments:
+    -h, --help          show this help message and exit
+    -d DATASETS, --datasets DATASETS
+                        The datasets to evaluate on. Can be a string for a single dataset
+                        or a list of strings for multiple datasets
+    -i INTEGRATION, --integration INTEGRATION
+                        The name of the evaluation integration to use. Must be a valid
+                        integration name that is registered in the evaluation registry
+    -e ENGINE_TYPE, --engine_type ENGINE_TYPE
+                        Inference engine to use for the evaluation. The default
+                        is the DeepSparse engine. If the evaluation should be run
+                        without initializing a pipeline (e.g. for the evaluation
+                        of a torch model), the engine type should be set to None"
+    -b BATCH_SIZE, --batch_size BATCH_SIZE
+                        The batch size to use for the evaluation. Must be greater than 0
+    -s SPLITS, --splits SPLITS
+                        The name of the splits to evaluate on. Can be a string for a single split
+                        or a list of strings for multiple splits.
+    -m METRICS, --metrics METRICS
+                        The name of the metrics to evaluate on. Can be a string for a single metric
+                        or a list of strings for multiple metrics.
+    --enforce_result_structure --enforce-result-structure
+                        Specifies whether to unify all the
+                        results into the predefined Evaluation structure. If True, the
+                        results will be returned as a list of Evaluation objects.
+                        Otherwise, the result will preserve the original result structure
+                        from the evaluation integration.
+
+
+
+##########
+Example valuation of a Deepsparse pipeline that uses MPT quantized model from SparseZoo.
+The evaluation will be run using `lm-evaluation-harness` on `hellaswag` dataset:
+deepsparse.eval zoo:mpt-7b-mpt_pretrain-base_quantized \
+                --datasets hellaswag \
+                --integration lm-evaluation-harness \
+
+"""  # noqa: E501
+
+import argparse
 import logging
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, List, Optional, Union
 
 from src.deepsparse.evaluation.registry import EvaluationRegistry
 from src.deepsparse.evaluation.results import (
@@ -33,56 +88,110 @@ __all__ = ["evaluate"]
 _LOGGER = logging.getLogger(__name__)
 
 
+def parse_args():
+    parser = argparse.ArgumentParser(
+        description="Evaluate targets on various evaluation integrations"
+    )
+
+    parser.add_argument(
+        "target",
+        type=str,
+        help="A path to a remote or local directory containing ONNX/torch model "
+        "(including all the auxiliary files) or a SparseZoo stub",
+    )
+
+    parser.add_argument(
+        "-d",
+        "--datasets",
+        type=Union[str, List[str]],
+        help="The datasets to evaluate on. Can be a string for a single dataset "
+        "or a list of strings for multiple datasets",
+    )
+
+    parser.add_argument(
+        "-e",
+        "--engine_type",
+        type=Optional[DEEPSPARSE_ENGINE, ORT_ENGINE, TORCHSCRIPT_ENGINE],
+        default=DEEPSPARSE_ENGINE,
+        help="The engine to use for the evaluation. The default is the "
+        "DeepSparse engine. If the evaluation should be run without "
+        "initializing a pipeline (e.g. for the evaluation of a torch "
+        "model), the engine type should be set to None",
+    )
+
+    parser.add_argument(
+        "-s",
+        "--splits",
+        type=Optional[List[str], str],
+        default=None,
+        help="The name of the splits to evaluate on. "
+        "Can be a string for a single split "
+        "or a list of strings for multiple splits.",
+    )
+
+    parser.add_argument(
+        "-m",
+        "--metrics",
+        type=Optional[List[str], str],
+        default=None,
+        help="The name of the metrics to evaluate on. "
+        "Can be a string for a single metric "
+        "or a list of strings for multiple metrics.",
+    )
+    parser.add_argument(
+        "--enforce-result-structure",
+        "--enforce_result_structure",
+        action="store_true",
+        help="Specifies whether to unify all the results "
+        "into the predefined Evaluation structure. "
+        "If True, the results will be returned as a "
+        "list of Evaluation objects. Otherwise, the "
+        "result will preserve the original result "
+        "structure from the evaluation integration.",
+    )
+
+
 def evaluate(
     target: str,
     datasets: Union[str, List[str]],
     integration: str,
-    engine_type: Union[DEEPSPARSE_ENGINE, ORT_ENGINE, TORCHSCRIPT_ENGINE, None] = None,
+    engine_type: Union[
+        DEEPSPARSE_ENGINE, ORT_ENGINE, TORCHSCRIPT_ENGINE, None
+    ] = DEEPSPARSE_ENGINE,
     batch_size: int = 1,
-    target_args: Optional[Dict] = None,
-    engine_args: Optional[Dict] = None,
     splits: Union[List[str], str, None] = None,
     metrics: Union[List[str], str, None] = None,
     enforce_result_structure: bool = True,
     **kwargs,
 ) -> Union[List[Evaluation], Any]:
-    """
-    :param target: The target to evaluate. Can be a path to
-        a sparsezoo stub, hugging face path, or a path to a
-        local directory containing a model file
-    :param datasets: The datasets to evaluate on. Can be a string
-        for a single dataset or a list of strings for multiple datasets.
-    :param integration: The name of the evaluation integration to use.
-        Must be a valid integration name that is registered in the
-        evaluation registry.
-    :param engine_type: The engine to use for the evaluation.
-    :param batch_size: The batch size to use for the evaluation.
-    :param target_args: Optional arguments to alter the
-        behavior of the evaluated target.
-    :param engine_args: Optional arguments to pass to the engine.
-    :param splits: Specifies the name of the splits to evaluate on.
-    :param metrics: Specifies the name of the metrics to evaluate on.
-    :param enforce_result_structure: Specifies whether to unify all the
-        results into the predefined Evaluation structure. If True, the
-        results will be returned as a list of Evaluation objects.
-        Otherwise, the result will preserve the original result structure
-        from the evaluation integration.
-    :param kwargs: Additional arguments to pass to the evaluation integration.
-    :return: A list of Evaluation objects containing the results of the evaluation.
-    """
 
-    # TODO: Implement a function that checks for valid target
-    # TODO: Implement a function that checks for valid engine_type
+    _LOGGER.info(f"Target to evaluate: {target}")
+    if engine_type:
+        _LOGGER.info(f"A pipeline with the engine type: {engine_type} will be created")
+    else:
+        _LOGGER.info(
+            "No engine type specified. The target "
+            "will be evaluated using the default framework"
+        )
+    _LOGGER.info(f"Datasets to evaluate on: {datasets}")
+    _LOGGER.info(
+        f"Batch size: {batch_size}\n"
+        f"Splits to evaluate on: {splits}\n"
+        f"Metrics to evaluate on: {metrics}"
+    )
 
     eval_integration = EvaluationRegistry.load_from_registry(integration)
+
+    _LOGGER.info(
+        f"The following evaluation integration has "
+        f"been successfully setup: {eval_integration.__name__}"
+    )
 
     result = eval_integration(
         target=target,
         datasets=datasets,
         engine_type=engine_type,
         batch_size=batch_size,
-        target_args=target_args,
-        engine_args=engine_args,
         splits=splits,
         metrics=metrics,
         original_result_structure=enforce_result_structure,
@@ -98,3 +207,20 @@ def evaluate(
         _LOGGER.info(f"Evaluation done. Results:\n{print_result(result)}")
 
     return result
+
+
+def main():
+    args = parse_args()
+    return evaluate(
+        target=args.target,
+        datasets=args.datasets,
+        integration=args.integration,
+        engine_type=args.engine_type,
+        batch_size=args.batch_size,
+        splits=args.splits,
+        metrics=args.metrics,
+    )
+
+
+if __name__ == "__main__":
+    main()
