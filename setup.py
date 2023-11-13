@@ -132,12 +132,8 @@ _onnxruntime_deps = [
     "onnxruntime>=1.7.0",
 ]
 _torch_deps = ["torch>=1.7.0,<=2.0"]
-_image_classification_deps = [
-    "torchvision>=0.3.0,<0.14",
-    "opencv-python<=4.6.0.66",
-]
-_yolo_integration_deps = [
-    "torchvision>=0.3.0,<=0.15.1",
+_computer_vision_deps = [
+    "torchvision>=0.3.0,<0.16",
     "opencv-python<=4.6.0.66",
 ]
 _openpifpaf_integration_deps = [
@@ -146,7 +142,7 @@ _openpifpaf_integration_deps = [
     "pycocotools >=2.0.6",
     "scipy==1.10.1",
 ]
-_yolov8_integration_deps = _yolo_integration_deps + ["ultralytics==8.0.124"]
+_yolov8_integration_deps = _computer_vision_deps + ["ultralytics==8.0.124"]
 _transformers_integration_deps = [
     "transformers<4.35",
     "datasets<=2.14.6",
@@ -168,7 +164,7 @@ _haystack_requirements_file_path = os.path.join(
 _haystack_integration_deps = _parse_requirements_file(_haystack_requirements_file_path)
 _clip_deps = [
     "open_clip_torch==2.20.0",
-    "scipy<1.9.2,>=1.8",
+    "scipy<1.10,>=1.8",
     "transformers<4.35",
 ]
 
@@ -270,9 +266,9 @@ def _setup_extras() -> Dict:
         "docs": _docs_deps,
         "server": _server_deps,
         "onnxruntime": _onnxruntime_deps,
-        "image_classification": _image_classification_deps,
-        "yolo": _yolo_integration_deps,
-        "yolov5": _yolo_integration_deps,
+        "image_classification": _computer_vision_deps,
+        "yolo": _computer_vision_deps,
+        "yolov5": _computer_vision_deps,
         "haystack": _haystack_integration_deps,
         "openpifpaf": _openpifpaf_integration_deps,
         "yolov8": _yolov8_integration_deps,
