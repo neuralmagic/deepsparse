@@ -104,6 +104,22 @@ def test_token_generation_non_deterministic(pipeline, prompt):
     assert len(set(text_outputs)) == 3
 
 
+def test_pipeline_for_ppl_eval(pipeline, prompt):
+    predictions = pipeline(
+        prompt,
+        output_scores=True,
+        return_input_tokens=True,
+        fixed_sequences_length=True,
+        include_prompt_logits=True,
+        max_length=1,
+    )
+    assert hasattr(predictions, "generations")
+    assert hasattr(predictions, "input_tokens")
+    assert hasattr(predictions.generations[0], "score")
+    assert "input_ids" in predictions.input_tokens
+    assert "attention_mask" in predictions.input_tokens
+
+
 def test_streaming_mode_returns_generator(pipeline, prompt):
     response_generator = pipeline(prompt, streaming=True)
     assert inspect.isgenerator(
