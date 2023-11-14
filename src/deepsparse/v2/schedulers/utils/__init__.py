@@ -15,6 +15,5 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .scheduler import *
-from .scheduler_group import *
-from .continuous_batching_scheduler import *
+from .continuous_batching_queues import *
+from .continuous_batching_executor import *
