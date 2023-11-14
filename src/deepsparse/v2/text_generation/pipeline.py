@@ -183,7 +183,7 @@ class TextGenerationPipeline(Pipeline):
         router = GraphRouter(
             end_route="STOP", start_route="process_input", route=routes
         )
-        scheduler = [OperatorScheduler()]
+        scheduler = [OperatorScheduler(max_workers=4)]
         super().__init__(
             ops=ops, router=router, schedulers=scheduler, pipeline_state=pipeline_state
         )

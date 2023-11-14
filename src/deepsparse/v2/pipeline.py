@@ -58,6 +58,7 @@ class Pipeline(Operator):
         self.schedulers = schedulers
         self.pipeline_state = pipeline_state
         self.validate()
+        self.temp_operator = OperatorScheduler()
 
         self._scheduler_group = SchedulerGroup(self.schedulers)
 
@@ -67,22 +68,15 @@ class Pipeline(Operator):
         inference_state: InferenceState,
         pipeline_state: PipelineState,
         start: str,
-        end: str,
     ):
-        next_step = start
-        while next_step != end:
-            outputs = self._run_next_step(
-                func=self.ops[next_step],
-                next_step=next_step,
-                input=inp,
-                pipeline_state=pipeline_state,
-                inference_state=inference_state,
-            )
-            next_step, operator_output, state_update = outputs
-            if state_update:
-                inference_state.update_state(state_update)
-            inp = operator_output
-        return inp
+        return self._run_next_step(
+            func=self._scheduler_group.submit,
+            operator=self.ops[start],
+            next_step=start,
+            input=inp,
+            pipeline_state=pipeline_state,
+            inference_state=inference_state,
+        )
 
     def _apply_split(self, inp: Any, inference_state: InferenceState):
         """
@@ -96,18 +90,41 @@ class Pipeline(Operator):
         run_with_state = partial(
             self._run_sequential,
             pipeline_state=self.pipeline_state,
-            start=self.router.route[self.router.SPLIT_ROUTE],
-            end=self.router.JOIN_ROUTE,
         )
-        inference_state_list = [
-            copy.deepcopy(inference_state) for x in range(len(batches))
+
+        inf_list = [copy.deepcopy(inference_state) for x in range(len(batches))]
+        step = [self.router.route[self.router.SPLIT_ROUTE] for x in range(len(batches))]
+        current_outputs = [
+            run_with_state(inp=batches[i], inference_state=inf_list[i], start=step[i])
+            for i in range(len(batches))
         ]
-        futures = self._scheduler_group.map(
-            batches,
-            inference_state_list,
-            func=run_with_state,
-        )
-        return self.condense_inputs([x.result() for x in futures])
+        completed_outptus = []
+        while True:
+            for i in range(len(batches)):
+                if isinstance(current_outputs[i], Future) and current_outputs[i].done():
+                    operator_output = current_outputs[i].result()
+
+                    if isinstance(operator_output, tuple):
+                        state_update = operator_output[-1]
+                        operator_output = operator_output[0]
+                        inf_list[i].update_state(state_update)
+
+                    next_step = self.router.next(step[i], self.ops, operator_output)
+                    step[i] = next_step
+                    if next_step == self.router.JOIN_ROUTE:
+                        current_outputs[i] = operator_output
+                    else:
+                        current_outputs[i] = run_with_state(
+                            inp=operator_output,
+                            inference_state=inf_list[i],
+                            start=next_step,
+                        )
+                    break
+
+            if not any(isinstance(x, Future) for x in current_outputs):
+                break
+
+        return self.condense_inputs(current_outputs)
 
     def _run_next_step(
         self,
@@ -129,7 +146,9 @@ class Pipeline(Operator):
             )
         else:
             operator_output = func(*args, **kwargs)
+        return operator_output
 
+        """
         if isinstance(operator_output, Future):
             operator_output = operator_output.result()
 
@@ -140,6 +159,7 @@ class Pipeline(Operator):
 
         next_step = self.router.next(next_step, self.ops, operator_output)
         return next_step, operator_output, state_update
+        """
 
     def run(
         self,
@@ -185,9 +205,14 @@ class Pipeline(Operator):
                     pipeline_state=pipeline_state,
                 )
 
-            next_step, operator_output, state_update = outputs
-            if state_update:
+            operator_output = outputs.result()
+
+            if isinstance(operator_output, tuple):
+                state_update = operator_output[-1]
+                operator_output = operator_output[0]
                 inference_state.update_state(state_update)
+
+            next_step = self.router.next(next_step, self.ops, operator_output)
         return operator_output
 
     def __call__(self, *args, **kwargs):
