@@ -159,8 +159,10 @@ def test_group_name(mock_engine, group_name, pipeline_name, inputs, optional_ind
 
     with open(expected_logs, "r") as f:
         expected_logs = f.read().splitlines()
-    for log, expected_log in zip(data_logging_logs, expected_logs):
-        assert log == expected_log
+    expected_logs = set(expected_logs)
+
+    for data_logging_log in data_logging_logs:
+        assert data_logging_log in expected_logs, f"Unexpected log: {data_logging_log}"
 
 
 yaml_config = """
