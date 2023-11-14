@@ -66,8 +66,8 @@ class Pipeline(Operator):
         self,
         inp: Any,
         inference_state: InferenceState,
-        pipeline_state: PipelineState,
         start: str,
+        pipeline_state: PipelineState,
     ):
         return self._run_next_step(
             func=self._scheduler_group.submit,
@@ -94,11 +94,14 @@ class Pipeline(Operator):
 
         inf_list = [copy.deepcopy(inference_state) for x in range(len(batches))]
         step = [self.router.route[self.router.SPLIT_ROUTE] for x in range(len(batches))]
-        current_outputs = [
-            run_with_state(inp=batches[i], inference_state=inf_list[i], start=step[i])
-            for i in range(len(batches))
-        ]
-        completed_outptus = []
+        current_outputs = list(
+            map(
+                run_with_state,
+                batches,
+                inf_list,
+                step
+            )
+        )
         while True:
             for i in range(len(batches)):
                 if isinstance(current_outputs[i], Future) and current_outputs[i].done():
@@ -120,7 +123,7 @@ class Pipeline(Operator):
                             start=next_step,
                         )
                     break
-
+        
             if not any(isinstance(x, Future) for x in current_outputs):
                 break
 
