@@ -39,12 +39,44 @@ class EngineOperatorInputs(BaseModel):
         default=None,
     )
 
+    @classmethod
+    def join(cls, inputs: List["EngineOperatorInputs"]) -> "EngineOperatorInputs":
+        """
+        :param inputs: list of separate EngineOperatorInputs, batch size must be 1
+        :return: list of inputs joined into a single input with a multi batch size
+        """
+        all_engine_inputs = [engine_input.engine_inputs for engine_input in inputs]
+
+        for engine_inputs in all_engine_inputs:
+            if engine_inputs[0].shape[0] != 1:
+                raise RuntimeError(
+                    "join requires all inputs to have batch size 1, found input with "
+                    f"batch size {engine_inputs[0].shape[0]}"
+                )
+
+        # use join_engine_outputs since dtype is the same
+        joined_engine_inputs = join_engine_outputs(
+            all_engine_inputs, len(all_engine_inputs)
+        )
+
+        return cls(engine_inputs=joined_engine_inputs)
+
     class Config:
         arbitrary_types_allowed = True
 
 
 class EngineOperatorOutputs(BaseModel):
     engine_outputs: List = Field(description="engine outputs")
+
+    def split(self) -> List["EngineOperatorOutputs"]:
+        """
+        :return: list of the current outputs split to a batch size of 1 each
+        """
+        # using split_engine_inputs since input/output dtypes
+        # are the same (List[ndarray])
+        split_outputs, _ = split_engine_inputs(self.engine_outputs, batch_size=1)
+
+        return [self.__class__(engine_outputs=outputs) for outputs in split_outputs]
 
 
 class EngineOperator(Operator):
