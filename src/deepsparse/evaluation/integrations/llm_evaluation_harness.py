@@ -26,7 +26,8 @@ from pydantic import BaseModel, Field
 
 import torch
 from src.deepsparse import DEEPSPARSE_ENGINE, ORT_ENGINE, Pipeline
-from src.deepsparse.evaluation.utils import initialize_model_from_target
+from src.deepsparse.evaluation.registry import EvaluationRegistry
+from src.deepsparse.evaluation.utils import text_generation_model_from_target
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -46,6 +47,7 @@ except Exception as _lm_eval_import_err:
     )
 
 
+@EvaluationRegistry.registry(name="lm-evaluation-harness")
 def integration_eval(
     target: str,
     datasets: Union[List, str],
@@ -73,7 +75,7 @@ def integration_eval(
     if engine_type in [DEEPSPARSE_ENGINE, ORT_ENGINE]:
         model = DeepSparseLM(target, batch_size, **target_args)
     else:
-        model = initialize_model_from_target(target, engine_type, **target_args)
+        model = text_generation_model_from_target(target, engine_type, **target_args)
 
     datasets = (",").join(datasets) if isinstance(datasets, list) else datasets
     # [END]

@@ -17,7 +17,7 @@ from collections import OrderedDict
 from typing import Any, List, Optional
 
 import yaml
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from src.deepsparse.utils.data import prep_for_serialization
 
@@ -33,29 +33,30 @@ __all__ = [
 ]
 
 
-# TODO: Finish docstrings
 class Metric(BaseModel):
-    name: str
-    value: float
+    name: str = Field(description="Name of the metric")
+    value: float = Field(description="Value of the metric")
 
 
 class Dataset(BaseModel):
-    type: str
-    name: str
-    config: str
-    split: str
+    type: str = Field(description="Type of dataset")
+    name: str = Field(description="Name of the dataset")
+    config: str = Field(description="Configuration for the dataset")
+    split: str = Field(description="Split of the dataset")
 
 
 class EvalSample(BaseModel):
-    input: Any
-    output: Any
+    input: Any = Field(description="Sample input to the model")
+    output: Any = Field(description="Sample output from the model")
 
 
 class Evaluation(BaseModel):
-    task: str
-    dataset: Dataset
-    metrics: List[Metric]
-    samples: List[EvalSample]
+    task: str = Field(
+        description="Name of the evaluation integration that the evaluation was performed on"
+    )
+    dataset: Dataset = Field(description="Dataset that the evaluation was performed on")
+    metrics: List[Metric] = Field(description="List of metrics for the evaluation")
+    samples: List[EvalSample] = Field(description="List of samples for the evaluation")
 
 
 def validate_result_structure(result: Any) -> bool:

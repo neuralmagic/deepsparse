@@ -15,7 +15,7 @@
 from transformers import GPTNeoForCausalLM
 
 import pytest
-from src.deepsparse.evaluation.utils import initialize_model_from_target
+from src.deepsparse.evaluation.utils import text_generation_model_from_target
 
 
 @pytest.fixture
@@ -29,15 +29,15 @@ def torch_target():
 
 
 def test_initialize_model_from_target_pipeline_onnx(pipeline_target):
-    model = initialize_model_from_target(pipeline_target, "onnxruntime")
+    model = text_generation_model_from_target(pipeline_target, "onnxruntime")
     assert model.engine_type == "onnxruntime"
 
 
 def test_initialize_model_from_target_pipeline_deepsparse(pipeline_target):
-    model = initialize_model_from_target(pipeline_target, "deepsparse")
+    model = text_generation_model_from_target(pipeline_target, "deepsparse")
     assert model.engine_type == "deepsparse"
 
 
 def test_initialize_model_from_target_torch(torch_target):
-    model = initialize_model_from_target(torch_target, "torch")
+    model = text_generation_model_from_target(torch_target, "torch")
     assert isinstance(model, GPTNeoForCausalLM)

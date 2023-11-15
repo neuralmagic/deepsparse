@@ -12,22 +12,37 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Union
+import os
+from typing import Optional, Union
 
 from transformers import AutoModelForCausalLM
 
 from deepsparse import DEEPSPARSE_ENGINE, ORT_ENGINE, Pipeline
 
 
-__all__ = ["initialize_model_from_target"]
+__all__ = ["text_generation_model_from_target", "get_save_path"]
 
 
-def initialize_model_from_target(
+def get_save_path(
+    type_serialization: str,
+    save_path: Optional[str] = None,
+    default_file_name: str = "results",
+) -> str:
+    file_name = default_file_name + "." + type_serialization
+    if save_path is None:
+        base_path = os.path.dirname(os.path.realpath(__file__))
+        return os.path.join(base_path, file_name)
+    else:
+        return os.path.join(save_path, file_name)
+
+
+def text_generation_model_from_target(
     target: str, engine_type: str, **kwargs
 ) -> Union[Pipeline, AutoModelForCausalLM]:
     """
-    :param target: The target path to initialize the model from. This can be
-        a local or remote path to the model or a sparsezoo stub
+    :param target: The target path to initialize the
+        text generation model from. This can be a local
+        or remote path to the model or a sparsezoo stub
     :param engine_type: The engine type to initialize the model with.
     :param kwargs: Additional kwargs to pass to the model initialization
     :return: The initialized model
@@ -39,4 +54,4 @@ def initialize_model_from_target(
     elif engine_type == "torch":
         return AutoModelForCausalLM.from_pretrained(target, **kwargs)
     else:
-        raise NotImplementedError("Unsupported engine type")
+        raise NotImplementedError(f"Unsupported engine type: {engine_type}")

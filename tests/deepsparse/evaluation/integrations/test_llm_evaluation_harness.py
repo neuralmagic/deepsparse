@@ -11,6 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import os
+import shutil
 
 import pytest
 from src.deepsparse.evaluation.integrations.llm_evaluation_harness import (
@@ -24,6 +26,15 @@ try:
     lm_eval_not_installed = False
 except Exception:
     lm_eval_not_installed = True
+
+
+@pytest.fixture(scope="session")
+def setup():
+    yield
+    try:
+        shutil.rmtree(os.path.join(os.getcwd(), "tests/testdata"))
+    except Exception:
+        pass
 
 
 @pytest.mark.parametrize(
@@ -49,29 +60,30 @@ except Exception:
     "batch_size",
     [1, 3],
 )
-@pytest.mark.skipif(lm_eval_not_installed, reason="Requires lm_eval installed")
-def test_integration_eval_onnx_matches_torch(
-    target_onnx, target_torch, datasets, batch_size
-):
-    out_torch = integration_eval(
-        target=target_torch,
-        datasets=datasets,
-        batch_size=batch_size,
-        target_args={},
-        limit=5,
-        engine_type="torch",
-        no_cache=True,  # avoid saving files when running tests
-    )
-    out_onnx = integration_eval(
-        target=target_onnx,
-        datasets=datasets,
-        batch_size=batch_size,
-        target_args={},
-        limit=5,
-        engine_type="onnxruntime",
-        no_cache=True,  # avoid saving files when running tests
-    )
-    datasets = datasets if isinstance(datasets, list) else [datasets]
-    for dataset in datasets:
-        for key, value in out_torch["results"][dataset].items():
-            assert value == out_onnx["results"][dataset][key]
+class TestLLMEvaluationHarness:
+    @pytest.mark.skipif(lm_eval_not_installed, reason="Requires lm_eval installed")
+    def test_integration_eval_onnx_matches_torch(
+        self, target_onnx, target_torch, datasets, batch_size, setup
+    ):
+        out_torch = integration_eval(
+            target=target_torch,
+            datasets=datasets,
+            batch_size=batch_size,
+            target_args={},
+            limit=5,
+            engine_type="torch",
+            no_cache=True,  # avoid saving files when running tests
+        )
+        out_onnx = integration_eval(
+            target=target_onnx,
+            datasets=datasets,
+            batch_size=batch_size,
+            target_args={},
+            limit=5,
+            engine_type="onnxruntime",
+            no_cache=True,  # avoid saving files when running tests
+        )
+        datasets = datasets if isinstance(datasets, list) else [datasets]
+        for dataset in datasets:
+            for key, value in out_torch["results"][dataset].items():
+                assert value == out_onnx["results"][dataset][key]

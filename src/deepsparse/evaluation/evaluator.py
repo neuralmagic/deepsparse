@@ -12,27 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-Module for evaluating models on the various evaluation integrations
-
-##########
+######
 Command help:
-usage: deepsparse.eval [-h]
-                        [-d DATASETS]
-                        [-i INTEGRATION]
-                        [-b BATCH_SIZE]
-                        [-e ENGINE_TYPE]
-                        [-s SPLITS]
-                        [-m METRICS]
-                        [--enforce-result-structure]
-                        target
+Usage: deepsparse.eval [OPTIONS]
 
-Evaluate targets on various evaluation integrations
+  Module for evaluating models on the various evaluation integrations
 
-positional arguments:
-    target              A path to a remote/local directory containing ONNX/torch model or a SparseZoo stub
-
-optional arguments:
-    -h, --help          show this help message and exit
+Options:
+    --target TARGET     A path to a remote or local directory containing ONNX/torch model
+                        (including all the auxiliary files) or a SparseZoo stub
     -d DATASETS, --datasets DATASETS
                         The datasets to evaluate on. Can be a string for a single dataset
                         or a list of strings for multiple datasets
@@ -43,121 +31,149 @@ optional arguments:
                         Inference engine to use for the evaluation. The default
                         is the DeepSparse engine. If the evaluation should be run
                         without initializing a pipeline (e.g. for the evaluation
-                        of a torch model), the engine type should be set to None"
+                        of a torch model), the engine type should be set to None
+    -s SAVE_PATH, --save_path SAVE_PATH
+                        The path to save the evaluation results.
+                        By default the results will be saved in the
+                        current directory under the name 'result.[extension]'. 
+    -t TYPE_SERIALIZATION, --type_serialization TYPE_SERIALIZATION
+                        The serialization type to use save the evaluation results.
+                        The default is json               
     -b BATCH_SIZE, --batch_size BATCH_SIZE
                         The batch size to use for the evaluation. Must be greater than 0
-    -s SPLITS, --splits SPLITS
-                        The name of the splits to evaluate on. Can be a string for a single split
-                        or a list of strings for multiple splits.
     -m METRICS, --metrics METRICS
                         The name of the metrics to evaluate on. Can be a string for a single metric
                         or a list of strings for multiple metrics.
+    -splits SPLITS, --splits SPLITS
+                        The name of the splits to evaluate on. Can be a string for a single split
+                        or a list of strings for multiple splits.
     --enforce_result_structure --enforce-result-structure
                         Specifies whether to unify all the
                         results into the predefined Evaluation structure. If True, the
                         results will be returned as a list of Evaluation objects.
                         Otherwise, the result will preserve the original result structure
                         from the evaluation integration.
+    -h, --help          Show this help message and exit
 
-
+#########
+EXAMPLES
+#########
 
 ##########
-Example valuation of a Deepsparse pipeline that uses MPT quantized model from SparseZoo.
+Example command for evaluating a quantized MPT model from SparseZoo using the Deepsparse Engine.
 The evaluation will be run using `lm-evaluation-harness` on `hellaswag` dataset:
 deepsparse.eval zoo:mpt-7b-mpt_pretrain-base_quantized \
                 --datasets hellaswag \
                 --integration lm-evaluation-harness \
 
 """  # noqa: E501
-
-import argparse
 import logging
 from typing import Any, List, Optional, Union
+
+import click
 
 from src.deepsparse.evaluation.registry import EvaluationRegistry
 from src.deepsparse.evaluation.results import (
     Evaluation,
     print_result,
+    save_evaluation,
     validate_result_structure,
 )
+from src.deepsparse.evaluation.utils import get_save_path
 from src.deepsparse.pipeline import DEEPSPARSE_ENGINE, ORT_ENGINE, TORCHSCRIPT_ENGINE
 
-
-__all__ = ["evaluate"]
 
 _LOGGER = logging.getLogger(__name__)
 
 
-def parse_args():
-    parser = argparse.ArgumentParser(
-        description="Evaluate targets on various evaluation integrations"
-    )
-
-    parser.add_argument(
-        "target",
-        type=str,
-        help="A path to a remote or local directory containing ONNX/torch model "
-        "(including all the auxiliary files) or a SparseZoo stub",
-    )
-
-    parser.add_argument(
-        "-d",
-        "--datasets",
-        type=Union[str, List[str]],
-        help="The datasets to evaluate on. Can be a string for a single dataset "
-        "or a list of strings for multiple datasets",
-    )
-
-    parser.add_argument(
-        "-e",
-        "--engine_type",
-        type=Optional[DEEPSPARSE_ENGINE, ORT_ENGINE, TORCHSCRIPT_ENGINE],
-        default=DEEPSPARSE_ENGINE,
-        help="The engine to use for the evaluation. The default is the "
-        "DeepSparse engine. If the evaluation should be run without "
-        "initializing a pipeline (e.g. for the evaluation of a torch "
-        "model), the engine type should be set to None",
-    )
-
-    parser.add_argument(
-        "-s",
-        "--splits",
-        type=Optional[List[str], str],
-        default=None,
-        help="The name of the splits to evaluate on. "
-        "Can be a string for a single split "
-        "or a list of strings for multiple splits.",
-    )
-
-    parser.add_argument(
-        "-m",
-        "--metrics",
-        type=Optional[List[str], str],
-        default=None,
-        help="The name of the metrics to evaluate on. "
-        "Can be a string for a single metric "
-        "or a list of strings for multiple metrics.",
-    )
-    parser.add_argument(
-        "--enforce-result-structure",
-        "--enforce_result_structure",
-        action="store_true",
-        help="Specifies whether to unify all the results "
-        "into the predefined Evaluation structure. "
-        "If True, the results will be returned as a "
-        "list of Evaluation objects. Otherwise, the "
-        "result will preserve the original result "
-        "structure from the evaluation integration.",
-    )
-
-
-def evaluate(
+@click.command()
+@click.option(
+    "--target",
+    type=click.Path(dir_okay=True, file_okay=True),
+    required=True,
+    help="A path to a remote or local directory containing ONNX/torch model "
+    "(including all the auxiliary files) or a SparseZoo stub",
+)
+@click.option(
+    "-d",
+    "--datasets",
+    type=click.UNPROCESSED,
+    required=True,
+    help="The datasets to evaluate on. Can be a string for a single dataset "
+    "or a list of strings for multiple datasets",
+)
+@click.option(
+    "-i",
+    "--integration",
+    type=str,
+    required=True,
+    help="The name of the evaluation integration to use. Must be a valid "
+    "integration name that is registered in the evaluation registry",
+)
+@click.option(
+    "-e",
+    "--engine_type",
+    type=click.Choice([DEEPSPARSE_ENGINE, ORT_ENGINE, TORCHSCRIPT_ENGINE, None]),
+    default=DEEPSPARSE_ENGINE,
+    help="The engine to use for the evaluation. The default is the "
+    "DeepSparse engine. If the evaluation should be run without "
+    "initializing a pipeline (e.g. for the evaluation of a torch "
+    "model), the engine type should be set to None",
+)
+@click.option(
+    "-s",
+    "--save_path",
+    type=click.UNPROCESSED,
+    default=None,
+    help="The path to save the evaluation results. The results will "
+    "be saved under the name 'result.yaml`/'result.json' depending on the serialization type. If argument is not provided, the results will be saved in the current directory",
+)
+@click.option(
+    "-t",
+    "--type_serialization",
+    type=click.Choice(["yaml", "json"]),
+    default="json",
+    help="The serialization type to use save the evaluation results. "
+    "The default is json",
+)
+@click.option(
+    "-splits",
+    "--splits",
+    type=Union[List[str], str, None],
+    default=None,
+    help="The name of the splits to evaluate on. "
+    "Can be a string for a single split "
+    "or a list of strings for multiple splits.",
+)
+@click.option(
+    "-m",
+    "--metrics",
+    type=Union[List[str], str, None],
+    default=None,
+    help="The name of the metrics to evaluate on. "
+    "Can be a string for a single metric "
+    "or a list of strings for multiple metrics.",
+)
+@click.option(
+    "--enforce-result-structure",
+    "--enforce_result_structure",
+    default=True,
+    help="Specifies whether to unify all the results "
+    "into the predefined Evaluation structure. "
+    "If True, the results will be returned as a "
+    "list of Evaluation objects. Otherwise, the "
+    "result will preserve the original result "
+    "structure from the evaluation integration.",
+)
+def main(
     target: str,
     datasets: Union[str, List[str]],
     integration: str,
     engine_type: Union[
         DEEPSPARSE_ENGINE, ORT_ENGINE, TORCHSCRIPT_ENGINE, None
     ] = DEEPSPARSE_ENGINE,
+    save_path: str = "result",
+    type_serialization: str = "json",
     batch_size: int = 1,
     splits: Union[List[str], str, None] = None,
     metrics: Union[List[str], str, None] = None,
@@ -198,28 +214,29 @@ def evaluate(
         **kwargs,
     )
 
-    if enforce_result_structure:
-        if not validate_result_structure(result):
-            raise ValueError(
-                "The evaluation integration must return a list of Evaluation objects "
-                "when enforce_result_structure is True."
-            )
-        _LOGGER.info(f"Evaluation done. Results:\n{print_result(result)}")
+    if not enforce_result_structure:
+        _LOGGER.info(f"Evaluation done. Results:\n{result}")
+        return result
+
+    if not validate_result_structure(result):
+        raise ValueError(
+            "The evaluation integration must return a list of Evaluation objects "
+            "when enforce_result_structure is True."
+        )
+
+    _LOGGER.info(f"Evaluation done. Results:\n{print_result(result)}")
+    save_path = get_save_path(
+        save_path=save_path,
+        type_serialization=type_serialization,
+        default_file_name="result",
+    )
+    if save_path:
+        _LOGGER.info(f"Saving the evaluation results to {save_path}")
+        save_evaluation(
+            evaluations=result, save_path=save_path, save_format=type_serialization
+        )
 
     return result
-
-
-def main():
-    args = parse_args()
-    return evaluate(
-        target=args.target,
-        datasets=args.datasets,
-        integration=args.integration,
-        engine_type=args.engine_type,
-        batch_size=args.batch_size,
-        splits=args.splits,
-        metrics=args.metrics,
-    )
 
 
 if __name__ == "__main__":
