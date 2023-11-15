@@ -18,6 +18,7 @@ import transformers
 from deepsparse.transformers.pipelines.text_generation import FinishReason
 from deepsparse.v2.operators import Operator
 from deepsparse.v2.utils import InferenceState
+from deepsparse.v2.text_generation.nl_engine_operator import NLEngineOutputs
 
 
 __all__ = ["GenerateNewTokenOperator"]
@@ -30,12 +31,15 @@ class GenerateNewTokenOperator(Operator):
         self.force_max_tokens = force_max_tokens
         self.tokenizer = tokenizer
 
-    def can_operate(self, inp: Any):
-        if inp.get("in_generation"):
+    def can_operate(self, inp: NLEngineOutputs):
+        if inp.in_generation:
             return True
         return False
 
-    def run(self, logits, kv_cache, inference_state: InferenceState, **kwargs):
+    def run(self, inp: NLEngineOutputs, inference_state: InferenceState, **kwargs):
+        logits = inp.engine_outputs
+        kv_cache = inp.kv_cache
+
         token_generator = inference_state.current_state.get("token_generator")
         token = token_generator.generate(logits=logits[0, -1, :])
         finish_reason = None

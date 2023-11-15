@@ -20,7 +20,7 @@ from pydantic import BaseModel, Field
 from deepsparse import Context as EngineContext
 from deepsparse import Engine, MultiModelEngine, Scheduler
 from deepsparse.benchmark import ORTEngine
-from deepsparse.utils import model_to_path
+from deepsparse.utils import model_to_path, join_engine_outputs, split_engine_inputs
 from deepsparse.v2.operators import Operator
 
 
@@ -29,7 +29,7 @@ ORT_ENGINE = "onnxruntime"
 
 SUPPORTED_PIPELINE_ENGINES = [DEEPSPARSE_ENGINE, ORT_ENGINE]
 
-__all__ = ["EngineOperator"]
+__all__ = ["EngineOperator", "EngineOperatorInputs", "EngineOperatorOutputs"]
 
 
 class EngineOperatorInputs(BaseModel):
@@ -145,6 +145,7 @@ class EngineOperator(Operator):
         onnx_file_path = self.model_path
         engine_args = deepcopy(self._engine_args)
         engine_args.update(kwargs)
+
         engine_type = self._engine_type.lower()
 
         if engine_type == DEEPSPARSE_ENGINE:

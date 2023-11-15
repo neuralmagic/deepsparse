@@ -18,9 +18,9 @@ from concurrent.futures import Future
 from functools import partial
 from typing import Any, Callable, Dict, List, Union
 
-from deepsparse.v2.operators import Operator
+from deepsparse.v2.operators import Operator, EngineOperator
 from deepsparse.v2.routers import Router
-from deepsparse.v2.schedulers import OperatorScheduler, SchedulerGroup
+from deepsparse.v2.schedulers import OperatorScheduler, SchedulerGroup, ContinuousBatchingScheduler
 from deepsparse.v2.utils import InferenceState, PipelineState
 
 
@@ -50,6 +50,7 @@ class Pipeline(Operator):
         ops: Union[Dict[str, Operator], List[Operator]],
         router: Router,
         schedulers: List[OperatorScheduler],
+        continuous_batching_scheduler: ContinuousBatchingScheduler,
         pipeline_state: PipelineState = None,
     ):
 
@@ -57,9 +58,9 @@ class Pipeline(Operator):
         self.router = router
         self.schedulers = schedulers
         self.pipeline_state = pipeline_state
+        self._continuous_batching_scheduler = continuous_batching_scheduler
         self.validate()
-        self.temp_operator = OperatorScheduler()
-
+      
         self._scheduler_group = SchedulerGroup(self.schedulers)
 
     def _run_sequential(
@@ -69,8 +70,16 @@ class Pipeline(Operator):
         start: str,
         pipeline_state: PipelineState,
     ):
+        """
+        if isinstance(self.ops[start], EngineOperator):
+            func = self._continuous_batching_scheduler.submit
+            inp = self.ops[start].input_schema(**inp)
+        else:
+        """
+        func = self._scheduler_group.submit 
+
         return self._run_next_step(
-            func=self._scheduler_group.submit,
+            func=func,
             operator=self.ops[start],
             next_step=start,
             input=inp,
@@ -138,8 +147,7 @@ class Pipeline(Operator):
         **kwargs,
     ):
         """
-        Generic function to run a given func, process the output and determine the next
-        step.
+        Generic function to run a given func.
         """
         if input:
             operator_output = (
@@ -150,19 +158,6 @@ class Pipeline(Operator):
         else:
             operator_output = func(*args, **kwargs)
         return operator_output
-
-        """
-        if isinstance(operator_output, Future):
-            operator_output = operator_output.result()
-
-        state_update = None
-        if isinstance(operator_output, tuple):
-            state_update = operator_output[-1]
-            operator_output = operator_output[0]
-
-        next_step = self.router.next(next_step, self.ops, operator_output)
-        return next_step, operator_output, state_update
-        """
 
     def run(
         self,

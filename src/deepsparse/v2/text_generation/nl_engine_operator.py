@@ -14,9 +14,10 @@
 
 import copy
 import os
-from typing import Any, List, Tuple
+from typing import Any, List, Tuple, Optional
 
 from pydantic import BaseModel, Field
+from deepsparse import Engine
 
 from deepsparse.utils.onnx import (
     CACHE_INPUT_PREFIX,
@@ -26,14 +27,52 @@ from deepsparse.v2.operators.engine_operator import (
     DEEPSPARSE_ENGINE,
     EngineOperator,
     EngineOperatorInputs,
+    EngineOperatorOutputs
 )
+from deepsparse.utils import model_to_path, join_engine_outputs, split_engine_inputs
 
 
-__all__ = ["NLEngineOperator", "NlEngineInput"]
+__all__ = ["NLEngineOperator", "NLEngineInputs"]
 
 
-class NlEngineInput(BaseModel):
-    engine_inputs: List = Field(description="engine inputs")
+class NLEngineInputs(BaseModel):
+    engine_inputs: List = Field(description="engine_inputs")
+    kv_cache: Any = Field(description="kv_cache object")
+    tokens: List = Field(description="tokens")
+    in_generation: Any = Field(description="in_generation", default=None)
+    engine: Optional[Engine] = Field(
+        description="override the engine to run forward pass with",
+        default=None,
+    )
+
+
+    @classmethod
+    def join(cls, inputs: List["NLEngineInputs"]) -> "NLEngineInputs":
+        """
+        :param inputs: list of separate EngineOperatorInputs, batch size must be 1
+        :return: list of inputs joined into a single input with a multi batch size
+        """
+
+        all_engine_inputs = [engine_input.engine_inputs for engine_input in inputs]
+        all_kv_cache  = [engine_input.kv_cache for engine_input in inputs]
+        all_tokens  = [engine_input.tokens for engine_input in inputs]
+        all_generation  = [engine_input.in_generation for engine_input in inputs]
+
+        for engine_inputs in all_engine_inputs:
+            if engine_inputs[0].shape[0] != 1:
+                raise RuntimeError(
+                    "join requires all inputs to have batch size 1, found input with "
+                    f"batch size {engine_inputs[0].shape[0]}"
+                )
+
+        return cls(engine_inputs=all_engine_inputs, tokens=all_tokens, in_generation=all_generation, kv_cache=all_kv_cache)
+
+    class Config:
+        arbitrary_types_allowed = True
+
+
+class NLEngineOutputs(BaseModel):
+    engine_outputs: Any = Field(description="engine_outputs")
     kv_cache: Any = Field(description="kv_cache object")
     tokens: List = Field(description="tokens")
     in_generation: bool = Field(description="in_generation", default=None)
@@ -48,8 +87,8 @@ class NLEngineOperator(EngineOperator):
     multi-token case.
     """
 
-    input_schema = NlEngineInput
-    output_schema = None
+    input_schema = NLEngineInputs
+    output_schema = NLEngineOutputs
 
     def __init__(
         self,
@@ -86,11 +125,12 @@ class NLEngineOperator(EngineOperator):
 
         kwargs["engine_kwargs"] = engine_kwargs
         kwargs["model_path"] = onnx_file_path
+
         super().__init__(**kwargs)
 
         self.input_ids_length = input_ids_length
 
-    def run(self, inp: NlEngineInput, **kwargs) -> Any:
+    def run(self, inp: NLEngineInputs, **kwargs) -> NLEngineOutputs:
         engine_input = inp.engine_inputs
         kv_cache = inp.kv_cache
 
@@ -121,7 +161,7 @@ class NLEngineOperator(EngineOperator):
         )
 
         output = {
-            "logits": logits,
+            "engine_outputs": logits,
             "kv_cache": kv_cache,
             "tokens": inp.tokens,
             "in_generation": inp.in_generation,

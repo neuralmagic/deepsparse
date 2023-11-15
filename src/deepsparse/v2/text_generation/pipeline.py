@@ -18,7 +18,7 @@ from deepsparse.transformers.utils.helpers import process_generation_config
 from deepsparse.utils import split_engine_inputs
 from deepsparse.v2.pipeline import Pipeline
 from deepsparse.v2.routers import GraphRouter
-from deepsparse.v2.schedulers import OperatorScheduler
+from deepsparse.v2.schedulers import OperatorScheduler, ContinuousBatchingScheduler
 from deepsparse.v2.text_generation import (
     AutoRegressiveOperatorPreprocess,
     CompileGeneratedTokens,
@@ -135,6 +135,11 @@ class TextGenerationPipeline(Pipeline):
         compile_generated_tokens = CompileGeneratedTokens()
         join_output = JoinOutput(tokenizer=self.tokenizer)
 
+
+        continuous_batching_scheduler = ContinuousBatchingScheduler.get_instance()
+        continuous_batching_scheduler.add_engine_operator(single_engine_operator, [1])
+        continuous_batching_scheduler.add_engine_operator(multi_engine_operator, [1])
+
         ops = {
             "process_input": process_inputs,
             "single_engine": single_engine_operator,
@@ -185,7 +190,7 @@ class TextGenerationPipeline(Pipeline):
         )
         scheduler = [OperatorScheduler()]
         super().__init__(
-            ops=ops, router=router, schedulers=scheduler, pipeline_state=pipeline_state
+            ops=ops, router=router, schedulers=scheduler, pipeline_state=pipeline_state, continuous_batching_scheduler=continuous_batching_scheduler
         )
 
     def expand_inputs(self, items, batch_size):

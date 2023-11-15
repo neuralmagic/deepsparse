@@ -50,7 +50,7 @@ class ContinuousBatchingScheduler(OperatorScheduler):
             engine_operator = EngineOperator(...)
             ...
             continuous_batching_scheduler = ContinuousBatchingScheduler.get_instance()
-            continuous_batching_scheduler.add_engine_operator(engine_operator)
+            continuous_batching_scheduler.add_engine_operator(engine_operator, [1])
 
             super.__init__(...)
     ```
@@ -82,6 +82,8 @@ class ContinuousBatchingScheduler(OperatorScheduler):
             does not exist yet, a scheduler with a single worker thread to
             schedule all jobs is created and started
         """
+        global _GLOBAL_SCHEDULER
+
         if _GLOBAL_SCHEDULER is not None:
             return _GLOBAL_SCHEDULER  # noqa: F823
 
