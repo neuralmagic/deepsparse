@@ -13,7 +13,7 @@
 # limitations under the License.
 """
 This test suite consumes config files to test the text generation pipeline
-for various scenerios.
+for various scenarios.
 
 A sample config file is a yaml that requires the following fields:
     cadence: The cadence of the tests. The available options are:
@@ -25,10 +25,7 @@ A sample config file is a yaml that requires the following fields:
                 (sparsezoo stub/hf model path/local_path)
     torch_model_name: The name of the torch model
                 (to generate ground truth info)
-    task: The task to be tested
-                   (e.g. text-generation)
     prompt: The prompt to use for testing
-    has_bos_token: Whether the model has a bos token
     precision: The precision for the logits/kv_cache entries
         comparison
     internal_kv_cache: The type of the internal KV cache
@@ -119,6 +116,11 @@ class TestsIntegrationLLMsPipelines:
         self.default_pipeline_kwargs = dict(
             model_path=self.model_path,
             internal_kv_cache=self.internal_kv_cache,
+            force_max_tokens=True,
+            generation_config=dict(
+                max_new_tokens=max_new_tokens,
+                output_scores=True,
+            ),
         )
         self.default_pipeline = None
         self.max_new_tokens = max_new_tokens
@@ -138,11 +140,6 @@ class TestsIntegrationLLMsPipelines:
         pipeline = self.get_pipeline(
             prompt_sequence_length=1,
             engine_type="onnxruntime",
-            force_max_tokens=True,
-            generation_config=dict(
-                max_new_tokens=self.max_new_tokens,
-                output_scores=True,
-            ),
         )
         output = pipeline(prompt=self.prompt, include_prompt_logits=True)
 
@@ -169,9 +166,6 @@ class TestsIntegrationLLMsPipelines:
         output = pipeline(
             prompt=self.prompt,
             include_prompt_logits=True,
-            generation_config=dict(
-                max_new_tokens=self.max_new_tokens, output_scores=True
-            ),
         )
 
         self._test_output(
@@ -193,9 +187,6 @@ class TestsIntegrationLLMsPipelines:
         output = pipeline(
             prompt=self.prompt,
             include_prompt_logits=True,
-            generation_config=dict(
-                max_new_tokens=self.max_new_tokens, output_scores=True
-            ),
         )
 
         self._test_output(
@@ -217,9 +208,6 @@ class TestsIntegrationLLMsPipelines:
         output = pipeline(
             prompt=self.prompt,
             include_prompt_logits=True,
-            generation_config=dict(
-                max_new_tokens=self.max_new_tokens, output_scores=True
-            ),
         )
 
         self._test_output(
@@ -229,34 +217,42 @@ class TestsIntegrationLLMsPipelines:
             run_kv_cache_validation=not self.internal_kv_cache,
         )
 
-    # def test_inference_no_kv_cache_deepsparse(self, setup):
-    #     self._test_inference_no_kv_cache(engine_type="deepsparse")
-    #
-    # def test_inference_no_kv_cache_ort(self, setup):
-    #     self._test_inference_no_kv_cache(engine_type="onnxruntime")
-    #
-    # def _test_inference_no_kv_cache(self, engine_type):
-    #     model_path_no_cache = self._get_model_path_no_cache()
-    #     pipeline = self.get_pipeline(
-    #         model_path=model_path_no_cache, engine_type=engine_type
-    #     )
-    #     assert not pipeline.cache_support_enabled, (
-    #         "This pipeline test inference using non-kv cache "
-    #         "model and thus should not support kv cache"
-    #     )
-    #
-    #     output = pipeline(
-    #         self.prompt, max_length=1, output_scores=True, include_prompt_logits=True
-    #     )
-    #     prompt_length = self.torch_ground_truth[1].shape[1]
-    #     # prompt logits + one logit for the new generated token
-    #     logits = output.generations[0].score[-(prompt_length + 1) :, :]
-    #     # compute ground truth logits analogously
-    #     generated_logits, prompt_logits, *_ = self.torch_ground_truth
-    #     logits_gt = numpy.concatenate(
-    #         [prompt_logits[0], generated_logits[0, :1, :]], axis=0
-    #     )
-    #     assert numpy.allclose(logits, logits_gt, atol=self.precision)
+    @pytest.mark.skip(
+        "This test is skipped because we do "
+        "not have support for non-kv-cache models yet"
+    )
+    def test_inference_no_kv_cache_deepsparse(self, setup):
+        self._test_inference_no_kv_cache(engine_type="deepsparse")
+
+    @pytest.mark.skip(
+        "This test is skipped because we do "
+        "not have support for non-kv-cache models yet"
+    )
+    def test_inference_no_kv_cache_ort(self, setup):
+        self._test_inference_no_kv_cache(engine_type="onnxruntime")
+
+    def _test_inference_no_kv_cache(self, engine_type):
+        model_path_no_cache = self._get_model_path_no_cache()
+        pipeline = self.get_pipeline(
+            model_path=model_path_no_cache, engine_type=engine_type
+        )
+        assert not pipeline.cache_support_enabled, (
+            "This pipeline test inference using non-kv cache "
+            "model and thus should not support kv cache"
+        )
+
+        output = pipeline(
+            self.prompt, max_length=1, output_scores=True, include_prompt_logits=True
+        )
+        prompt_length = self.torch_ground_truth[1].shape[1]
+        # prompt logits + one logit for the new generated token
+        logits = output.generations[0].score[-(prompt_length + 1) :, :]
+        # compute ground truth logits analogously
+        generated_logits, prompt_logits, *_ = self.torch_ground_truth
+        logits_gt = numpy.concatenate(
+            [prompt_logits[0], generated_logits[0, :1, :]], axis=0
+        )
+        assert numpy.allclose(logits, logits_gt, atol=self.precision)
 
     def _test_output(
         self,
