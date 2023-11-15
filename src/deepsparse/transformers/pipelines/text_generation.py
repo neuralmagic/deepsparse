@@ -1106,10 +1106,10 @@ class TextGenerationPipeline(TransformersPipeline):
             if debug:
                 sessions = debug[0]
                 kv_cache_state = numpy.stack(
-                    session.cached_inputs for session in sessions
+                    [session.cached_inputs for session in sessions]
                 )
                 num_processed_tokens = numpy.stack(
-                    session.total_num_processed_tokens for session in sessions
+                    [session.total_num_processed_tokens for session in sessions]
                 )
 
                 yield [
