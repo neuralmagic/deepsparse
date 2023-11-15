@@ -17,6 +17,7 @@ Base Pipeline class for transformers inference pipeline
 """
 
 import logging
+import os
 import warnings
 from pathlib import Path
 from typing import Any, Dict, List, Mapping, Optional, Union
@@ -99,8 +100,7 @@ class TransformersPipeline(Pipeline, Bucketable):
         self.config = config
         self.tokenizer = tokenizer
 
-        self.config_path = None
-        self.tokenizer_config_path = None  # path to 'tokenizer.json'
+        self._deployment_path = None
         self.onnx_input_names = None
         self._delay_overwriting_inputs = (
             kwargs.pop("_delay_overwriting_inputs", None) or False
@@ -125,6 +125,7 @@ class TransformersPipeline(Pipeline, Bucketable):
         :return: file path to the processed ONNX file for the engine to compile
         """
         deployment_path, onnx_path = get_deployment_path(self.model_path)
+        self._deployment_path = deployment_path
 
         # temporarily set transformers logger to ERROR to avoid
         # printing misleading warnings
@@ -226,6 +227,34 @@ class TransformersPipeline(Pipeline, Bucketable):
         if len(valid_pipelines) == 0:
             return max(buckets, key=lambda bucket: bucket.sequence_length)
         return min(valid_pipelines, key=lambda bucket: bucket.sequence_length)
+
+    @property
+    def config_path(self) -> str:
+        """
+        :return: full path to config.json for this pipeline if it exists,
+            otherwise returns deployment directory path
+        """
+        config_path = os.path.join(self._deployment_path, "config.json")
+        if os.path.exists(config_path):
+            return config_path
+        else:
+            return self._deployment_path
+
+    @property
+    def tokenizer_config_path(self) -> str:
+        """
+        :return: full path to tokenizer.json for this pipeline if it exists,
+            otherwise returns deployment directory path
+        """
+        tokenizer_path = os.path.join(self._deployment_path, "tokenizer.json")
+        tokenizer_config_path = os.path.join(
+            self._deployment_path, "tokenizer_config.json"
+        )
+        if os.path.exists(tokenizer_path):
+            return tokenizer_path
+        elif os.path.exists(tokenizer_config_path):
+            return tokenizer_path
+        return self._deployment_path
 
 
 def pipeline(
