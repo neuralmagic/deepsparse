@@ -77,15 +77,16 @@ class TokenGenerator:
         :param logits: the logits from the model with shape (vocab_size,)
         :return: the sampled token
         """
-        if self.top_k:
-            logits = self.apply_top_k(logits)
-        if self.top_p:
-            logits = self.apply_top_p(logits)
-
         if self.deterministic:
             token = numpy.argmax(logits)
             self.tokens.append(token)
             return token
+
+        if self.top_k:
+            logits = self.apply_top_k(logits)
+
+        if self.top_p:
+            logits = self.apply_top_p(logits)
 
         if self.sampling_temperature != 1.0:
             logits /= self.sampling_temperature
