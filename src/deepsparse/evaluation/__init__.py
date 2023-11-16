@@ -14,3 +14,4 @@
 
 # flake8: noqa
 from .evaluator import *
+from .integrations import *

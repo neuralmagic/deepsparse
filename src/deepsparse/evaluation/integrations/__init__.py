@@ -28,3 +28,7 @@ def try_import_llm_evaluation_harness(raise_error=False):
                 "https://github.com/EleutherAI/lm-evaluation-harness"
             )
         return False
+
+
+if try_import_llm_evaluation_harness(raise_error=False):
+    from .llm_evaluation_harness import *
