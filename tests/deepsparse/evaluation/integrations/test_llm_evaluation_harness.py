@@ -46,8 +46,7 @@ def cleanup():
 )
 @pytest.mark.parametrize(
     "batch_size",
-    # [1, 3],
-    [3],
+     [1, 3],
 )
 class TestLLMEvaluationHarness:
     @pytest.mark.skipif(
