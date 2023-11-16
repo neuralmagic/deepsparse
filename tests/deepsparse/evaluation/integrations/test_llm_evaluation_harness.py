@@ -19,7 +19,7 @@ from src.deepsparse.evaluation.integrations import try_import_llm_evaluation_har
 
 
 @pytest.fixture(scope="session")
-def setup():
+def cleanup():
     yield
     try:
         shutil.rmtree(os.path.join(os.getcwd(), "tests/testdata"))
@@ -40,15 +40,13 @@ def setup():
     "datasets",
     [
         ["hellaswag"],
-        # ["hellaswag", "gsm8k"],
-        # "gsm8k",
-        # "arc_challenge",
-        # "lambada_standard", TODO: enable when lambada is fixed
+        ["hellaswag", "gsm8k"],
+        "gsm8k" "arc_challenge",
     ],
 )
 @pytest.mark.parametrize(
     "batch_size",
-    #[1, 3],
+    # [1, 3],
     [3],
 )
 class TestLLMEvaluationHarness:
@@ -57,7 +55,7 @@ class TestLLMEvaluationHarness:
         reason="llm_evaluation_harness not installed",
     )
     def test_integration_eval_onnx_matches_torch(
-        self, target_onnx, target_torch, datasets, batch_size, setup
+        self, target_onnx, target_torch, datasets, batch_size, cleanup
     ):
         from src.deepsparse.evaluation.integrations.llm_evaluation_harness import (
             integration_eval,
@@ -67,7 +65,6 @@ class TestLLMEvaluationHarness:
             target=target_torch,
             datasets=datasets,
             batch_size=batch_size,
-            target_args={},
             limit=5,
             no_cache=True,  # avoid saving files when running tests
         )
@@ -75,7 +72,6 @@ class TestLLMEvaluationHarness:
             target=target_onnx,
             datasets=datasets,
             batch_size=batch_size,
-            target_args={},
             limit=5,
             engine_type="onnxruntime",
             no_cache=True,  # avoid saving files when running tests
@@ -83,4 +79,4 @@ class TestLLMEvaluationHarness:
         out_onnx = out_onnx.raw["output"]
         out_torch = out_torch.raw["output"]
 
-        assert out_onnx['results'] == out_torch['results']
+        assert out_onnx["results"] == out_torch["results"]

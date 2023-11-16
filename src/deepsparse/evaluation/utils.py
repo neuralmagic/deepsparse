@@ -51,19 +51,19 @@ def get_save_path(
 # TODO: Make it more generic to support sparsified models.
 # TODO: Ideally import this functionality from SparseZoo.
 def text_generation_model_from_target(
-    target: str, engine_type: str, **kwargs
+    target: str,
+    engine_type: str,
 ) -> Union[Pipeline, AutoModelForCausalLM]:
     """
     :param target: The target path to initialize the
         text generation model from. This can be a local
         or remote path to the model or a sparsezoo stub
     :param engine_type: The engine type to initialize the model with.
-    :param kwargs: Additional kwargs to pass to the model initialization
     :return: The initialized model
     """
     if engine_type in [DEEPSPARSE_ENGINE, ORT_ENGINE]:
         return Pipeline.create(
-            task="text-generation", model_path=target, engine_type=engine_type, **kwargs
+            task="text-generation", model_path=target, engine_type=engine_type
         )
     try:
         # for now assume that if it's not a pipeline, it's a huggingface model

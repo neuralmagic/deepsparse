@@ -68,6 +68,12 @@ def set_generated_length(
         finish_reason = finish_reason_choices.LENGTH
     else:
         # if not provided, max tokens is based on max_new_tokens + prompt tokens
+        print(
+            max_new_tokens,
+            sequence_length,
+            prompt_sequence_length,
+            prompt_tokens_length,
+        )
         max_tokens = (
             min(max_new_tokens, sequence_length - prompt_sequence_length)
             + prompt_tokens_length
