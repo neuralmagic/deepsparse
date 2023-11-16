@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import logging
 from typing import Dict
 
 from deepsparse.transformers.utils.helpers import process_generation_config
@@ -38,6 +39,9 @@ from deepsparse.v2.text_generation import (
 from deepsparse.v2.utils import PipelineState
 
 
+_LOGGER = logging.getLogger(__name__)
+
+
 class TextGenerationPipeline(Pipeline):
     def __init__(
         self,
@@ -47,6 +51,7 @@ class TextGenerationPipeline(Pipeline):
         internal_kv_cache: bool = True,
         force_max_tokens: bool = False,
         generation_config=None,
+        continuous_batch_sizes: list = None,
         engine_kwargs: Dict = None,
     ):
 
@@ -134,21 +139,25 @@ class TextGenerationPipeline(Pipeline):
         compile_generated_tokens = CompileGeneratedTokens()
         join_output = JoinOutput(tokenizer=self.tokenizer)
 
-        
-        # TODO: Do we always want to use continuous batching by default, but allow
-        # the user to turn it off if needed?
-
-        # Temporary; use input param to turn this off
-        if not internal_kv_cache:
-            continuous_batching_scheduler = ContinuousBatchingScheduler.get_instance()
-            continuous_batching_scheduler.add_engine_operator(
-                single_engine_operator, [4]
-            )
-            continuous_batching_scheduler.add_engine_operator(
-                multi_engine_operator, [4]
-            )
-        else:
-            continuous_batching_scheduler = None
+        # TODO: do we want to support lists for different engines?
+        continuous_batching_scheduler = None
+        if continuous_batch_sizes:
+            if not internal_kv_cache:
+                continuous_batching_scheduler = (
+                    ContinuousBatchingScheduler.get_instance()
+                )
+                continuous_batching_scheduler.add_engine_operator(
+                    single_engine_operator, continuous_batch_sizes
+                )
+                continuous_batching_scheduler.add_engine_operator(
+                    multi_engine_operator, continuous_batch_sizes
+                )
+            else:
+                # Temporary
+                _LOGGER.warn(
+                    "internal kv_cache is currently not supported with continuous ",
+                    "batching",
+                )
 
         ops = {
             "process_input": process_inputs,
