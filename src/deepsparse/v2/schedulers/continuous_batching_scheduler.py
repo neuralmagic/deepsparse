@@ -163,7 +163,7 @@ class ContinuousBatchingScheduler(OperatorScheduler):
         for batch_size in batch_sizes:
             if batch_size == 1:
                 continue  # already added
-            operator_engines[batch_size] = operator_engines.create_engine(
+            operator_engines[batch_size] = engine_operator.create_engine(
                 batch_size=batch_size
             )
 

@@ -18,9 +18,13 @@ from concurrent.futures import Future
 from functools import partial
 from typing import Any, Callable, Dict, List, Union
 
-from deepsparse.v2.operators import Operator, EngineOperator
+from deepsparse.v2.operators import EngineOperator, Operator
 from deepsparse.v2.routers import Router
-from deepsparse.v2.schedulers import OperatorScheduler, SchedulerGroup, ContinuousBatchingScheduler
+from deepsparse.v2.schedulers import (
+    ContinuousBatchingScheduler,
+    OperatorScheduler,
+    SchedulerGroup,
+)
 from deepsparse.v2.utils import InferenceState, PipelineState
 
 
@@ -60,7 +64,7 @@ class Pipeline(Operator):
         self.pipeline_state = pipeline_state
         self._continuous_batching_scheduler = continuous_batching_scheduler
         self.validate()
-      
+
         self._scheduler_group = SchedulerGroup(self.schedulers)
 
     def _run_sequential(
@@ -70,13 +74,11 @@ class Pipeline(Operator):
         start: str,
         pipeline_state: PipelineState,
     ):
-        """
         if isinstance(self.ops[start], EngineOperator):
             func = self._continuous_batching_scheduler.submit
             inp = self.ops[start].input_schema(**inp)
         else:
-        """
-        func = self._scheduler_group.submit 
+            func = self._scheduler_group.submit
 
         return self._run_next_step(
             func=func,
@@ -103,14 +105,7 @@ class Pipeline(Operator):
 
         inf_list = [copy.deepcopy(inference_state) for x in range(len(batches))]
         step = [self.router.route[self.router.SPLIT_ROUTE] for x in range(len(batches))]
-        current_outputs = list(
-            map(
-                run_with_state,
-                batches,
-                inf_list,
-                step
-            )
-        )
+        current_outputs = list(map(run_with_state, batches, inf_list, step))
         while True:
             for i in range(len(batches)):
                 if isinstance(current_outputs[i], Future) and current_outputs[i].done():
@@ -132,7 +127,7 @@ class Pipeline(Operator):
                             start=next_step,
                         )
                     break
-        
+
             if not any(isinstance(x, Future) for x in current_outputs):
                 break
 

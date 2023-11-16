@@ -14,11 +14,13 @@
 
 import copy
 import os
-from typing import Any, List, Tuple, Optional
+from typing import Any, List, Optional, Tuple
 
+import numpy
 from pydantic import BaseModel, Field
-from deepsparse import Engine
 
+from deepsparse import Engine
+from deepsparse.utils import join_engine_outputs, model_to_path, split_engine_inputs
 from deepsparse.utils.onnx import (
     CACHE_INPUT_PREFIX,
     overwrite_onnx_model_inputs_for_kv_cache_models,
@@ -27,9 +29,8 @@ from deepsparse.v2.operators.engine_operator import (
     DEEPSPARSE_ENGINE,
     EngineOperator,
     EngineOperatorInputs,
-    EngineOperatorOutputs
+    EngineOperatorOutputs,
 )
-from deepsparse.utils import model_to_path, join_engine_outputs, split_engine_inputs
 
 
 __all__ = ["NLEngineOperator", "NLEngineInputs"]
@@ -40,11 +41,10 @@ class NLEngineInputs(BaseModel):
     kv_cache: Any = Field(description="kv_cache object")
     tokens: List = Field(description="tokens")
     in_generation: Any = Field(description="in_generation", default=None)
-    engine: Optional[Engine] = Field(
+    engine: Optional[Any] = Field(
         description="override the engine to run forward pass with",
         default=None,
     )
-
 
     @classmethod
     def join(cls, inputs: List["NLEngineInputs"]) -> "NLEngineInputs":
@@ -52,11 +52,16 @@ class NLEngineInputs(BaseModel):
         :param inputs: list of separate EngineOperatorInputs, batch size must be 1
         :return: list of inputs joined into a single input with a multi batch size
         """
+        all_engine_inputs = []
+        all_kv_cache = []
+        all_tokens = []
+        all_generation = []
 
-        all_engine_inputs = [engine_input.engine_inputs for engine_input in inputs]
-        all_kv_cache  = [engine_input.kv_cache for engine_input in inputs]
-        all_tokens  = [engine_input.tokens for engine_input in inputs]
-        all_generation  = [engine_input.in_generation for engine_input in inputs]
+        for engine_input in inputs:
+            all_engine_inputs.append(engine_input.engine_inputs)
+            all_kv_cache.append(engine_input.kv_cache)
+            all_tokens.append(engine_input.tokens)
+            all_generation.append(engine_input.in_generation)
 
         for engine_inputs in all_engine_inputs:
             if engine_inputs[0].shape[0] != 1:
@@ -64,8 +69,12 @@ class NLEngineInputs(BaseModel):
                     "join requires all inputs to have batch size 1, found input with "
                     f"batch size {engine_inputs[0].shape[0]}"
                 )
-
-        return cls(engine_inputs=all_engine_inputs, tokens=all_tokens, in_generation=all_generation, kv_cache=all_kv_cache)
+        return cls(
+            engine_inputs=all_engine_inputs,
+            tokens=all_tokens,
+            in_generation=all_generation,
+            kv_cache=all_kv_cache,
+        )
 
     class Config:
         arbitrary_types_allowed = True
@@ -75,7 +84,25 @@ class NLEngineOutputs(BaseModel):
     engine_outputs: Any = Field(description="engine_outputs")
     kv_cache: Any = Field(description="kv_cache object")
     tokens: List = Field(description="tokens")
-    in_generation: bool = Field(description="in_generation", default=None)
+    in_generation: Any = Field(description="in_generation", default=None)
+
+    def split(self) -> List["NLEngineOutputs"]:
+        """
+        :return: list of the current outputs split to a batch size of 1 each
+        """
+        split_outputs = [
+            numpy.expand_dims(self.engine_outputs[i], 0)
+            for i in range(len(self.engine_outputs))
+        ]
+        return [
+            self.__class__(
+                engine_outputs=split_outputs[i],
+                kv_cache=self.kv_cache[i],
+                tokens=self.tokens[i],
+                in_generation=self.in_generation[i],
+            )
+            for i in range(len(split_outputs))
+        ]
 
 
 class NLEngineOperator(EngineOperator):
@@ -134,37 +161,57 @@ class NLEngineOperator(EngineOperator):
         engine_input = inp.engine_inputs
         kv_cache = inp.kv_cache
 
-        inputs = self._add_kv_cache_to_input(engine_input, kv_cache)
-        if bool(kv_cache.engine_internal_cache):
+        if not isinstance(kv_cache, list):
+            kv_cache = [kv_cache]
+            engine_input = [engine_input]
+
+        inputs = list(map(self._add_kv_cache_to_input, engine_input, kv_cache))
+
+        if bool(kv_cache[0].engine_internal_cache):
             # conventionally, before dispatching
             # inputs to the engine, we validate them
             # if val_inp=True. However, in this case
             # we want to pass the empty kv cache inputs
             # (batch_size=0) to the engine. Therefore,
             # we skip the validation
+
+            # Internal kv_cache works for batch_size of 1 atm
             out = self.engine._eng_net.execute_list_out(
-                inputs, kv_cache.engine_internal_cache
+                inputs[0], kv_cache[0].engine_internal_cache
             )
         else:
             # run the engine without the LIB.kv_cache object
+            print(len(inputs))
+            inputs = join_engine_outputs(inputs, len(inputs))
+
             out = (
                 super()
-                .run(EngineOperatorInputs(engine_inputs=inputs), **kwargs)
+                .run(
+                    EngineOperatorInputs(engine_inputs=inputs, engine=inp.engine),
+                    **kwargs,
+                )
                 .get("engine_outputs")
             )
 
+        # logits should be stacked along batch dim, kv_cache_state should be a list of dim batch size
         logits, *kv_cache_state = out
-        self._update_kv_cache(
-            kv_cache_state=kv_cache_state,
-            input_ids_len=self.input_ids_length,
-            kv_cache=kv_cache,
-        )
+        kv_cache_state, _ = split_engine_inputs(kv_cache_state, 1)
+
+        if len(kv_cache_state) > 0:
+            for i in range(len(kv_cache)):
+                self._update_kv_cache(
+                    kv_cache_state=kv_cache_state[i], kv_cache=kv_cache[i]
+                )
+        else:
+            self._update_kv_cache(kv_cache=kv_cache[0])
 
         output = {
             "engine_outputs": logits,
             "kv_cache": kv_cache,
-            "tokens": inp.tokens,
-            "in_generation": inp.in_generation,
+            "tokens": [inp.tokens] if not isinstance(inp.tokens, list) else inp.tokens,
+            "in_generation": [inp.in_generation]
+            if not isinstance(inp.in_generation, list)
+            else inp.in_generation,
         }
         return output
 
@@ -177,9 +224,9 @@ class NLEngineOperator(EngineOperator):
         new_inp = [kv_cache_state[name] for name in self.engine.input_names]
         return new_inp
 
-    def _update_kv_cache(self, kv_cache_state, input_ids_len, kv_cache):
+    def _update_kv_cache(self, kv_cache, kv_cache_state=None):
         if bool(kv_cache.engine_internal_cache):
-            kv_cache.total_num_processed_tokens += input_ids_len
+            kv_cache.total_num_processed_tokens += self.input_ids_length
             return
 
         kv_cache_state = {
@@ -187,10 +234,7 @@ class NLEngineOperator(EngineOperator):
             for name, array in zip(self.onnx_input_names_cached, kv_cache_state)
         }
 
-        kv_cache.update(
-            state=kv_cache_state,
-            input_ids_len=input_ids_len,
-        )
+        kv_cache.update(state=kv_cache_state, input_ids_len=self.input_ids_length)
 
     @property
     def onnx_input_names_no_cache(self) -> List[str]:

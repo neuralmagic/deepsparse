@@ -13,14 +13,14 @@
 # limitations under the License.
 
 from copy import deepcopy
-from typing import Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 
 from pydantic import BaseModel, Field
 
 from deepsparse import Context as EngineContext
 from deepsparse import Engine, MultiModelEngine, Scheduler
 from deepsparse.benchmark import ORTEngine
-from deepsparse.utils import model_to_path, join_engine_outputs, split_engine_inputs
+from deepsparse.utils import join_engine_outputs, model_to_path, split_engine_inputs
 from deepsparse.v2.operators import Operator
 
 
@@ -34,7 +34,7 @@ __all__ = ["EngineOperator", "EngineOperatorInputs", "EngineOperatorOutputs"]
 
 class EngineOperatorInputs(BaseModel):
     engine_inputs: List = Field(description="engine_inputs")
-    engine: Optional[Engine] = Field(
+    engine: Optional[Any] = Field(
         description="override the engine to run forward pass with",
         default=None,
     )

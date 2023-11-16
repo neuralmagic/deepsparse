@@ -15,8 +15,8 @@
 from typing import Any
 
 from deepsparse.v2.operators import Operator
-from deepsparse.v2.utils import InferenceState
 from deepsparse.v2.text_generation.nl_engine_operator import NLEngineOutputs
+from deepsparse.v2.utils import InferenceState
 
 
 __all__ = ["CompilePromptLogits"]
