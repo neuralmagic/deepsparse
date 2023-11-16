@@ -6,6 +6,7 @@ ARG BRANCH
 
 FROM python:3.8.16-slim-bullseye@sha256:322e38e3056cf87280ad80be615a6282aae768090f30d43d99abe413e1dd081a AS base
 ARG VENV
+ARG BRANCH
 
 RUN set -Eeuxo \
     && apt-get update \
@@ -30,6 +31,8 @@ ENV PATH="${VENV}/bin:$PATH"
 ENV PIP_DEFAULT_TIMEOUT=200
 ARG VERSION
 ARG MODE=""
+ARG BRANCH
+
 RUN \
     if [ -n "$BRANCH" ] ; then \
       echo Installing from BRANCH && \
@@ -60,6 +63,7 @@ ENV PATH="${VENV}/bin:$PATH"
 ENV PIP_DEFAULT_TIMEOUT=200
 ARG VERSION
 ARG MODE=""
+ARG BRANCH
 RUN \
     if [ -n "$BRANCH" ] ; then \
       echo Installing from BRANCH && \
@@ -88,6 +92,8 @@ ENV PATH="${VENV}/bin:$PATH"
 ENV PIP_DEFAULT_TIMEOUT=200
 ARG VERSION
 ARG MODE
+ARG BRANCH
+
 RUN \
     if [ -n "$BRANCH" ] ; then \
       echo Installing from BRANCH with editable mode && \
@@ -117,5 +123,6 @@ ARG VENV
 COPY --from=build $VENV $VENV
 ENV PATH="${VENV}/bin:$PATH"
 HEALTHCHECK CMD python -c 'import deepsparse'
+RUN pip list | grep deepsparse
 CMD bash
 
