@@ -182,6 +182,3 @@ class EngineOperator(Operator):
 
         engine_outputs = self.engine(inp.engine_inputs)
         return {"engine_outputs": engine_outputs}
-
-    def override_model(*args, **kwargs):
-        raise NotImplementedError
