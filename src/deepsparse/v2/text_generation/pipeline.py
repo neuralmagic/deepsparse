@@ -53,7 +53,6 @@ class TextGenerationPipeline(Pipeline):
         pipeline_state = PipelineState()
         pipeline_state_vals = {}
 
-        # TODO: The code below will be replaced with a transformers set-up Operator.
         self.tokenizer = None
         model_path = self.setup_onnx_file_path(model_path, sequence_length)
         self.tokenizer.padding_side = "left"
