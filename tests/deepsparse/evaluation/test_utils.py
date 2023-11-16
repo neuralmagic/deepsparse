@@ -12,10 +12,27 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+
 from transformers import GPTNeoForCausalLM
 
 import pytest
-from src.deepsparse.evaluation.utils import text_generation_model_from_target
+from src.deepsparse.evaluation.utils import (
+    get_save_path,
+    text_generation_model_from_target,
+)
+
+
+def test_get_save_path_path_provided(tmpdir):
+    save_path = get_save_path(
+        type_serialization="json", save_path=tmpdir, default_file_name="dummy"
+    )
+    assert save_path == os.path.join(tmpdir, "dummy.json")
+
+
+def test_get_save_to_current_working_directory():
+    save_path = get_save_path(type_serialization="json", default_file_name="dummy")
+    assert save_path == os.path.join(os.getcwd(), "dummy.json")
 
 
 @pytest.fixture

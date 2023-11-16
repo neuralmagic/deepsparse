@@ -27,8 +27,8 @@ __all__ = [
     "Dataset",
     "EvalSample",
     "Evaluation",
-    "validate_result_structure",
-    "save_evaluation",
+    "Result",
+    "save_evaluations",
     "print_result",
 ]
 
@@ -39,10 +39,10 @@ class Metric(BaseModel):
 
 
 class Dataset(BaseModel):
-    type: str = Field(description="Type of dataset")
+    type: Optional[str] = Field(description="Type of dataset")
     name: str = Field(description="Name of the dataset")
-    config: str = Field(description="Configuration for the dataset")
-    split: str = Field(description="Split of the dataset")
+    config: Any = Field(description="Configuration for the dataset")
+    split: Optional[str] = Field(description="Split of the dataset")
 
 
 class EvalSample(BaseModel):
@@ -52,24 +52,26 @@ class EvalSample(BaseModel):
 
 class Evaluation(BaseModel):
     task: str = Field(
-        description="Name of the evaluation integration that the evaluation was performed on"
+        description="Name of the evaluation integration "
+        "that the evaluation was performed on"
     )
     dataset: Dataset = Field(description="Dataset that the evaluation was performed on")
     metrics: List[Metric] = Field(description="List of metrics for the evaluation")
-    samples: List[EvalSample] = Field(description="List of samples for the evaluation")
-
-
-def validate_result_structure(result: Any) -> bool:
-    return isinstance(result, list) and all(
-        isinstance(result_, Evaluation) for result_ in result
+    samples: Optional[List[EvalSample]] = Field(
+        description="List of samples for the evaluation"
     )
 
 
-def print_result(results: List[Evaluation]):
-    print(save_evaluation(results, save_format="json", save_path=None))
+class Result(BaseModel):
+    formatted: List[Evaluation]
+    raw: Any
 
 
-def save_evaluation(
+def print_result(results_formatted: List[Evaluation]):
+    print(save_evaluations(results_formatted, save_format="json", save_path=None))
+
+
+def save_evaluations(
     evaluations: List[Evaluation], save_format: str = "json", save_path: str = None
 ):
     """

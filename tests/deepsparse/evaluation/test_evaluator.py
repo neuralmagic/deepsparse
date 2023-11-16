@@ -12,24 +12,27 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import os
+import shutil
 
 import numpy as np
 from click.testing import CliRunner
 
 import pytest
-from src.deepsparse.evaluation.evaluator import main
+from src.deepsparse.evaluation.evaluator import evaluate, main
+from src.deepsparse.evaluation.integrations import try_import_llm_evaluation_harness
 from src.deepsparse.evaluation.registry import EvaluationRegistry
-from src.deepsparse.evaluation.results import Dataset, EvalSample, Evaluation, Metric
-
-
-@EvaluationRegistry.register()
-def return_zero_integration(*args, **kwargs):
-    return True
+from src.deepsparse.evaluation.results import (
+    Dataset,
+    EvalSample,
+    Evaluation,
+    Metric,
+    Result,
+)
 
 
 @EvaluationRegistry.register()
 def dummy_integration(*args, **kwargs):
-    return [
+    result_formatted = [
         Evaluation(
             task="task_1",
             dataset=Dataset(
@@ -39,6 +42,9 @@ def dummy_integration(*args, **kwargs):
             samples=[EvalSample(input=np.array([[5]]), output=5)],
         ),
     ]
+    result_raw = "dummy_result"
+
+    return Result(formatted=result_formatted, raw=result_raw)
 
 
 @pytest.fixture()
@@ -48,7 +54,7 @@ def target():
 
 @pytest.fixture()
 def datasets():
-    return "hellaswag"
+    return ["hellaswag", "gsm8k"]
 
 
 @pytest.fixture()
@@ -62,81 +68,30 @@ def dummy_integration_name():
 
 
 @pytest.fixture()
-def return_zero_integration_name():
-    return "return_zero_integration"
-
-
-@pytest.fixture()
 def unknown_integration_name():
     return "unknown_integration"
 
 
-def test_evaluation_unknown_integration(target, datasets, unknown_integration_name):
-    # When attempting to load an unknown integration, should raise a KeyError
-    # (unable to find the integration in the registry)
-    runner = CliRunner()
-    out = runner.invoke(
-        main,
-        [
-            "--target",
-            target,
-            "--datasets",
-            datasets,
-            "--integration",
-            unknown_integration_name,
-        ],
+def test_evaluate_unknown_integration(target, datasets, unknown_integration_name):
+    with pytest.raises(KeyError):
+        evaluate(
+            target=target,
+            datasets=datasets,
+            integration=unknown_integration_name,
+        )
+
+
+def test_evaluate(target, datasets, dummy_integration_name):
+    result = evaluate(
+        target=target,
+        datasets=datasets,
+        integration=dummy_integration_name,
     )
-    assert isinstance(out.exception, KeyError)
-
-
-def test_evaluation_dummy_integration_wrong_structure(
-    target, datasets, return_zero_integration_name
-):
-    # Dummy integration returns a boolean, but the evaluation script
-    # expects a List[Evaluation] and thus should raise a ValueError
-    runner = CliRunner()
-    out = runner.invoke(
-        main,
-        [
-            "--target",
-            target,
-            "--datasets",
-            datasets,
-            "--integration",
-        ],
-    )
-    assert isinstance(out.exception, ValueError)
-
-
-def test_evaluation_dummy_integration_arbitrary_structure(
-    target, datasets, return_zero_integration_name
-):
-    # Dummy integration returns a boolean and the evaluation script
-    # now allows for that, so should not raise a ValueError
-    runner = CliRunner()
-    out = runner.invoke(
-        main,
-        [
-            "--target",
-            target,
-            "--datasets",
-            datasets,
-            "--integration",
-            return_zero_integration_name,
-            "--enforce-result-structure",
-            False,
-        ],
-        standalone_mode=False,
-    )
-    assert isinstance(out.return_value, True)
+    assert isinstance(result, Result)
 
 
 @pytest.mark.parametrize("type_serialization", ["json", "yaml"])
-def test_evaluation_serialize_result(
-    tmp_path, target, datasets, dummy_integration_name, type_serialization
-):
-    # Dummy integration returns a boolean and the evaluation script
-    # now allows for that, so should not raise a ValueError
+def test_cli(tmp_path, target, datasets, dummy_integration_name, type_serialization):
     runner = CliRunner()
     out = runner.invoke(
         main,
@@ -155,25 +110,40 @@ def test_evaluation_serialize_result(
         standalone_mode=False,
     )
     assert isinstance(out.output, str)
+    # 532 is the length of the json/yaml string
     assert len(out.output) == 532
+    # makes sure that the result file is created
     assert os.path.isfile(
         os.path.join(os.path.dirname(str(tmp_path)), f"result.{type_serialization}")
     )
 
 
+@pytest.fixture(scope="function")
+def delete_created_files():
+    yield
+    try:
+        shutil.rmtree(os.path.join(os.getcwd(), "tests/testdata"))
+    except Exception:
+        pass
+
+
+@pytest.mark.skipif(
+    not try_import_llm_evaluation_harness(raise_error=False),
+    reason="llm_evaluation_harness not installed",
+)
 def test_evaluation_llm_evaluation_harness_integration_name(
-    target, datasets, llm_evaluation_harness_integration_name
+    target, datasets, llm_evaluation_harness_integration_name, delete_created_files
 ):
-    runner = CliRunner()
-    out = runner.invoke(
-        main,
-        [
-            "--target",
-            target,
-            "--datasets",
-            datasets,
-            "--integration",
-            llm_evaluation_harness_integration_name,
-        ],
+    # import to trigger the registration of the
+    # evaluation function for `llm_evaluation_harness`
+    from src.deepsparse.evaluation.integrations.llm_evaluation_harness import (  # noqa F401 E501
+        integration_eval,
     )
-    print(out)
+
+    assert evaluate(
+        target=target,
+        datasets=datasets,
+        limit=2,
+        no_cache=True,
+        integration="llm_evaluation_harness",
+    )

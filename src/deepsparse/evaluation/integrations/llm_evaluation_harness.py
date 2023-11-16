@@ -25,37 +25,24 @@ import numpy
 from pydantic import BaseModel, Field
 
 import torch
+from lm_eval import base, evaluator, tasks, utils
 from src.deepsparse import DEEPSPARSE_ENGINE, ORT_ENGINE, Pipeline
 from src.deepsparse.evaluation.registry import EvaluationRegistry
+from src.deepsparse.evaluation.results import Dataset, Evaluation, Metric, Result
 from src.deepsparse.evaluation.utils import text_generation_model_from_target
 
 
 _LOGGER = logging.getLogger(__name__)
 
 
-# check lm-evaluation-harness installation
-try:
-    from lm_eval import base, evaluator, tasks, utils
-
-    _lm_eval_import_error = None
-except Exception as _lm_eval_import_err:
-    _lm_eval_import_error = _lm_eval_import_err
-    raise ValueError(
-        f"{_lm_eval_import_error}. Unable to import lm_eval. "
-        f"To install the dependency refer to the appropriate github repository: "
-        f"https://github.com/EleutherAI/lm-evaluation-harness"
-    )
-
-
-@EvaluationRegistry.registry(name="lm-evaluation-harness")
+@EvaluationRegistry.register(name=["llm_evaluation_harness", "llm-evaluation-harness"])
 def integration_eval(
     target: str,
-    datasets: Union[List, str],
+    datasets: Union[List[str], str],
     batch_size: int,
-    target_args: Dict[str, Any],
     engine_type: Optional[str] = None,
     **kwargs,
-) -> Dict[str, Any]:
+) -> Result:
     """
     Reimplementation of:
     https://github.com/EleutherAI/lm-evaluation-harness/blob/master/main.py
@@ -64,7 +51,6 @@ def integration_eval(
     :param target: the model name
     :param datasets: the datasets to evaluate on
     :param batch_size: the batch size to use for evaluation
-    :param target_args: optional arguments to alter the behavior of the target
     :param engine_type: the engine type to use for evaluation
     :param kwargs: additional arguments to alter the behavior of the evaluation
 
@@ -73,9 +59,9 @@ def integration_eval(
     # [START]
     # The code that sets up the interface between deepsparse and llm_evaluation_harness
     if engine_type in [DEEPSPARSE_ENGINE, ORT_ENGINE]:
-        model = DeepSparseLM(target, batch_size, **target_args)
+        model = DeepSparseLM(target, batch_size, **kwargs)
     else:
-        model = text_generation_model_from_target(target, engine_type, **target_args)
+        model = text_generation_model_from_target(target, engine_type, **kwargs)
 
     datasets = (",").join(datasets) if isinstance(datasets, list) else datasets
     # [END]
@@ -109,20 +95,41 @@ def integration_eval(
         **kwargs,
     )
 
-    results = evaluator.simple_evaluate(**evaluator_input.dict())
+    results_raw = evaluator.simple_evaluate(**evaluator_input.dict())
 
-    batch_sizes = ",".join(map(str, results["config"]["batch_sizes"]))
-
-    _LOGGER.info(
-        f"{model} ({evaluator_input.model_args}), "
-        f"limit: {evaluator_input.limit}, "
-        f"num_fewshot: {evaluator_input.num_fewshot}, "
-        f"batch_size: {batch_size}{f' ({batch_sizes})' if batch_sizes else ''}"
+    results = Result(
+        raw=dict(output=results_raw, input=evaluator_input),
+        formatted=format_raw_results(results_raw),
     )
-    _LOGGER.info(evaluator.make_table(results))
-    # [END]
 
     return results
+
+
+def format_raw_results(results: Dict[str, Any]) -> List[Evaluation]:
+    """
+    Format the raw results from llm_evaluation_harness into a list of
+    Evaluation objects.
+
+    :param results: the raw results from llm_evaluation_harness
+    :return: the formatted results as a list of Evaluation objects
+    """
+    formatted_results = []
+    for dataset_name, dataset_result in results["results"].items():
+        metrics = []
+        for metric_name, metric_value in dataset_result.items():
+            metric = Metric(name=metric_name, value=metric_value)
+            metrics.append(metric)
+        dataset = Dataset(
+            type=None, name=dataset_name, config=results["config"], split=None
+        )
+        evaluation = Evaluation(
+            task="llm_evaluation_harness",
+            dataset=dataset,
+            metrics=metrics,
+            samples=None,
+        )
+        formatted_results.append(evaluation)
+    return formatted_results
 
 
 class EvaluatorInputSchema(BaseModel):

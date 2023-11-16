@@ -35,25 +35,18 @@ Options:
     -s SAVE_PATH, --save_path SAVE_PATH
                         The path to save the evaluation results.
                         By default the results will be saved in the
-                        current directory under the name 'result.[extension]'. 
+                        current directory under the name 'result.[extension]'.
     -t TYPE_SERIALIZATION, --type_serialization TYPE_SERIALIZATION
                         The serialization type to use save the evaluation results.
-                        The default is json               
+                        The default is json
     -b BATCH_SIZE, --batch_size BATCH_SIZE
                         The batch size to use for the evaluation. Must be greater than 0
-    -m METRICS, --metrics METRICS
+    -metrics METRICS, --metrics METRICS
                         The name of the metrics to evaluate on. Can be a string for a single metric
                         or a list of strings for multiple metrics.
     -splits SPLITS, --splits SPLITS
                         The name of the splits to evaluate on. Can be a string for a single split
                         or a list of strings for multiple splits.
-    --enforce_result_structure --enforce-result-structure
-                        Specifies whether to unify all the
-                        results into the predefined Evaluation structure. If True, the
-                        results will be returned as a list of Evaluation objects.
-                        Otherwise, the result will preserve the original result structure
-                        from the evaluation integration.
-    -h, --help          Show this help message and exit
 
 #########
 EXAMPLES
@@ -61,24 +54,19 @@ EXAMPLES
 
 ##########
 Example command for evaluating a quantized MPT model from SparseZoo using the Deepsparse Engine.
-The evaluation will be run using `lm-evaluation-harness` on `hellaswag` dataset:
+The evaluation will be run using `lm-evaluation-harness` on `hellaswag` and `gsm8k` datasets:
 deepsparse.eval zoo:mpt-7b-mpt_pretrain-base_quantized \
-                --datasets hellaswag \
+                --datasets hellaswag, gsm8k \
                 --integration lm-evaluation-harness \
 
 """  # noqa: E501
 import logging
-from typing import Any, List, Optional, Union
+from typing import List, Union
 
 import click
 
 from src.deepsparse.evaluation.registry import EvaluationRegistry
-from src.deepsparse.evaluation.results import (
-    Evaluation,
-    print_result,
-    save_evaluation,
-    validate_result_structure,
-)
+from src.deepsparse.evaluation.results import Result, print_result, save_evaluations
 from src.deepsparse.evaluation.utils import get_save_path
 from src.deepsparse.pipeline import DEEPSPARSE_ENGINE, ORT_ENGINE, TORCHSCRIPT_ENGINE
 
@@ -126,7 +114,9 @@ _LOGGER = logging.getLogger(__name__)
     type=click.UNPROCESSED,
     default=None,
     help="The path to save the evaluation results. The results will "
-    "be saved under the name 'result.yaml`/'result.json' depending on the serialization type. If argument is not provided, the results will be saved in the current directory",
+    "be saved under the name 'result.yaml`/'result.json' depending on "
+    "the serialization type. If argument is not provided, the results "
+    "will be saved in the current directory",
 )
 @click.option(
     "-t",
@@ -135,6 +125,13 @@ _LOGGER = logging.getLogger(__name__)
     default="json",
     help="The serialization type to use save the evaluation results. "
     "The default is json",
+)
+@click.option(
+    "-b",
+    "--batch_size",
+    type=int,
+    default=1,
+    help="The batch size to use for the evaluation. Must be greater than 0",
 )
 @click.option(
     "-splits",
@@ -146,7 +143,7 @@ _LOGGER = logging.getLogger(__name__)
     "or a list of strings for multiple splits.",
 )
 @click.option(
-    "-m",
+    "-metrics",
     "--metrics",
     type=Union[List[str], str, None],
     default=None,
@@ -154,32 +151,17 @@ _LOGGER = logging.getLogger(__name__)
     "Can be a string for a single metric "
     "or a list of strings for multiple metrics.",
 )
-@click.option(
-    "--enforce-result-structure",
-    "--enforce_result_structure",
-    default=True,
-    help="Specifies whether to unify all the results "
-    "into the predefined Evaluation structure. "
-    "If True, the results will be returned as a "
-    "list of Evaluation objects. Otherwise, the "
-    "result will preserve the original result "
-    "structure from the evaluation integration.",
-)
 def main(
-    target: str,
-    datasets: Union[str, List[str]],
-    integration: str,
-    engine_type: Union[
-        DEEPSPARSE_ENGINE, ORT_ENGINE, TORCHSCRIPT_ENGINE, None
-    ] = DEEPSPARSE_ENGINE,
-    save_path: str = "result",
-    type_serialization: str = "json",
-    batch_size: int = 1,
-    splits: Union[List[str], str, None] = None,
-    metrics: Union[List[str], str, None] = None,
-    enforce_result_structure: bool = True,
-    **kwargs,
-) -> Union[List[Evaluation], Any]:
+    target,
+    datasets,
+    integration,
+    engine_type,
+    save_path,
+    type_serialization,
+    batch_size,
+    splits,
+    metrics,
+):
 
     _LOGGER.info(f"Target to evaluate: {target}")
     if engine_type:
@@ -187,44 +169,30 @@ def main(
     else:
         _LOGGER.info(
             "No engine type specified. The target "
-            "will be evaluated using the default framework"
+            "will be evaluated using the native framework"
         )
-    _LOGGER.info(f"Datasets to evaluate on: {datasets}")
+
     _LOGGER.info(
+        f"Datasets to evaluate on: {datasets}\n"
         f"Batch size: {batch_size}\n"
         f"Splits to evaluate on: {splits}\n"
         f"Metrics to evaluate on: {metrics}"
     )
 
-    eval_integration = EvaluationRegistry.load_from_registry(integration)
-
-    _LOGGER.info(
-        f"The following evaluation integration has "
-        f"been successfully setup: {eval_integration.__name__}"
-    )
-
-    result = eval_integration(
+    result: Result = evaluate(
         target=target,
         datasets=datasets,
+        integration=integration,
         engine_type=engine_type,
         batch_size=batch_size,
         splits=splits,
         metrics=metrics,
-        original_result_structure=enforce_result_structure,
-        **kwargs,
     )
 
-    if not enforce_result_structure:
-        _LOGGER.info(f"Evaluation done. Results:\n{result}")
-        return result
+    result_formatted = result.formatted
 
-    if not validate_result_structure(result):
-        raise ValueError(
-            "The evaluation integration must return a list of Evaluation objects "
-            "when enforce_result_structure is True."
-        )
+    _LOGGER.info(f"Evaluation done. Results:\n{print_result(result_formatted)}")
 
-    _LOGGER.info(f"Evaluation done. Results:\n{print_result(result)}")
     save_path = get_save_path(
         save_path=save_path,
         type_serialization=type_serialization,
@@ -232,11 +200,36 @@ def main(
     )
     if save_path:
         _LOGGER.info(f"Saving the evaluation results to {save_path}")
-        save_evaluation(
-            evaluations=result, save_path=save_path, save_format=type_serialization
+        save_evaluations(
+            evaluations=result_formatted,
+            save_path=save_path,
+            save_format=type_serialization,
         )
 
-    return result
+
+def evaluate(
+    target: str,
+    datasets: Union[str, List[str]],
+    integration: str,
+    engine_type: Union[
+        DEEPSPARSE_ENGINE, ORT_ENGINE, TORCHSCRIPT_ENGINE, None
+    ] = DEEPSPARSE_ENGINE,
+    batch_size: int = 1,
+    splits: Union[List[str], str, None] = None,
+    metrics: Union[List[str], str, None] = None,
+    **kwargs,
+) -> Result:
+
+    eval_integration = EvaluationRegistry.load_from_registry(integration)
+    return eval_integration(
+        target=target,
+        datasets=datasets,
+        engine_type=engine_type,
+        batch_size=batch_size,
+        splits=splits,
+        metrics=metrics,
+        **kwargs,
+    )
 
 
 if __name__ == "__main__":

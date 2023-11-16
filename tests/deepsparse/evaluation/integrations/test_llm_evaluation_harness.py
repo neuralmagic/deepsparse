@@ -15,17 +15,7 @@ import os
 import shutil
 
 import pytest
-from src.deepsparse.evaluation.integrations.llm_evaluation_harness import (
-    integration_eval,
-)
-
-
-try:
-    import lm_eval  # noqa F401
-
-    lm_eval_not_installed = False
-except Exception:
-    lm_eval_not_installed = True
+from src.deepsparse.evaluation.integrations import try_import_llm_evaluation_harness
 
 
 @pytest.fixture(scope="session")
@@ -61,17 +51,23 @@ def setup():
     [1, 3],
 )
 class TestLLMEvaluationHarness:
-    @pytest.mark.skipif(lm_eval_not_installed, reason="Requires lm_eval installed")
+    @pytest.mark.skipif(
+        not try_import_llm_evaluation_harness(raise_error=False),
+        reason="llm_evaluation_harness not installed",
+    )
     def test_integration_eval_onnx_matches_torch(
         self, target_onnx, target_torch, datasets, batch_size, setup
     ):
+        from src.deepsparse.evaluation.integrations.llm_evaluation_harness import (
+            integration_eval,
+        )
+
         out_torch = integration_eval(
             target=target_torch,
             datasets=datasets,
             batch_size=batch_size,
             target_args={},
             limit=5,
-            engine_type="torch",
             no_cache=True,  # avoid saving files when running tests
         )
         out_onnx = integration_eval(
@@ -83,6 +79,9 @@ class TestLLMEvaluationHarness:
             engine_type="onnxruntime",
             no_cache=True,  # avoid saving files when running tests
         )
+        out_onnx = out_onnx.raw["output"]
+        out_torch = out_torch.raw["output"]
+
         datasets = datasets if isinstance(datasets, list) else [datasets]
         for dataset in datasets:
             for key, value in out_torch["results"][dataset].items():

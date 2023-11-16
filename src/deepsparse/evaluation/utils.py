@@ -28,14 +28,28 @@ def get_save_path(
     save_path: Optional[str] = None,
     default_file_name: str = "results",
 ) -> str:
+    """
+    Get the save path for the results file.
+
+    :param type_serialization: The type of serialization
+        to use for the results file.
+    :param save_path: The path to save the results file to.
+        If None, will save to the current directory.
+    :param default_file_name: The default file name to use
+        for the results file.
+    :return: The save path for the results file.
+    """
     file_name = default_file_name + "." + type_serialization
     if save_path is None:
-        base_path = os.path.dirname(os.path.realpath(__file__))
-        return os.path.join(base_path, file_name)
+        base_path = os.getcwd()
     else:
-        return os.path.join(save_path, file_name)
+        base_path = save_path
+
+    return os.path.join(base_path, file_name)
 
 
+# TODO: Make it more generic to support sparsified models.
+# TODO: Ideally import this functionality from SparseZoo.
 def text_generation_model_from_target(
     target: str, engine_type: str, **kwargs
 ) -> Union[Pipeline, AutoModelForCausalLM]:
@@ -51,7 +65,8 @@ def text_generation_model_from_target(
         return Pipeline.create(
             task="text-generation", model_path=target, engine_type=engine_type, **kwargs
         )
-    elif engine_type == "torch":
-        return AutoModelForCausalLM.from_pretrained(target, **kwargs)
-    else:
+    try:
+        # for now assume that if it's not a pipeline, it's a huggingface model
+        return AutoModelForCausalLM.from_pretrained(target)
+    except NotImplementedError as e:  # noqa: F841
         raise NotImplementedError(f"Unsupported engine type: {engine_type}")
