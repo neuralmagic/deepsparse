@@ -31,6 +31,23 @@ from deepsparse.v2.utils import InferenceState, PipelineState
 __all__ = ["Pipeline"]
 
 
+class SubGraph:
+    def __init__(self, step, inf):
+        self.step = step
+        self.inf = inf
+        self.output = None
+
+    def update_next_step(self):
+        if isinstance(self.output, tuple):
+            state_update = self.output[-1]
+            operator_output = self.output[0]
+            self.inf.update_state(state_update)
+        else:
+            operator_output = self.output
+
+        return operator_output
+
+
 class Pipeline(Operator):
     """
     Pipeline accepts a series of operators, schedulers, and a router. Calling a pipeline
@@ -67,25 +84,23 @@ class Pipeline(Operator):
 
         self._scheduler_group = SchedulerGroup(self.schedulers)
 
-    def _run_sequential(
+    def _run_next(
         self,
         inp: Any,
         inference_state: InferenceState,
-        start: str,
-        pipeline_state: PipelineState,
+        next_step: str,
     ):
-        if isinstance(self.ops[start], EngineOperator):
+        if isinstance(self.ops[next_step], EngineOperator):
             func = self._continuous_batching_scheduler.submit
-            inp = self.ops[start].input_schema(**inp)
+            inp = self.ops[next_step].input_schema(**inp)
         else:
             func = self._scheduler_group.submit
 
-        return self._run_next_step(
+        return self._run_func(
             func=func,
-            operator=self.ops[start],
-            next_step=start,
-            input=inp,
-            pipeline_state=pipeline_state,
+            operator=self.ops[next_step],
+            inp=inp,
+            pipeline_state=self.pipeline_state,
             inference_state=inference_state,
         )
 
@@ -98,57 +113,68 @@ class Pipeline(Operator):
         """
 
         batches, orig_batch_size = self.expand_inputs(inp, 1)
-        run_with_state = partial(
-            self._run_sequential,
-            pipeline_state=self.pipeline_state,
-        )
 
-        inf_list = [copy.deepcopy(inference_state) for x in range(len(batches))]
-        step = [self.router.route[self.router.SPLIT_ROUTE] for x in range(len(batches))]
-        current_outputs = list(map(run_with_state, batches, inf_list, step))
+        sub_graphs = [
+            SubGraph(
+                inf=copy.deepcopy(inference_state),
+                step=self.router.route[self.router.SPLIT_ROUTE],
+            )
+            for i in range(len(batches))
+        ]
+
+        for i in range(len(sub_graphs)):
+            sub_graphs[i].output = self._run_next(
+                batches[i], sub_graphs[i].inf, sub_graphs[i].step
+            )
+
         while True:
-            for i in range(len(batches)):
-                if isinstance(current_outputs[i], Future) and current_outputs[i].done():
-                    operator_output = current_outputs[i].result()
+            for i in range(len(sub_graphs)):
+                current_subgraph = sub_graphs[i]
 
-                    if isinstance(operator_output, tuple):
-                        state_update = operator_output[-1]
-                        operator_output = operator_output[0]
-                        inf_list[i].update_state(state_update)
+                if (
+                    isinstance(current_subgraph.output, Future)
+                    and current_subgraph.output.done()
+                ):
+                    operator_output = current_subgraph.output.result()
+                    current_subgraph.output = operator_output
 
-                    next_step = self.router.next(step[i], self.ops, operator_output)
-                    step[i] = next_step
+                    operator_output = current_subgraph.update_next_step()
+
+                    next_step = self.router.next(
+                        current_subgraph.step, self.ops, operator_output
+                    )
+                    current_subgraph.step = next_step
+
                     if next_step == self.router.JOIN_ROUTE:
-                        current_outputs[i] = operator_output
+                        current_subgraph.output = operator_output
                     else:
-                        current_outputs[i] = run_with_state(
+                        current_subgraph.output = self._run_next(
                             inp=operator_output,
-                            inference_state=inf_list[i],
-                            start=next_step,
+                            inference_state=current_subgraph.inf,
+                            next_step=next_step,
                         )
                     break
 
-            if not any(isinstance(x, Future) for x in current_outputs):
+            if not any(isinstance(x.output, Future) for x in sub_graphs):
                 break
 
-        return self.condense_inputs(current_outputs)
+        return self.condense_inputs([x.output for x in sub_graphs])
 
-    def _run_next_step(
+    def _run_func(
         self,
         *args,
         func: Callable,
-        next_step: Union[str, int],
-        input: Any = None,
+        inp: Any = None,
         **kwargs,
     ):
         """
         Generic function to run a given func.
         """
-        if input:
+        if inp:
             operator_output = (
-                func(*args, **kwargs, **input)
-                if isinstance(input, dict)
-                else func(input, *args, **kwargs)
+                func(*args, **kwargs, **inp)
+                if isinstance(inp, dict)
+                else func(inp, *args, **kwargs)
             )
         else:
             operator_output = func(*args, **kwargs)
@@ -158,7 +184,6 @@ class Pipeline(Operator):
         self,
         *args,
         inference_state: InferenceState,
-        pipeline_state: PipelineState,
         **kwargs,
     ):
         """
@@ -171,31 +196,34 @@ class Pipeline(Operator):
         """
         next_step = self.router.START_ROUTE
         operator_output = None
-
         while next_step != self.router.END_ROUTE:
             # NOTE: split_route should only appear after the start route node
             if next_step == self.router.SPLIT_ROUTE:
+                if operator_output is None:
+                    raise ValueError(
+                        f"{self.router.SPLIT_ROUTE} should appear after "
+                        f"{self.ROUTER.START_ROUTE}"
+                    )
+
                 operator_output = self._apply_split(operator_output, inference_state)
                 next_step = self.router.route[self.router.JOIN_ROUTE]
+                if next_step == self.router.END_ROUTE:
+                    return operator_output
 
             if next_step == self.router.START_ROUTE:
-                outputs = self._run_next_step(
+                outputs = self._run_func(
                     *args,
-                    next_step=next_step,
                     func=self._scheduler_group.submit,
-                    inference_state=inference_state,
                     operator=self.ops[next_step],
-                    pipeline_state=pipeline_state,
+                    inference_state=inference_state,
+                    pipeline_state=self.pipeline_state,
                     **kwargs,
                 )
             else:
-                outputs = self._run_next_step(
-                    func=self._scheduler_group.submit,
-                    input=operator_output,
+                outputs = self._run_next(
+                    inp=operator_output,
                     next_step=next_step,
                     inference_state=inference_state,
-                    operator=self.ops[next_step],
-                    pipeline_state=pipeline_state,
                 )
 
             operator_output = outputs.result()
@@ -221,12 +249,8 @@ class Pipeline(Operator):
         else:
             inference_state = InferenceState()
             inference_state.create_state({})
-
-        if "pipeline_state" in kwargs:
-            self.pipeline_state = kwargs.get("pipeline_state")
-
+            
         kwargs["inference_state"] = inference_state
-        kwargs["pipeline_state"] = self.pipeline_state
 
         return self.run(*args, **kwargs)
 

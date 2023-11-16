@@ -19,8 +19,7 @@ from typing import Any, List, Optional, Tuple
 import numpy
 from pydantic import BaseModel, Field
 
-from deepsparse import Engine
-from deepsparse.utils import join_engine_outputs, model_to_path, split_engine_inputs
+from deepsparse.utils import join_engine_outputs, split_engine_inputs
 from deepsparse.utils.onnx import (
     CACHE_INPUT_PREFIX,
     overwrite_onnx_model_inputs_for_kv_cache_models,
@@ -29,7 +28,6 @@ from deepsparse.v2.operators.engine_operator import (
     DEEPSPARSE_ENGINE,
     EngineOperator,
     EngineOperatorInputs,
-    EngineOperatorOutputs,
 )
 
 
@@ -193,7 +191,8 @@ class NLEngineOperator(EngineOperator):
                 .get("engine_outputs")
             )
 
-        # logits should be stacked along batch dim, kv_cache_state should be a list of dim batch size
+        # logits should be stacked along batch dim
+        # kv_cache_state should be a list of dim batch size
         logits, *kv_cache_state = out
         kv_cache_state, _ = split_engine_inputs(kv_cache_state, 1)
 
@@ -203,6 +202,7 @@ class NLEngineOperator(EngineOperator):
                     kv_cache_state=kv_cache_state[i], kv_cache=kv_cache[i]
                 )
         else:
+            # internal kv cache case
             self._update_kv_cache(kv_cache=kv_cache[0])
 
         output = {

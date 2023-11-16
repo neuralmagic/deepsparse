@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Any
-
 from deepsparse.v2.operators import Operator
 from deepsparse.v2.text_generation.nl_engine_operator import NLEngineOutputs
 from deepsparse.v2.utils import InferenceState
