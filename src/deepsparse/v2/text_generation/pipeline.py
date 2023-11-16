@@ -136,8 +136,8 @@ class TextGenerationPipeline(Pipeline):
         join_output = JoinOutput(tokenizer=self.tokenizer)
 
         continuous_batching_scheduler = ContinuousBatchingScheduler.get_instance()
-        continuous_batching_scheduler.add_engine_operator(single_engine_operator, [1])
-        continuous_batching_scheduler.add_engine_operator(multi_engine_operator, [2, 4])
+        continuous_batching_scheduler.add_engine_operator(single_engine_operator, [4])
+        continuous_batching_scheduler.add_engine_operator(multi_engine_operator, [4])
 
         ops = {
             "process_input": process_inputs,

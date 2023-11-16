@@ -14,7 +14,8 @@
 
 import copy
 import os
-from typing import Any, List, Optional, Tuple
+from pathlib import Path
+from typing import Any, List, Optional, Tuple, Union
 
 import numpy
 from pydantic import BaseModel, Field
@@ -123,17 +124,15 @@ class NLEngineOperator(EngineOperator):
         **kwargs,
     ):
 
+        self.sequence_length = sequence_length
+        self.input_ids_length = input_ids_length
         self.kv_cache_data_type = None
+        self.model_path = kwargs.get("model_path")
         (
             onnx_file_path,
             output_indices_to_be_cached,
             kv_cache_data_type,
-        ) = overwrite_onnx_model_inputs_for_kv_cache_models(
-            onnx_file_path=kwargs.get("model_path"),
-            batch_size=kwargs.get("batch_size", 1),
-            sequence_length=sequence_length,
-            input_ids_length=input_ids_length,
-        )
+        ) = self.override_model(self.model_path, batch_size=1)
 
         engine_kwargs = kwargs.get("engine_kwargs", {})
         if kwargs.get("engine_type", DEEPSPARSE_ENGINE) == DEEPSPARSE_ENGINE:
@@ -153,7 +152,22 @@ class NLEngineOperator(EngineOperator):
 
         super().__init__(**kwargs)
 
-        self.input_ids_length = input_ids_length
+    def override_model(self, model_path: Union[str, Path], batch_size: int):
+        """
+        Override the model based on the provided batch_size, sequence_length,
+        and input_ids_length.
+        """
+        (
+            onnx_file_path,
+            output_indices_to_be_cached,
+            kv_cache_data_type,
+        ) = overwrite_onnx_model_inputs_for_kv_cache_models(
+            onnx_file_path=model_path,
+            batch_size=batch_size,
+            sequence_length=self.sequence_length,
+            input_ids_length=self.input_ids_length,
+        )
+        return onnx_file_path, output_indices_to_be_cached, kv_cache_data_type
 
     def run(self, inp: NLEngineInputs, **kwargs) -> NLEngineOutputs:
         engine_input = inp.engine_inputs
@@ -179,9 +193,8 @@ class NLEngineOperator(EngineOperator):
             )
         else:
             # run the engine without the LIB.kv_cache object
-            print(len(inputs))
+            # stack multiple batch inputs along the batch dimension
             inputs = join_engine_outputs(inputs, len(inputs))
-
             out = (
                 super()
                 .run(
@@ -192,7 +205,7 @@ class NLEngineOperator(EngineOperator):
             )
 
         # logits should be stacked along batch dim
-        # kv_cache_state should be a list of dim batch size
+        # kv_cache_state should be a list where each dim 0 is batch_size
         logits, *kv_cache_state = out
         kv_cache_state, _ = split_engine_inputs(kv_cache_state, 1)
 

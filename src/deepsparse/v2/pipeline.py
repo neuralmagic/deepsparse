@@ -15,7 +15,6 @@
 
 import copy
 from concurrent.futures import Future
-from functools import partial
 from typing import Any, Callable, Dict, List, Union
 
 from deepsparse.v2.operators import EngineOperator, Operator
@@ -25,27 +24,10 @@ from deepsparse.v2.schedulers import (
     OperatorScheduler,
     SchedulerGroup,
 )
-from deepsparse.v2.utils import InferenceState, PipelineState
+from deepsparse.v2.utils import InferenceState, PipelineState, SplitRoute
 
 
 __all__ = ["Pipeline"]
-
-
-class SubGraph:
-    def __init__(self, step, inf):
-        self.step = step
-        self.inf = inf
-        self.output = None
-
-    def update_next_step(self):
-        if isinstance(self.output, tuple):
-            state_update = self.output[-1]
-            operator_output = self.output[0]
-            self.inf.update_state(state_update)
-        else:
-            operator_output = self.output
-
-        return operator_output
 
 
 class Pipeline(Operator):
@@ -114,37 +96,48 @@ class Pipeline(Operator):
 
         batches, orig_batch_size = self.expand_inputs(inp, 1)
 
-        sub_graphs = [
-            SubGraph(
+        # Create a list of SplitRoutes, per batch size 1
+        # Each SplitRoute object holds information about the particular path it
+        # follows. All start at the same step defined by SPLIT_ROUTE and start
+        # with the same inference_state.
+        split_routes = [
+            SplitRoute(
                 inf=copy.deepcopy(inference_state),
                 step=self.router.route[self.router.SPLIT_ROUTE],
             )
             for i in range(len(batches))
         ]
 
-        for i in range(len(sub_graphs)):
-            sub_graphs[i].output = self._run_next(
-                batches[i], sub_graphs[i].inf, sub_graphs[i].step
+        # Start each SPLIT_ROUTE; store the Future for each.
+        for i in range(len(split_routes)):
+            split_routes[i].output = self._run_next(
+                batches[i], split_routes[i].inf, split_routes[i].step
             )
 
+        # Execute all split batches until all split batches have been completed.
         while True:
-            for i in range(len(sub_graphs)):
-                current_subgraph = sub_graphs[i]
+            for i in range(len(split_routes)):
+                current_subgraph = split_routes[i]
 
                 if (
                     isinstance(current_subgraph.output, Future)
                     and current_subgraph.output.done()
                 ):
+                    # get the result for the completed operator; resolve its output
                     operator_output = current_subgraph.output.result()
-                    current_subgraph.output = operator_output
+                    operator_output = current_subgraph.parse_output(operator_output)
 
-                    operator_output = current_subgraph.update_next_step()
-
+                    # determine the next step for the particular operator, using
+                    # its previous output and previously stored step
                     next_step = self.router.next(
                         current_subgraph.step, self.ops, operator_output
                     )
+                    # update the step
                     current_subgraph.step = next_step
 
+                    # store the output for the next step. If the next step is
+                    # JOIN_ROUTE note, this particular route has completed. Simply
+                    # update the output value
                     if next_step == self.router.JOIN_ROUTE:
                         current_subgraph.output = operator_output
                     else:
@@ -155,10 +148,11 @@ class Pipeline(Operator):
                         )
                     break
 
-            if not any(isinstance(x.output, Future) for x in sub_graphs):
+            # keep running until all split routes have completed.
+            if not any(isinstance(x.output, Future) for x in split_routes):
                 break
 
-        return self.condense_inputs([x.output for x in sub_graphs])
+        return self.condense_inputs([x.output for x in split_routes])
 
     def _run_func(
         self,
@@ -168,7 +162,7 @@ class Pipeline(Operator):
         **kwargs,
     ):
         """
-        Generic function to run a given func.
+        Generic function to run a given Callable.
         """
         if inp:
             operator_output = (
@@ -249,7 +243,7 @@ class Pipeline(Operator):
         else:
             inference_state = InferenceState()
             inference_state.create_state({})
-            
+
         kwargs["inference_state"] = inference_state
 
         return self.run(*args, **kwargs)

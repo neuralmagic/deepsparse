@@ -95,8 +95,8 @@ class EngineOperator(Operator):
         engine_kwargs: Dict = None,
     ):
         self.model_path = model_to_path(model_path)
-        self._batch_size = 1
         self.engine_context = engine_context
+        self._batch_size = 1
 
         if self.engine_context is not None:
             num_cores = num_cores or self.engine_context.num_cores
@@ -131,6 +131,7 @@ class EngineOperator(Operator):
         """
         return self._batch_size
 
+    # TODO: maybe add a few args to make this less opaque?
     def create_engine(
         self,
         **kwargs,
@@ -142,10 +143,10 @@ class EngineOperator(Operator):
             constructor/compilation
         :return: inference engine
         """
-        onnx_file_path = self.model_path
+
+        onnx_file_path = kwargs.pop("model_path", self.model_path)
         engine_args = deepcopy(self._engine_args)
         engine_args.update(kwargs)
-
         engine_type = self._engine_type.lower()
 
         if engine_type == DEEPSPARSE_ENGINE:
@@ -181,3 +182,6 @@ class EngineOperator(Operator):
 
         engine_outputs = self.engine(inp.engine_inputs)
         return {"engine_outputs": engine_outputs}
+
+    def override_model(*args, **kwargs):
+        raise NotImplementedError

@@ -58,6 +58,8 @@ class ContinuousBatchingScheduler(OperatorScheduler):
     :param max_workers: maximum number of threads to execute at once, default 1
     """
 
+    # TODO: If the singleton always returns max_workers 1, should we remove this arg/not
+    # give the user a choice?
     def __init__(self, max_workers: int = 1):
         self._max_workers = max_workers
 
@@ -163,8 +165,16 @@ class ContinuousBatchingScheduler(OperatorScheduler):
         for batch_size in batch_sizes:
             if batch_size == 1:
                 continue  # already added
+
+            override_model_path = None
+            if hasattr(engine_operator, "override_model"):
+                override_model_path, _, _ = engine_operator.override_model(
+                    model_path=engine_operator.model_path, batch_size=batch_size
+                )
+
+            # will break for internal kv_cache; needs additional argument
             operator_engines[batch_size] = engine_operator.create_engine(
-                batch_size=batch_size
+                batch_size=batch_size, model_path=override_model_path
             )
 
         self._operators_to_engines[engine_operator] = operator_engines
