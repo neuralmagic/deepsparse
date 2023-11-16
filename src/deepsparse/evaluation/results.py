@@ -29,7 +29,7 @@ __all__ = [
     "Evaluation",
     "Result",
     "save_evaluations",
-    "print_result",
+    "result_printable",
 ]
 
 
@@ -67,8 +67,8 @@ class Result(BaseModel):
     raw: Any
 
 
-def print_result(results_formatted: List[Evaluation]):
-    print(save_evaluations(results_formatted, save_format="json", save_path=None))
+def result_printable(results_formatted: List[Evaluation]):
+    return save_evaluations(results_formatted, save_format="json", save_path=None)
 
 
 def save_evaluations(

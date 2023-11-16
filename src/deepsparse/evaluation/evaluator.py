@@ -66,7 +66,7 @@ from typing import List, Union
 import click
 
 from src.deepsparse.evaluation.registry import EvaluationRegistry
-from src.deepsparse.evaluation.results import Result, print_result, save_evaluations
+from src.deepsparse.evaluation.results import Result, result_printable, save_evaluations
 from src.deepsparse.evaluation.utils import get_save_path
 from src.deepsparse.pipeline import DEEPSPARSE_ENGINE, ORT_ENGINE, TORCHSCRIPT_ENGINE
 
@@ -193,7 +193,7 @@ def main(
 
     result_formatted = result.formatted
 
-    _LOGGER.info(f"Evaluation done. Results:\n{print_result(result_formatted)}")
+    _LOGGER.info(f"Evaluation done. Results:\n{result_printable(result_formatted)}")
 
     save_path = get_save_path(
         save_path=save_path,

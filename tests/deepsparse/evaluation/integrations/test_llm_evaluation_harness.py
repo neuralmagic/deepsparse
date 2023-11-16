@@ -11,20 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import os
-import shutil
 
 import pytest
 from src.deepsparse.evaluation.integrations import try_import_llm_evaluation_harness
-
-
-@pytest.fixture(scope="session")
-def cleanup():
-    yield
-    try:
-        shutil.rmtree(os.path.join(os.getcwd(), "tests/testdata"))
-    except Exception:
-        pass
 
 
 @pytest.mark.parametrize(
@@ -41,7 +30,8 @@ def cleanup():
     [
         ["hellaswag"],
         ["hellaswag", "gsm8k"],
-        "gsm8k" "arc_challenge",
+        "gsm8k",
+        "arc_challenge",
     ],
 )
 @pytest.mark.parametrize(
@@ -54,7 +44,7 @@ class TestLLMEvaluationHarness:
         reason="llm_evaluation_harness not installed",
     )
     def test_integration_eval_onnx_matches_torch(
-        self, target_onnx, target_torch, datasets, batch_size, cleanup
+        self, target_onnx, target_torch, datasets, batch_size
     ):
         from src.deepsparse.evaluation.integrations.llm_evaluation_harness import (
             integration_eval,

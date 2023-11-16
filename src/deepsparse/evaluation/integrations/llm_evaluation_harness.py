@@ -163,7 +163,7 @@ class EvaluatorInputSchema(BaseModel):
         None, description="Specify the path for decontamination n-grams."
     )
     check_integrity: bool = Field(
-        True, description="Include this flag to check integrity."
+        False, description="Include this flag to check integrity."
     )
     write_out: bool = Field(False, description="Include this flag to write out.")
     output_base_path: Optional[str] = Field(
