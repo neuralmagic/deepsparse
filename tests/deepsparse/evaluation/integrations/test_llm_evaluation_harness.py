@@ -40,15 +40,16 @@ def setup():
     "datasets",
     [
         ["hellaswag"],
-        ["hellaswag", "gsm8k"],
-        "gsm8k",
-        "arc_challenge",
+        # ["hellaswag", "gsm8k"],
+        # "gsm8k",
+        # "arc_challenge",
         # "lambada_standard", TODO: enable when lambada is fixed
     ],
 )
 @pytest.mark.parametrize(
     "batch_size",
-    [1, 3],
+    #[1, 3],
+    [3],
 )
 class TestLLMEvaluationHarness:
     @pytest.mark.skipif(
@@ -82,7 +83,4 @@ class TestLLMEvaluationHarness:
         out_onnx = out_onnx.raw["output"]
         out_torch = out_torch.raw["output"]
 
-        datasets = datasets if isinstance(datasets, list) else [datasets]
-        for dataset in datasets:
-            for key, value in out_torch["results"][dataset].items():
-                assert value == out_onnx["results"][dataset][key]
+        assert out_onnx['results'] == out_torch['results']

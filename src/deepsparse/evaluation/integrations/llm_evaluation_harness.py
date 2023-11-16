@@ -211,14 +211,16 @@ class DeepSparseLM(base.BaseLM):
             tensor is (batch_size, seq_len, vocab_size)
         """
         # encode the tokens to strings
-        prompt = self.model.tokenizer.batch_decode(inps.numpy())
+        prompt = self.model.tokenizer.batch_decode(inps.numpy(), skip_special_tokens=True)
 
         # run the model to map the prompt to logits
         out = self.model(
             prompt=prompt,
-            max_new_tokens=0,
+            max_length=1,
             include_prompt_logits=True,
             output_scores=True,
+            fixed_sequences_length=True,
+
         )
         logits_numpy = numpy.stack([generation.score for generation in out.generations])
         return torch.from_numpy(logits_numpy)
