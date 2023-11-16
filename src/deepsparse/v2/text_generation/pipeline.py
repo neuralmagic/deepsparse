@@ -134,9 +134,21 @@ class TextGenerationPipeline(Pipeline):
         compile_generated_tokens = CompileGeneratedTokens()
         join_output = JoinOutput(tokenizer=self.tokenizer)
 
-        continuous_batching_scheduler = ContinuousBatchingScheduler.get_instance()
-        continuous_batching_scheduler.add_engine_operator(single_engine_operator, [4])
-        continuous_batching_scheduler.add_engine_operator(multi_engine_operator, [4])
+        
+        # TODO: Do we always want to use continuous batching by default, but allow
+        # the user to turn it off if needed?
+
+        # Temporary; use input param to turn this off
+        if not internal_kv_cache:
+            continuous_batching_scheduler = ContinuousBatchingScheduler.get_instance()
+            continuous_batching_scheduler.add_engine_operator(
+                single_engine_operator, [4]
+            )
+            continuous_batching_scheduler.add_engine_operator(
+                multi_engine_operator, [4]
+            )
+        else:
+            continuous_batching_scheduler = None
 
         ops = {
             "process_input": process_inputs,

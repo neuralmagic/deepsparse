@@ -127,6 +127,7 @@ class NLEngineOperator(EngineOperator):
         self.sequence_length = sequence_length
         self.input_ids_length = input_ids_length
         self.kv_cache_data_type = None
+        self.internal_kv_cache = internal_kv_cache
         self.model_path = kwargs.get("model_path")
         (
             onnx_file_path,
@@ -173,7 +174,9 @@ class NLEngineOperator(EngineOperator):
         engine_input = inp.engine_inputs
         kv_cache = inp.kv_cache
 
+        split = True
         if not isinstance(kv_cache, list):
+            split = False
             kv_cache = [kv_cache]
             engine_input = [engine_input]
 
@@ -220,11 +223,9 @@ class NLEngineOperator(EngineOperator):
 
         output = {
             "engine_outputs": logits,
-            "kv_cache": kv_cache,
-            "tokens": [inp.tokens] if not isinstance(inp.tokens, list) else inp.tokens,
-            "in_generation": [inp.in_generation]
-            if not isinstance(inp.in_generation, list)
-            else inp.in_generation,
+            "kv_cache": kv_cache if split else kv_cache[0],
+            "tokens": inp.tokens,
+            "in_generation": inp.in_generation,
         }
         return output
 

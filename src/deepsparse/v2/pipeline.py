@@ -72,7 +72,10 @@ class Pipeline(Operator):
         inference_state: InferenceState,
         next_step: str,
     ):
-        if isinstance(self.ops[next_step], EngineOperator):
+        if (
+            isinstance(self.ops[next_step], EngineOperator)
+            and self._continuous_batching_scheduler
+        ):
             func = self._continuous_batching_scheduler.submit
             inp = self.ops[next_step].input_schema(**inp)
         else:
@@ -116,34 +119,29 @@ class Pipeline(Operator):
 
         # Execute all split batches until all split batches have been completed.
         while True:
-            for i in range(len(split_routes)):
-                current_subgraph = split_routes[i]
-
-                if (
-                    isinstance(current_subgraph.output, Future)
-                    and current_subgraph.output.done()
-                ):
+            for split_route in split_routes:
+                if isinstance(split_route.output, Future) and split_route.output.done():
                     # get the result for the completed operator; resolve its output
-                    operator_output = current_subgraph.output.result()
-                    operator_output = current_subgraph.parse_output(operator_output)
+                    operator_output = split_route.output.result()
+                    operator_output = split_route.parse_output(operator_output)
 
                     # determine the next step for the particular operator, using
                     # its previous output and previously stored step
                     next_step = self.router.next(
-                        current_subgraph.step, self.ops, operator_output
+                        split_route.step, self.ops, operator_output
                     )
                     # update the step
-                    current_subgraph.step = next_step
+                    split_route.step = next_step
 
                     # store the output for the next step. If the next step is
                     # JOIN_ROUTE note, this particular route has completed. Simply
                     # update the output value
                     if next_step == self.router.JOIN_ROUTE:
-                        current_subgraph.output = operator_output
+                        split_route.output = operator_output
                     else:
-                        current_subgraph.output = self._run_next(
+                        split_route.output = self._run_next(
                             inp=operator_output,
-                            inference_state=current_subgraph.inf,
+                            inference_state=split_route.inf,
                             next_step=next_step,
                         )
                     break
