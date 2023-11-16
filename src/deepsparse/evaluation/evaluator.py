@@ -71,6 +71,8 @@ from src.deepsparse.evaluation.utils import get_save_path
 from src.deepsparse.pipeline import DEEPSPARSE_ENGINE, ORT_ENGINE, TORCHSCRIPT_ENGINE
 
 
+__all__ = ["evaluate"]
+
 _LOGGER = logging.getLogger(__name__)
 
 
