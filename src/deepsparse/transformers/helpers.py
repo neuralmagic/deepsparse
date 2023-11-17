@@ -28,8 +28,11 @@ import onnx
 from onnx import ModelProto
 
 from deepsparse.log import get_main_logger
-from deepsparse.utils.onnx import _MODEL_DIR_ONNX_NAME, truncate_onnx_model
-from sparsezoo import Model
+from deepsparse.utils.onnx import (
+    _MODEL_DIR_ONNX_NAME,
+    model_to_path,
+    truncate_onnx_model,
+)
 from sparsezoo.utils import save_onnx
 
 
@@ -71,22 +74,9 @@ def get_deployment_path(model_path: str) -> Tuple[str, str]:
             )
         return model_path, os.path.join(model_path, _MODEL_DIR_ONNX_NAME)
 
-    elif model_path.startswith("zoo:"):
-        zoo_model = Model(model_path)
-        deployment_path = zoo_model.deployment_directory_path
-        return deployment_path, os.path.join(deployment_path, _MODEL_DIR_ONNX_NAME)
-    elif model_path.startswith("hf:"):
-        from huggingface_hub import snapshot_download
-
-        deployment_path = snapshot_download(repo_id=model_path.replace("hf:", "", 1))
-        onnx_path = os.path.join(deployment_path, _MODEL_DIR_ONNX_NAME)
-        if not os.path.isfile(onnx_path):
-            raise ValueError(
-                f"{_MODEL_DIR_ONNX_NAME} not found in transformers model directory "
-                f"{deployment_path}. Be sure that an export of the model is written to "
-                f"{onnx_path}"
-            )
-        return deployment_path, onnx_path
+    elif model_path.startswith("zoo:") or model_path.startswith("hf:"):
+        onnx_model_path = model_to_path(model_path)
+        return os.path.dirname(onnx_model_path), onnx_model_path
     else:
         raise ValueError(
             f"model_path {model_path} is not a valid file, directory, or zoo stub"
@@ -130,7 +120,7 @@ def overwrite_transformer_onnx_model_inputs(
 
     # Save modified model
     if inplace:
-        _LOGGER.info(
+        _LOGGER.debug(
             f"Overwriting in-place the input shapes of the transformer model at {path}"
         )
         save_onnx(model, path)
