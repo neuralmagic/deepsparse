@@ -86,11 +86,11 @@ _LOGGER = logging.getLogger(__name__)
 )
 @click.option(
     "-d",
-    "--datasets",
-    type=click.UNPROCESSED,
-    required=True,
-    help="The datasets to evaluate on. Can be a string for a single dataset "
-    "or a list of strings for multiple datasets",
+    "--dataset",
+    type=str,
+    multiple=True,
+    help="The name of dataset to evaluate on. The user may pass multiple "
+    "datasets names by passing the option multiple times.",
 )
 @click.option(
     "-i",
@@ -155,7 +155,7 @@ _LOGGER = logging.getLogger(__name__)
 )
 def main(
     target,
-    datasets,
+    dataset,
     integration,
     engine_type,
     save_path,
@@ -164,6 +164,8 @@ def main(
     splits,
     metrics,
 ):
+    # join datasets to a list if multiple datasets are passed
+    datasets = list(dataset) if not isinstance(dataset, str) else dataset
 
     _LOGGER.info(f"Target to evaluate: {target}")
     if engine_type:
