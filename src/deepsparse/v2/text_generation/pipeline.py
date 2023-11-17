@@ -17,9 +17,8 @@ from typing import Dict, Optional
 from deepsparse.transformers.helpers import setup_transformers_pipeline
 from deepsparse.transformers.utils.helpers import process_generation_config
 from deepsparse.utils import split_engine_inputs
-from deepsparse.utils.onnx import default_cached_outputs
 from deepsparse.v2.pipeline import Pipeline
-from deepsparse.v2.routers import GraphRouter, LinearRouter
+from deepsparse.v2.routers import GraphRouter
 from deepsparse.v2.schedulers import OperatorScheduler
 from deepsparse.v2.text_generation import (
     AutoRegressiveOperatorPreprocess,
@@ -30,8 +29,7 @@ from deepsparse.v2.text_generation import (
     JoinOutput,
     KVCacheCreator,
     MultiEnginePrefill,
-    NlEngineOperator,
-    NlEngineOperatorNoCache,
+    NLEngineOperator,
     PrepareforPrefill,
     PrepareGeneration,
     ProcessInputsTextGeneration,
@@ -39,79 +37,6 @@ from deepsparse.v2.text_generation import (
     TokenGeneratorOperator,
 )
 from deepsparse.v2.utils import PipelineState
-
-
-class TextGenerationPipelineNoCache(Pipeline):
-    def __init__(
-        self,
-        model_path: str,
-        sequence_length: int = 1024,
-        engine_kwargs: Optional[Dict] = None,
-        onnx_model_name: Optional[str] = None,
-        generation_config=None,  # TODO: Typing here
-        **kwargs,
-    ):
-
-        (
-            self.model_path,
-            self.config,
-            self.tokenizer,
-            engine_kwargs,
-        ) = setup_transformers_pipeline(
-            model_path,
-            sequence_length,
-            onnx_model_name=onnx_model_name,
-            engine_kwargs=engine_kwargs,
-        )
-        self.verify_no_kv_cache_present()
-
-        token_generator = TokenGeneratorOperator()
-
-        ops = [
-            ProcessInputsTextGeneration(
-                generation_config=process_generation_config(generation_config),
-                sequence_length=sequence_length,
-                tokenizer=self.tokenizer,
-            ),
-            NlEngineOperatorNoCache(sequence_length=sequence_length, **engine_kwargs),
-            PrepareGeneration(
-                sequence_length=sequence_length,
-                prompt_sequence_length=1,
-                token_generator=token_generator,
-            ),
-            GenerateNewTokenOperator(tokenizer=self.tokenizer, force_max_tokens=True),
-            CompileGeneratedTokens(),
-            CompileGenerations(),
-            JoinOutput(tokenizer=self.tokenizer),
-            ProcessOutputs(tokenizer=self.tokenizer),
-        ]
-        router = LinearRouter(end_route=len(ops))
-        scheduler = [OperatorScheduler()]
-        super().__init__(
-            ops=ops,
-            router=router,
-            schedulers=scheduler,
-        )
-
-    def run(self, *args, **kwargs):
-        # we need to set the fixed_sequences_length flag to True
-        # for the non-kv cache pipeline
-        kwargs.update(dict(fixed_sequences_length=True))
-        return super().run(*args, **kwargs)
-
-    def verify_no_kv_cache_present(self) -> bool:
-        """
-        Verifies that the ONNX model does not have
-        KV cache inputs/outputs present.
-        :return: True if compatible, False otherwise
-        """
-        is_kv_cache_present = any(default_cached_outputs(self.model_path))
-        if is_kv_cache_present:
-            raise ValueError(
-                f"The model: {self.model_path} has KV cache inputs/outputs present. "
-                "Please use the TextGenerationPipeline instead."
-            )
-        return not is_kv_cache_present
 
 
 class TextGenerationPipeline(Pipeline):
@@ -140,14 +65,14 @@ class TextGenerationPipeline(Pipeline):
         if internal_kv_cache and engine_kwargs.get("engine_type") == "onnxruntime":
             internal_kv_cache = False
 
-        single_engine_operator = NlEngineOperator(
+        single_engine_operator = NLEngineOperator(
             sequence_length=sequence_length,
             internal_kv_cache=internal_kv_cache,
             input_ids_length=1,
             **engine_kwargs,
         )
 
-        multi_engine_operator = NlEngineOperator(
+        multi_engine_operator = NLEngineOperator(
             sequence_length=sequence_length,
             internal_kv_cache=internal_kv_cache,
             input_ids_length=prompt_sequence_length,
@@ -269,3 +194,5 @@ class TextGenerationPipeline(Pipeline):
 
     def condense_inputs(self, *args, **kwargs):
         return args[0], kwargs
+
+   

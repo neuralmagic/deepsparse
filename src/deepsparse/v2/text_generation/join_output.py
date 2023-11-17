@@ -33,9 +33,6 @@ class JoinOutput(Operator):
         self.tokenizer = tokenizer
 
     def run(self, inp: List[CompileGenerationsOutput], **kwargs):
-
-        if not isinstance(inp, list):
-            inp = [[inp]]
         batch_outputs = [x for x in inp[0]]
         generated_tokens = [x.generated_tokens for x in batch_outputs]
         generated_logits = [x.generated_logits for x in batch_outputs]
