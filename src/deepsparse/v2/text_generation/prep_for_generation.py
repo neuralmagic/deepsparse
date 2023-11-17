@@ -91,6 +91,7 @@ class PrepareGeneration(Operator):
             "token_generator": token_generator,
         }
         output = {
+            "logits": prompt_logits,
             "tokens": token_generator.tokens,
             "kv_cache": kv_cache,
             "in_generation": True,
