@@ -30,7 +30,7 @@ from deepsparse.v2.operators.engine_operator import (
 )
 
 
-__all__ = ["NLEngineOperator", "NLEngineOperatorNoCache"]
+__all__ = ["NLEngineOperator", "NLEngineOperatorNoCache", "NlEngineInput"]
 
 
 class NlEngineInput(BaseModel):

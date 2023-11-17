@@ -18,6 +18,7 @@ from deepsparse.transformers.helpers import setup_transformers_pipeline
 from deepsparse.transformers.utils.helpers import process_generation_config
 from deepsparse.utils import split_engine_inputs
 from deepsparse.utils.onnx import default_cached_outputs
+from deepsparse.utils import split_engine_inputs
 from deepsparse.v2.pipeline import Pipeline
 from deepsparse.v2.routers import GraphRouter, LinearRouter
 from deepsparse.v2.schedulers import OperatorScheduler
