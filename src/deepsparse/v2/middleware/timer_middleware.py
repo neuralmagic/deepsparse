@@ -1,9 +1,24 @@
+# Copyright (c) 2021 - present / Neuralmagic, Inc. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import threading
 import time
 from functools import wraps
-import threading
+from typing import Optional
 
-from typing import Optional, Dict, Any
 from deepsparse.v2.utils.state import InferenceState
+
 
 class Timer:
 
@@ -30,13 +45,11 @@ class Timer:
             self.measurements[key] = end_time - start_time
         return None
 
-    def _timeout(self, wait: int=10):
+    def _timeout(self, wait: int = 0.1):
         time.wait(wait)
         return True
 
-
     def clock(timer, func):
-
         @wraps(func)
         def wrapper(self, inp, context):
             start_time = time.time()
@@ -52,41 +65,43 @@ class Timer:
             timer.measurements[key] = runtime
 
             return result
+
         return wrapper
 
 
 class TimerMiddleware:
-    
+
     timer = Timer()
 
     def start_event(self, name: str, state: Optional[InferenceState] = None):
-        
+
         is_inference_run = state is not None
         is_state_coldstart = is_inference_run and not hasattr(state, "timer")
-        is_new_name = hasattr(state, "timer") and name not in getattr(state, "timer").start_times
-        # if name == "1":
-        #     breakpoint()
+        is_new_name = (
+            hasattr(state, "timer") and name not in getattr(state, "timer").start_times
+        )
+
         if is_state_coldstart or is_new_name:
             # timer only exists in the context of a single inference pass
             # this way subtimings are correlated with the other timings in its pass
             state.timer = Timer()
             state.timer.start(name)
             return
-        
+
         self.timer.start(name)
 
-
     def end_event(self, name, state: Optional[InferenceState] = None):
+        """
+        Populate the timer state. If state is provided, populate all its
+        measurements into the timer state
+        """
         if state and hasattr(state, "timer"):
             state.timer.end(name)
-            
+
             if name in self.timer.measurements:
                 print(f"warning, {name} already exists")
-                # add name with counter ?
-                
             with self.timer._lock:
-                # breakpoint()
-                self.timer.measurements[name] = state.timer.measurements[name]
-            
-        # breakpoint()
-        self.timer.end(name) 
+                # self.timer.measurements[name] = state.timer.measurements[name]
+                self.timer.measurements.update(state.timer.measurements)
+
+        self.timer.end(name)

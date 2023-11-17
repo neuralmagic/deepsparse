@@ -18,12 +18,11 @@ from concurrent.futures import Future
 from functools import partial
 from typing import Any, Callable, Dict, List, Union
 
+from deepsparse.v2.middleware.timer_middleware import TimerMiddleware
 from deepsparse.v2.operators import Operator
 from deepsparse.v2.routers import Router
 from deepsparse.v2.schedulers import OperatorScheduler, SchedulerGroup
 from deepsparse.v2.utils import InferenceState, PipelineState
-
-from deepsparse.v2.middleware.timer_middleware import TimerMiddleware
 
 
 __all__ = ["Pipeline"]
@@ -53,30 +52,17 @@ class Pipeline(Operator):
         router: Router,
         schedulers: List[OperatorScheduler],
         pipeline_state: PipelineState = None,
-        # [TODO] middlewares: List[] 
+        # [TODO] middlewares: List[]
     ):
 
         self.ops = ops
         self.router = router
         self.schedulers = schedulers
         self.pipeline_state = pipeline_state
-        
-        self.timer_middleware = TimerMiddleware() # TODO: generic for [middlewares, ...]
-        
+        self.timer_middleware = TimerMiddleware()  # TODO: make generic for middleware
         self.validate()
 
         self._scheduler_group = SchedulerGroup(self.schedulers)
-        
-        
-        # TODO: stop = self.middleware.dispatch("timer", **kwargs) {"func": "start", *inputs} or self.dispatch("timer", **kwargs)
-        # TODO: self.middleware.dispatch("log", **kwargs)
-        # TODO: stop(**kwargs) or self.middleware.dispatch("timer", **kwargs) {"func": "end", *inputs}
-        self.timer_middleware.start_event("init")
-        import time
-        time.sleep(1)
-        self.timer_middleware.end_event("init")
-        # breakpoint()
-        # self.timer_middleware.timer.measurements
 
     def _run_sequential(
         self,
@@ -89,7 +75,7 @@ class Pipeline(Operator):
 
         next_step = start
         while next_step != end:
-            
+
             outputs = self._run_next_step(
                 func=self.ops[next_step],
                 next_step=next_step,
@@ -97,8 +83,7 @@ class Pipeline(Operator):
                 pipeline_state=pipeline_state,
                 inference_state=inference_state,
             )
-            
-            
+
             next_step, operator_output, state_update = outputs
             if state_update:
                 inference_state.update_state(state_update)
@@ -141,7 +126,7 @@ class Pipeline(Operator):
         """
         Generic function to run a given func, process the output and determine the next
         step.
-        
+
         """
         if input:
             operator_output = (
@@ -187,8 +172,6 @@ class Pipeline(Operator):
                 operator_output = self._apply_split(operator_output, inference_state)
                 next_step = self.router.route[self.router.JOIN_ROUTE]
 
-
-            self.timer_middleware.start_event(str(next_step), inference_state)
             if next_step == self.router.START_ROUTE:
                 outputs = self._run_next_step(
                     *args,
@@ -208,12 +191,6 @@ class Pipeline(Operator):
                     operator=self.ops[next_step],
                     pipeline_state=pipeline_state,
                 )
-            
-            self.timer_middleware.end_event(str(next_step), inference_state)
-            
-            assert hasattr(inference_state, "timer" )
-            assert str(next_step) in getattr(inference_state, "timer").measurements
-            # breakpoint()
 
             next_step, operator_output, state_update = outputs
             if state_update:
