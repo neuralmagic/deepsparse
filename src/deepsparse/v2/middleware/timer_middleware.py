@@ -101,7 +101,6 @@ class TimerMiddleware:
             if name in self.timer.measurements:
                 print(f"warning, {name} already exists")
             with self.timer._lock:
-                # self.timer.measurements[name] = state.timer.measurements[name]
                 self.timer.measurements.update(state.timer.measurements)
 
         self.timer.end(name)
