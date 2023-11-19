@@ -19,6 +19,7 @@ from deepsparse.transformers.helpers import setup_transformers_pipeline
 from deepsparse.transformers.utils.helpers import process_generation_config
 from deepsparse.utils import split_engine_inputs
 from deepsparse.v2.operators import EngineOperator
+from deepsparse.v2.operators.registry import OperatorRegistry
 from deepsparse.v2.pipeline import Pipeline
 from deepsparse.v2.routers import GraphRouter
 from deepsparse.v2.schedulers import ContinuousBatchingScheduler, OperatorScheduler
@@ -44,6 +45,7 @@ from deepsparse.v2.utils import PipelineState
 _LOGGER = logging.getLogger(__name__)
 
 
+@OperatorRegistry.register(task="text_generation")
 class TextGenerationPipeline(Pipeline):
     def __init__(
         self,
