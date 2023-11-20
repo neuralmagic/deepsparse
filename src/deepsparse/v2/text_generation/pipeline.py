@@ -13,10 +13,11 @@
 # limitations under the License.
 
 import logging
-from typing import Dict
+from typing import Dict, List, Optional
 
 from deepsparse.transformers.utils.helpers import process_generation_config
 from deepsparse.utils import split_engine_inputs
+from deepsparse.v2.operators import EngineOperator
 from deepsparse.v2.pipeline import Pipeline
 from deepsparse.v2.routers import GraphRouter
 from deepsparse.v2.schedulers import ContinuousBatchingScheduler, OperatorScheduler
@@ -51,7 +52,7 @@ class TextGenerationPipeline(Pipeline):
         internal_kv_cache: bool = True,
         force_max_tokens: bool = False,
         generation_config=None,
-        continuous_batch_sizes: list = None,
+        continuous_batch_sizes: Optional[List[int]] = None,
         engine_kwargs: Dict = None,
     ):
 
@@ -142,21 +143,15 @@ class TextGenerationPipeline(Pipeline):
         # TODO: do we want to support lists for different engines?
         continuous_batching_scheduler = None
         if continuous_batch_sizes:
-            if not internal_kv_cache:
-                continuous_batching_scheduler = (
-                    ContinuousBatchingScheduler.get_instance()
-                )
-                continuous_batching_scheduler.add_engine_operator(
-                    single_engine_operator, continuous_batch_sizes
-                )
-                continuous_batching_scheduler.add_engine_operator(
-                    multi_engine_operator, continuous_batch_sizes
-                )
-            else:
-                # Temporary
+            if internal_kv_cache:
                 _LOGGER.warn(
                     "internal kv_cache is currently not supported with continuous ",
                     "batching",
+                )
+            else:
+                continuous_batching_scheduler = self._get_continuous_batching_scheduler(
+                    batch_sizes=continuous_batch_sizes,
+                    engines=[single_engine_operator, multi_engine_operator],
                 )
 
         ops = {
@@ -224,6 +219,24 @@ class TextGenerationPipeline(Pipeline):
 
     def condense_inputs(self, *args, **kwargs):
         return args[0], kwargs
+
+    def _get_continuous_batching_scheduler(
+        self, batch_sizes: List[int], engines: List[EngineOperator]
+    ) -> ContinuousBatchingScheduler:
+        """
+        Fetch the continuous batching scheduler. Requires adding the EngineOperator
+        that will run through the scheduler.
+
+        :param batch_sizes: List of batch sizes to be used by the models
+        :param engine: List of EngineOperators which should be scheduled using the
+            continuous batching scheduler
+
+        :returns: ContinuousBatchingScheduler
+        """
+        continuous_batching_scheduler = ContinuousBatchingScheduler.get_instance()
+        for op in engines:
+            continuous_batching_scheduler.add_engine_operator(op, batch_sizes)
+        return continuous_batching_scheduler
 
     # TODO: Move to be part of a generic transformers set-up Operator.
     def setup_onnx_file_path(self, model_path, sequence_length) -> str:

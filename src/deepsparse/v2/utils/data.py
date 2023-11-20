@@ -18,17 +18,18 @@ from typing import Any
 from deepsparse.v2.utils import InferenceState
 
 
-__all__ = ["SplitRoute"]
+__all__ = ["SubGraph"]
 
 
 @dataclass
-class SplitRoute:
+class SubGraph:
     """
-    Helper dataclass to store information about each running split route.
+    Helper dataclass to store information about each running sub graph.
     """
 
     step: int
     inf: InferenceState
+    end: str
     output: Any = None
 
     def parse_output(self, operator_output: Any):

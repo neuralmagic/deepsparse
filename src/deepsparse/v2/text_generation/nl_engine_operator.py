@@ -167,7 +167,7 @@ class NLEngineOperator(EngineOperator):
         :param model_path: Path to the model
         :param batch_size: The batch size to be used for the model
         :return: new overwritten model file path. Optionally returns additional outputs
-            specific to the particular engine
+            specific to the NLDecoder engine
         """
         (
             onnx_file_path,
