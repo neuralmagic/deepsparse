@@ -134,7 +134,7 @@ class Pipeline(Operator):
                     # store the output for the next step. If the next step is
                     # end step, this particular route has completed. Simply
                     # update the output value
-                    if next_step == sub_graph.end:
+                    if next_step in sub_graph.end:
                         sub_graph.output = operator_output
                     else:
                         sub_graph.output = self._run_next(
@@ -168,7 +168,7 @@ class Pipeline(Operator):
             SubGraph(
                 inf=copy.deepcopy(inference_state),
                 step=self.router.route[self.router.SPLIT_ROUTE],
-                end=self.router.JOIN_ROUTE,
+                end=[self.router.JOIN_ROUTE],
             )
             for i in range(len(batches))
         ]
@@ -195,6 +195,8 @@ class Pipeline(Operator):
         next_step = self.router.START_ROUTE
         operator_output = None
         while next_step != self.router.END_ROUTE:
+
+            # Split Grap Execution (i.e multiple subgraphs)
             # NOTE: split_route should only appear after the start route node
             if next_step == self.router.SPLIT_ROUTE:
                 if operator_output is None:
@@ -209,29 +211,39 @@ class Pipeline(Operator):
                     return operator_output
 
             if next_step == self.router.START_ROUTE:
-                outputs = run_func(
+                operator_output = run_func(
                     *args,
                     func=self._scheduler_group.submit,
                     operator=self.ops[next_step],
                     inference_state=inference_state,
                     pipeline_state=self.pipeline_state,
                     **kwargs,
-                )
+                ).result()
+
+                if isinstance(operator_output, tuple):
+                    operator_output, state_update = (
+                        operator_output[0],
+                        operator_output[-1],
+                    )
+                    inference_state.update_state(state_update)
+
+                next_step = self.router.next(next_step, self.ops, operator_output)
+
             else:
-                outputs = self._run_next(
-                    inp=operator_output,
-                    next_step=next_step,
-                    inference_state=inference_state,
+                # Single graph execution
+                graph = SubGraph(
+                    inf=copy.deepcopy(inference_state),
+                    step=next_step,
+                    end=[self.router.SPLIT_ROUTE, self.router.END_ROUTE],
                 )
 
-            operator_output = outputs.result()
+                operator_output = self._run_sub_graphs(
+                    sub_graph_inputs=[operator_output], sub_graphs=[graph]
+                )[0]
 
-            if isinstance(operator_output, tuple):
-                state_update = operator_output[-1]
-                operator_output = operator_output[0]
-                inference_state.update_state(state_update)
+                inference_state = graph.inf
+                next_step = graph.step
 
-            next_step = self.router.next(next_step, self.ops, operator_output)
         return operator_output
 
     def __call__(self, *args, **kwargs):

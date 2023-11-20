@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, List
 
 from deepsparse.v2.utils import InferenceState
 
@@ -29,12 +29,11 @@ class SubGraph:
 
     step: int
     inf: InferenceState
-    end: str
+    end: List[str]
     output: Any = None
 
     def parse_output(self, operator_output: Any):
         if isinstance(operator_output, tuple):
-            state_update = operator_output[-1]
-            operator_output = operator_output[0]
+            operator_output, state_update = operator_output[0], operator_output[-1]
             self.inf.update_state(state_update)
         return operator_output
