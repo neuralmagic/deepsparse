@@ -219,7 +219,6 @@ class TextGenerationPipeline(Pipeline):
     def condense_inputs(self, *args, **kwargs):
         return args[0], kwargs
 
-
     def _get_continuous_batching_scheduler(
         self, batch_sizes: List[int], engines: List[EngineOperator]
     ) -> ContinuousBatchingScheduler:
