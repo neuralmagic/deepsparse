@@ -168,13 +168,15 @@ class GeneratedText(BaseModel):
         "streaming is enabled, this will be the next generated token."
     )
     score: Optional[Any] = Field(
+        default=None,
         description="The score for the generated token or sequence. "
-        "The scores have the shape [sequence_length, vocab_size]"
+        "The scores have the shape [sequence_length, vocab_size]",
     )
     finished: bool = Field(description="Whether generation has stopped.")
     finished_reason: Optional[str] = Field(
+        default=None,
         description="The reason for generation to stop. "
-        "Defined by FinishReason. One of stop, length, or time."
+        "Defined by FinishReason. One of stop, length, or time.",
     )
 
 
