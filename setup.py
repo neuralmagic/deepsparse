@@ -129,9 +129,9 @@ _server_deps = [
 _onnxruntime_deps = [
     "onnxruntime>=1.7.0",
 ]
-_torch_deps = ["torch>=1.7.0,<=2.0"]
+_torch_deps = ["torch>=1.7.0,<2.2"]
 _computer_vision_deps = [
-    "torchvision>=0.3.0,<0.16",
+    "torchvision>=0.3.0,<0.17",
     "opencv-python<=4.6.0.66",
 ]
 _openpifpaf_integration_deps = [
