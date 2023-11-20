@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from copy import deepcopy
-from typing import Any, Dict, List, Optional, Union
+from typing import Dict, List, Optional, Union
 
 from pydantic import BaseModel, Field
 
@@ -34,7 +34,7 @@ __all__ = ["EngineOperator", "EngineOperatorInputs", "EngineOperatorOutputs"]
 
 class EngineOperatorInputs(BaseModel):
     engine_inputs: List = Field(description="engine_inputs")
-    engine: Optional[Any] = Field(
+    engine: Optional[Union[ORTEngine, Engine]] = Field(
         description="override the engine to run forward pass with",
         default=None,
     )

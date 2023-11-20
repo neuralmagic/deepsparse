@@ -129,11 +129,12 @@ class NLEngineOperator(EngineOperator):
         self.kv_cache_data_type = None
         self.internal_kv_cache = internal_kv_cache
         self.model_path = kwargs.get("model_path")
-        (
-            onnx_file_path,
-            output_indices_to_be_cached,
-            kv_cache_data_type,
-        ) = self.override_model(self.model_path, batch_size=1)
+        (onnx_file_path, additional_outputs) = self.override_model_inputs(
+            self.model_path, batch_size=1, return_additional_outputs=True
+        )
+        output_indices_to_be_cached, kv_cache_data_type, = additional_outputs.get(
+            "output_indices_to_be_cached"
+        ), additional_outputs.get("kv_cache_data_type")
 
         engine_kwargs = kwargs.get("engine_kwargs", {})
         if kwargs.get("engine_type", DEEPSPARSE_ENGINE) == DEEPSPARSE_ENGINE:
@@ -153,10 +154,20 @@ class NLEngineOperator(EngineOperator):
 
         super().__init__(**kwargs)
 
-    def override_model(self, model_path: Union[str, Path], batch_size: int):
+    def override_model_inputs(
+        self,
+        model_path: Union[str, Path],
+        batch_size: int,
+        return_additional_outputs=False,
+    ):
         """
         Override the model based on the provided batch_size, sequence_length,
         and input_ids_length.
+
+        :param model_path: Path to the model
+        :param batch_size: The batch size to be used for the model
+        :return: new overwritten model file path. Optionally returns additional outputs
+            specific to the particular engine
         """
         (
             onnx_file_path,
@@ -168,7 +179,12 @@ class NLEngineOperator(EngineOperator):
             sequence_length=self.sequence_length,
             input_ids_length=self.input_ids_length,
         )
-        return onnx_file_path, output_indices_to_be_cached, kv_cache_data_type
+        if return_additional_outputs:
+            return onnx_file_path, {
+                "output_indices_to_be_cached": output_indices_to_be_cached,
+                "kv_cache_data_type": kv_cache_data_type,
+            }
+        return onnx_file_path
 
     def run(self, inp: NLEngineInputs, **kwargs) -> NLEngineOutputs:
         engine_input = inp.engine_inputs
