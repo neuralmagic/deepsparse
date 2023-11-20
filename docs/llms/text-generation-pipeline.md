@@ -28,7 +28,7 @@ pip install -U deepsparse-nightly[llm]
 
 #### **System Requirements**
 
-- Hardware: x86 AVX2, AVX512, AVX512-VNNI and ARM v8.2+.
+- Hardware: x86 AVX2, AVX512, AVX-512 VNNI, and ARM v8.2+.
 - Operating System: Linux (MacOS will be supported soon)
 - Python: v3.8-3.11
 
@@ -49,7 +49,7 @@ prompt = "Below is an instruction that describes a task. Write a response that a
 output = pipeline(prompt=prompt)
 print(output.generations[0].text)
 
-# >> Kubernetes is an open-source container orchestration system for automating deployment, scaling, and management of containerized applications.
+# >> Kubernetes is an open-source container orchestration system for automating the deployment, scaling, and management of containerized applications.
 ```
 
 > **Note:** The 7B model takes about 2 minutes to compile. Set `model_path = hf:mgoin/TinyStories-33M-quant-deepsparse` to use a small TinyStories model for quick compilation if you are just experimenting.
@@ -58,11 +58,11 @@ print(output.generations[0].text)
 
 DeepSparse accepts models in ONNX format, passed either as SparseZoo stubs or local directories.
 
-> **Note:** DeepSparse uses ONNX graphs modified for KV-caching. We will publish specs to enable external users to create LLM ONNX graphs for DeepSparse over the next few weeks. ***At current, we suggest only using LLM ONNX graphs created by Neural Magic.***
+> **Note:** DeepSparse uses ONNX graphs modified for KV-caching. We will publish specs to enable external users to create LLM ONNX graphs for DeepSparse over the next few weeks. ***At present, we suggest only using LLM ONNX graphs created by Neural Magic.***
 > 
 ### **SparseZoo Stubs**
 
-SparseZoo stubs identify a model in SparseZoo. For instance, `zoo:mpt-7b-dolly_mpt_pretrain-pruned50_quantized` identifes a 50% pruned-quantized pretrained MPT-7b model fine-tuned on the Dolly dataset. We can pass the stub to `TextGeneration`, which downloads and caches the ONNX file.
+SparseZoo stubs identify a model in SparseZoo. For instance, `zoo:mpt-7b-dolly_mpt_pretrain-pruned50_quantized` identifies a 50% pruned-quantized pre-trained MPT-7b model fine-tuned on the Dolly dataset. We can pass the stub to `TextGeneration`, which downloads and caches the ONNX file.
 
 ```python
 model_path = "zoo:mpt-7b-dolly_mpt_pretrain-pruned50_quantized"
@@ -91,7 +91,7 @@ pipeline = TextGeneration(model="./local-model/deployment")
 ```
 
 ### **Hugging Face Models**
-Hugging Face models which conform to the directory structure listed above can also be run with DeepSparse by prepending `hf:` to a model id. The following runs a [60% pruned-quantized MPT-7b model trained on GSM](https://huggingface.co/neuralmagic/mpt-7b-gsm8k-pruned60-quant).
+Hugging Face models that conform to the directory structure listed above can also be run with DeepSparse by prepending `hf:` to a model id. The following runs a [60% pruned-quantized MPT-7b model trained on GSM](https://huggingface.co/neuralmagic/mpt-7b-gsm8k-pruned60-quant).
 
 ```python
 from deepsparse import TextGeneration
@@ -176,7 +176,7 @@ print(f"finished_reason: {output.generations[0].finished_reason}")
 
 ## **Generation Configuration**
 
-`TextGeneration` can be configured to alter several variables in generation.
+`TextGeneration` can be configured to alter several variables in a generation.
 
 The following examples use a quantized 33M parameter TinyStories model for quick compilation:
 ```python
@@ -186,7 +186,7 @@ model_id = "hf:mgoin/TinyStories-33M-quant-deepsparse"
 pipeline = TextGeneration(model=model_id)
 ```
 
-### **Creating A `GenerationConfig`**
+### **Creating a `GenerationConfig`**
 
 The `GenerationConfig` can be created in three ways:
 - Via `transformers.GenerationConfig`:
@@ -267,7 +267,7 @@ for generated_text in output.generations[0]:
 # >> Princess peach jumped from the balcony and ran after her. Jill jumped to the floor and followed
 ```
 
-#### Controling the Output Length
+#### Controlling the Output Length
 - `max_new_tokens`: maximum number of tokens to generate. Default is `None`
 ```python
 output = pipeline(prompt=prompt, max_new_tokens=10)
@@ -275,7 +275,7 @@ print(f"{prompt}{output.generations[0].text}")
 # >> Princess peach jumped from the balcony and landed on the ground. She was so happy that she
 ```
 
-#### Controling the Sampling
+#### Controlling the Sampling
 - `do_sample`: If True, will apply sampling from the probability distribution computed from the logits rather than deterministic greedy sampling. Default is `False`
 ```python
 output = pipeline(prompt=prompt, do_sample=True, max_new_tokens=15)
@@ -286,7 +286,7 @@ print(f"{prompt}{output.generations[0].text}")
 # >> Princess peach jumped from the balcony and landed in front of her. She stood proudly and exclaimed, “I did
 ```
 
-- `temperature`: The temperature of the sampling operation. 1 means regular sampling, 0 means always take the highest score, 100.0 is close to uniform probability. If `0.0`, temperature is turned off. Default is `0.0`
+- `temperature`: The temperature of the sampling operation. 1 means regular sampling, 0 means always taking the highest score, 100.0 is close to uniform probability. If `0.0`, temperature is turned off. Default is `0.0`
 ```python
 # more random
 output = pipeline(prompt=prompt, do_sample=True, temperature=1.5, max_new_tokens=15)
