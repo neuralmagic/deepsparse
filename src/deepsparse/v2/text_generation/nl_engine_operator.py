@@ -209,6 +209,11 @@ class NlEngineOperator(EngineOperator):
 
 
 class NlEngineOperatorNoCache(EngineOperator):
+    """
+    Operator the Natural Language Engine, that operates without
+    KV Cache. This means that this operator merely maps input_ids
+    and attention_mask to logits
+    """
 
     input_schema = NlEngineInputNoCache
     output_schema = None
@@ -224,12 +229,9 @@ class NlEngineOperatorNoCache(EngineOperator):
             .get("engine_outputs")
         )
 
+        # By default, the engine outputs logits for all tokens in the sequence.
+        # Let's filter out the logits for the padding tokens.
         logits = numpy.compress(inp.attention_mask[0], logits[0], axis=1)
-        return {
-            "logits": [logits],
-            "logits_shape": None,
-            "deterministic": None,
-            "kv_cache": None,
-            "tokens": None,
-            "sampling_temperature": None,
-        }, {"prompt_logits": [logits]}
+        return {"logits": [logits], "kv_cache": None, "tokens": None}, {
+            "prompt_logits": [logits]
+        }
