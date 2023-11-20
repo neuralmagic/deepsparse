@@ -1,6 +1,8 @@
 
 # DeepSparse SentenceTransformers
 
+[![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1sfN8zDK7MIyatiSIbt2xWh0i6GnaBnTR?usp=sharing)
+
 ```python
 from deepsparse.sentence_transformers import SentenceTransformer
 ```
@@ -37,6 +39,24 @@ for sentence, embedding in zip(sentences, embeddings):
     print("Embedding:", embedding.shape)
     print("")
 ```
+
+## Benchmarking Performance
+
+There is a `benchmark_encoding.py` script located in this directory that compares a standard model running in both SentenceTransformers and DeepSparse, with a sparsified model in DeepSparse. Here is an example run on an 4 core SPR CPU with the base model being `BAAI/bge-small-en-v1.5`:
+```bash
+python benchmark_encoding.py --base_model BAAI/bge-small-en-v1.5 --sparse_model zeroshot/bge-small-en-v1.5-quant
+
+[SentenceTransformer]
+Batch size: 1, Sentence length: 700
+Latency: 100 sentences in 10.34 seconds
+Throughput: 9.67 sentences/second
+
+[DeepSparse Optimized]
+Batch size: 1, Sentence length: 700
+Latency: 100 sentences in 3.75 seconds
+Throughput: 26.65 sentences/second
+```
+
 
 ## Accuracy Validation with MTEB
 
