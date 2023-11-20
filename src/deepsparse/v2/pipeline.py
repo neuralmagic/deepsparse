@@ -77,7 +77,7 @@ class Pipeline(Operator):
         :param pipeline_state: pipeline_state for the pipeline. The values in the state
             are created during pipeline creation and are read-only during inference.
         """
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
 
         next_step = self.router.START_ROUTE
         operator_output = None
