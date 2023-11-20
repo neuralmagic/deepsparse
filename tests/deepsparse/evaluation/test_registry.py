@@ -44,8 +44,8 @@ def test_get_foo_from_registry(registry_with_foo):
     eval_function = registry_with_foo.load_from_registry("foo")
     assert eval_function() == "foo"
 
+
 def test_get_multiple_buzz_from_registry(registry_with_buzz):
     eval_function_1 = registry_with_buzz.load_from_registry("buzz")
     eval_function_2 = registry_with_buzz.load_from_registry("buzzer")
     assert eval_function_1() == eval_function_2() == "buzz"
-
