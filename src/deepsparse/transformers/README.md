@@ -151,7 +151,7 @@ https://sparsezoo.neuralmagic.com/?useCase=text_generation)
 ```python
 from deepsparse import Pipeline
 
-opt_pipeline = Pipeline.create(task="opt")
+opt_pipeline = Pipeline.create(task="opt", model_path="zoo:opt-1.3b-opt_pretrain-quantW8A8")
 
 inference = opt_pipeline("Who is the president of the United States?")
 
