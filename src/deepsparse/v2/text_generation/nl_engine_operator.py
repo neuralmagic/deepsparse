@@ -16,9 +16,9 @@ import copy
 import os
 from typing import Any, List, Tuple
 
+import numpy
 from pydantic import BaseModel, Field
 
-from deepsparse.transformers.helpers import overwrite_transformer_onnx_model_inputs
 from deepsparse.utils.onnx import (
     CACHE_INPUT_PREFIX,
     overwrite_onnx_model_inputs_for_kv_cache_models,
@@ -213,12 +213,7 @@ class NlEngineOperatorNoCache(EngineOperator):
     input_schema = NlEngineInputNoCache
     output_schema = None
 
-    def __init__(self, sequence_length, **kwargs):
-        model_path, *_ = overwrite_transformer_onnx_model_inputs(
-            path=kwargs.get("model_path"),
-            max_length=sequence_length,
-            batch_size=kwargs.get("batch_size", 1),
-        )
+    def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
     def run(self, inp: NlEngineInputNoCache, **kwargs) -> Any:
@@ -228,11 +223,13 @@ class NlEngineOperatorNoCache(EngineOperator):
             .run(EngineOperatorInputs(engine_inputs=engine_inputs), **kwargs)
             .get("engine_outputs")
         )
+
+        logits = numpy.compress(inp.attention_mask[0], logits[0], axis=1)
         return {
-            "logits": logits,
+            "logits": [logits],
             "logits_shape": None,
             "deterministic": None,
             "kv_cache": None,
             "tokens": None,
             "sampling_temperature": None,
-        }, {"prompt_logits": logits}
+        }, {"prompt_logits": [logits]}

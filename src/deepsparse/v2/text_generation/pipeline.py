@@ -60,6 +60,7 @@ class TextGenerationPipelineNoCache(Pipeline):
         ) = setup_transformers_pipeline(
             model_path,
             sequence_length,
+            tokenizer_padding_side="right",
             onnx_model_name=onnx_model_name,
             engine_kwargs=engine_kwargs,
         )
@@ -73,14 +74,13 @@ class TextGenerationPipelineNoCache(Pipeline):
                 sequence_length=sequence_length,
                 tokenizer=self.tokenizer,
             ),
-            NlEngineOperatorNoCache(sequence_length=sequence_length, **engine_kwargs),
+            NlEngineOperatorNoCache(**engine_kwargs),
             PrepareGeneration(
                 sequence_length=sequence_length,
                 prompt_sequence_length=1,
                 token_generator=token_generator,
             ),
             GenerateNewTokenOperator(tokenizer=self.tokenizer, force_max_tokens=True),
-            CompileGeneratedTokens(),
             CompileGenerations(),
             JoinOutput(tokenizer=self.tokenizer),
             ProcessOutputs(tokenizer=self.tokenizer),
