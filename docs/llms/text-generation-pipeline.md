@@ -20,7 +20,7 @@ This user guide explains how to run inference of text generation models with Dee
 
 ## **Installation**
 
-DeepSparse support for LLMs is available on DeepSparse's nightly build on PyPi:
+DeepSparse support for LLMs is available on DeepSparse's nightly build on PyPI:
 
 ```bash
 pip install -U deepsparse-nightly[llm]
@@ -28,7 +28,7 @@ pip install -U deepsparse-nightly[llm]
 
 #### **System Requirements**
 
-- Hardware: x86 AVX2, AVX512, AVX-512 VNNI, and ARM v8.2+.
+- Hardware: x86 AVX2, AVX-512, AVX-512 VNNI, and ARM v8.2+.
 - Operating System: Linux (MacOS will be supported soon)
 - Python: v3.8-3.11
 
