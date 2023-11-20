@@ -45,7 +45,7 @@ from deepsparse.v2.utils import PipelineState
 _LOGGER = logging.getLogger(__name__)
 
 
-@OperatorRegistry.register(task="text_generation")
+@OperatorRegistry.register(name="text_generation")
 class TextGenerationPipeline(Pipeline):
     def __init__(
         self,
