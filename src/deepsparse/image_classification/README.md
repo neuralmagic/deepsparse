@@ -46,7 +46,6 @@ Example:
 ```bash
 sparseml.image_classification.export_onnx \
     --arch-key resnet50 \
-    --dataset imagenet \
     --dataset-path ~/datasets/ILSVRC2012 \
     --checkpoint-path ~/checkpoints/resnet50_checkpoint.pth
 ```
