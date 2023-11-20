@@ -57,11 +57,6 @@ def datasets():
 
 
 @pytest.fixture()
-def llm_evaluation_harness_integration_name():
-    return "llm_evaluation_harness"
-
-
-@pytest.fixture()
 def dummy_integration_name():
     return "dummy_integration"
 
@@ -97,8 +92,10 @@ def test_cli(tmp_path, target, datasets, dummy_integration_name, type_serializat
         [
             "--target",
             target,
-            "--datasets",
-            datasets,
+            "--dataset",
+            datasets[0],
+            "--dataset",
+            datasets[1],
             "--integration",
             dummy_integration_name,
             "--save_path",
@@ -119,13 +116,9 @@ def test_cli(tmp_path, target, datasets, dummy_integration_name, type_serializat
     reason="llm_evaluation_harness not installed",
 )
 def test_evaluation_llm_evaluation_harness_integration_name(
-    target, datasets, llm_evaluation_harness_integration_name
+    target,
+    datasets,
 ):
-    # import to trigger the registration of the
-    # evaluation function for `llm_evaluation_harness`
-    from src.deepsparse.evaluation.integrations.llm_evaluation_harness import (  # noqa F401 E501
-        integration_eval,
-    )
 
     assert evaluate(
         target=target,
