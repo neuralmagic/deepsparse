@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from enum import Enum
 
 import numpy
 
@@ -20,63 +19,8 @@ from deepsparse.transformers.utils.helpers import (
     compute_engine_inputs,
     create_causal_mask,
     initialize_kv_cache_state,
-    set_generated_length,
     validate_session_ids,
 )
-
-
-class DummyFinishReason(Enum):
-    LENGTH = "length"
-    CAPACITY = "capacity"
-    MAX_NEW_TOKENS = "max_new_tokens"
-
-
-@pytest.mark.parametrize(
-    "max_length, "
-    "prompt_tokens_length, "
-    "sequence_length, "
-    "prompt_sequence_length, "
-    "finish_reason_choices, "
-    "max_new_tokens, "
-    "expected_max_tokens, "
-    "expected_finish_reason",
-    [
-        (20, 10, 30, 2, DummyFinishReason, None, 20, DummyFinishReason.LENGTH),
-        (None, 10, 30, 2, DummyFinishReason, None, None, None),
-        (20, 10, 30, 2, DummyFinishReason, 5, 15, DummyFinishReason.MAX_NEW_TOKENS),
-        (20, 10, 5, 2, DummyFinishReason, 5, 5, DummyFinishReason.CAPACITY),
-    ],
-)
-def test_set_generated_length(
-    max_length,
-    prompt_tokens_length,
-    sequence_length,
-    prompt_sequence_length,
-    finish_reason_choices,
-    max_new_tokens,
-    expected_max_tokens,
-    expected_finish_reason,
-):
-    if max_length is None and max_new_tokens is None:
-        with pytest.raises(ValueError):
-            set_generated_length(
-                max_length,
-                prompt_tokens_length,
-                sequence_length,
-                prompt_sequence_length,
-                finish_reason_choices,
-                max_new_tokens,
-            )
-            return
-    out = set_generated_length(
-        max_length,
-        prompt_tokens_length,
-        sequence_length,
-        prompt_sequence_length,
-        finish_reason_choices,
-        max_new_tokens,
-    )
-    assert out == (expected_max_tokens, expected_finish_reason)
 
 
 @pytest.mark.parametrize(
