@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import os
-import shutil
 
 import numpy as np
 from click.testing import CliRunner
@@ -58,11 +57,6 @@ def datasets():
 
 
 @pytest.fixture()
-def llm_evaluation_harness_integration_name():
-    return "llm_evaluation_harness"
-
-
-@pytest.fixture()
 def dummy_integration_name():
     return "dummy_integration"
 
@@ -93,13 +87,15 @@ def test_evaluate(target, datasets, dummy_integration_name):
 @pytest.mark.parametrize("type_serialization", ["json", "yaml"])
 def test_cli(tmp_path, target, datasets, dummy_integration_name, type_serialization):
     runner = CliRunner()
-    out = runner.invoke(
+    runner.invoke(
         main,
         [
             "--target",
             target,
-            "--datasets",
-            datasets,
+            "--dataset",
+            datasets[0],
+            "--dataset",
+            datasets[1],
             "--integration",
             dummy_integration_name,
             "--save_path",
@@ -109,22 +105,10 @@ def test_cli(tmp_path, target, datasets, dummy_integration_name, type_serializat
         ],
         standalone_mode=False,
     )
-    assert isinstance(out.output, str)
-    # 532 is the length of the json/yaml string
-    assert len(out.output) == 532
     # makes sure that the result file is created
     assert os.path.isfile(
         os.path.join(os.path.dirname(str(tmp_path)), f"result.{type_serialization}")
     )
-
-
-@pytest.fixture(scope="function")
-def delete_created_files():
-    yield
-    try:
-        shutil.rmtree(os.path.join(os.getcwd(), "tests/testdata"))
-    except Exception:
-        pass
 
 
 @pytest.mark.skipif(
@@ -132,13 +116,9 @@ def delete_created_files():
     reason="llm_evaluation_harness not installed",
 )
 def test_evaluation_llm_evaluation_harness_integration_name(
-    target, datasets, llm_evaluation_harness_integration_name, delete_created_files
+    target,
+    datasets,
 ):
-    # import to trigger the registration of the
-    # evaluation function for `llm_evaluation_harness`
-    from src.deepsparse.evaluation.integrations.llm_evaluation_harness import (  # noqa F401 E501
-        integration_eval,
-    )
 
     assert evaluate(
         target=target,

@@ -23,8 +23,12 @@ def try_import_llm_evaluation_harness(raise_error=False):
     except ImportError:
         if raise_error:
             raise ImportError(
-                "Unable to import lm_evalu. "
+                "Unable to import lm_eva. "
                 "To install the dependency refer to the github repository: "
                 "https://github.com/EleutherAI/lm-evaluation-harness"
             )
         return False
+
+
+if try_import_llm_evaluation_harness(raise_error=False):
+    from .llm_evaluation_harness import *

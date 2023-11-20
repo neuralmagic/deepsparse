@@ -13,14 +13,34 @@
 # limitations under the License.
 
 import os
-from typing import Optional, Union
+from typing import Any, Dict, Optional, Tuple, Union
 
 from transformers import AutoModelForCausalLM
 
 from deepsparse import DEEPSPARSE_ENGINE, ORT_ENGINE, Pipeline
 
 
-__all__ = ["text_generation_model_from_target", "get_save_path"]
+__all__ = ["text_generation_model_from_target", "get_save_path", "args_to_dict"]
+
+
+def args_to_dict(args: Tuple[Any, ...]) -> Dict[str, Any]:
+    """
+    Convert a tuple of args to a dict of args.
+
+    :param args: The args to convert. Should be a tuple of alternating
+        arg names and arg values e.g.('--arg1', 1, 'arg2', 2, -arg3', 3).
+        The names can optionally have a '-' or `--` in front of them.
+    :return: The converted args as a dict.
+    """
+    if len(args) == 0:
+        return {}
+    # names are uneven indices, values are even indices
+    args_names = args[0::2]
+    args_values = args[1::2]
+    # remove any '-' or '--' from the names
+    args_names = [name.lstrip("-") for name in args_names]
+
+    return dict(zip(args_names, args_values))
 
 
 def get_save_path(
@@ -51,19 +71,19 @@ def get_save_path(
 # TODO: Make it more generic to support sparsified models.
 # TODO: Ideally import this functionality from SparseZoo.
 def text_generation_model_from_target(
-    target: str, engine_type: str, **kwargs
+    target: str,
+    engine_type: str,
 ) -> Union[Pipeline, AutoModelForCausalLM]:
     """
     :param target: The target path to initialize the
         text generation model from. This can be a local
         or remote path to the model or a sparsezoo stub
     :param engine_type: The engine type to initialize the model with.
-    :param kwargs: Additional kwargs to pass to the model initialization
     :return: The initialized model
     """
     if engine_type in [DEEPSPARSE_ENGINE, ORT_ENGINE]:
         return Pipeline.create(
-            task="text-generation", model_path=target, engine_type=engine_type, **kwargs
+            task="text-generation", model_path=target, engine_type=engine_type
         )
     try:
         # for now assume that if it's not a pipeline, it's a huggingface model

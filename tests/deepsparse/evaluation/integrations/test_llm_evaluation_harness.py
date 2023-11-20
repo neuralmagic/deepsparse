@@ -11,20 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import os
-import shutil
 
 import pytest
 from src.deepsparse.evaluation.integrations import try_import_llm_evaluation_harness
-
-
-@pytest.fixture(scope="session")
-def setup():
-    yield
-    try:
-        shutil.rmtree(os.path.join(os.getcwd(), "tests/testdata"))
-    except Exception:
-        pass
 
 
 @pytest.mark.parametrize(
@@ -43,7 +32,6 @@ def setup():
         ["hellaswag", "gsm8k"],
         "gsm8k",
         "arc_challenge",
-        # "lambada_standard", TODO: enable when lambada is fixed
     ],
 )
 @pytest.mark.parametrize(
@@ -56,7 +44,7 @@ class TestLLMEvaluationHarness:
         reason="llm_evaluation_harness not installed",
     )
     def test_integration_eval_onnx_matches_torch(
-        self, target_onnx, target_torch, datasets, batch_size, setup
+        self, target_onnx, target_torch, datasets, batch_size
     ):
         from src.deepsparse.evaluation.integrations.llm_evaluation_harness import (
             integration_eval,
@@ -66,7 +54,6 @@ class TestLLMEvaluationHarness:
             target=target_torch,
             datasets=datasets,
             batch_size=batch_size,
-            target_args={},
             limit=5,
             no_cache=True,  # avoid saving files when running tests
         )
@@ -74,7 +61,6 @@ class TestLLMEvaluationHarness:
             target=target_onnx,
             datasets=datasets,
             batch_size=batch_size,
-            target_args={},
             limit=5,
             engine_type="onnxruntime",
             no_cache=True,  # avoid saving files when running tests
@@ -82,7 +68,4 @@ class TestLLMEvaluationHarness:
         out_onnx = out_onnx.raw["output"]
         out_torch = out_torch.raw["output"]
 
-        datasets = datasets if isinstance(datasets, list) else [datasets]
-        for dataset in datasets:
-            for key, value in out_torch["results"][dataset].items():
-                assert value == out_onnx["results"][dataset][key]
+        assert out_onnx["results"] == out_torch["results"]

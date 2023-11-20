@@ -14,11 +14,11 @@
 """
 ######
 Command help:
-Usage: deepsparse.eval [OPTIONS]
+Usage: deepsparse.eval [OPTIONS] [INTEGRATION_ARGS]...
 
   Module for evaluating models on the various evaluation integrations
 
-Options:
+OPTIONS:
     --target TARGET     A path to a remote or local directory containing ONNX/torch model
                         (including all the auxiliary files) or a SparseZoo stub
     -d DATASETS, --datasets DATASETS
@@ -48,6 +48,9 @@ Options:
                         The name of the splits to evaluate on. Can be a string for a single split
                         or a list of strings for multiple splits.
 
+INTEGRATION_ARGS:
+    Additional, unstructured arguments to pass to the evaluation integration.
+
 #########
 EXAMPLES
 #########
@@ -56,8 +59,10 @@ EXAMPLES
 Example command for evaluating a quantized MPT model from SparseZoo using the Deepsparse Engine.
 The evaluation will be run using `lm-evaluation-harness` on `hellaswag` and `gsm8k` datasets:
 deepsparse.eval zoo:mpt-7b-mpt_pretrain-base_quantized \
-                --datasets hellaswag, gsm8k \
+                --dataset hellaswag \
+                --dataset gsm8k \
                 --integration lm-evaluation-harness \
+                --limit 2 # limit the number of samples to evaluate on, specific to the integration
 
 """  # noqa: E501
 import logging
@@ -65,9 +70,12 @@ from typing import List, Union
 
 import click
 
+from src.deepsparse.evaluation.integrations import (  # noqa: F401
+    try_import_llm_evaluation_harness,
+)
 from src.deepsparse.evaluation.registry import EvaluationRegistry
-from src.deepsparse.evaluation.results import Result, print_result, save_evaluations
-from src.deepsparse.evaluation.utils import get_save_path
+from src.deepsparse.evaluation.results import Result, result_printable, save_evaluations
+from src.deepsparse.evaluation.utils import args_to_dict, get_save_path
 from src.deepsparse.pipeline import DEEPSPARSE_ENGINE, ORT_ENGINE, TORCHSCRIPT_ENGINE
 
 
@@ -76,7 +84,11 @@ __all__ = ["evaluate"]
 _LOGGER = logging.getLogger(__name__)
 
 
-@click.command()
+@click.command(
+    context_settings=dict(
+        ignore_unknown_options=True,
+    )
+)
 @click.option(
     "--target",
     type=click.Path(dir_okay=True, file_okay=True),
@@ -86,11 +98,11 @@ _LOGGER = logging.getLogger(__name__)
 )
 @click.option(
     "-d",
-    "--datasets",
-    type=click.UNPROCESSED,
-    required=True,
-    help="The datasets to evaluate on. Can be a string for a single dataset "
-    "or a list of strings for multiple datasets",
+    "--dataset",
+    type=str,
+    multiple=True,
+    help="The name of dataset to evaluate on. The user may pass multiple "
+    "datasets names by passing the option multiple times.",
 )
 @click.option(
     "-i",
@@ -153,9 +165,10 @@ _LOGGER = logging.getLogger(__name__)
     "Can be a string for a single metric "
     "or a list of strings for multiple metrics.",
 )
+@click.argument("integration_args", nargs=-1, type=click.UNPROCESSED)
 def main(
     target,
-    datasets,
+    dataset,
     integration,
     engine_type,
     save_path,
@@ -163,7 +176,12 @@ def main(
     batch_size,
     splits,
     metrics,
+    integration_args,
 ):
+    # join datasets to a list if multiple datasets are passed
+    datasets = list(dataset) if not isinstance(dataset, str) else dataset
+    # format kwargs to a  dict
+    integration_args = args_to_dict(integration_args)
 
     _LOGGER.info(f"Target to evaluate: {target}")
     if engine_type:
@@ -178,7 +196,8 @@ def main(
         f"Datasets to evaluate on: {datasets}\n"
         f"Batch size: {batch_size}\n"
         f"Splits to evaluate on: {splits}\n"
-        f"Metrics to evaluate on: {metrics}"
+        f"Metrics to evaluate on: {metrics}\n"
+        f"Additional integration arguments supplied: {integration_args}"
     )
 
     result: Result = evaluate(
@@ -189,11 +208,12 @@ def main(
         batch_size=batch_size,
         splits=splits,
         metrics=metrics,
+        **integration_args,
     )
 
     result_formatted = result.formatted
 
-    _LOGGER.info(f"Evaluation done. Results:\n{print_result(result_formatted)}")
+    _LOGGER.info(f"Evaluation done. Results:\n{result_printable(result_formatted)}")
 
     save_path = get_save_path(
         save_path=save_path,
