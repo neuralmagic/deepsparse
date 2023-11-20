@@ -77,14 +77,15 @@ class TokenGenerator:
         :param logits: the logits from the model with shape (vocab_size,)
         :return: the sampled token
         """
-        # make a copy of logits to avoid modifying the original
-        # logits distribution in-place
-        logits = logits.copy()
 
         if self.deterministic:
             token = numpy.argmax(logits)
             self.tokens.append(token)
             return token
+
+        # make a copy of logits to avoid modifying the original
+        # logits distribution in-place
+        logits = logits.copy()
 
         if self.top_k:
             logits = self.apply_top_k(logits)
