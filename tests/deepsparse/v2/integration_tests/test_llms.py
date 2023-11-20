@@ -15,7 +15,7 @@
 This test suite consumes config files to test the text generation pipeline
 for various scenarios.
 
-A sample config file is a yaml that requires the following fields:
+A sample config file is a yaml that r_equires the following fields:
     cadence: The cadence of the tests. The available options are:
               "nightly", "weekly" and "commit". By default, only
               the tests that have cadence "commit" will be run
@@ -117,10 +117,6 @@ class TestsIntegrationLLMsPipelines:
             model_path=self.model_path,
             internal_kv_cache=self.internal_kv_cache,
             force_max_tokens=True,
-            generation_config=dict(
-                max_new_tokens=max_new_tokens,
-                output_scores=True,
-            ),
         )
         self.default_pipeline = None
         self.max_new_tokens = max_new_tokens
@@ -141,7 +137,14 @@ class TestsIntegrationLLMsPipelines:
             prompt_sequence_length=1,
             engine_type="onnxruntime",
         )
-        output = pipeline(prompt=self.prompt, include_prompt_logits=True)
+        output = pipeline(
+            prompt=self.prompt,
+            include_prompt_logits=True,
+            generation_kwargs=dict(
+                max_new_tokens=self.max_new_tokens,
+                output_scores=True,
+            ),
+        )
 
         self._test_output(
             output=output,
@@ -162,10 +165,12 @@ class TestsIntegrationLLMsPipelines:
         pipeline = self.get_pipeline(
             engine_type="onnxruntime",
         )
-        pipeline._debug = True
         output = pipeline(
             prompt=self.prompt,
             include_prompt_logits=True,
+            generation_kwargs=dict(
+                max_new_tokens=self.max_new_tokens, output_scores=True
+            ),
         )
 
         self._test_output(
@@ -183,10 +188,13 @@ class TestsIntegrationLLMsPipelines:
         pipeline = self.get_pipeline(
             prompt_sequence_length=1,
         )
-        pipeline._debug = True
+
         output = pipeline(
             prompt=self.prompt,
             include_prompt_logits=True,
+            generation_kwargs=dict(
+                max_new_tokens=self.max_new_tokens, output_scores=True
+            ),
         )
 
         self._test_output(
@@ -204,10 +212,12 @@ class TestsIntegrationLLMsPipelines:
         # 3. KV Cache managed internally or externally
 
         pipeline = self.get_pipeline()
-        pipeline._debug = True
         output = pipeline(
             prompt=self.prompt,
             include_prompt_logits=True,
+            generation_kwargs=dict(
+                max_new_tokens=self.max_new_tokens, output_scores=True
+            ),
         )
 
         self._test_output(

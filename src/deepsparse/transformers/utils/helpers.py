@@ -19,7 +19,7 @@ from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 import numpy
 from transformers import AutoTokenizer, GenerationConfig
 
-from src.deepsparse.utils.onnx import CACHE_INPUT_PREFIX, CACHE_OUTPUT_PREFIX
+from deepsparse.utils.onnx import CACHE_INPUT_PREFIX, CACHE_OUTPUT_PREFIX
 
 
 __all__ = [
@@ -45,9 +45,9 @@ def set_generated_length(
     prompt_tokens_length: int,
     sequence_length: int,
     prompt_sequence_length: int,
+    max_new_tokens: int,
     finish_reason_choices: "FinishReason",  # noqa
-    max_new_tokens: Optional[int] = None,
-) -> Tuple[int, "FinishReason"]:  # noqa
+):
     """
     Determine the length of the generated tokens. The hard cap on the total number
     of tokens is based on the sequence length. If max_length is provided and is less
@@ -62,29 +62,19 @@ def set_generated_length(
     :param prompt_sequence_length: the prompt sequence length used for the pipeline
     :param max_new_tokens: the max_new_tokens attribute, which may be provided
     as part of the input during inference
-    :return a tuple of the total number of tokens to generate and the reason for
-        stopping
     """
-
-    if max_new_tokens is not None:
-        # If max_new_tokens is specified, it will take
-        # priority over `max_length` parameter. As a
-        # result, total max tokens is based on
-        # max_new_tokens + prompt tokens
+    if max_length:
+        # if max_length provided, use that to cap total tokens generated
+        max_tokens = max_length
+        finish_reason = finish_reason_choices.LENGTH
+    else:
+        # if not provided, max tokens is based on max_new_tokens + prompt tokens
+        print("max new tokens", max_new_tokens)
         max_tokens = (
             min(max_new_tokens, sequence_length - prompt_sequence_length)
             + prompt_tokens_length
         )
         finish_reason = finish_reason_choices.MAX_NEW_TOKENS
-    elif max_length is not None:
-        # if max_length provided, use that to cap total tokens generated
-        max_tokens = max_length
-        finish_reason = finish_reason_choices.LENGTH
-    else:
-        raise ValueError(
-            "Unable to compute `max_tokens` to generate. Please provide either "
-            "`max_length` or `max_new_tokens` as arguments to `generation_config`"
-        )
 
     # hard model/pipeline cap
     return (
