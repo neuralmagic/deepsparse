@@ -194,5 +194,3 @@ class TextGenerationPipeline(Pipeline):
 
     def condense_inputs(self, *args, **kwargs):
         return args[0], kwargs
-
-   

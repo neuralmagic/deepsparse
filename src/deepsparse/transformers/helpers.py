@@ -76,6 +76,13 @@ def setup_transformers_pipeline(
         tokenizer.pad_token = tokenizer.eos_token
 
     engine_kwargs = engine_kwargs or {}
+    if engine_kwargs.get("model_path"):
+        raise ValueError(
+            "The engine kwargs already specify "
+            f"a model path: {engine_kwargs['model_path']}, "
+            f"but a model path was also provided: {model_path}. "
+            "Please only provide one."
+        )
     engine_kwargs["model_path"] = model_path
     return model_path, config, tokenizer, engine_kwargs
 
@@ -84,6 +91,7 @@ def setup_onnx_file_path(
     model_path: str,
     sequence_length: int,
     onnx_model_name: Optional[str] = None,
+    task: Optional[str] = None,
 ) -> Tuple[str, transformers.PretrainedConfig, transformers.PreTrainedTokenizer]:
     """
     Parses ONNX model from the `model_path` provided. It additionally
@@ -102,7 +110,9 @@ def setup_onnx_file_path(
     hf_logger_level = hf_logger.level
     hf_logger.setLevel(logging.ERROR)
 
-    config = transformers.PretrainedConfig.from_pretrained(deployment_path)
+    config = transformers.PretrainedConfig.from_pretrained(
+        deployment_path, finetuning_task=task
+    )
     hf_logger.setLevel(hf_logger_level)
 
     trust_remote_code = False

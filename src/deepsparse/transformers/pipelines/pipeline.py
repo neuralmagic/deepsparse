@@ -16,19 +16,18 @@
 Base Pipeline class for transformers inference pipeline
 """
 
-import logging
+
 import warnings
 from pathlib import Path
 from typing import Any, Dict, List, Mapping, Optional, Union
 
 import numpy
 import transformers
-from transformers.models.auto import AutoTokenizer
 
 from deepsparse import Bucketable, Pipeline
+from deepsparse.transformers.helpers import overwrite_transformer_onnx_model_inputs
 from deepsparse.transformers.helpers import (
-    get_deployment_path,
-    overwrite_transformer_onnx_model_inputs,
+    setup_onnx_file_path as setup_onnx_file_path_v2,
 )
 
 
@@ -124,24 +123,15 @@ class TransformersPipeline(Pipeline, Bucketable):
 
         :return: file path to the processed ONNX file for the engine to compile
         """
-        deployment_path, onnx_path = get_deployment_path(self.model_path)
-
-        # temporarily set transformers logger to ERROR to avoid
-        # printing misleading warnings
-        hf_logger = logging.getLogger("transformers")
-        hf_logger_level = hf_logger.level
-        hf_logger.setLevel(logging.ERROR)
-        self.config = transformers.PretrainedConfig.from_pretrained(
-            deployment_path,
-            finetuning_task=self.task if hasattr(self, "task") else None,
+        # we will be soon retiring V1 pipelines. This is why I am deciding
+        # to reuse the functions from V2 pipelines in the (soon) legacy pipelines
+        onnx_path, config, tokenizer = setup_onnx_file_path_v2(
+            model_path=self.model_path,
+            sequence_length=self.sequence_length,
+            task=self.task if hasattr(self, "task") else None,
         )
-        hf_logger.setLevel(hf_logger_level)
-
-        self.tokenizer = AutoTokenizer.from_pretrained(
-            deployment_path,
-            trust_remote_code=self._trust_remote_code,
-            model_max_length=self.sequence_length,
-        )
+        self.config = config
+        self.tokenizer = tokenizer
 
         if not self._delay_overwriting_inputs:
             # overwrite onnx graph to given required input shape
@@ -153,12 +143,6 @@ class TransformersPipeline(Pipeline, Bucketable):
                 onnx_path, max_length=self.sequence_length
             )
 
-        if not self.config or not self.tokenizer:
-            raise RuntimeError(
-                "Invalid config or tokenizer provided. Please provide "
-                "paths to the files or ensure they exist in the `model_path` provided. "
-                "See `tokenizer` and `config` arguments for details."
-            )
         return onnx_path
 
     def tokens_to_engine_input(
