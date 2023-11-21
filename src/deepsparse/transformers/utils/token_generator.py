@@ -84,6 +84,7 @@ class TokenGenerator:
 
         if self.top_k:
             logits = self.apply_top_k(logits)
+
         if self.top_p:
             logits = self.apply_top_p(logits)
 
