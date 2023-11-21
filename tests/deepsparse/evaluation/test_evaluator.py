@@ -11,13 +11,15 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 import os
+import sys
 
 import numpy as np
 from click.testing import CliRunner
 
 import pytest
-from src.deepsparse.evaluation.evaluator import evaluate, main
+from src.deepsparse.evaluation.evaluator import evaluate
 from src.deepsparse.evaluation.integrations import try_import_llm_evaluation_harness
 from src.deepsparse.evaluation.registry import EvaluationRegistry
 from src.deepsparse.evaluation.results import (
@@ -84,8 +86,34 @@ def test_evaluate(target, datasets, dummy_integration_name):
     assert isinstance(result, Result)
 
 
+@pytest.mark.skipif(
+    not try_import_llm_evaluation_harness(raise_error=False),
+    reason="llm_evaluation_harness not installed",
+)
+def test_evaluation_llm_evaluation_harness_integration_name(
+    target,
+    datasets,
+):
+
+    assert evaluate(
+        target=target,
+        datasets=datasets,
+        limit=2,
+        no_cache=True,
+        integration="llm_evaluation_harness",
+    )
+
+
 @pytest.mark.parametrize("type_serialization", ["json", "yaml"])
+@pytest.mark.skipif(
+    tuple(map(int, sys.version.split(".")[:2])) < (3, 10),
+    reason="Python version < 3.10 seems to have problems "
+    "with importing functions that are decorated with "
+    "click option where multiple=True",
+)
 def test_cli(tmp_path, target, datasets, dummy_integration_name, type_serialization):
+    from src.deepsparse.evaluation.cli import main
+
     runner = CliRunner()
     runner.invoke(
         main,
@@ -108,22 +136,4 @@ def test_cli(tmp_path, target, datasets, dummy_integration_name, type_serializat
     # makes sure that the result file is created
     assert os.path.isfile(
         os.path.join(os.path.dirname(str(tmp_path)), f"result.{type_serialization}")
-    )
-
-
-@pytest.mark.skipif(
-    not try_import_llm_evaluation_harness(raise_error=False),
-    reason="llm_evaluation_harness not installed",
-)
-def test_evaluation_llm_evaluation_harness_integration_name(
-    target,
-    datasets,
-):
-
-    assert evaluate(
-        target=target,
-        datasets=datasets,
-        limit=2,
-        no_cache=True,
-        integration="llm_evaluation_harness",
     )
