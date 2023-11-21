@@ -25,13 +25,13 @@ from src.deepsparse.evaluation.utils import (
 
 def test_get_save_path_path_provided(tmpdir):
     save_path = get_save_path(
-        type_serialization="json", save_path=tmpdir, default_file_name="dummy"
+        type_serialization="json", save_path=tmpdir, file_name="dummy"
     )
     assert save_path == os.path.join(tmpdir, "dummy.json")
 
 
 def test_get_save_to_current_working_directory():
-    save_path = get_save_path(type_serialization="json", default_file_name="dummy")
+    save_path = get_save_path(type_serialization="json", file_name="dummy")
     assert save_path == os.path.join(os.getcwd(), "dummy.json")
 
 

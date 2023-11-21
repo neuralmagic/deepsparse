@@ -29,7 +29,6 @@ __all__ = [
     "Evaluation",
     "Result",
     "save_evaluations",
-    "result_printable",
 ]
 
 
@@ -63,12 +62,20 @@ class Evaluation(BaseModel):
 
 
 class Result(BaseModel):
-    formatted: List[Evaluation]
-    raw: Any
+    formatted: List[Evaluation] = Field(
+        description="Evaluation results represented in the unified, structured format"
+    )
+    raw: Any = Field(
+        description="Evaluation results represented in the raw format "
+        "(characteristic for the specific evaluation integration)"
+    )
 
-
-def result_printable(results_formatted: List[Evaluation]):
-    return save_evaluations(results_formatted, save_format="json", save_path=None)
+    def __str__(self):
+        """
+        The string representation of the Result object is
+        the formatted evaluation results serialized in JSON.
+        """
+        return save_evaluations(self.formatted, save_format="json", save_path=None)
 
 
 def save_evaluations(

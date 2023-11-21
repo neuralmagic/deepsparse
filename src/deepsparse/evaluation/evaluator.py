@@ -74,7 +74,7 @@ from src.deepsparse.evaluation.integrations import (  # noqa: F401
     try_import_llm_evaluation_harness,
 )
 from src.deepsparse.evaluation.registry import EvaluationRegistry
-from src.deepsparse.evaluation.results import Result, result_printable, save_evaluations
+from src.deepsparse.evaluation.results import Result, save_evaluations
 from src.deepsparse.evaluation.utils import args_to_dict, get_save_path
 from src.deepsparse.pipeline import DEEPSPARSE_ENGINE, ORT_ENGINE, TORCHSCRIPT_ENGINE
 
@@ -211,19 +211,17 @@ def main(
         **integration_args,
     )
 
-    result_formatted = result.formatted
-
-    _LOGGER.info(f"Evaluation done. Results:\n{result_printable(result_formatted)}")
+    _LOGGER.info(f"Evaluation done. Results:\n{result}")
 
     save_path = get_save_path(
         save_path=save_path,
         type_serialization=type_serialization,
-        default_file_name="result",
+        file_name="result",
     )
     if save_path:
         _LOGGER.info(f"Saving the evaluation results to {save_path}")
         save_evaluations(
-            evaluations=result_formatted,
+            evaluations=result.formatted,
             save_path=save_path,
             save_format=type_serialization,
         )

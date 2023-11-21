@@ -46,7 +46,7 @@ def args_to_dict(args: Tuple[Any, ...]) -> Dict[str, Any]:
 def get_save_path(
     type_serialization: str,
     save_path: Optional[str] = None,
-    default_file_name: str = "results",
+    file_name: str = "results",
 ) -> str:
     """
     Get the save path for the results file.
@@ -55,11 +55,11 @@ def get_save_path(
         to use for the results file.
     :param save_path: The path to save the results file to.
         If None, will save to the current directory.
-    :param default_file_name: The default file name to use
+    :param file_name: The file name to use
         for the results file.
     :return: The save path for the results file.
     """
-    file_name = default_file_name + "." + type_serialization
+    file_name = file_name + "." + type_serialization
     if save_path is None:
         base_path = os.getcwd()
     else:
