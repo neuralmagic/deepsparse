@@ -1,4 +1,5 @@
 # flake8: noqa
+# isort: skip_file
 
 # Copyright (c) 2021 - present / Neuralmagic, Inc. All Rights Reserved.
 #
@@ -14,3 +15,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from .operator import *
+from .engine_operator import *
