@@ -74,7 +74,7 @@ class TextGenerationPipelineNoCache(Pipeline):
                 sequence_length=sequence_length,
                 tokenizer=self.tokenizer,
             ),
-            NlEngineOperatorNoCache(**engine_kwargs),
+            NlEngineOperatorNoCache(sequence_length=sequence_length, **engine_kwargs),
             PrepareGeneration(
                 sequence_length=sequence_length,
                 prompt_sequence_length=1,

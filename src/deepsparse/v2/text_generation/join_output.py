@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import List
+from typing import Dict, List, Tuple
 
 import numpy
 
@@ -32,9 +32,8 @@ class JoinOutput(Operator):
     def __init__(self, tokenizer):
         self.tokenizer = tokenizer
 
-    def run(self, inp: List[List[CompileGenerationsOutput]], **kwargs):
-
-        if not isinstance(inp, list):
+    def run(self, inp: Tuple[List[CompileGenerationsOutput], Dict], **kwargs):
+        if not isinstance(inp, Tuple):
             # when running without KV Cache
             # this will be a single
             # CompileGenerationsOutput for now

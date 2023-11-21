@@ -19,6 +19,7 @@ from typing import Any, List, Tuple
 import numpy
 from pydantic import BaseModel, Field
 
+from deepsparse.transformers.helpers import overwrite_transformer_onnx_model_inputs
 from deepsparse.utils.onnx import (
     CACHE_INPUT_PREFIX,
     overwrite_onnx_model_inputs_for_kv_cache_models,
@@ -218,7 +219,12 @@ class NlEngineOperatorNoCache(EngineOperator):
     input_schema = NlEngineInputNoCache
     output_schema = None
 
-    def __init__(self, **kwargs):
+    def __init__(self, sequence_length: int, **kwargs):
+        overwrite_transformer_onnx_model_inputs(
+            path=kwargs.get("model_path"),
+            batch_size=kwargs.get("batch_size", 1),
+            max_length=sequence_length,
+        )
         super().__init__(**kwargs)
 
     def run(self, inp: NlEngineInputNoCache, **kwargs) -> Any:
