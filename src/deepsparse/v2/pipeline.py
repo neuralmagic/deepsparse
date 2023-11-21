@@ -14,7 +14,6 @@
 
 import asyncio
 import copy
-from asyncio import Future as AsyncioFuture
 from concurrent.futures import Future
 from typing import Any, Dict, List, Union
 
@@ -70,10 +69,7 @@ class Pipeline(Operator):
         self._scheduler_group = SchedulerGroup(self.schedulers)
 
     def _run_next(
-        self,
-        inp: Any,
-        inference_state: InferenceState,
-        next_step: str,
+        self, inp: Any, inference_state: InferenceState, next_step: str, **kwargs
     ):
         if (
             isinstance(self.ops[next_step], EngineOperator)
@@ -90,6 +86,7 @@ class Pipeline(Operator):
             inp=inp,
             pipeline_state=self.pipeline_state,
             inference_state=inference_state,
+            **kwargs,
         )
 
     def _run_sub_graphs(
@@ -151,7 +148,7 @@ class Pipeline(Operator):
 
         return [x.output for x in sub_graphs]
 
-    async def run_async():
+    async def run_async(self, *args, inference_state: InferenceState, **kwargs):
         """
         Run through the operators using the provided router and scheduler.
         The input to a given operator is the output of the previous operator.
@@ -171,26 +168,24 @@ class Pipeline(Operator):
             if next_step == self.router.SPLIT_ROUTE:
                 operator_output = self._apply_split(operator_output, inference_state)
                 next_step = self.router.route[self.router.JOIN_ROUTE]
+                if next_step == self.router.END_ROUTE:
+                    return operator_output
 
             if next_step == self.router.START_ROUTE:
-                outputs = self._run_next_step(
+                outputs = run_func(
                     *args,
-                    next_step=next_step,
                     func=self._scheduler_group.submit,
-                    inference_state=inference_state,
                     operator=self.ops[next_step],
-                    pipeline_state=pipeline_state,
+                    inference_state=inference_state,
+                    pipeline_state=self.pipeline_state,
                     loop=loop,
                     **kwargs,
                 )
             else:
-                outputs = self._run_next_step(
-                    func=self._scheduler_group.submit,
-                    input=operator_output,
+                outputs = self._run_next(
+                    inp=operator_output,
                     next_step=next_step,
                     inference_state=inference_state,
-                    operator=self.ops[next_step],
-                    pipeline_state=pipeline_state,
                     loop=loop,
                 )
 
@@ -226,7 +221,6 @@ class Pipeline(Operator):
             sub_graph_inputs=batches, sub_graphs=split_graphs
         )
         return self.condense_inputs(outputs)
-
 
     def run(
         self,
