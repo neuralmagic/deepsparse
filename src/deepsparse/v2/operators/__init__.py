@@ -16,3 +16,4 @@
 # limitations under the License.
 from .operator import *
 from .engine_operator import *
+from .registry import *

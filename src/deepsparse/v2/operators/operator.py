@@ -18,6 +18,7 @@ from typing import Any, Optional, Type
 from pydantic import BaseModel
 
 from deepsparse.v2.utils import InferenceState
+from deepsparse.v2.operators.registry import OperatorRegistry
 
 
 __all__ = ["Operator"]
@@ -99,6 +100,20 @@ class Operator(ABC):
         if self.has_output_schema():
             return self.output_schema(**run_output)
         return run_output
+
+    @staticmethod
+    def create(
+        task: str,
+        **kwargs,
+    ) -> "Operator":
+        """
+        :param task: Operator task
+        :param kwargs: extra task specific kwargs to be passed to task Operator
+            implementation
+        :return: operator object initialized for the given task
+        """
+        operator_constructor = OperatorRegistry.get_task_constructor(task)
+        return operator_constructor(**kwargs)
 
     @abstractmethod
     def run(self, *args, **kwargs) -> Any:
