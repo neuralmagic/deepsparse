@@ -17,7 +17,7 @@ from typing import Any, Optional, Type
 
 from pydantic import BaseModel
 
-from deepsparse.v2.utils import InferenceState, PipelineState
+from deepsparse.v2.utils import InferenceState
 
 
 __all__ = ["Operator"]
@@ -57,7 +57,6 @@ class Operator(ABC):
         self,
         *args,
         inference_state: InferenceState,
-        pipeline_state: PipelineState,
         **kwargs,
     ) -> Any:
         """
@@ -90,13 +89,11 @@ class Operator(ABC):
             run_output = self.run(
                 inference_input,
                 inference_state=inference_state,
-                pipeline_state=pipeline_state,
             )
         else:
             run_output = self.run(
                 *args,
                 inference_state=inference_state,
-                pipeline_state=pipeline_state,
                 **kwargs,
             )
         if self.has_output_schema():

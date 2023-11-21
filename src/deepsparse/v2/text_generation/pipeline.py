@@ -12,14 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Dict, Optional
+import logging
+from typing import Dict, List, Optional
 
 from deepsparse.transformers.helpers import setup_transformers_pipeline
 from deepsparse.transformers.utils.helpers import process_generation_config
 from deepsparse.utils import split_engine_inputs
+from deepsparse.v2.operators import EngineOperator
 from deepsparse.v2.pipeline import Pipeline
 from deepsparse.v2.routers import GraphRouter
-from deepsparse.v2.schedulers import OperatorScheduler
+from deepsparse.v2.schedulers import ContinuousBatchingScheduler, OperatorScheduler
 from deepsparse.v2.text_generation import (
     AutoRegressiveOperatorPreprocess,
     CompileGeneratedTokens,
@@ -39,6 +41,9 @@ from deepsparse.v2.text_generation import (
 from deepsparse.v2.utils import PipelineState
 
 
+_LOGGER = logging.getLogger(__name__)
+
+
 class TextGenerationPipeline(Pipeline):
     def __init__(
         self,
@@ -48,6 +53,7 @@ class TextGenerationPipeline(Pipeline):
         internal_kv_cache: bool = True,
         force_max_tokens: bool = False,
         generation_config=None,
+        continuous_batch_sizes: Optional[List[int]] = None,
         engine_kwargs: Optional[Dict] = None,
     ):
         (
@@ -133,6 +139,20 @@ class TextGenerationPipeline(Pipeline):
         compile_generated_tokens = CompileGeneratedTokens()
         join_output = JoinOutput(tokenizer=self.tokenizer)
 
+        # TODO: do we want to support lists for different engines?
+        continuous_batching_scheduler = None
+        if continuous_batch_sizes:
+            if internal_kv_cache:
+                _LOGGER.warn(
+                    "internal kv_cache is currently not supported with continuous ",
+                    "batching",
+                )
+            else:
+                continuous_batching_scheduler = self._get_continuous_batching_scheduler(
+                    batch_sizes=continuous_batch_sizes,
+                    engines=[single_engine_operator, multi_engine_operator],
+                )
+
         ops = {
             "process_input": process_inputs,
             "single_engine": single_engine_operator,
@@ -183,7 +203,11 @@ class TextGenerationPipeline(Pipeline):
         )
         scheduler = [OperatorScheduler()]
         super().__init__(
-            ops=ops, router=router, schedulers=scheduler, pipeline_state=pipeline_state
+            ops=ops,
+            router=router,
+            schedulers=scheduler,
+            pipeline_state=pipeline_state,
+            continuous_batching_scheduler=continuous_batching_scheduler,
         )
 
     def expand_inputs(self, items, batch_size):
@@ -194,3 +218,21 @@ class TextGenerationPipeline(Pipeline):
 
     def condense_inputs(self, *args, **kwargs):
         return args[0], kwargs
+
+    def _get_continuous_batching_scheduler(
+        self, batch_sizes: List[int], engines: List[EngineOperator]
+    ) -> ContinuousBatchingScheduler:
+        """
+        Fetch the continuous batching scheduler. Requires adding the EngineOperator
+        that will run through the scheduler.
+
+        :param batch_sizes: List of batch sizes to be used by the models
+        :param engine: List of EngineOperators which should be scheduled using the
+            continuous batching scheduler
+
+        :returns: ContinuousBatchingScheduler
+        """
+        continuous_batching_scheduler = ContinuousBatchingScheduler.get_instance()
+        for op in engines:
+            continuous_batching_scheduler.add_engine_operator(op, batch_sizes)
+        return continuous_batching_scheduler

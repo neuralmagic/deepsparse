@@ -12,9 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Any
-
 from deepsparse.v2.operators import Operator
+from deepsparse.v2.text_generation.nl_engine_operator import NLEngineOutputs
 from deepsparse.v2.utils import InferenceState
 
 
@@ -28,12 +27,13 @@ class CompilePromptLogits(Operator):
     take prompt logits from each iteration run and update the inference state.
     """
 
-    def can_operate(self, inp: Any):
-        if inp.get("in_generation") is None:
+    def can_operate(self, inp: NLEngineOutputs):
+        if inp.in_generation is None:
             return True
         return False
 
-    def run(self, logits, inference_state: InferenceState, **kwargs):
+    def run(self, inp: NLEngineOutputs, inference_state: InferenceState, **kwargs):
+        logits = inp.engine_outputs
         logit_type = "prompt_logits"
 
         if inference_state.current_state.get(logit_type) is not None:
@@ -44,6 +44,6 @@ class CompilePromptLogits(Operator):
 
         state_update = {logit_type: current_logits}
         return {
-            "kv_cache": kwargs.get("kv_cache"),
-            "tokens": kwargs.get("tokens"),
+            "kv_cache": inp.kv_cache,
+            "tokens": inp.tokens,
         }, state_update

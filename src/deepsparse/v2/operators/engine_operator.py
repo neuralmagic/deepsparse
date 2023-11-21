@@ -20,7 +20,7 @@ from pydantic import BaseModel, Field
 from deepsparse import Context as EngineContext
 from deepsparse import Engine, MultiModelEngine, Scheduler
 from deepsparse.benchmark import ORTEngine
-from deepsparse.utils import model_to_path
+from deepsparse.utils import join_engine_outputs, model_to_path, split_engine_inputs
 from deepsparse.v2.operators import Operator
 
 
@@ -29,12 +29,12 @@ ORT_ENGINE = "onnxruntime"
 
 SUPPORTED_PIPELINE_ENGINES = [DEEPSPARSE_ENGINE, ORT_ENGINE]
 
-__all__ = ["EngineOperator"]
+__all__ = ["EngineOperator", "EngineOperatorInputs", "EngineOperatorOutputs"]
 
 
 class EngineOperatorInputs(BaseModel):
     engine_inputs: List = Field(description="engine_inputs")
-    engine: Optional[Engine] = Field(
+    engine: Optional[Union[ORTEngine, Engine]] = Field(
         description="override the engine to run forward pass with",
         default=None,
     )
@@ -95,8 +95,8 @@ class EngineOperator(Operator):
         engine_kwargs: Dict = None,
     ):
         self.model_path = model_to_path(model_path)
-        self._batch_size = 1
         self.engine_context = engine_context
+        self._batch_size = 1
 
         if self.engine_context is not None:
             num_cores = num_cores or self.engine_context.num_cores
@@ -131,6 +131,7 @@ class EngineOperator(Operator):
         """
         return self._batch_size
 
+    # TODO: maybe add a few args to make this less opaque?
     def create_engine(
         self,
         **kwargs,
@@ -142,7 +143,8 @@ class EngineOperator(Operator):
             constructor/compilation
         :return: inference engine
         """
-        onnx_file_path = self.model_path
+
+        onnx_file_path = kwargs.pop("model_path", self.model_path)
         engine_args = deepcopy(self._engine_args)
         engine_args.update(kwargs)
         engine_type = self._engine_type.lower()
