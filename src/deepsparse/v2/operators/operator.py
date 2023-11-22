@@ -17,8 +17,8 @@ from typing import Any, Optional, Type
 
 from pydantic import BaseModel
 
-from deepsparse.v2.operators.registry import OperatorRegistry
 from deepsparse.v2.utils import InferenceState
+from deepsparse.v2.operators.registry import OperatorRegistry
 
 
 __all__ = ["Operator"]
