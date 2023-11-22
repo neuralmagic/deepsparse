@@ -20,6 +20,16 @@ from deepsparse.v2.utils.state import InferenceState
 
 
 class Timer:
+    """
+    Used to store runtime by using .start(key) and .end(key)
+
+    Usage:
+    timer = Timer()
+    tiemr.start("foo")
+    ...
+    timer.end("foo")
+    """
+
     def __init__(self):
         self._lock = threading.Lock()
         self.measurements = {}

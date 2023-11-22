@@ -27,7 +27,8 @@ from tests.deepsparse.v2.test_basic_pipeline import (
 )
 
 
-def test_pipeline_multiple_runtime_successfully_recoded():
+def test_pipeline_multiple_runtime_recoded_to_middleware_state():
+    """Save recordings in the pipeline level into the middleware state"""
     AddThreePipeline = TimedMiddlewarePipeline(
         ops=[AddOneOperator(), AddTwoOperator()],
         router=LinearRouter(end_route=2),
@@ -42,7 +43,8 @@ def test_pipeline_multiple_runtime_successfully_recoded():
     assert "bar" in timer.measurements
 
 
-def test_inference_state_multiple_runtime_successfully_recoded():
+def test_inference_state_multiple_runtime_recoded_to_inference_state():
+    """Save recordings in the inference level into the inference state"""
     AddThreePipeline = TimedInferenceStatePipeline(
         ops=[AddOneOperator(), AddTwoOperator()],
         router=LinearRouter(end_route=2),
@@ -55,11 +57,15 @@ def test_inference_state_multiple_runtime_successfully_recoded():
     timer = AddThreePipeline.timer_middleware.timer
 
     # inference state only saved to its state, not to the middleware state
-    assert "foo" not in timer.measurements
-    assert "bar" not in timer.measurements
+    assert "fp32" not in timer.measurements
+    assert "int4" not in timer.measurements
 
 
-def test_both_pipeline_and_inference_state_multiple_runtime_successfully_recoded():
+# flake8: noqa
+def test_both_pipeline_and_inference_state_multiple_runtime_recoded_to_middleware_state():
+    """
+    Save recordings in both the middleware state and inference level to the middleware state
+    """
     AddThreePipeline = TimedInferenceStateMiddlewarePipeline(
         ops=[AddOneOperator(), AddTwoOperator()],
         router=LinearRouter(end_route=2),
@@ -74,4 +80,4 @@ def test_both_pipeline_and_inference_state_multiple_runtime_successfully_recoded
     # inference state saved to its state and in middleware state
     assert "foo" in timer.measurements
     assert "bar" in timer.measurements
-    assert "inference_state" in timer.measurements
+    assert "op1" in timer.measurements

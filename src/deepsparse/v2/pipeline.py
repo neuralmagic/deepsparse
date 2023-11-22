@@ -52,14 +52,13 @@ class Pipeline(Operator):
         router: Router,
         schedulers: List[OperatorScheduler],
         pipeline_state: PipelineState = None,
-        # [TODO] middlewares: List[]
     ):
 
         self.ops = ops
         self.router = router
         self.schedulers = schedulers
         self.pipeline_state = pipeline_state
-        self.timer_middleware = TimerMiddleware()  # TODO: make generic for middleware
+        self.timer_middleware = TimerMiddleware()
         self.validate()
 
         self._scheduler_group = SchedulerGroup(self.schedulers)
