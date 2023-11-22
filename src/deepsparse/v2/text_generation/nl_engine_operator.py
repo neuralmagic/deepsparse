@@ -33,10 +33,12 @@ from deepsparse.v2.operators.engine_operator import (
 )
 
 
-__all__ = ["NLEngineOperator",
-            "NlEngineOperatorNoCache",
-            "NlEngineInputNoCache",
-           "NLEngineInputs"]
+__all__ = [
+    "NLEngineOperator",
+    "NLEngineOperatorNoCache",
+    "NLEngineInputsNoCache",
+    "NLEngineInputs",
+]
 
 
 class NLEngineInputs(BaseModel):
@@ -108,12 +110,12 @@ class NLEngineOutputs(BaseModel):
         ]
 
 
-class NlEngineInputsNoCache(BaseModel):
+class NLEngineInputsNoCache(BaseModel):
     input_ids: Any
     attention_mask: Any
 
 
-class NlEngineOperator(EngineOperator):
+class NLEngineOperator(EngineOperator):
 
     """
     Operator for the NL Decoder Engine. This Operator inherits from the EngineOperator.
@@ -122,8 +124,8 @@ class NlEngineOperator(EngineOperator):
     multi-token case.
     """
 
-    input_schema = NlEngineInputs
-    output_schema = NlEngineOutputs
+    input_schema = NLEngineInputs
+    output_schema = NLEngineOutputs
 
     def __init__(
         self,
@@ -320,14 +322,14 @@ class NlEngineOperator(EngineOperator):
         return self.engine.output_names
 
 
-class NlEngineOperatorNoCache(EngineOperator):
+class NLEngineOperatorNoCache(EngineOperator):
     """
     Operator the Natural Language Engine, that operates without
     KV Cache. This means that this operator merely maps input_ids
     and attention_mask to logits
     """
 
-    input_schema = NlEngineInputNoCache
+    input_schema = NLEngineInputsNoCache
     output_schema = None
 
     def __init__(self, sequence_length: int, **kwargs):
@@ -338,7 +340,7 @@ class NlEngineOperatorNoCache(EngineOperator):
         )
         super().__init__(**kwargs)
 
-    def run(self, inp: NlEngineInputNoCache, **kwargs) -> Any:
+    def run(self, inp: NLEngineInputsNoCache, **kwargs) -> Any:
         engine_inputs = [inp.input_ids, inp.attention_mask]
         logits = (
             super()

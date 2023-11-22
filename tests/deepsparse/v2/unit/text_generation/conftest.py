@@ -26,7 +26,7 @@ from deepsparse.transformers.pipelines.text_generation import (
 from deepsparse.transformers.utils import DecoderKVCache
 from deepsparse.transformers.utils.helpers import initialize_kv_cache_state
 from deepsparse.v2 import InferenceState, PipelineState
-from deepsparse.v2.text_generation import NlEngineOperator, TokenGeneratorOperator
+from deepsparse.v2.text_generation import NLEngineOperator, TokenGeneratorOperator
 
 
 @pytest.fixture(scope="module")
@@ -60,7 +60,7 @@ def single_token_engine_no_internal_cache(text_generation_attributes, model_attr
     seq_length, _ = text_generation_attributes
     _, model_path = model_attributes
 
-    nl_engine_operator = NlEngineOperator(
+    nl_engine_operator = NLEngineOperator(
         sequence_length=seq_length, input_ids_length=1, model_path=model_path
     )
     return nl_engine_operator

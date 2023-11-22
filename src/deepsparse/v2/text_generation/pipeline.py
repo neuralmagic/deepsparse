@@ -23,8 +23,6 @@ from deepsparse.v2.operators import EngineOperator
 from deepsparse.v2.operators.registry import OperatorRegistry
 from deepsparse.v2.pipeline import Pipeline
 from deepsparse.v2.routers import GraphRouter, LinearRouter
-from deepsparse.v2.schedulers import OperatorScheduler
-from deepsparse.v2.routers import GraphRouter
 from deepsparse.v2.schedulers import ContinuousBatchingScheduler, OperatorScheduler
 from deepsparse.v2.text_generation import (
     AutoRegressiveOperatorPreprocess,
@@ -35,8 +33,8 @@ from deepsparse.v2.text_generation import (
     JoinOutput,
     KVCacheCreator,
     MultiEnginePrefill,
-    NlEngineOperator,
-    NlEngineOperatorNoCache,
+    NLEngineOperator,
+    NLEngineOperatorNoCache,
     PrepareforPrefill,
     PrepareGeneration,
     ProcessInputsTextGeneration,
@@ -47,6 +45,7 @@ from deepsparse.v2.utils import PipelineState
 
 
 _LOGGER = logging.getLogger(__name__)
+
 
 class TextGenerationPipelineNoCache(Pipeline):
     def __init__(
@@ -81,7 +80,7 @@ class TextGenerationPipelineNoCache(Pipeline):
                 sequence_length=sequence_length,
                 tokenizer=self.tokenizer,
             ),
-            NlEngineOperatorNoCache(sequence_length=sequence_length, **engine_kwargs),
+            NLEngineOperatorNoCache(sequence_length=sequence_length, **engine_kwargs),
             PrepareGeneration(
                 sequence_length=sequence_length,
                 prompt_sequence_length=1,
@@ -120,6 +119,7 @@ class TextGenerationPipelineNoCache(Pipeline):
             )
         return not is_kv_cache_present
 
+
 @OperatorRegistry.register(name="text_generation")
 class TextGenerationPipeline(Pipeline):
     def __init__(
@@ -148,14 +148,14 @@ class TextGenerationPipeline(Pipeline):
         if internal_kv_cache and engine_kwargs.get("engine_type") == "onnxruntime":
             internal_kv_cache = False
 
-        single_engine_operator = NlEngineOperator(
+        single_engine_operator = NLEngineOperator(
             sequence_length=sequence_length,
             internal_kv_cache=internal_kv_cache,
             input_ids_length=1,
             **engine_kwargs,
         )
 
-        multi_engine_operator = NlEngineOperator(
+        multi_engine_operator = NLEngineOperator(
             sequence_length=sequence_length,
             internal_kv_cache=internal_kv_cache,
             input_ids_length=prompt_sequence_length,

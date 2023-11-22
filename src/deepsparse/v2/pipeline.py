@@ -15,7 +15,7 @@
 
 import copy
 from concurrent.futures import Future
-from typing import Any, Dict, List, Union
+from typing import Any, Dict, List, Optional, Union
 
 from deepsparse.v2.operators import EngineOperator, Operator
 from deepsparse.v2.routers import Router
@@ -55,7 +55,7 @@ class Pipeline(Operator):
         ops: Union[Dict[str, Operator], List[Operator]],
         router: Router,
         schedulers: List[OperatorScheduler],
-        continuous_batching_scheduler: ContinuousBatchingScheduler,
+        continuous_batching_scheduler: Optional[ContinuousBatchingScheduler] = None,
         pipeline_state: PipelineState = None,
     ):
 
