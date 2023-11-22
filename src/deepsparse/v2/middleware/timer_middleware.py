@@ -14,29 +14,32 @@
 
 import threading
 import time
-from functools import wraps
-from typing import Optional
+from typing import Dict, Optional
 
 from deepsparse.v2.utils.state import InferenceState
 
 
 class Timer:
-
-    condition = threading.Condition()
-
     def __init__(self):
         self._lock = threading.Lock()
         self.measurements = {}
         self.start_times = {}
 
-    def start(self, key):
+    def start(self, key: str):
+        """
+        Starts the timer
+        :param key: the key to track the timer for
+        """
         with self._lock:
             self.start_times[key] = time.time()
 
-    def end(self, key):
+    def end(self, key: str) -> bool:
+        """
+        Ends the timer and saves the runtime into measurements
+        :param key: the key to save the run time for
+        """
         end_time = time.time()
 
-        # TODO: while waiting for N seconds <- condition
         with self._lock:
             if key in self.start_times:
                 start_time = self.start_times[key]
@@ -45,62 +48,78 @@ class Timer:
                 return True
         return False
 
-    def _timeout(self, wait: int = 0.1):
-        time.wait(wait)
+    def update_measurements(self, key: str, measurements: Dict[str, float]):
+        """
+        Update the measurements from another timer. Used for
+         saving inference state measurements into the middleware timer
+        :param key: the key to save the run time for
+        :param measurements: dict of measurements
+        """
+        with self._lock:
+            self.measurements[key] = measurements
         return True
-
-    def clock(timer, func):
-        @wraps(func)
-        def wrapper(self, inp, context):
-            start_time = time.time()
-
-            # Call the original method
-            result = func(self, inp, context)
-
-            end_time = time.time()
-            runtime = end_time - start_time
-
-            # Store the runtime with class name and function name as the key
-            key = f"{self.__class__.__name__}.{func.__name__}"
-            timer.measurements[key] = runtime
-
-            return result
-
-        return wrapper
 
 
 class TimerMiddleware:
+    """
+    Timer middleare to keep run times of itsself and inference state timer
+    """
 
-    timer = Timer()
+    def __init__(self):
+        """
+        Initialize timer for middleware state.
+        """
+        self.timer = Timer()
 
-    def start_event(self, name: str, state: Optional[InferenceState] = None):
+    def start_event(self, name: str, state: Optional[InferenceState] = None) -> None:
+        """
+        Start the timer for one of middleware state or inference state.
+        Inference state timer will be used/initialized if state is provided
+        """
 
-        is_inference_run = state is not None
-        is_state_coldstart = is_inference_run and not hasattr(state, "timer")
-        is_new_name = (
-            hasattr(state, "timer") and name not in getattr(state, "timer").start_times
-        )
-
-        if is_state_coldstart or is_new_name:
-            # timer only exists in the context of a single inference pass
-            # this way subtimings are correlated with the other timings in its pass
-            state.timer = Timer()
-            state.timer.start(name)
+        # middleware level timer
+        if state is None:
+            self.timer.start(name)
             return
 
-        self.timer.start(name)
+        # state level timer
+        if not hasattr(state, "timer"):
+            state.timer = Timer()
 
-    def end_event(self, name, state: Optional[InferenceState] = None):
+        state.timer.start(name)
+
+    def end_event(self, name: str, state: Optional[InferenceState] = None) -> bool:
         """
-        Populate the timer state. If state is provided, populate all its
-        measurements into the timer state
+        End the timer for one of middleware state or inference state.
+        Inference state timer will be used if state is provided
         """
-        if state and hasattr(state, "timer"):
+        if state is None:
+            self.timer.end(name)
+            return True
+
+        if hasattr(state, "timer"):
             state.timer.end(name)
+            return True
+        return False
 
-            if name in self.timer.measurements:
-                print(f"warning, {name} already exists")
-            with self.timer._lock:
-                self.timer.measurements.update(state.timer.measurements)
+    def update_middleware_timer(self, name: str, state: InferenceState) -> bool:
+        """
+        Write the inference state timer into the middleware state timer
+        """
+        if hasattr(state, "timer"):
+            self.timer.update_measurements(name, state.timer.measurements)
+            return True
+        return False
 
-        self.timer.end(name)
+        #     # if name in self.timer.measurements:
+        #     #     print(f"warning, {name} already exists")
+        #     # with self.timer._lock:
+        #     #     self.timer.measurements.update(state.timer.measurements)
+
+        # if state and hasattr(state, "timer"):
+        #     state.timer.end(name)
+
+        #     if name in self.timer.measurements:
+        #         print(f"warning, {name} already exists")
+        #     with self.timer._lock:
+        #         self.timer.measurements.update(state.timer.measurements)
