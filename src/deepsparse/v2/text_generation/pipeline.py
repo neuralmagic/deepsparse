@@ -74,24 +74,51 @@ class TextGenerationPipelineNoCache(Pipeline):
 
         token_generator = TokenGeneratorOperator()
 
-        ops = [
-            ProcessInputsTextGeneration(
-                generation_config=process_generation_config(generation_config),
-                sequence_length=sequence_length,
-                tokenizer=self.tokenizer,
-            ),
-            NLEngineOperatorNoCache(sequence_length=sequence_length, **engine_kwargs),
-            PrepareGeneration(
-                sequence_length=sequence_length,
-                prompt_sequence_length=1,
-                token_generator=token_generator,
-            ),
-            GenerateNewTokenOperator(tokenizer=self.tokenizer, force_max_tokens=True),
-            CompileGenerations(),
-            JoinOutput(tokenizer=self.tokenizer),
-            ProcessOutputs(tokenizer=self.tokenizer),
-        ]
-        router = LinearRouter(end_route=len(ops))
+        process_inputs = ProcessInputsTextGeneration(
+            generation_config=process_generation_config(generation_config),
+            sequence_length=sequence_length,
+            tokenizer=self.tokenizer,
+        )
+        engine_operator = NLEngineOperatorNoCache(
+            sequence_length=sequence_length,
+            **engine_kwargs,
+        )
+        prepare_generation = PrepareGeneration(
+            sequence_length=sequence_length,
+            prompt_sequence_length=1,
+            token_generator=token_generator,
+        )
+        generate_new_token = GenerateNewTokenOperator(
+            tokenizer=self.tokenizer, force_max_tokens=True
+        )
+        compile_generations = CompileGenerations()
+        join_output = JoinOutput(tokenizer=self.tokenizer)
+        process_outputs = ProcessOutputs(tokenizer=self.tokenizer)
+
+        ops = {
+            "process_input": process_inputs,
+            "engine_operator": engine_operator,
+            "prepare_generation": prepare_generation,
+            "generate_new_token": generate_new_token,
+            "compile_generations": compile_generations,
+            "join_output": join_output,
+            "process_outputs": process_outputs,
+        }
+        routes = {
+            "process_input": "SPLIT",
+            "SPLIT": "engine_operator",
+            "engine_operator": "prepare_generation",
+            "prepare_generation": "generate_new_token",
+            "generate_new_token": "compile_generations",
+            "compile_generations": "JOIN",
+            "JOIN": "join_output",
+            "join_output": "process_outputs",
+            "process_outputs": "STOP",
+        }
+
+        router = GraphRouter(
+            end_route="STOP", start_route="process_input", route=routes
+        )
         scheduler = [OperatorScheduler()]
         super().__init__(
             ops=ops,
@@ -102,8 +129,17 @@ class TextGenerationPipelineNoCache(Pipeline):
     def run(self, *args, **kwargs):
         # we need to set the fixed_sequences_length flag to True
         # for the non-kv cache pipeline
-        kwargs.update(dict(fixed_sequences_length=True))
+        kwargs.update(dict(fixed_sequences_length=True, max_new_tokens=1))
         return super().run(*args, **kwargs)
+
+    def condense_inputs(self, *args, **kwargs):
+        return args[0], kwargs
+
+    def expand_inputs(self, items, batch_size):
+        items = [items.get(key) for key in items.keys()]
+        out, orig_batch_size = split_engine_inputs(items, batch_size)
+        combined_batches = [{"input_ids": b[0], "attention_mask": b[1]} for b in out]
+        return combined_batches, orig_batch_size
 
     def verify_no_kv_cache_present(self) -> bool:
         """

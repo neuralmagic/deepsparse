@@ -223,9 +223,7 @@ class TestsIntegrationLLMsPipelines:
         output = pipeline(
             prompt=self.prompt,
             include_prompt_logits=True,
-            generation_kwargs=dict(
-                max_new_tokens=self.max_new_tokens, output_scores=True
-            ),
+            generation_kwargs=dict(output_scores=True),
         )
 
         self._test_output(

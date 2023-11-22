@@ -36,8 +36,8 @@ class ProcessInputsTextGeneration(Operator):
     """
     Input processing operator. Responsible for tokenizing the input, handling the
     generation_config (if provided), updating the inference_state for later use,
-    and returning the tokens for prompt inferece. The expected input is defined by
-    the input_schema, which for this operator is TextGeneratioInput.
+    and returning the tokens for prompt inference. The expected input is defined by
+    the input_schema, which for this operator is TextGenerationInput.
     """
 
     input_schema = TextGenerationInput

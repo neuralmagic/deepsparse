@@ -350,7 +350,8 @@ class NLEngineOperatorNoCache(EngineOperator):
 
         # By default, the engine outputs logits for all tokens in the sequence.
         # Let's filter out the logits for the padding tokens.
-        logits = numpy.compress(inp.attention_mask[0], logits[0], axis=1)
+        logits = numpy.compress(inp.attention_mask.flatten(), logits[0], axis=1)
+        print(logits.shape)
         return {"logits": [logits], "kv_cache": None, "tokens": None}, {
             "prompt_logits": [logits]
         }
