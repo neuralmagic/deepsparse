@@ -99,23 +99,25 @@ _dev_deps = [
     "black==22.12.0",
     "flake8>=3.8.3",
     "isort>=5.7.0",
-    "m2r2~=0.2.7",
-    "mistune==0.8.4",
-    "myst-parser~=0.14.0",
     "flaky~=3.7.0",
     "ndjson>=0.3.1",
-    "rinohtype>=0.4.2",
-    "sphinx>=3.4.0",
-    "sphinx-copybutton>=0.3.0",
-    "sphinx-markdown-tables>=0.0.15",
     "wheel>=0.36.2",
     "pytest>=6.0.0",
-    "sphinx-multiversion==0.2.4",
-    "sphinx-rtd-theme",
     "onnxruntime>=1.7.0",
     "flask>=1.0.0",
     "flask-cors>=3.0.0",
     "Pillow>=8.3.2",
+]
+_docs_deps = [
+    "m2r2~=0.2.7",
+    "mistune==0.8.4",
+    "myst-parser~=0.14.0",
+    "rinohtype>=0.4.2",
+    "sphinx>=3.4.0",
+    "sphinx-copybutton>=0.3.0",
+    "sphinx-markdown-tables>=0.0.15",
+    "sphinx-multiversion==0.2.4",
+    "sphinx-rtd-theme",
 ]
 _server_deps = [
     "uvicorn>=0.15.0",
@@ -261,6 +263,7 @@ def _setup_install_requires() -> List:
 def _setup_extras() -> Dict:
     return {
         "dev": _dev_deps,
+        "docs": _docs_deps,
         "server": _server_deps,
         "onnxruntime": _onnxruntime_deps,
         "image_classification": _computer_vision_deps,
