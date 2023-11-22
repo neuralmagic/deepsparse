@@ -133,8 +133,6 @@ class TimedInferenceStateMiddlewarePipeline(Pipeline):
         return rtn
 
     def _save_inference_time_to_middleware_state(self, key: str, state: InferenceState):
-        # for key in state.timer.measurements.keys():
-        #     assert key not in getattr(self.timer_middleware, "timer").measurements
         assert key not in getattr(self.timer_middleware, "timer").measurements
 
         self.timer_middleware.update_middleware_timer(key, state)
