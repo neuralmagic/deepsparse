@@ -110,16 +110,3 @@ class TimerMiddleware:
             self.timer.update_measurements(name, state.timer.measurements)
             return True
         return False
-
-        #     # if name in self.timer.measurements:
-        #     #     print(f"warning, {name} already exists")
-        #     # with self.timer._lock:
-        #     #     self.timer.measurements.update(state.timer.measurements)
-
-        # if state and hasattr(state, "timer"):
-        #     state.timer.end(name)
-
-        #     if name in self.timer.measurements:
-        #         print(f"warning, {name} already exists")
-        #     with self.timer._lock:
-        #         self.timer.measurements.update(state.timer.measurements)

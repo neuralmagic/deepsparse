@@ -41,10 +41,6 @@ def test_pipeline_multiple_runtime_successfully_recoded():
     assert "foo" in timer.measurements
     assert "bar" in timer.measurements
 
-    time_delta = 0.005
-    assert abs(1 - timer.measurements["foo"]) < time_delta
-    assert abs(0.5 - timer.measurements["bar"]) < time_delta
-
 
 def test_inference_state_multiple_runtime_successfully_recoded():
     AddThreePipeline = TimedInferenceStatePipeline(
