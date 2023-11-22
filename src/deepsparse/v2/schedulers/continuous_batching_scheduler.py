@@ -50,7 +50,7 @@ class ContinuousBatchingScheduler(OperatorScheduler):
             engine_operator = EngineOperator(...)
             ...
             continuous_batching_scheduler = ContinuousBatchingScheduler.get_instance()
-            continuous_batching_scheduler.add_engine_operator(engine_operator)
+            continuous_batching_scheduler.add_engine_operator(engine_operator, [1])
 
             super.__init__(...)
     ```
@@ -58,6 +58,8 @@ class ContinuousBatchingScheduler(OperatorScheduler):
     :param max_workers: maximum number of threads to execute at once, default 1
     """
 
+    # TODO: If the singleton always returns max_workers 1, should we remove this arg/not
+    # give the user a choice?
     def __init__(self, max_workers: int = 1):
         self._max_workers = max_workers
 
@@ -82,6 +84,8 @@ class ContinuousBatchingScheduler(OperatorScheduler):
             does not exist yet, a scheduler with a single worker thread to
             schedule all jobs is created and started
         """
+        global _GLOBAL_SCHEDULER
+
         if _GLOBAL_SCHEDULER is not None:
             return _GLOBAL_SCHEDULER  # noqa: F823
 
@@ -161,8 +165,18 @@ class ContinuousBatchingScheduler(OperatorScheduler):
         for batch_size in batch_sizes:
             if batch_size == 1:
                 continue  # already added
-            operator_engines[batch_size] = operator_engines.create_engine(
-                batch_size=batch_size
+
+            override_model_path = None
+            # text generation/NLEngineOperator specific; could add generic method
+            # for all engine_operators, if desired
+            if hasattr(engine_operator, "override_model_inputs"):
+                override_model_path = engine_operator.override_model_inputs(
+                    model_path=engine_operator.model_path, batch_size=batch_size
+                )
+
+            # will break for internal kv_cache; needs additional argument
+            operator_engines[batch_size] = engine_operator.create_engine(
+                batch_size=batch_size, model_path=override_model_path
             )
 
         self._operators_to_engines[engine_operator] = operator_engines

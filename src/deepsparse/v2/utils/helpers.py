@@ -1,5 +1,3 @@
-# flake8: noqa
-
 # Copyright (c) 2021 - present / Neuralmagic, Inc. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,10 +11,27 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from typing import Any, Callable
 
-from .operators import *
-from .pipeline import *
-from .routers import *
-from .schedulers import *
-from .task import *
-from .utils import *
+
+__all__ = ["run_func"]
+
+
+def run_func(
+    *args,
+    func: Callable,
+    inp: Any = None,
+    **kwargs,
+):
+    """
+    Generic function to run a given Callable.
+    """
+    if inp:
+        output = (
+            func(*args, **kwargs, **inp)
+            if isinstance(inp, dict)
+            else func(inp, *args, **kwargs)
+        )
+    else:
+        output = func(*args, **kwargs)
+    return output

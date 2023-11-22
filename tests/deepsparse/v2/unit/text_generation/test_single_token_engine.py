@@ -16,7 +16,7 @@ import numpy
 
 from deepsparse.v2.text_generation import (
     AutoRegressiveOperatorPreprocess,
-    NlEngineInput,
+    NLEngineInputs,
 )
 
 
@@ -89,10 +89,10 @@ def test_run_single_token_engine_once(
         numpy.array([[0]]),
         numpy.array([[[[0, 0, 0, 0, 1]]]]),
     ]
-    inputs = NlEngineInput(
+    inputs = NLEngineInputs(
         engine_inputs=mock_engine_inputs,
         kv_cache=mock_kv_cache_single_token_engine,
         tokens=mock_engine_inputs[0].tolist(),
     )
     output = single_token_engine_no_internal_cache.run(inputs)
-    assert output.get("logits") is not None
+    assert output.get("engine_outputs") is not None

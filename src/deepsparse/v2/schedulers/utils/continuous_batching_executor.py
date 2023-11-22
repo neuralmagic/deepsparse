@@ -71,7 +71,7 @@ class ContinuousBatchingExecutorThread(Thread):
             ]
 
             # run the engine operator with the given engine at the joined batch size
-            joined_outputs = engine_operator(joined_inputs)
+            joined_outputs = engine_operator(joined_inputs, inference_state=None)
 
             # split outputs and return the results to their respective futures
             split_outputs = joined_outputs.split()
