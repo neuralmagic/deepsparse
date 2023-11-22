@@ -22,11 +22,10 @@ from deepsparse.v2.utils.state import InferenceState
 
 class Timer:
 
-    _lock = threading.Lock()
     condition = threading.Condition()
 
     def __init__(self):
-
+        self._lock = threading.Lock()
         self.measurements = {}
         self.start_times = {}
 
@@ -38,12 +37,13 @@ class Timer:
         end_time = time.time()
 
         # TODO: while waiting for N seconds <- condition
-        if key in self.start_times:
-            start_time = self.start_times[key]
-            with self._lock:
+        with self._lock:
+            if key in self.start_times:
+                start_time = self.start_times[key]
                 del self.start_times[key]
-            self.measurements[key] = end_time - start_time
-        return None
+                self.measurements[key] = end_time - start_time
+                return True
+        return False
 
     def _timeout(self, wait: int = 0.1):
         time.wait(wait)
