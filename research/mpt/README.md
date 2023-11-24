@@ -1,8 +1,8 @@
-*LAST UPDATED: 10/11/2023*
+*LAST UPDATED: 11/24/2023*
 
 # **Sparse Finetuned LLMs with DeepSparse**
 
-DeepSparse has support for performant inference of sparse large language models, starting with Mosaic's MPT.
+DeepSparse has support for performant inference of sparse large language models, starting with Mosaic's MPT and Meta's Llama 2.
 Check out our paper [Sparse Finetuning for Inference Acceleration of Large Language Models](https://arxiv.org/abs/2310.06927)
 
 In this research overview, we will discuss:
@@ -11,7 +11,7 @@ In this research overview, we will discuss:
 
 ## **Sparse Finetuning Research**
 
-We show that MPT-7B can be pruned to ~60% sparsity with INT8 quantization (and 70% sparsity without quantization), with no accuracy drop, using a technique called **Sparse Finetuning**, where we prune the network during the finetuning process.
+We show that MPT-7B and Llama-2-7B can be pruned to ~60% sparsity with INT8 quantization (and 70% sparsity without quantization), with no accuracy drop, using a technique called **Sparse Finetuning**, where we prune the network during the finetuning process.
 
 When running the pruned network with DeepSparse, we can accelerate inference by ~7x over the dense-FP32 baseline!
 
@@ -23,16 +23,16 @@ Fine-tuning is useful for two main reasons:
 1. It can teach the model *how to respond* to input (often called **instruction tuning**).
 2. It can teach the model *new information* (often called **domain adaptation**).
 
-
 An example of how domain adaptation is helpful is solving the [Grade-school math (GSM) dataset](https://huggingface.co/datasets/gsm8k). GSM is a set of grade school word problems and a notoriously difficult task for LLMs, as evidenced by the 0% zero-shot accuracy of MPT-7B. By fine-tuning with a very small set of ~7k training examples, however, we can boost the model's accuracy on the test set to 28.2%.
 
 The key insight from [our paper](https://arxiv.org/abs/2310.06927) is that we can prune the network during the finetuning process. We apply [SparseGPT](https://arxiv.org/pdf/2301.00774.pdf) to prune the network after dense finetuning and retrain for 2 epochs with L2 distillation. The result is a 60% sparse-quantized model with no accuracy drop on GSM8k runs 7x faster than the dense baseline with DeepSparse!
 
 <div align="center">
-    <img src="https://github.com/neuralmagic/deepsparse/assets/3195154/8687401c-f479-4999-ba6b-e01c747dace9" width="60%"/>
+    <img src="https://github.com/neuralmagic/deepsparse/assets/3195154/f9a86726-12f5-4926-8d8c-668c449faa84" width="60%"/>
 </div>
 
 - [See the paper on Arxiv](https://arxiv.org/abs/2310.06927)
+- [See our Llama 2 expansion blog on the initial paper](https://neuralmagic.com/blog/fast-llama-2-on-cpus-with-sparse-fine-tuning-and-deepsparse/)
 
 ### **How Is This Useful For Real World Use?**
 
@@ -46,17 +46,14 @@ Install the DeepSparse Nightly build (requires Linux):
 pip install -U deepsparse-nightly[llm]
 ```
 
-The models generated in the paper are hosted on [SparseZoo](https://sparsezoo.neuralmagic.com/?ungrouped=true&sort=null&datasets=gsm8k&architectures=mpt) and [Hugging Face](https://huggingface.co/collections/neuralmagic/sparse-finetuning-mpt-65241d875b29204d6d42697d). 
-
-### MPT-7B on GSM 
+The models generated in the paper are hosted on [SparseZoo](https://sparsezoo.neuralmagic.com/?ungrouped=true&sort=null&datasets=gsm8k) and [Hugging Face](https://huggingface.co/collections/neuralmagic/sparse-finetuning-mpt-65241d875b29204d6d42697d). 
 
 We can run inference on the models using DeepSparse's `TextGeneration` Pipeline:
 
 ```python
 from deepsparse import TextGeneration
 
-model = "zoo:mpt-7b-gsm8k_mpt_pretrain-pruned60_quantized"
-pipeline = TextGeneration(model_path=model)
+pipeline = TextGeneration(model_path="zoo:llama2-7b-gsm8k_llama2_pretrain-pruned60_quantized")
 
 prompt = "Natalia sold clips to 48 of her friends in April, and then she sold half as many clips in May. How many clips did Natalia sell altogether in April and May"
 output = pipeline(prompt=prompt)
@@ -84,11 +81,8 @@ print(output.generations[0].text)
 ### >> #### 5
 ```
 
-> **Note:** DeepSparse uses ONNX graphs modified for KV-caching. We will publish specs to enable external users to create LLM ONNX graphs for DeepSparse over the next few weeks. ***At current, we suggest only using LLM ONNX graphs created by Neural Magic's team***
-
-
 #### Other Resources
-- [Check out all the MPT GSM models on SparseZoo](https://sparsezoo.neuralmagic.com/?datasets=gsm8k&ungrouped=true)
+- [Check out all the GSM models on SparseZoo](https://sparsezoo.neuralmagic.com/?datasets=gsm8k&ungrouped=true)
 - [Try out the live demo on Hugging Face Spaces](https://huggingface.co/spaces/neuralmagic/sparse-mpt-7b-gsm8k) and view the [collection of paper, demos, and models](https://huggingface.co/collections/neuralmagic/sparse-finetuning-mpt-65241d875b29204d6d42697d)
 - [Check out the detailed `TextGeneration` Pipeline documentation](https://github.com/neuralmagic/deepsparse/blob/main/docs/llms/text-generation-pipeline.md)
 
@@ -97,7 +91,7 @@ print(output.generations[0].text)
 Following these initial results, we are rapidly expanding our support for LLMs across the Neural Magic stack, including:
 
 - **Productizing Sparse Fine Tuning**: Enable external users to apply the sparse fine-tuning to business datasets
-- **Expanding Model Support**: Apply sparse fine-tuning results to Llama2 and Mistral models
+- **Expanding Model Support**: Apply sparse fine-tuning results to Mistral models
 - **Pushing to Higher Sparsity**: Improving our pruning algorithms to reach higher sparsity
 - **Building General Sparse Model**: Create sparse model that can perform well on general tasks like OpenLLM leaderboard
 
