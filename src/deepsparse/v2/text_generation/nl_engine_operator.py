@@ -110,11 +110,6 @@ class NLEngineOutputs(BaseModel):
         ]
 
 
-class NLEngineInputsNoCache(BaseModel):
-    input_ids: Any
-    attention_mask: Any
-
-
 class NLEngineOperator(EngineOperator):
 
     """
@@ -322,6 +317,11 @@ class NLEngineOperator(EngineOperator):
         return self.engine.output_names
 
 
+class NLEngineInputsNoCache(BaseModel):
+    input_ids: Any
+    attention_mask: Any
+
+
 class NLEngineOperatorNoCache(EngineOperator):
     """
     Operator the Natural Language Engine, that operates without
@@ -351,7 +351,7 @@ class NLEngineOperatorNoCache(EngineOperator):
         # By default, the engine outputs logits for all tokens in the sequence.
         # Let's filter out the logits for the padding tokens.
         logits = numpy.compress(inp.attention_mask.flatten(), logits[0], axis=1)
-        print(logits.shape)
+
         return {"logits": [logits], "kv_cache": None, "tokens": None}, {
             "prompt_logits": [logits]
         }

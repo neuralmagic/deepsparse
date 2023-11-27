@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from typing import Any, Dict, Sequence, Union
+from typing import Sequence, Union
 
 import transformers
 
@@ -37,13 +37,8 @@ class GenerateNewTokenOperator(Operator):
         return False
 
     def run(self, *args, inference_state: InferenceState, **kwargs):
-        if args:
-            inp = args[0]
-            logits = inp.engine_outputs
-            kv_cache = inp.kv_cache
-        else:
-            logits = kwargs.get("logits")  # inp.engine_outputs
-            kv_cache = kwargs.get("kv_cache")  # inp.kv_cache
+        logits = args[0].engine_outputs if args else kwargs.get("logits")
+        kv_cache = args[0].kv_cache if args else kwargs.get("kv_cache")
 
         token_generator = inference_state.current_state.get("token_generator")
         token = token_generator.generate(logits=logits[0, -1, :])

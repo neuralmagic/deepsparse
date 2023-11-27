@@ -22,7 +22,7 @@ from deepsparse.utils.onnx import default_cached_outputs
 from deepsparse.v2.operators import EngineOperator
 from deepsparse.v2.operators.registry import OperatorRegistry
 from deepsparse.v2.pipeline import Pipeline
-from deepsparse.v2.routers import GraphRouter, LinearRouter
+from deepsparse.v2.routers import GraphRouter
 from deepsparse.v2.schedulers import ContinuousBatchingScheduler, OperatorScheduler
 from deepsparse.v2.text_generation import (
     AutoRegressiveOperatorPreprocess,
@@ -52,9 +52,9 @@ class TextGenerationPipelineNoCache(Pipeline):
         self,
         model_path: str,
         sequence_length: int = 1024,
-        engine_kwargs: Optional[Dict] = None,
         onnx_model_name: Optional[str] = None,
-        generation_config=None,  # TODO: Typing here
+        generation_config=None,
+        engine_kwargs: Optional[Dict] = None,
         **kwargs,
     ):
 
@@ -116,6 +116,8 @@ class TextGenerationPipelineNoCache(Pipeline):
             "process_outputs": "STOP",
         }
 
+        # TODO: Using the GraphRouter, but should use
+        # LinearRouter with appropriate split/join support
         router = GraphRouter(
             end_route="STOP", start_route="process_input", route=routes
         )

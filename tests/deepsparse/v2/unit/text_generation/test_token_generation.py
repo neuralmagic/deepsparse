@@ -93,7 +93,9 @@ def test_generate_new_token(
         in_generation=True,
     )
     outputs, state = generate_new_token.run(
-        inp=inp, inference_state=mock_inference_state
+        logits=inp.engine_outputs,
+        kv_cache=inp.kv_cache,
+        inference_state=mock_inference_state,
     )
     # The new_token generated/returned by ths operator should match the last token in
     # token_generator

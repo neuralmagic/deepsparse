@@ -85,6 +85,9 @@ class TestsIntegrationLLMsPipelines:
             "default" pipeline is returned)
         :return: the appropriate pipeline
         """
+        # TODO: This if statement should disappear once
+        # the TextGenerationPipeline contains the
+        # non-kv-cache version of the pipeline
         text_generation_pipeline_class = (
             TextGenerationPipeline
             if kv_cache_support
@@ -223,7 +226,9 @@ class TestsIntegrationLLMsPipelines:
         output = pipeline(
             prompt=self.prompt,
             include_prompt_logits=True,
-            generation_kwargs=dict(output_scores=True),
+            generation_kwargs=dict(
+                max_new_tokens=self.max_new_tokens, output_scores=True
+            ),
         )
 
         self._test_output(
@@ -247,18 +252,18 @@ class TestsIntegrationLLMsPipelines:
         )
 
         output = pipeline(
-            prompt=self.prompt,
+            prompt=[self.prompt, self.prompt],
             include_prompt_logits=True,
             generation_kwargs=dict(output_scores=True),
         )
 
-        logits = output.generations[0].score
         # logits -> prompt logits + one logit for the new generated token
         generated_logits, prompt_logits, *_ = self.torch_ground_truth
         logits_gt = numpy.concatenate(
             [prompt_logits[0], generated_logits[0, :1, :]], axis=0
         )
-        assert numpy.allclose(logits, logits_gt, atol=self.precision)
+        for gen in output.generations:
+            assert numpy.allclose(gen.score, logits_gt, atol=self.precision)
 
     def _test_output(
         self,

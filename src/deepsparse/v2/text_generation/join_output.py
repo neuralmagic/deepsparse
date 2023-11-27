@@ -33,11 +33,6 @@ class JoinOutput(Operator):
         self.tokenizer = tokenizer
 
     def run(self, inp: Tuple[List[CompileGenerationsOutput], Dict], **kwargs):
-        if not isinstance(inp, Tuple):
-            # when running without KV Cache
-            # this will be a single
-            # CompileGenerationsOutput for now
-            inp = [[inp]]
 
         batch_outputs = [x for x in inp[0]]
         generated_tokens = [x.generated_tokens for x in batch_outputs]
