@@ -20,7 +20,7 @@ from deepsparse.transformers.utils.helpers import process_generation_config
 from deepsparse.utils import split_engine_inputs
 from deepsparse.utils.onnx import default_cached_outputs
 from deepsparse.v2.pipeline import Pipeline
-from deepsparse.v2.routers import GraphRouter
+from deepsparse.v2.routers import LinearRouter
 from deepsparse.v2.schedulers import OperatorScheduler
 from deepsparse.v2.text_generation import (
     CompileGenerations,
@@ -94,23 +94,21 @@ class TextGenerationPipelineNoCache(Pipeline):
             "join_output": join_output,
             "process_outputs": process_outputs,
         }
-        routes = {
-            "process_input": "SPLIT",
-            "SPLIT": "engine_operator",
-            "engine_operator": "prepare_generation",
-            "prepare_generation": "generate_new_token",
-            "generate_new_token": "compile_generations",
-            "compile_generations": "JOIN",
-            "JOIN": "join_output",
-            "join_output": "process_outputs",
-            "process_outputs": "STOP",
-        }
+        route = [
+            "process_input",
+            "SPLIT",
+            "engine_operator",
+            "prepare_generation",
+            "generate_new_token",
+            "compile_generations",
+            "JOIN",
+            "join_output",
+            "process_outputs"
+        ]
 
         # TODO: Using the GraphRouter, but should use
         # LinearRouter with appropriate split/join support
-        router = GraphRouter(
-            end_route="STOP", start_route="process_input", route=routes
-        )
+        router = LinearRouter(route=route)
         scheduler = [OperatorScheduler()]
         super().__init__(
             ops=ops,
