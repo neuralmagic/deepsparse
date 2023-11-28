@@ -308,6 +308,7 @@ def _setup_entry_points() -> Dict:
             f"deepsparse.image_classification.eval={ic_eval}",
             "deepsparse.license=deepsparse.license:main",
             "deepsparse.validate_license=deepsparse.license:validate_license_cli",
+            "deepsparse.eval=deepsparse.evaluate.evaluator.cli:main",
         ]
     }
 
