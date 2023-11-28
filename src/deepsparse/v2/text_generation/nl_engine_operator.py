@@ -20,7 +20,6 @@ from typing import Any, List, Optional, Tuple, Union
 import numpy
 from pydantic import BaseModel, Field
 
-from deepsparse.transformers.helpers import overwrite_transformer_onnx_model_inputs
 from deepsparse.utils import join_engine_outputs, split_engine_inputs
 from deepsparse.utils.onnx import (
     CACHE_INPUT_PREFIX,
@@ -33,12 +32,7 @@ from deepsparse.v2.operators.engine_operator import (
 )
 
 
-__all__ = [
-    "NLEngineOperator",
-    "NLEngineOperatorNoCache",
-    "NLEngineInputsNoCache",
-    "NLEngineInputs",
-]
+__all__ = ["NLEngineOperator", "NLEngineInputs", "NLEngineOutputs"]
 
 
 class NLEngineInputs(BaseModel):
@@ -315,43 +309,3 @@ class NLEngineOperator(EngineOperator):
         :return: The output names for the onnx model
         """
         return self.engine.output_names
-
-
-class NLEngineInputsNoCache(BaseModel):
-    input_ids: Any
-    attention_mask: Any
-
-
-class NLEngineOperatorNoCache(EngineOperator):
-    """
-    Operator the Natural Language Engine, that operates without
-    KV Cache. This means that this operator merely maps input_ids
-    and attention_mask to logits
-    """
-
-    input_schema = NLEngineInputsNoCache
-    output_schema = None
-
-    def __init__(self, sequence_length: int, **kwargs):
-        overwrite_transformer_onnx_model_inputs(
-            path=kwargs.get("model_path"),
-            batch_size=kwargs.get("batch_size", 1),
-            max_length=sequence_length,
-        )
-        super().__init__(**kwargs)
-
-    def run(self, inp: NLEngineInputsNoCache, **kwargs) -> Any:
-        engine_inputs = [inp.input_ids, inp.attention_mask]
-        logits = (
-            super()
-            .run(EngineOperatorInputs(engine_inputs=engine_inputs), **kwargs)
-            .get("engine_outputs")
-        )
-
-        # By default, the engine outputs logits for all tokens in the sequence.
-        # Let's filter out the logits for the padding tokens.
-        logits = numpy.compress(inp.attention_mask.flatten(), logits[0], axis=1)
-
-        return {"logits": [logits], "kv_cache": None, "tokens": None}, {
-            "prompt_logits": [logits]
-        }
