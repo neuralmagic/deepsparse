@@ -18,6 +18,7 @@ from deepsparse.v2.text_generation import (
     PrepareGeneration,
     TokenGeneratorOperator,
 )
+from deepsparse.v2.text_generation.nl_engine_operator import NLEngineOutputs
 
 
 def test_prep_for_generation(
@@ -68,6 +69,7 @@ def test_generate_new_token(
     mock_kv_cache,
     mock_inference_state,
     mock_logits,
+    mock_tokens,
 ):
     """
     This test is responsible for testing the GenerateNewTokenOperator, which generates
@@ -84,8 +86,14 @@ def test_generate_new_token(
             "generated_tokens": [mock_token_generator.tokens],
         }
     )
+    inp = NLEngineOutputs(
+        engine_outputs=mock_logits,
+        tokens=mock_tokens,
+        kv_cache=mock_kv_cache,
+        in_generation=True,
+    )
     outputs, state = generate_new_token.run(
-        logits=mock_logits, kv_cache=mock_kv_cache, inference_state=mock_inference_state
+        inp=inp, inference_state=mock_inference_state
     )
     # The new_token generated/returned by ths operator should match the last token in
     # token_generator

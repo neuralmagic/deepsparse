@@ -17,7 +17,10 @@ from typing import Dict, Union
 
 import transformers
 
-from deepsparse.transformers.pipelines.text_generation import TextGenerationInput
+from deepsparse.transformers.pipelines.text_generation import (
+    GenerationDefaults,
+    TextGenerationInput,
+)
 from deepsparse.transformers.utils.helpers import (
     check_and_return_generation_config,
     override_config,
@@ -26,19 +29,7 @@ from deepsparse.transformers.utils.helpers import (
 from deepsparse.v2.operators import Operator
 
 
-__all__ = ["ProcessInputsTextGeneration", "GenerationDefaults"]
-
-
-class GenerationDefaults:
-    num_return_sequences = 1
-    max_length = 100
-    max_new_tokens = None
-    output_scores = False
-    top_k = 0
-    top_p = 0.0
-    repetition_penalty = 0.0
-    do_sample = False
-    temperature = 1.0
+__all__ = ["ProcessInputsTextGeneration"]
 
 
 class ProcessInputsTextGeneration(Operator):

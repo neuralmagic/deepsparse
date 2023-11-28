@@ -13,16 +13,23 @@
 # limitations under the License.
 
 from deepsparse.v2.text_generation import CompilePromptLogits
+from deepsparse.v2.text_generation.nl_engine_operator import NLEngineOutputs
 
 
-def test_compile_logits(mock_logits, mock_inference_state):
+def test_compile_logits(mock_logits, mock_inference_state, mock_tokens, mock_kv_cache):
     mock_inference_state.update_state({"prompt_logits": [mock_logits]})
     compile_prompt_logits = CompilePromptLogits()
     # Can operate as long as we're not in generation but in prompt_inference. This
     # can_operate() will check for the `in_generation` flag in the input.
-    assert compile_prompt_logits.can_operate({})
+    inp = NLEngineOutputs(
+        engine_outputs=mock_logits,
+        tokens=mock_tokens,
+        kv_cache=mock_kv_cache,
+        in_generation=None,
+    )
+    assert compile_prompt_logits.can_operate(inp=inp)
     output, state = compile_prompt_logits.run(
-        logits=mock_logits, inference_state=mock_inference_state
+        inp=inp, inference_state=mock_inference_state
     )
     # The CompilePromptLogits is responsible for updating a list of prompt logits
     # calculated at each step during prompt inference. After one step of running this

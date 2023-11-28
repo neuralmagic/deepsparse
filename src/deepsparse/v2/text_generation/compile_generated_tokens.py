@@ -42,7 +42,7 @@ class CompileGeneratedTokens(Operator):
         if finish_reason is not None:
             in_generation = False
 
-        state_update = {  # TODO: check if necessary
+        state_update = {
             "finished_reason": finished_reason,
             "generated_tokens": generated_tokens,
             "generated_logits": generated_logits,

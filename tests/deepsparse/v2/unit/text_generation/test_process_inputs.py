@@ -12,10 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from deepsparse.v2.text_generation import (
-    GenerationDefaults,
-    ProcessInputsTextGeneration,
-)
+from deepsparse.transformers.pipelines.text_generation import GenerationDefaults
+from deepsparse.v2.text_generation import ProcessInputsTextGeneration
 
 
 def test_process_inputs(
