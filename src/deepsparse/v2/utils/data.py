@@ -49,7 +49,8 @@ class StreamingOutput(BaseModel):
     """
 
     data_to_return: Any = Field(
-        description="Any data that should be returned to be used in the next step of the pipeline"
+        description="Any data that should be returned "
+        "to be used in the next step of the pipeline"
     )
     data_to_yield: Any = Field(
         description="Any data that should be yielded to the user"

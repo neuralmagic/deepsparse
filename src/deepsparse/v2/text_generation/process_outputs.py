@@ -22,7 +22,7 @@ from deepsparse.transformers.pipelines.text_generation import (
     TextGenerationOutput,
 )
 from deepsparse.v2.operators import Operator
-from deepsparse.v2.utils import InferenceState, PipelineState
+from deepsparse.v2.utils import InferenceState
 from deepsparse.v2.utils.data import StreamingOutput
 
 

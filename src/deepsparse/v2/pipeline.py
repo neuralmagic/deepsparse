@@ -220,7 +220,9 @@ class Pipeline(Operator):
                     pipeline_state=self.pipeline_state,
                     **kwargs,
                 ).result()
+
                 operator_output, output_to_yield = operator_output
+
                 if isinstance(operator_output, tuple):
                     operator_output, state_update = (
                         operator_output[0],
@@ -238,7 +240,7 @@ class Pipeline(Operator):
                     end=[self.router.SPLIT_ROUTE, self.router.END_ROUTE],
                 )
 
-                operator_output = self._run_sub_graphs(
+                operator_output, output_to_yield = self._run_sub_graphs(
                     sub_graph_inputs=[operator_output], sub_graphs=[graph]
                 )[0]
 
