@@ -27,8 +27,8 @@ class TimedMiddlewarePipeline(Pipeline):
         pipeline_state: PipelineState,
         **kwargs,
     ):
-        self._save_run_time_to_middleware_state("foo", 1)
-        self._save_run_time_to_middleware_state("bar", 0.5)
+        self._save_run_time_to_middleware_state("pipeline_state_time1", 1)
+        self._save_run_time_to_middleware_state("pipeline_state_time2", 0.5)
 
         kwargs["inference_state"] = inference_state
         kwargs["pipeline_state"] = pipeline_state
@@ -36,11 +36,21 @@ class TimedMiddlewarePipeline(Pipeline):
         time_delta = 0.005
 
         assert (
-            abs(1 - getattr(self.timer_middleware, "timer").measurements["foo"])
+            abs(
+                1
+                - getattr(self.timer_middleware, "timer").measurements[
+                    "pipeline_state_time1"
+                ]
+            )
             < time_delta
         )
         assert (
-            abs(0.5 - getattr(self.timer_middleware, "timer").measurements["bar"])
+            abs(
+                0.5
+                - getattr(self.timer_middleware, "timer").measurements[
+                    "pipeline_state_time2"
+                ]
+            )
             < time_delta
         )
 
@@ -69,18 +79,19 @@ class TimedInferenceStatePipeline(Pipeline):
         pipeline_state: PipelineState,
         **kwargs,
     ):
-        self._save_run_time_to_inference_state("fp32", 1, inference_state)
-        self._save_run_time_to_inference_state("int4", 0.5, inference_state)
+        self._save_run_time_to_inference_state("op_state_time1", 1, inference_state)
+        self._save_run_time_to_inference_state("op_state_time2", 0.5, inference_state)
 
         kwargs["inference_state"] = inference_state
         kwargs["pipeline_state"] = pipeline_state
 
         time_delta = 0.005
         assert (
-            abs(1 - getattr(inference_state, "timer").measurements["fp32"]) < time_delta
+            abs(1 - getattr(inference_state, "timer").measurements["op_state_time1"])
+            < time_delta
         )
         assert (
-            abs(0.5 - getattr(inference_state, "timer").measurements["int4"])
+            abs(0.5 - getattr(inference_state, "timer").measurements["op_state_time2"])
             < time_delta
         )
 
@@ -112,11 +123,11 @@ class TimedInferenceStateMiddlewarePipeline(Pipeline):
         pipeline_state: PipelineState,
         **kwargs,
     ):
-        self._save_run_time_to_middleware_state("foo", 1)
-        self._save_run_time_to_middleware_state("bar", 0.5)
+        self._save_run_time_to_middleware_state("pipeline_state_time1", 1)
+        self._save_run_time_to_middleware_state("pipeline_state_time2", 0.5)
 
-        self._save_run_time_to_inference_state("fp32", 1, inference_state)
-        self._save_run_time_to_inference_state("int4", 0.5, inference_state)
+        self._save_run_time_to_inference_state("op_state_time1", 1, inference_state)
+        self._save_run_time_to_inference_state("op_state_time1", 0.5, inference_state)
 
         kwargs["inference_state"] = inference_state
         kwargs["pipeline_state"] = pipeline_state
@@ -126,7 +137,9 @@ class TimedInferenceStateMiddlewarePipeline(Pipeline):
             **kwargs,
         )
 
-        self._save_inference_time_to_middleware_state("op1", inference_state)
+        self._save_inference_time_to_middleware_state(
+            "op_state_measurements", inference_state
+        )
 
         return rtn
 

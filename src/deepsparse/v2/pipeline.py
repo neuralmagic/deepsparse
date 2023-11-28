@@ -71,10 +71,8 @@ class Pipeline(Operator):
         start: str,
         end: str,
     ):
-
         next_step = start
         while next_step != end:
-
             outputs = self._run_next_step(
                 func=self.ops[next_step],
                 next_step=next_step,
@@ -125,7 +123,6 @@ class Pipeline(Operator):
         """
         Generic function to run a given func, process the output and determine the next
         step.
-
         """
         if input:
             operator_output = (

@@ -39,8 +39,10 @@ def test_pipeline_multiple_runtime_recoded_to_middleware_state():
     assert pipeline_output.value == 8
 
     timer = AddThreePipeline.timer_middleware.timer
-    assert "foo" in timer.measurements
-    assert "bar" in timer.measurements
+
+    # check measurements added from TimedMiddlewarePipeline.run() exists
+    assert "pipeline_state_time1" in timer.measurements
+    assert "pipeline_state_time2" in timer.measurements
 
 
 def test_inference_state_multiple_runtime_recoded_to_inference_state():
@@ -57,8 +59,8 @@ def test_inference_state_multiple_runtime_recoded_to_inference_state():
     timer = AddThreePipeline.timer_middleware.timer
 
     # inference state only saved to its state, not to the middleware state
-    assert "fp32" not in timer.measurements
-    assert "int4" not in timer.measurements
+    assert "op_state_time1" not in timer.measurements
+    assert "op_state_time2" not in timer.measurements
 
 
 # flake8: noqa
@@ -78,6 +80,6 @@ def test_both_pipeline_and_inference_state_multiple_runtime_recoded_to_middlewar
     timer = AddThreePipeline.timer_middleware.timer
 
     # inference state saved to its state and in middleware state
-    assert "foo" in timer.measurements
-    assert "bar" in timer.measurements
-    assert "op1" in timer.measurements
+    assert "pipeline_state_time1" in timer.measurements
+    assert "pipeline_state_time2" in timer.measurements
+    assert "op_state_measurements" in timer.measurements

@@ -25,7 +25,7 @@ class Timer:
 
     Usage:
     timer = Timer()
-    tiemr.start("foo")
+    timer.start("foo")
     ...
     timer.end("foo")
     """
@@ -38,6 +38,7 @@ class Timer:
     def start(self, key: str):
         """
         Starts the timer
+
         :param key: the key to track the timer for
         """
         with self._lock:
@@ -46,6 +47,7 @@ class Timer:
     def end(self, key: str) -> bool:
         """
         Ends the timer and saves the runtime into measurements
+
         :param key: the key to save the run time for
         """
         end_time = time.time()
@@ -63,6 +65,7 @@ class Timer:
         Update the measurements from another timer. Used for
          saving inference state measurements into the middleware timer
         :param key: the key to save the run time for
+
         :param measurements: dict of measurements
         """
         with self._lock:
