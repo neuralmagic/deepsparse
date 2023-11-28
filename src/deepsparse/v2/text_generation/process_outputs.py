@@ -23,6 +23,7 @@ from deepsparse.transformers.pipelines.text_generation import (
 )
 from deepsparse.v2.operators import Operator
 from deepsparse.v2.utils import InferenceState, PipelineState
+from deepsparse.v2.utils.data import StreamingOutput
 
 
 ___all__ = ["ProcessOutputs", "ProcessOutputsStreaming"]
@@ -104,51 +105,28 @@ class ProcessOutputsStreaming(ProcessOutputs):
     output_schema = None
 
     def can_operate(self, inp: Dict[str, Any]) -> bool:
+
         return inp.get("streaming") and inp.get("in_generation")
 
-    def run(self, *args, **kwargs):
-        generation_config = kwargs["inference_state"].current_state.get(
-            "generation_config"
-        )
-        generated_logits = (
-            kwargs["inference_state"].current_state.get("generated_logits")
-            if generation_config.output_scores
-            else None
-        )
-        sequences = self.tokenizer.batch_decode(
-            kwargs["inference_state"].current_state.get("generated_tokens"),
-            skip_special_tokens=True,
+    def run(
+        self,
+        *args,
+        tokens,
+        kv_cache,
+        inference_state: InferenceState,
+        **kwargs,
+    ):
+
+        generated_logits = inference_state.current_state.get("generated_logits")
+        generated_tokens = inference_state.current_state.get("generated_tokens")
+        outputs = super().run(
+            generated_tokens=generated_tokens,
+            generated_logits=generated_logits,
+            inference_state=inference_state,
+            finished_reason=[[None]],
         )
 
-        if generated_logits is not None:
-            generations = list(
-                map(
-                    self._create_generated_text_output,
-                    sequences,
-                    generated_logits,
-                )
-            )
-        else:
-            generations = list(map(self._create_generated_text_output, sequences))
-        generations = generations[-1]
-        print(generations)
-        num_preds = generation_config.num_return_sequences
-        if num_preds > 1:
-            grouped_generations = [
-                generations[n : n + num_preds]
-                for n in range(0, len(generations), num_preds)
-            ]
-            generations = grouped_generations
-
-        outputs = dict(
-            created=datetime.datetime.now(),
-            prompts=kwargs["inference_state"].current_state.get("prompts"),
-            generations=generations,
+        return StreamingOutput(
+            data_to_yield=TextGenerationOutput(**outputs),
+            data_to_return=dict(tokens=tokens, kv_cache=kv_cache),
         )
-
-        output = {
-            "tokens": kwargs["tokens"],
-            "kv_cache": kwargs["kv_cache"],
-            "in_generation": kwargs["in_generation"],
-        }
-        return output, {}

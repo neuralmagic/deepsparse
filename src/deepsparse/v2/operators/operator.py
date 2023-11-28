@@ -17,8 +17,8 @@ from typing import Any, Optional, Type
 
 from pydantic import BaseModel
 
-from deepsparse.v2.utils import InferenceState
 from deepsparse.v2.operators.registry import OperatorRegistry
+from deepsparse.v2.utils import InferenceState, StreamingOutput
 
 
 __all__ = ["Operator"]
@@ -97,9 +97,18 @@ class Operator(ABC):
                 inference_state=inference_state,
                 **kwargs,
             )
+        if isinstance(run_output, StreamingOutput):
+            run_output, yield_output = (
+                run_output.data_to_return,
+                run_output.data_to_yield,
+            )
+        else:
+            yield_output = None
+
         if self.has_output_schema():
-            return self.output_schema(**run_output)
-        return run_output
+            return self.output_schema(**run_output), yield_output
+
+        return run_output, yield_output
 
     @staticmethod
     def create(

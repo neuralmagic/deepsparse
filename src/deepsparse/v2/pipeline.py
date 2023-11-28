@@ -121,6 +121,7 @@ class Pipeline(Operator):
                 if isinstance(sub_graph.output, Future) and sub_graph.output.done():
                     # get the result for the completed operator; resolve its output
                     operator_output = sub_graph.output.result()
+                    operator_output, output_to_yield = operator_output
                     operator_output = sub_graph.parse_output(operator_output)
 
                     # determine the next step for the particular operator, using
@@ -219,7 +220,7 @@ class Pipeline(Operator):
                     pipeline_state=self.pipeline_state,
                     **kwargs,
                 ).result()
-
+                operator_output, output_to_yield = operator_output
                 if isinstance(operator_output, tuple):
                     operator_output, state_update = (
                         operator_output[0],
@@ -244,7 +245,7 @@ class Pipeline(Operator):
                 inference_state = graph.inf
                 next_step = graph.step
 
-        return operator_output
+        return operator_output, output_to_yield
 
     def __call__(self, *args, **kwargs):
         """

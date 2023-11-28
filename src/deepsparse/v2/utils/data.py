@@ -15,10 +15,12 @@
 from dataclasses import dataclass
 from typing import Any, List
 
+from pydantic import BaseModel, Field
+
 from deepsparse.v2.utils import InferenceState
 
 
-__all__ = ["SubGraph"]
+__all__ = ["SubGraph", "StreamingOutput"]
 
 
 @dataclass
@@ -37,3 +39,18 @@ class SubGraph:
             operator_output, state_update = operator_output[0], operator_output[-1]
             self.inf.update_state(state_update)
         return operator_output
+
+
+class StreamingOutput(BaseModel):
+    """
+    Helper object to store the output of a streaming operator. Facilitates
+    returning data to be used in the next step of the pipeline and yielding
+    the data immediately from the pipeline.
+    """
+
+    data_to_return: Any = Field(
+        description="Any data that should be returned to be used in the next step of the pipeline"
+    )
+    data_to_yield: Any = Field(
+        description="Any data that should be yielded to the user"
+    )
