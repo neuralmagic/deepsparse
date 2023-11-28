@@ -172,10 +172,10 @@ import requests
 
 url = "http://localhost:5543/v2/models/text_generation/infer" # Server's port default to 5543
 
-obj = {"sequence": "Who is the president of the United States?"}
+obj = {"prompt": "Who is the president of the United States?"}
 
 response = requests.post(url, json=obj)
-response.text
+print(response.json().text)
 
 >> 'The president of the United States is the head of the executive branch of government...'
 ```
