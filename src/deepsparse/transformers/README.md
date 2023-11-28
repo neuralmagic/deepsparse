@@ -163,7 +163,7 @@ Spinning up:
 ```bash
 deepsparse.server \
     task text-generation \
-    --model_path # TODO: Pending until text generation models get uploaded to SparseZoo
+    --model_path zoo:llama2-7b-open_platypus_orca_llama2_pretrain-pruned50_quantized
 ```
 
 Making a request:
