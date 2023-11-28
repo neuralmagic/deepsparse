@@ -29,7 +29,13 @@ from deepsparse.server.protocol import (
     ChatCompletionResponseStreamChoice,
     ChatCompletionStreamResponse,
     ChatMessage,
+    CompletionRequest,
+    CompletionResponse,
+    CompletionResponseChoice,
+    CompletionResponseStreamChoice,
+    CompletionStreamResponse,
     DeltaMessage,
+    LogProbs,
     ModelCard,
     ModelList,
     ModelPermission,
@@ -126,7 +132,7 @@ class OpenAIServer(Server):
                 # Abort the request if the client disconnects.
                 background_tasks.add_task(abort_request)
                 return StreamingResponse(
-                    completion_stream_generator(
+                    chat_completion_stream_generator(
                         request,
                         result_generator,
                         request_id=request_id,
@@ -175,6 +181,86 @@ class OpenAIServer(Server):
             )
             return response
 
+        @app.post(
+            "/v1/completions",
+            tags=["model", "inference"],
+            response_model=CompletionResponse,
+        )
+        async def create_completion(raw_request: Request):
+            request = CompletionRequest(**await raw_request.json())
+            _LOGGER.info(f"Received completion request: {request}")
+
+            model = request.model
+
+            pipeline = app.model_to_pipeline.get(model)
+            if not pipeline:
+                create_error_response(
+                    HTTPStatus.BAD_REQUEST, f"{model} is not available"
+                )
+
+            request_id = f"cmpl-{random_uuid()}"
+            created_time = int(time.time())
+
+            if isinstance(request.prompt, list):
+                if len(request.prompt) == 0:
+                    create_error_response(
+                        HTTPStatus.BAD_REQUEST, "please provide at least one prompt"
+                    )
+                if len(request.prompt) > 1:
+                    create_error_response(
+                        HTTPStatus.BAD_REQUEST,
+                        "multiple prompts in a batch is not currently supported",
+                    )
+                prompt = request.prompt[0]
+            else:
+                prompt = request.prompt
+
+            try:
+                sampling_params = dict(
+                    num_return_sequences=request.n,
+                    presence_penalty=request.presence_penalty,
+                    frequency_penalty=request.frequency_penalty,
+                    temperature=request.temperature,
+                    top_p=request.top_p,
+                    top_k=request.top_k,
+                    stop=request.stop,
+                    ignore_eos=request.ignore_eos,
+                    max_tokens=request.max_tokens,
+                    logprobs=request.logprobs,
+                    stream=request.stream,
+                )
+            except ValueError as e:
+                return create_error_response(HTTPStatus.BAD_REQUEST, str(e))
+
+            result_generator = OpenAIServer.generate(
+                prompt=prompt, request_id=request_id, generation_kwargs=sampling_params, pipeline=pipeline
+            )
+
+            async for res in result_generator:
+                print(res)
+
+            """
+            async def abort_request() -> None:
+                await pipeline.abort(request_id)
+
+            # Streaming response
+            if request.stream:
+                background_tasks = BackgroundTasks()
+                # Abort the request if the client disconnects.
+                background_tasks.add_task(abort_request)
+                return StreamingResponse(
+                    completion_stream_generator(
+                        request=request,
+                        result_generator=result_generator,
+                        request_id=request_id,
+                        created_time=created_time,
+                        pipeline=pipeline,
+                    ),
+                    media_type="text/event-stream",
+                    background=background_tasks,
+                )
+            """
+
         return app
 
     def _add_model(
@@ -216,7 +302,7 @@ class OpenAIServer(Server):
 
         prompt_token_ids = tokenize(prompt)
         generation_kwargs = map_generation_schema(generation_kwargs)
-
+        
         stream = generation_kwargs.pop("stream")
         presence_penalty = generation_kwargs.pop("presence_penalty")
         stop = generation_kwargs.pop("stop")
@@ -292,7 +378,35 @@ def map_generation_schema(generation_kwargs: Dict) -> Dict:
     if generation_kwargs["num_return_sequences"] > 1:
         generation_kwargs["do_sample"] = True
 
-    return generation_kwargs
+    return dict(generation_kwargs)
+
+
+def create_logprobs(
+    token_ids: List[int],
+    pipeline: Pipeline,
+    id_logprobs: List[Dict[int, float]],
+    initial_text_offset: int = 0,
+) -> LogProbs:
+    """Create OpenAI-style logprobs."""
+    logprobs = LogProbs()
+    last_token_len = 0
+    for token_id, id_logprob in zip(token_ids, id_logprobs):
+        token = pipeline.tokenizer.convert_ids_to_tokens(token_id)
+        logprobs.tokens.append(token)
+        logprobs.token_logprobs.append(id_logprob[token_id])
+        if len(logprobs.text_offset) == 0:
+            logprobs.text_offset.append(initial_text_offset)
+        else:
+            logprobs.text_offset.append(logprobs.text_offset[-1] + last_token_len)
+        last_token_len = len(token)
+
+        logprobs.top_logprobs.append(
+            {
+                pipeline.tokenizer.convert_ids_to_tokens(i): p
+                for i, p in id_logprob.items()
+            }
+        )
+    return logprobs
 
 
 def create_stream_response_json(
@@ -319,7 +433,78 @@ def create_stream_response_json(
     return response_json
 
 
+def create_completion_stream_response_json(
+    index: int,
+    text: str,
+    request_id: str,
+    created_time: int,
+    pipeline: Pipeline,
+    logprobs: Optional[LogProbs] = None,
+    finish_reason: Optional[str] = None,
+) -> str:
+    choice_data = CompletionResponseStreamChoice(
+        index=index,
+        text=text,
+        logprobs=logprobs,
+        finish_reason=finish_reason,
+    )
+    response = CompletionStreamResponse(
+        id=request_id,
+        created=created_time,
+        model=pipeline.model,
+        choices=[choice_data],
+    )
+    response_json = response.json(ensure_ascii=False)
+
+    return response_json
+
+
 async def completion_stream_generator(
+    request, result_generator, request_id, created_time, pipeline
+) -> AsyncGenerator[str, None]:
+    previous_texts = [""] * request.n
+    previous_num_tokens = [0] * request.n
+    async for res in result_generator:
+        res: RequestOutput
+        for output in res.outputs:
+            i = output.index
+            delta_text = output.text[len(previous_texts[i]) :]
+            if request.logprobs is not None:
+                logprobs = create_logprobs(
+                    output.token_ids[previous_num_tokens[i] :],
+                    pipeline,
+                    output.logprobs[previous_num_tokens[i] :],
+                    len(previous_texts[i]),
+                )
+            else:
+                logprobs = None
+            previous_texts[i] = output.text
+            previous_num_tokens[i] = len(output.token_ids)
+            response_json = create_completion_stream_response_json(
+                index=i,
+                text=delta_text,
+                logprobs=logprobs,
+                request_id=request_id,
+                created_time=created_time,
+                pipeline=pipeline,
+            )
+            yield f"data: {response_json}\n\n"
+            if output.finish_reason is not None:
+                logprobs = LogProbs() if request.logprobs is not None else None
+                response_json = create_completion_stream_response_json(
+                    index=i,
+                    text="",
+                    logprobs=logprobs,
+                    request_id=request_id,
+                    created_time=created_time,
+                    pipeline=pipeline,
+                    finish_reason=output.finish_reason,
+                )
+                yield f"data: {response_json}\n\n"
+    yield "data: [DONE]\n\n"
+
+
+async def chat_completion_stream_generator(
     request, result_generator, request_id, created_time, pipeline
 ) -> AsyncGenerator[str, None]:
     # First chunk with role

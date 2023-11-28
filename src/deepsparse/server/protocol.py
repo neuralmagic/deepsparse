@@ -26,6 +26,13 @@ def random_uuid() -> str:
     return str(uuid.uuid4().hex)
 
 
+class LogProbs(BaseModel):
+    text_offset: List[int] = Field(default_factory=list)
+    token_logprobs: List[Optional[float]] = Field(default_factory=list)
+    tokens: List[str] = Field(default_factory=list)
+    top_logprobs: List[Optional[Dict[str, float]]] = Field(default_factory=list)
+
+
 class ErrorResponse(BaseModel):
     """
     Structure of the error messages returned for any errors returned as part of the
@@ -117,6 +124,29 @@ class ChatCompletionRequest(BaseModel):
     use_beam_search: Optional[bool] = False
 
 
+class CompletionRequest(BaseModel):
+    model: str
+    prompt: Union[str, List[str]]
+    suffix: Optional[str] = None
+    max_tokens: Optional[int] = 16
+    temperature: Optional[float] = 1.0
+    top_p: Optional[float] = 1.0
+    n: Optional[int] = 1
+    stream: Optional[bool] = False
+    logprobs: Optional[int] = None
+    echo: Optional[bool] = False
+    stop: Optional[Union[str, List[str]]] = Field(default_factory=list)
+    presence_penalty: Optional[float] = 0.0
+    frequency_penalty: Optional[float] = 0.0
+    best_of: Optional[int] = None
+    logit_bias: Optional[Dict[str, float]] = None
+    user: Optional[str] = None
+    # Additional parameters
+    top_k: Optional[int] = -1
+    ignore_eos: Optional[bool] = False
+    use_beam_search: Optional[bool] = False
+
+
 class ChatMessage(BaseModel):
     role: str
     content: str
@@ -140,6 +170,37 @@ class ChatCompletionResponse(BaseModel):
     model: str
     choices: List[ChatCompletionResponseChoice]
     usage: UsageInfo
+
+
+class CompletionResponseChoice(BaseModel):
+    index: int
+    text: str
+    logprobs: Optional[LogProbs] = None
+    finish_reason: Optional[Literal["stop", "length"]] = None
+
+
+class CompletionResponse(BaseModel):
+    id: str = Field(default_factory=lambda: f"cmpl-{random_uuid()}")
+    object: str = "text_completion"
+    created: int = Field(default_factory=lambda: int(time.time()))
+    model: str
+    choices: List[CompletionResponseChoice]
+    usage: UsageInfo
+
+
+class CompletionResponseStreamChoice(BaseModel):
+    index: int
+    text: str
+    logprobs: Optional[LogProbs] = None
+    finish_reason: Optional[Literal["stop", "length"]] = None
+
+
+class CompletionStreamResponse(BaseModel):
+    id: str = Field(default_factory=lambda: f"cmpl-{random_uuid()}")
+    object: str = "text_completion"
+    created: int = Field(default_factory=lambda: int(time.time()))
+    model: str
+    choices: List[CompletionResponseStreamChoice]
 
 
 class DeltaMessage(BaseModel):
