@@ -100,8 +100,10 @@ def integration_eval(
 
     results_raw = evaluator.simple_evaluate(**evaluator_input.dict())
 
+    inputs_dict = evaluator_input.dict()
+    del inputs_dict["model"]
     results = Result(
-        raw=dict(output=results_raw, input=evaluator_input),
+        raw=dict(output=results_raw, input=inputs_dict),
         formatted=format_raw_results(results_raw),
     )
 
