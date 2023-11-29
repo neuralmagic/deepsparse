@@ -20,7 +20,7 @@ from transformers import AutoModelForCausalLM
 from deepsparse import DEEPSPARSE_ENGINE, ORT_ENGINE, Pipeline
 
 
-__all__ = ["text_generation_model_from_target", "get_save_path", "args_to_dict"]
+__all__ = ["create_model_from_target", "get_save_path", "args_to_dict"]
 
 
 def args_to_dict(args: Tuple[Any, ...]) -> Dict[str, Any]:
@@ -68,13 +68,20 @@ def get_save_path(
     return os.path.join(base_path, file_name)
 
 
-# TODO: Make it more generic to support sparsified models.
-# TODO: Ideally import this functionality from SparseZoo.
-def text_generation_model_from_target(
+def create_model_from_target(
     target: str,
     engine_type: str,
+    **kwargs,
 ) -> Union[Pipeline, AutoModelForCausalLM]:
     """
+    Create a model or a pipeline from a target path.
+
+    Note: This function is currently limited to:
+        - creating pipelines of type 'text-generation'
+        - creating dense huggingface models of type 'AutoModelForCausalLM'
+    This function will be expanded in the future to support more
+    model types and frameworks.
+
     :param target: The target path to initialize the
         text generation model from. This can be a local
         or remote path to the model or a sparsezoo stub
@@ -83,10 +90,12 @@ def text_generation_model_from_target(
     """
     if engine_type in [DEEPSPARSE_ENGINE, ORT_ENGINE]:
         return Pipeline.create(
-            task="text-generation", model_path=target, engine_type=engine_type
-        )
-    try:
-        # for now assume that if it's not a pipeline, it's a huggingface model
-        return AutoModelForCausalLM.from_pretrained(target)
-    except NotImplementedError as e:  # noqa: F841
-        raise NotImplementedError(f"Unsupported engine type: {engine_type}")
+            task="text-generation",
+            model_path=target,
+            sequence_length=kwargs.pop("sequence_length", 2048),
+            trust_remote_code=kwargs.pop("trust_remote_code", False),
+            engine_type=engine_type,
+            batch_size=kwargs.pop("batch_size", 1),
+            **kwargs)
+    else:
+        return AutoModelForCausalLM.from_pretrained(target, **kwargs)

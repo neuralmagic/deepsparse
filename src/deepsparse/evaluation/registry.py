@@ -15,7 +15,7 @@
 Implementation of a registry for evaluation functions
 """
 
-from typing import Any, Callable
+from typing import Any, Callable, List, Optional, Union
 
 from sparsezoo.utils.registry import RegistryMixin
 
@@ -25,10 +25,36 @@ __all__ = ["EvaluationRegistry"]
 
 class EvaluationRegistry(RegistryMixin):
     """
-    Extends the RegistryMixin to enable registering and loading of evaluation
-    functions.
+    Extends the RegistryMixin to enable registering
+    and loading of evaluation functions.
     """
 
     @classmethod
     def load_from_registry(cls, name: str) -> Callable[..., Any]:
         return cls.get_value_from_registry(name=name)
+
+    @classmethod
+    def resolve(
+        cls, model: Any,
+             datasets: Union[str, List[str]],
+             integration: Optional[str]
+    ) -> Callable[..., Any]:
+        """
+        Chooses an evaluation function from the registry based on the target,
+        datasets and integration.
+
+        If integration is specified, attempts to load the evaluation function
+        from the registry.
+
+        Currently:
+            if integration is not specified, default to 'llm-evaluation-harness'
+            for llm-type models. If the model is not a llm-type model, raise an error.
+        """
+        if integration is not None:
+            try:
+                integration_eval = cls.load_from_registry(name=integration)
+                return integration_eval
+            except KeyError:
+                pass
+        # resolve
+        return cls.get_value_from_registry(name="llm-evaluation-harness")

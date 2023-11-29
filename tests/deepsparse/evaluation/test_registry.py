@@ -49,3 +49,12 @@ def test_get_multiple_buzz_from_registry(registry_with_buzz):
     eval_function_1 = registry_with_buzz.load_from_registry("buzz")
     eval_function_2 = registry_with_buzz.load_from_registry("buzzer")
     assert eval_function_1() == eval_function_2() == "buzz"
+
+def test_resolve_known_llm_type_model(llm_type_model):
+    eval_function = EvaluationRegistry.resolve(llm_type_model)
+    assert False
+
+def test_resolve_unknown_type_model(not_llm_type_model):
+    with pytest.raises(ValueError):
+        EvaluationRegistry.resolve(not_llm_type_model)
+
