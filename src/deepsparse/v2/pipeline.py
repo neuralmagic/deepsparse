@@ -58,7 +58,7 @@ class Pipeline(Operator):
         schedulers: List[OperatorScheduler],
         continuous_batching_scheduler: ContinuousBatchingScheduler,
         pipeline_state: PipelineState = None,
-        middleware: List[AbstractMiddleware] = [],
+        middleware: List[AbstractMiddleware] = [],  # Initialized List of middlewares
     ):
 
         self.ops = ops

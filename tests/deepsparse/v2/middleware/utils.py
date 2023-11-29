@@ -16,7 +16,7 @@
 from deepsparse.v2.middleware import AbstractMiddleware
 
 
-class OrderTrackerMiddleware(AbstractMiddleware):
+class OpsTrackerMiddleware(AbstractMiddleware):
     def __init__(self):
         self.start_order = []
         self.end_order = []

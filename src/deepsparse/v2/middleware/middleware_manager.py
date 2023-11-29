@@ -21,21 +21,13 @@ from .abstract_middleware import AbstractMiddleware
 class MiddlewareManager:
     def __init__(self, middleware: Optional[List[AbstractMiddleware]] = None):
         self.middleware = middleware
-        self._init_middleware = []
-
-    def _init(self):
-        for middleware in self.middleware:
-            self._init_middleware.append(middleware())
 
     def start_event(self, *args, **kwargs) -> None:
         if self.middleware is not None:
-            if len(self._init_middleware) == 0:
-                self._init()
-
-            for middleware in self._init_middleware:
+            for middleware in self.middleware:
                 middleware.start_event(*args, **kwargs)
 
     def end_event(self, *args, **kwargs) -> None:
         if self.middleware is not None:
-            for middleware in self._init_middleware[::-1]:
+            for middleware in self.middleware[::-1]:
                 middleware.end_event(*args, **kwargs)
