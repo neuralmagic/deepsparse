@@ -114,14 +114,13 @@ class Operator(ABC):
             rtn = self.output_schema(**run_output)
             if middleware is not None:
                 middleware.end_event(
-                    *args,
+                    name=name,
                     inferece_state=inference_state,
                     outputs=rtn,
                     **kwargs,
                 )
 
             return rtn
-
         if middleware is not None:
             middleware.end_event(
                 name=name,

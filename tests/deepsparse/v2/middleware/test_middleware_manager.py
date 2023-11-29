@@ -41,21 +41,22 @@ def test_middleware_triggered_in_expected_order_for_ops():
     pipeline_output = AddThreePipeline(pipeline_input)
     assert pipeline_output.value == 8
 
-    expected_middleware_start_order = ["AddOneOperator", "AddTwoOperator"]
-    actual_middleware_start_order = AddThreePipeline._middleware.middleware[
+    expected_middleware_start_order = ["Pipeline", "AddOneOperator", "AddTwoOperator"]
+    actual_middleware_start_order = AddThreePipeline.middleware.middleware[
         0
     ].start_order
 
     # check pass my reference for middleware
-    assert op_track_middleware == AddThreePipeline._middleware.middleware[0]
-    assert counter_middleware == AddThreePipeline._middleware.middleware[1]
+    assert op_track_middleware == AddThreePipeline.middleware.middleware[0]
+    assert counter_middleware == AddThreePipeline.middleware.middleware[1]
 
-    actual_middleware_end_order = AddThreePipeline._middleware.middleware[0].start_order
+    actual_middleware_end_order = AddThreePipeline.middleware.middleware[0].end_order
+    expected_middleware_end_order = ["AddOneOperator", "AddTwoOperator", "Pipeline"]
 
+    assert expected_middleware_start_order == actual_middleware_start_order
+    assert expected_middleware_end_order == actual_middleware_end_order
+
+    # plus one for pipeline
     assert (
-        expected_middleware_start_order
-        == actual_middleware_start_order
-        == actual_middleware_end_order
+        counter_middleware.start_called == counter_middleware.end_called == len(ops) + 1
     )
-
-    assert counter_middleware.start_called == counter_middleware.end_called == len(ops)

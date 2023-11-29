@@ -66,7 +66,7 @@ class Pipeline(Operator):
         self.schedulers = schedulers
         self.pipeline_state = pipeline_state
         self._continuous_batching_scheduler = continuous_batching_scheduler
-        self._middleware = MiddlewareManager(middleware)
+        self.middleware = MiddlewareManager(middleware)
         self.validate()
 
         self._scheduler_group = SchedulerGroup(self.schedulers)
@@ -195,6 +195,11 @@ class Pipeline(Operator):
         :param pipeline_state: pipeline_state for the pipeline. The values in the state
             are created during pipeline creation and are read-only during inference.
         """
+        self.middleware.start_event(
+            name=self.__class__.__name__,
+            inferece_state=inference_state,
+            **kwargs,
+        )
         next_step = self.router.START_ROUTE
         operator_output = None
 
@@ -247,6 +252,11 @@ class Pipeline(Operator):
                 inference_state = graph.inf
                 next_step = graph.step
 
+        self.middleware.end_event(
+            name=self.__class__.__name__,
+            inferece_state=inference_state,
+            **kwargs,
+        )
         return operator_output
 
     def __call__(self, *args, **kwargs):
@@ -261,7 +271,7 @@ class Pipeline(Operator):
             inference_state = kwargs.pop("inference_state")
         else:
             inference_state = InferenceState()
-            inference_state.create_state({"middleware": self._middleware})
+            inference_state.create_state({"middleware": self.middleware})
 
         kwargs["inference_state"] = inference_state
 
