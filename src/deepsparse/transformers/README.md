@@ -163,7 +163,7 @@ Spinning up:
 ```bash
 deepsparse.server \
     task text-generation \
-    --model_path zoo:llama2-7b-open_platypus_orca_llama2_pretrain-pruned50_quantized
+    --model_path zoo:opt-1.3b-opt_pretrain-pruned50_quantW8A8
 ```
 
 Making a request:
@@ -172,12 +172,12 @@ import requests
 
 url = "http://localhost:5543/v2/models/text_generation/infer" # Server's port default to 5543
 
-obj = {"prompt": "Who is the president of the United States?"}
+obj = {"prompt": "Large language models are"}
 
 response = requests.post(url, json=obj)
 print(response.json()["generations"][0]["text"])
 
->> 'The president of the United States is the head of the executive branch of government...'
+>> ' often used to model the language of a large number of users...'
 ```
 
 ### Sentiment Analysis
