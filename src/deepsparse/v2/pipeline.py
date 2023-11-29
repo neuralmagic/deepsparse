@@ -18,6 +18,7 @@ from concurrent.futures import Future
 from functools import partial
 from typing import Any, Callable, Dict, List, Union
 
+from deepsparse.v2.middleware.middleware_manager import MiddlewareManager
 from deepsparse.v2.middleware.timer_middleware import TimerMiddleware
 from deepsparse.v2.operators import Operator
 from deepsparse.v2.routers import Router
@@ -58,9 +59,8 @@ class Pipeline(Operator):
         self.router = router
         self.schedulers = schedulers
         self.pipeline_state = pipeline_state
-        self.timer_middleware = TimerMiddleware()
+        self.middleware = MiddlewareManager(middlewares=[TimerMiddleware])
         self.validate()
-
         self._scheduler_group = SchedulerGroup(self.schedulers)
 
     def _run_sequential(

@@ -18,6 +18,8 @@ from typing import Dict, Optional
 
 from deepsparse.v2.utils.state import InferenceState
 
+from .middleware import Middlware
+
 
 class Timer:
     """
@@ -73,10 +75,12 @@ class Timer:
         return True
 
 
-class TimerMiddleware:
+class TimerMiddleware(Middlware):
     """
     Timer middleare to keep run times of itsself and inference state timer
     """
+
+    __name__ = "timer"
 
     def __init__(self):
         """

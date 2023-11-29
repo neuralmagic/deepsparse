@@ -38,7 +38,7 @@ class TimedMiddlewarePipeline(Pipeline):
         assert (
             abs(
                 1
-                - getattr(self.timer_middleware, "timer").measurements[
+                - getattr(self.middleware["timer"], "timer").measurements[
                     "pipeline_state_time1"
                 ]
             )
@@ -47,7 +47,7 @@ class TimedMiddlewarePipeline(Pipeline):
         assert (
             abs(
                 0.5
-                - getattr(self.timer_middleware, "timer").measurements[
+                - getattr(self.middleware["timer"], "timer").measurements[
                     "pipeline_state_time2"
                 ]
             )
@@ -60,15 +60,23 @@ class TimedMiddlewarePipeline(Pipeline):
         )
 
     def _save_run_time_to_middleware_state(self, key: str, run_time: int):
-        self.timer_middleware.start_event(key)
-        assert hasattr(self.timer_middleware, "timer")
-        assert key in getattr(self.timer_middleware, "timer").start_times
+        self.middleware.start_event("timer", key)
+
+        # timer is registered in middleware manager
+        assert "timer" in self.middleware.middlewares
+
+        # timer object in timer middleware
+        assert getattr(self.middleware["timer"], "timer")
+
+        # start time in timer middleware timer
+        assert key in getattr(self.middleware["timer"], "timer").start_times
 
         time.sleep(run_time)
 
-        self.timer_middleware.end_event(key)
-        assert key not in getattr(self.timer_middleware, "timer").start_times
-        assert key in getattr(self.timer_middleware, "timer").measurements
+        self.middleware.end_event("timer", key)
+
+        assert key not in getattr(self.middleware["timer"], "timer").start_times
+        assert key in getattr(self.middleware["timer"], "timer").measurements
 
 
 class TimedInferenceStatePipeline(Pipeline):
@@ -103,16 +111,16 @@ class TimedInferenceStatePipeline(Pipeline):
     def _save_run_time_to_inference_state(
         self, key: str, run_time: int, state: InferenceState
     ):
-        self.timer_middleware.start_event(key, state)
+        self.middleware.start_event("timer", key, state)
         assert hasattr(state, "timer")
         assert key in getattr(state, "timer").start_times
 
         time.sleep(run_time)
 
-        self.timer_middleware.end_event(key, state)
+        self.middleware.end_event("timer", key, state)
         assert key not in getattr(state, "timer").start_times
         assert key in getattr(state, "timer").measurements
-        assert key not in getattr(self.timer_middleware, "timer").measurements
+        assert key not in getattr(self.middleware["timer"], "timer").measurements
 
 
 class TimedInferenceStateMiddlewarePipeline(Pipeline):
@@ -127,7 +135,7 @@ class TimedInferenceStateMiddlewarePipeline(Pipeline):
         self._save_run_time_to_middleware_state("pipeline_state_time2", 0.5)
 
         self._save_run_time_to_inference_state("op_state_time1", 1, inference_state)
-        self._save_run_time_to_inference_state("op_state_time1", 0.5, inference_state)
+        self._save_run_time_to_inference_state("op_state_time2", 0.5, inference_state)
 
         kwargs["inference_state"] = inference_state
         kwargs["pipeline_state"] = pipeline_state
@@ -144,42 +152,52 @@ class TimedInferenceStateMiddlewarePipeline(Pipeline):
         return rtn
 
     def _save_inference_time_to_middleware_state(self, key: str, state: InferenceState):
-        assert key not in getattr(self.timer_middleware, "timer").measurements
+        assert key not in getattr(self.middleware["timer"], "timer").measurements
 
-        self.timer_middleware.update_middleware_timer(key, state)
-        assert key in getattr(self.timer_middleware, "timer").measurements
+        self.middleware.dispatch("timer.update_middleware_timer", key, state)
+
+        assert key in getattr(self.middleware["timer"], "timer").measurements
         for updated_key, updated_value in state.timer.measurements.items():
             assert (
-                updated_key in getattr(self.timer_middleware, "timer").measurements[key]
+                updated_key
+                in getattr(self.middleware["timer"], "timer").measurements[key]
             )
             assert (
                 updated_value
-                == getattr(self.timer_middleware, "timer").measurements[key][
+                == getattr(self.middleware["timer"], "timer").measurements[key][
                     updated_key
                 ]
             )
 
     def _save_run_time_to_middleware_state(self, key: str, run_time: int):
-        self.timer_middleware.start_event(key)
-        assert hasattr(self.timer_middleware, "timer")
-        assert key in getattr(self.timer_middleware, "timer").start_times
+        self.middleware.start_event("timer", key)
+
+        # timer is registered in middleware manager
+        assert "timer" in self.middleware.middlewares
+
+        # timer object in timer middleware
+        assert getattr(self.middleware["timer"], "timer")
+
+        # start time in timer middleware timer
+        assert key in getattr(self.middleware["timer"], "timer").start_times
 
         time.sleep(run_time)
 
-        self.timer_middleware.end_event(key)
-        assert key not in getattr(self.timer_middleware, "timer").start_times
-        assert key in getattr(self.timer_middleware, "timer").measurements
+        self.middleware.end_event("timer", key)
+
+        assert key not in getattr(self.middleware["timer"], "timer").start_times
+        assert key in getattr(self.middleware["timer"], "timer").measurements
 
     def _save_run_time_to_inference_state(
         self, key: str, run_time: int, state: InferenceState
     ):
-        self.timer_middleware.start_event(key, state)
+        self.middleware.start_event("timer", key, state)
         assert hasattr(state, "timer")
         assert key in getattr(state, "timer").start_times
 
         time.sleep(run_time)
 
-        self.timer_middleware.end_event(key, state)
+        self.middleware.end_event("timer", key, state)
         assert key not in getattr(state, "timer").start_times
         assert key in getattr(state, "timer").measurements
-        assert key not in getattr(self.timer_middleware, "timer").measurements
+        assert key not in getattr(self.middleware["timer"], "timer").measurements
