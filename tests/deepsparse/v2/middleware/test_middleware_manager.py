@@ -13,45 +13,35 @@
 # limitations under the License.
 
 
-from deepsparse.v2.pipeline import Pipeline
-from deepsparse.v2.routers import LinearRouter
-from deepsparse.v2.schedulers import ContinuousBatchingScheduler, OperatorScheduler
-from tests.deepsparse.v2.middleware.utils import (
-    CounterMiddleware,
-    OrderTrackerMiddleware,
-)
-from tests.deepsparse.v2.test_basic_pipeline import (
-    AddOneOperator,
-    AddTwoOperator,
-    IntSchema,
-)
+from typing import Any
+
+from src.deepsparse.v2.middleware import MiddlewareCallable, MiddlewareManager
 
 
-def test_pipeline_multiple_runtime_recoded_to_middleware_state():
-    """Save recordings in the pipeline level into the middleware state"""
-    AddThreePipeline = Pipeline(
-        ops=[AddOneOperator(), AddTwoOperator()],
-        router=LinearRouter(end_route=2),
-        schedulers=[OperatorScheduler()],
-        continuous_batching_scheduler=ContinuousBatchingScheduler,
-        middleware=[OrderTrackerMiddleware, CounterMiddleware],
+class PrintingMiddleware(MiddlewareCallable):
+    def __init__(self, app: MiddlewareCallable, identifier: str):
+        self.identifier: str = identifier
+        self.app: MiddlewareCallable = app
+
+    def __call__(self, *args, **kwargs) -> Any:
+        print(f"{self.identifier}: before app")
+        result = self.app(*args, **kwargs)
+        print(f"{self.identifier}: after app: {result}")
+        return result
+
+
+class BaseApp:
+    def __call__(self, *args, **kwargs):
+        print(f"BASE APP!\n  args: {args}\n  kwargs: {kwargs}")
+
+
+def test_dummy_example():
+    subject = MiddlewareManager(
+        middleware=[
+            [PrintingMiddleware, "A"],
+            [PrintingMiddleware, "B"],
+            [PrintingMiddleware, "C"],
+        ]
     )
-    pipeline_input = IntSchema(value=5)
-    pipeline_output = AddThreePipeline(pipeline_input)
-    assert pipeline_output.value == 8
-
-    expected_middleware_start_order = ["AddOneOperator", "AddTwoOperator"]
-    actual_middleware_start_order = AddThreePipeline._middleware._init_middleware[
-        0
-    ].start_order
-    actual_middleware_end_order = AddThreePipeline._middleware._init_middleware[
-        0
-    ].start_order
-
-    for expected, actual_start, actual_end in zip(
-        expected_middleware_start_order,
-        actual_middleware_start_order,
-        actual_middleware_end_order,
-    ):
-        assert expected == actual_start
-        assert expected == actual_end
+    base_app = BaseApp()
+    subject.wrap(base_app, 1, 2, 3, a="a", b="b", c="c")

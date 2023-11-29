@@ -14,5 +14,6 @@
 
 # flake8: noqa
 
-from .abstract_middleware import AbstractMiddleware
-from .middleware_manager import MiddlewareManager
+from deepsparse.v2.middleware.abstract_middleware import AbstractMiddleware
+from deepsparse.v2.middleware.middleware_manager import MiddlewareManager
+from deepsparse.v2.middleware.middleware_spec import MiddlewareCallable, MiddlewareSpec

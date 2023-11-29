@@ -13,29 +13,22 @@
 # limitations under the License.
 
 
-from typing import List, Optional
+from typing import Any, Optional, Sequence
 
-from .abstract_middleware import AbstractMiddleware
+
+from deepsparse.v2.middleware.middleware_spec import MiddlewareCallable, MiddlewareSpec
 
 
 class MiddlewareManager:
-    def __init__(self, middleware: Optional[List[AbstractMiddleware]] = None):
-        self.middleware = middleware
-        self._init_middleware = []
+    def __init__(
+        self,
+        middleware: Optional[Sequence[MiddlewareSpec]],
+    ):
+        self.middleware: Optional[Sequence[MiddlewareSpec]] = middleware
 
-    def _init(self):
-        for middleware in self.middleware:
-            self._init_middleware.append(middleware())
-
-    def start_event(self, *args, **kwargs) -> None:
+    def wrap(self, base_app: MiddlewareCallable, *args, **kwargs) -> Any:
+        app = base_app
         if self.middleware is not None:
-            if len(self._init_middleware) == 0:
-                self._init()
-
-            for middleware in self._init_middleware:
-                middleware.start_event(*args, **kwargs)
-
-    def end_event(self, *args, **kwargs) -> None:
-        if self.middleware is not None:
-            for middleware in self._init_middleware[::-1]:
-                middleware.end_event(*args, **kwargs)
+            for middleware, init_args in reversed(self.middleware):
+                app = middleware(app, **init_args)
+        return app(*args, **kwargs)
