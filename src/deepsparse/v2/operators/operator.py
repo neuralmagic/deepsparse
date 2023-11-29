@@ -120,12 +120,7 @@ class Operator(ABC):
 
             return rtn
 
-        rtn = run_output
-
-        if middleware is not None:
-            middleware.update()
-
-        return rtn
+        return run_output
 
     @staticmethod
     def create(
