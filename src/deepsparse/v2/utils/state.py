@@ -64,11 +64,11 @@ class InferenceState(State):
     def update_state(self, value: Any):
         self._current_state.update(value)
 
-    def get_state(self, key):
+    def get_state(self, key: str):
         return self._current_state.get(key)
 
     def copy(self) -> "InferenceState":
-        """deepcopy of curr state but the middleware"""
+        """deepcopy of current_state except the middleware"""
         state: dict = self.current_state
         middleware = None
         if "middleware" in state:

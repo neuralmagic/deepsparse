@@ -15,19 +15,22 @@
 
 from typing import List, Optional
 
-from .abstract_middleware import AbstractMiddleware
+from .base_middleware import BaseMiddleware
 
 
 class MiddlewareManager:
-    def __init__(self, middleware: Optional[List[AbstractMiddleware]] = None):
+    def __init__(self, middleware: Optional[List[BaseMiddleware]] = None):
         self.middleware = middleware
 
-    def start_event(self, *args, **kwargs) -> None:
+    def start_event(self, name: str, **kwargs) -> None:
         if self.middleware is not None:
             for middleware in self.middleware:
-                middleware.start_event(*args, **kwargs)
+                middleware.start_event(name=name, **kwargs)
 
-    def end_event(self, *args, **kwargs) -> None:
+    def end_event(self, name: str, **kwargs) -> None:
         if self.middleware is not None:
             for middleware in self.middleware[::-1]:
-                middleware.end_event(*args, **kwargs)
+                middleware.end_event(name=name, **kwargs)
+
+    def add_middleware(self, middleware: BaseMiddleware) -> None:
+        self.middleware.append(middleware)

@@ -26,12 +26,16 @@ from tests.deepsparse.v2.test_basic_pipeline import (
 
 def test_middleware_triggered_in_expected_order_for_ops():
     """Check that when ops gets triggered, middleware behaves as expected"""
+    op_track_middleware = OpsTrackerMiddleware()
+    counter_middleware = CounterMiddleware()
+    middleware = [op_track_middleware, counter_middleware]
+    ops = [AddOneOperator(), AddTwoOperator()]
     AddThreePipeline = Pipeline(
         ops=[AddOneOperator(), AddTwoOperator()],
         router=LinearRouter(end_route=2),
         schedulers=[OperatorScheduler()],
         continuous_batching_scheduler=ContinuousBatchingScheduler,
-        middleware=[OpsTrackerMiddleware(), CounterMiddleware()],
+        middleware=middleware,
     )
     pipeline_input = IntSchema(value=5)
     pipeline_output = AddThreePipeline(pipeline_input)
@@ -41,12 +45,17 @@ def test_middleware_triggered_in_expected_order_for_ops():
     actual_middleware_start_order = AddThreePipeline._middleware.middleware[
         0
     ].start_order
+
+    # check pass my reference for middleware
+    assert op_track_middleware == AddThreePipeline._middleware.middleware[0]
+    assert counter_middleware == AddThreePipeline._middleware.middleware[1]
+
     actual_middleware_end_order = AddThreePipeline._middleware.middleware[0].start_order
 
-    for expected, actual_start, actual_end in zip(
-        expected_middleware_start_order,
-        actual_middleware_start_order,
-        actual_middleware_end_order,
-    ):
-        assert expected == actual_start
-        assert expected == actual_end
+    assert (
+        expected_middleware_start_order
+        == actual_middleware_start_order
+        == actual_middleware_end_order
+    )
+
+    assert counter_middleware.start_called == counter_middleware.end_called == len(ops)

@@ -13,28 +13,55 @@
 # limitations under the License.
 
 
-from deepsparse.v2.middleware import AbstractMiddleware
+from typing import Dict, Optional
+
+from deepsparse.v2.middleware import BaseMiddleware
+from deepsparse.v2.utils.state import InferenceState
 
 
-class OpsTrackerMiddleware(AbstractMiddleware):
+class OpsTrackerMiddleware(BaseMiddleware):
     def __init__(self):
         self.start_order = []
         self.end_order = []
 
-    def start_event(self, *args, **kwargs):
-        self.start_order.append(kwargs.get("name"))
+    def start_event(
+        self,
+        name: str,
+        inputs: Optional[Dict] = None,
+        inference_state: Optional["InferenceState"] = None,
+        **kwargs,
+    ):
+        self.start_order.append(name)
 
-    def end_event(self, *args, **kwargs):
-        self.end_order.append(kwargs.get("name"))
+    def end_event(
+        self,
+        name: str,
+        inputs: Optional[Dict] = None,
+        inference_state: Optional["InferenceState"] = None,
+        **kwargs,
+    ):
+        self.end_order.append(name)
 
 
-class CounterMiddleware(AbstractMiddleware):
+class CounterMiddleware:
     def __init__(self):
         self.start_called = 0
         self.end_called = 0
 
-    def start_event(self, *args, **kwargs):
+    def start_event(
+        self,
+        name: str,
+        inputs: Optional[Dict] = None,
+        inference_state: Optional["InferenceState"] = None,
+        **kwargs,
+    ):
         self.start_called += 1
 
-    def end_event(self, *args, **kwargs):
+    def end_event(
+        self,
+        name: str,
+        inputs: Optional[Dict] = None,
+        inference_state: Optional["InferenceState"] = None,
+        **kwargs,
+    ):
         self.end_called += 1

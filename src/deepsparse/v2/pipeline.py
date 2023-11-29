@@ -27,7 +27,7 @@ from deepsparse.v2.schedulers import (
 from deepsparse.v2.utils import InferenceState, PipelineState
 from deepsparse.v2.utils.data import SubGraph
 from deepsparse.v2.utils.helpers import run_func
-from src.deepsparse.v2.middleware.abstract_middleware import AbstractMiddleware
+from src.deepsparse.v2.middleware.base_middleware import BaseMiddleware
 
 
 __all__ = ["Pipeline"]
@@ -58,7 +58,7 @@ class Pipeline(Operator):
         schedulers: List[OperatorScheduler],
         continuous_batching_scheduler: ContinuousBatchingScheduler,
         pipeline_state: PipelineState = None,
-        middleware: List[AbstractMiddleware] = [],  # Initialized List of middlewares
+        middleware: List[BaseMiddleware] = [],  # Initialized List of middlewares
     ):
 
         self.ops = ops
@@ -265,9 +265,7 @@ class Pipeline(Operator):
 
         kwargs["inference_state"] = inference_state
 
-        rtn = self.run(*args, **kwargs)
-
-        return rtn
+        return self.run(*args, **kwargs)
 
     def expand_inputs(self, *args, **kwargs):
         """

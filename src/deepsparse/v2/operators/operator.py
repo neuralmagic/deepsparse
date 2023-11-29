@@ -71,13 +71,15 @@ class Operator(ABC):
         :param kwargs: kwargs when not initializing from an instantiated schema
         :return: operator output
         """
+        name = None
         middleware = inference_state.get_state("middleware")
         if middleware is not None:
             if "name" not in kwargs:
                 kwargs["name"] = self.__class__.__name__
+            name = kwargs.pop("name")
             middleware.start_event(
+                name=name,
                 inferece_state=inference_state,
-                *args,
                 **kwargs,
             )
 
@@ -112,13 +114,21 @@ class Operator(ABC):
             rtn = self.output_schema(**run_output)
             if middleware is not None:
                 middleware.end_event(
+                    *args,
                     inferece_state=inference_state,
                     outputs=rtn,
-                    *args,
                     **kwargs,
                 )
 
             return rtn
+
+        if middleware is not None:
+            middleware.end_event(
+                name=name,
+                inferece_state=inference_state,
+                outputs=run_output,
+                **kwargs,
+            )
 
         return run_output
 

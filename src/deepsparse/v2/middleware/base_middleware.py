@@ -14,13 +14,28 @@
 
 
 from abc import ABC, abstractmethod
+from typing import Dict, Optional
+
+from deepsparse.v2.utils.state import InferenceState
 
 
-class AbstractMiddleware(ABC):
+class BaseMiddleware(ABC):
     @abstractmethod
-    def start_event(self, *args, **kwargs):
+    def start_event(
+        self,
+        name: str,
+        inputs: Optional[Dict] = None,
+        inference_state: Optional["InferenceState"] = None,
+        **kwargs,
+    ):
         ...
 
     @abstractmethod
-    def end_event(self, *args, **kwargs):
+    def end_event(
+        self,
+        name: str,
+        inputs: Optional[Dict] = None,
+        inference_state: Optional["InferenceState"] = None,
+        **kwargs,
+    ):
         ...
