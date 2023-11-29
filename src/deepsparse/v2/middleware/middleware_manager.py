@@ -13,42 +13,29 @@
 # limitations under the License.
 
 
-from typing import List
+from typing import List, Optional
+
+from .abstract_middleware import AbstractMiddleware
 
 
 class MiddlewareManager:
-    def __init__(self, middlewares: List):
-        self.middlewares = {}
-        self._init(middlewares)
+    def __init__(self, middleware: Optional[List[AbstractMiddleware]] = None):
+        self.middleware = middleware
+        self._init_middleware = []
 
-    def _init(self, middleware: List):
-        for middleware in middleware:
-            init_middleware = middleware()
-            self.middlewares[init_middleware.__name__] = init_middleware
+    def _init(self):
+        for middleware in self.middleware:
+            self._init_middleware.append(middleware())
 
-    def start_event(self, name: str, *args, **kwargs):
-        self.middlewares[name].start_event(*args, **kwargs)
+    def start_event(self, *args, **kwargs) -> None:
+        if self.middleware is not None:
+            if len(self._init_middleware) == 0:
+                self._init()
 
-    def end_event(self, name: str, *args, **kwargs):
-        self.middlewares[name].end_event(*args, **kwargs)
+            for middleware in self._init_middleware:
+                middleware.start_event(*args, **kwargs)
 
-    def dispatch(self, command: str, *args, **kwargs):
-        """
-        command should include both the middleware
-         key and the function inside the selected middleware
-
-        dispatch("timer.update_middleware_timer", *args, **kwargs)
-        """
-        name, func_name = command.split(".")
-        if name in self.middlewares:
-            target_func = self.middlewares[name]
-            method = getattr(target_func, func_name, None)
-            if callable(method):
-                return method(*args, **kwargs)
-
-    def __getitem__(self, key):
-        return self.middlewares[key]
-
-    def iterate_dict(self):
-        for key in self.middlewares:
-            yield key, self.middlewares[key]
+    def end_event(self, *args, **kwargs) -> None:
+        if self.middleware is not None:
+            for middleware in self._init_middleware[::-1]:
+                middleware.end_event(*args, **kwargs)

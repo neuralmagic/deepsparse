@@ -17,8 +17,8 @@ from typing import Any, Optional, Type
 
 from pydantic import BaseModel
 
-from deepsparse.v2.utils import InferenceState
 from deepsparse.v2.operators.registry import OperatorRegistry
+from deepsparse.v2.utils import InferenceState
 
 
 __all__ = ["Operator"]
@@ -71,6 +71,16 @@ class Operator(ABC):
         :param kwargs: kwargs when not initializing from an instantiated schema
         :return: operator output
         """
+        middleware = inference_state.get_state("middleware")
+        if middleware is not None:
+            if "name" not in kwargs:
+                kwargs["name"] = self.__class__.__name__
+            middleware.start_event(
+                inferece_state=inference_state,
+                *args,
+                **kwargs,
+            )
+
         if self.has_input_schema():
             if len(args) > 1:
                 raise ValueError(
@@ -97,9 +107,25 @@ class Operator(ABC):
                 inference_state=inference_state,
                 **kwargs,
             )
+
         if self.has_output_schema():
-            return self.output_schema(**run_output)
-        return run_output
+            rtn = self.output_schema(**run_output)
+            if middleware is not None:
+                middleware.end_event(
+                    inferece_state=inference_state,
+                    outputs=rtn,
+                    *args,
+                    **kwargs,
+                )
+
+            return rtn
+
+        rtn = run_output
+
+        if middleware is not None:
+            middleware.update()
+
+        return rtn
 
     @staticmethod
     def create(

@@ -13,6 +13,7 @@
 # limitations under the License.
 import warnings
 from abc import ABC
+from copy import deepcopy
 from typing import Any, Union
 
 
@@ -62,3 +63,21 @@ class InferenceState(State):
 
     def update_state(self, value: Any):
         self._current_state.update(value)
+
+    def get_state(self, key):
+        return self._current_state.get(key)
+
+    def copy(self) -> "InferenceState":
+        """deepcopy of curr state but the middleware"""
+        state: dict = self.current_state
+        middleware = None
+        if "middleware" in state:
+            middleware = state.pop("middleware")
+
+        state = deepcopy(state)
+        if middleware is not None:
+            state["middleware"] = middleware
+
+        state_copy = InferenceState()
+        state_copy.create_state(state)
+        return state_copy

@@ -13,10 +13,10 @@
 # limitations under the License.
 
 
-import copy
 from concurrent.futures import Future
 from typing import Any, Dict, List, Union
 
+from deepsparse.v2.middleware.middleware_manager import MiddlewareManager
 from deepsparse.v2.operators import EngineOperator, Operator
 from deepsparse.v2.routers import Router
 from deepsparse.v2.schedulers import (
@@ -27,6 +27,7 @@ from deepsparse.v2.schedulers import (
 from deepsparse.v2.utils import InferenceState, PipelineState
 from deepsparse.v2.utils.data import SubGraph
 from deepsparse.v2.utils.helpers import run_func
+from src.deepsparse.v2.middleware.abstract_middleware import AbstractMiddleware
 
 
 __all__ = ["Pipeline"]
@@ -57,6 +58,7 @@ class Pipeline(Operator):
         schedulers: List[OperatorScheduler],
         continuous_batching_scheduler: ContinuousBatchingScheduler,
         pipeline_state: PipelineState = None,
+        middleware: List[AbstractMiddleware] = [],
     ):
 
         self.ops = ops
@@ -64,6 +66,7 @@ class Pipeline(Operator):
         self.schedulers = schedulers
         self.pipeline_state = pipeline_state
         self._continuous_batching_scheduler = continuous_batching_scheduler
+        self._middleware = MiddlewareManager(middleware)
         self.validate()
 
         self._scheduler_group = SchedulerGroup(self.schedulers)
@@ -166,7 +169,8 @@ class Pipeline(Operator):
         # with the same inference_state.
         split_graphs = [
             SubGraph(
-                inf=copy.deepcopy(inference_state),
+                # inf=copy.deepcopy(inference_state),
+                inf=inference_state.copy(),
                 step=self.router.route[self.router.SPLIT_ROUTE],
                 end=[self.router.JOIN_ROUTE],
             )
@@ -194,6 +198,7 @@ class Pipeline(Operator):
         """
         next_step = self.router.START_ROUTE
         operator_output = None
+
         while next_step != self.router.END_ROUTE:
 
             # Split Grap Execution (i.e multiple subgraphs)
@@ -232,11 +237,11 @@ class Pipeline(Operator):
             else:
                 # Single graph execution
                 graph = SubGraph(
-                    inf=copy.deepcopy(inference_state),
+                    # inf=copy.deepcopy(inference_state),
+                    inf=inference_state.copy(),
                     step=next_step,
                     end=[self.router.SPLIT_ROUTE, self.router.END_ROUTE],
                 )
-
                 operator_output = self._run_sub_graphs(
                     sub_graph_inputs=[operator_output], sub_graphs=[graph]
                 )[0]
@@ -258,11 +263,13 @@ class Pipeline(Operator):
             inference_state = kwargs.pop("inference_state")
         else:
             inference_state = InferenceState()
-            inference_state.create_state({})
+            inference_state.create_state({"middleware": self._middleware})
 
         kwargs["inference_state"] = inference_state
 
-        return self.run(*args, **kwargs)
+        rtn = self.run(*args, **kwargs)
+
+        return rtn
 
     def expand_inputs(self, *args, **kwargs):
         """

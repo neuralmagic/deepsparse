@@ -12,7 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# flake8: noqa
 
-from .abstract_middleware import AbstractMiddleware
-from .middleware_manager import MiddlewareManager
+from abc import ABC, abstractmethod
+
+
+class AbstractMiddleware(ABC):
+    @abstractmethod
+    def start_event(self, *args, **kwargs):
+        ...
+
+    @abstractmethod
+    def end_event(self, *args, **kwargs):
+        ...
