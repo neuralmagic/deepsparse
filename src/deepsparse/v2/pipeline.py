@@ -237,7 +237,6 @@ class Pipeline(Operator):
             else:
                 # Single graph execution
                 graph = SubGraph(
-                    # inf=copy.deepcopy(inference_state),
                     inf=inference_state.copy(),
                     step=next_step,
                     end=[self.router.SPLIT_ROUTE, self.router.END_ROUTE],
