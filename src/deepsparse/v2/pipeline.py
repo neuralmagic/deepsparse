@@ -169,7 +169,6 @@ class Pipeline(Operator):
         # with the same inference_state.
         split_graphs = [
             SubGraph(
-                # inf=copy.deepcopy(inference_state),
                 inf=inference_state.copy(),
                 step=self.router.route[self.router.SPLIT_ROUTE],
                 end=[self.router.JOIN_ROUTE],
