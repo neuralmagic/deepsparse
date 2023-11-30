@@ -106,7 +106,7 @@ class ChatCompletionRequest(BaseModel):
     """
 
     model: Optional[str] = None
-    messages: Union[str, List[Dict[str, str]]]
+    messages: Union[str, Dict[str, str]]
     temperature: Optional[float] = 0.7
     top_p: Optional[float] = 1.0
     n: Optional[int] = 1
@@ -126,7 +126,7 @@ class ChatCompletionRequest(BaseModel):
 
 class CompletionRequest(BaseModel):
     model: str
-    prompt: Union[str, List[str]]
+    prompt: str
     suffix: Optional[str] = None
     max_tokens: Optional[int] = 16
     temperature: Optional[float] = 1.0
@@ -176,7 +176,7 @@ class CompletionResponseChoice(BaseModel):
     index: int
     text: str
     logprobs: Optional[LogProbs] = None
-    finish_reason: Optional[Literal["stop", "length"]] = None
+    finish_reason: Optional[Literal["stop", "length", "callback"]] = None
 
 
 class CompletionResponse(BaseModel):
@@ -192,7 +192,7 @@ class CompletionResponseStreamChoice(BaseModel):
     index: int
     text: str
     logprobs: Optional[LogProbs] = None
-    finish_reason: Optional[Literal["stop", "length"]] = None
+    finish_reason: Optional[Literal["stop", "length", "callback"]] = None
 
 
 class CompletionStreamResponse(BaseModel):
