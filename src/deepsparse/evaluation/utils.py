@@ -32,7 +32,7 @@ def resolve_integration(
     model: Union[Pipeline, PreTrainedModel], datasets: Union[str, List[str]]
 ) -> Union[str, None]:
     """
-    Given a model and dataset, inferr the name of the evaluation integration
+    Given a model and dataset, infer the name of the evaluation integration
     to use. If unable to infer a name, return None.
 
     Currently:
