@@ -45,15 +45,13 @@ from deepsparse.server.server import Server
 from deepsparse.tasks import SupportedTasks
 from fastapi import BackgroundTasks, FastAPI, Request
 from fastapi.responses import StreamingResponse
-from fastchat.conversation import Conversation, SeparatorStyle
-from fastchat.model.model_adapter import get_conversation_template
 
 
 _LOGGER = logging.getLogger(__name__)
 
 OPENAI_CHAT_NOT_SUPPORTED = ["logit_bias", "best_ok", "ignore_eos", "use_beam_search"]
 OPENAI_TO_DEEPSPARSE_MAPPINGS = {
-    "max_tokens": "max_length",
+    "max_tokens": "max_new_tokens",
     "frequency_penalty": "repetition_penalty",
 }
 
@@ -97,13 +95,28 @@ class OpenAIServer(Server):
             if isinstance(request.messages, str):
                 prompt = request.messages
             else:
+                # else case assums a FastChat-compliant dictionary
+                # Fetch a model-specific template from FastChat
+                _LOGGER.warn(
+                    "A dictionary message was found. This dictionary must "
+                    "be fastchat compliant."
+                )
+                try:
+                    from fastchat.conversation import Conversation, SeparatorStyle
+                    from fastchat.model.model_adapter import get_conversation_template
+                except ImportError:
+                    raise ImportError(
+                        "fastchat was not found. To run chat completion"
+                        "with dictionary messages, run `pip install fschat`"
+                    )
+
                 conv = get_conversation_template(request.model)
                 conv = Conversation(
                     name=conv.name,
                     system_template=conv.system_template,
                     system_message=conv.system_message,
                     roles=conv.roles,
-                    messages=list(conv.messages),  # prevent in-place modification
+                    messages=list(conv.messages),
                     offset=conv.offset,
                     sep_style=SeparatorStyle(conv.sep_style),
                     sep=conv.sep,
@@ -112,6 +125,7 @@ class OpenAIServer(Server):
                     stop_token_ids=conv.stop_token_ids,
                 )
                 message = request.messages
+                # add the model to the Conversation template, based on the given role
                 msg_role = message["role"]
                 if msg_role == "system":
                     conv.system_message = message["content"]
@@ -122,7 +136,7 @@ class OpenAIServer(Server):
                 else:
                     raise ValueError(f"Unknown role: {msg_role}")
 
-                # Add a blank message for the assistant.
+                # blank message to start generation
                 conv.append_message(conv.roles[1], None)
                 prompt = conv.get_prompt()
 

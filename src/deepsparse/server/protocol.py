@@ -155,7 +155,9 @@ class ChatMessage(BaseModel):
 class ChatCompletionResponseChoice(BaseModel):
     index: int
     message: ChatMessage
-    finish_reason: Optional[Literal["stop", "length", "callback"]] = None
+    finish_reason: Optional[
+        Literal["stop", "length", "callback", "capacity", "max_new_tokens"]
+    ] = None
 
 
 class ChatCompletionResponse(BaseModel):
@@ -176,7 +178,9 @@ class CompletionResponseChoice(BaseModel):
     index: int
     text: str
     logprobs: Optional[LogProbs] = None
-    finish_reason: Optional[Literal["stop", "length", "callback"]] = None
+    finish_reason: Optional[
+        Literal["stop", "length", "callback", "capacity", "max_new_tokens"]
+    ] = None
 
 
 class CompletionResponse(BaseModel):
@@ -192,7 +196,9 @@ class CompletionResponseStreamChoice(BaseModel):
     index: int
     text: str
     logprobs: Optional[LogProbs] = None
-    finish_reason: Optional[Literal["stop", "length", "callback"]] = None
+    finish_reason: Optional[
+        Literal["stop", "length", "callback", "capacity", "max_new_tokens"]
+    ] = None
 
 
 class CompletionStreamResponse(BaseModel):
@@ -211,7 +217,9 @@ class DeltaMessage(BaseModel):
 class ChatCompletionResponseStreamChoice(BaseModel):
     index: int
     delta: DeltaMessage
-    finish_reason: Optional[Literal["stop", "length", "callback"]] = None
+    finish_reason: Optional[
+        Literal["stop", "length", "callback", "capacity", "max_new_tokens"]
+    ] = None
 
 
 class ChatCompletionStreamResponse(BaseModel):
