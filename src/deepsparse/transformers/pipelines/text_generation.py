@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import copy
 import datetime
 import logging
 import os
@@ -578,10 +579,24 @@ class TextGenerationPipeline(TransformersPipeline):
         self, engine_outputs, prompts, generation_config, **kwargs
     ):
         for output in engine_outputs:
-            generated_tokens, generated_logits, finished_reason = output
+            (
+                generated_tokens,
+                generated_logits,
+                finished_reason,
+                past_tokens_queue,
+            ) = output
             logits = generated_logits if generation_config.output_scores else None
+            from transformers import LlamaTokenizer, LlamaTokenizerFast
+
+            if isinstance(self.tokenizer, (LlamaTokenizer, LlamaTokenizerFast)):
+                # temporary fix for LLama2/Mistral/... models
+                generated_string = self._generate_streamed_text_from_past_tokens(
+                    generated_tokens, past_tokens_queue
+                )
+            else:
+                generated_string = self.tokenizer.batch_decode(generated_tokens)[0]
             generation = self._create_generated_text_output(
-                self.tokenizer.batch_decode(generated_tokens)[0],
+                generated_string,
                 finished_reason[0],
                 logits,
             )
@@ -598,6 +613,33 @@ class TextGenerationPipeline(TransformersPipeline):
                 generations=[generation],
                 **schema_kwargs,
             )
+
+    def _generate_streamed_text_from_past_tokens(
+        self, generated_tokens: numpy.ndarray, past_tokens_queue: List[int]
+    ) -> str:
+        """
+        An auxiliary method that helps to properly generate the streamed text.
+        Some models like llama2 and mistral are using LlamaTokenizer which is
+        based on SentencePiece tokenizer. This specific tokenizer doesn't seem
+        to output appropriate prefix spaces when decoding token by token.
+        One can make it work if the previously generated tokens are included.
+        This allows the tokenizer to figure out that the appropriate spaces
+        from last n consecutive tokens.
+
+        :param generated_tokens: the generated tokens from the engine
+        :param past_tokens_queue: the queue of last n tokens (n is the
+            original prompt length in tokens)
+        :return: the generated string
+        """
+        string_from_n_tokens = self.tokenizer.decode(
+            past_tokens_queue, skip_special_tokens=True
+        )
+        past_tokens_queue.append(generated_tokens[0])
+        string_from_n_plus_1_tokens = self.tokenizer.decode(
+            past_tokens_queue, skip_special_tokens=True
+        )
+        past_tokens_queue.pop(0)
+        return string_from_n_plus_1_tokens[len(string_from_n_tokens) :]
 
     def process_engine_outputs(
         self, engine_outputs: List[Union[numpy.ndarray, FinishReason]], **kwargs
@@ -733,6 +775,9 @@ class TextGenerationPipeline(TransformersPipeline):
                     prompt_logits, session = self.prompt_inference(engine_inputs)
 
             tokens = engine_inputs[0][engine_inputs[1].nonzero()].tolist()
+            # copy the tokens so that we can use them for streaming
+            past_tokens_queue = copy.copy(tokens)
+
             token_generator = TokenGenerator(
                 logits_shape=prompt_logits[-1].shape[-1],
                 tokens=tokens,
@@ -771,6 +816,7 @@ class TextGenerationPipeline(TransformersPipeline):
                             numpy.array([generated_tokens[-1]]),
                             numpy.array([generated_logits[-1]]),
                             [None],
+                            past_tokens_queue,
                         )
 
                 while len(generated_tokens) < max_tokens:
@@ -811,7 +857,12 @@ class TextGenerationPipeline(TransformersPipeline):
                         break
 
                     if streaming:
-                        yield (numpy.array([token]), numpy.array([logits]), [None])
+                        yield (
+                            numpy.array([token]),
+                            numpy.array([logits]),
+                            [None],
+                            past_tokens_queue,
+                        )
 
                 # Run the autoregressive inference only to put the
                 # kv cache entry for the last generated token into the
@@ -826,12 +877,14 @@ class TextGenerationPipeline(TransformersPipeline):
                             numpy.array([generated_tokens]),
                             numpy.concatenate(generated_logits, axis=1),
                             [FinishReason.LENGTH],
+                            past_tokens_queue,
                         )
                     else:
                         yield (
                             numpy.array([token]),
                             numpy.array([logits]),
                             [finished_reason[-1]],
+                            past_tokens_queue,
                         )
 
         if not streaming:
