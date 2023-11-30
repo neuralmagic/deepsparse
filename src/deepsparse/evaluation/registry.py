@@ -14,13 +14,15 @@
 """
 Implementation of a registry for evaluation functions
 """
-
+import logging
 from typing import Any, Callable, List, Optional, Union
 
 from sparsezoo.utils.registry import RegistryMixin
 
 
 __all__ = ["EvaluationRegistry"]
+
+_LOGGER = logging.getLogger(__name__)
 
 
 class EvaluationRegistry(RegistryMixin):
@@ -30,31 +32,42 @@ class EvaluationRegistry(RegistryMixin):
     """
 
     @classmethod
-    def load_from_registry(cls, name: str) -> Callable[..., Any]:
+    def load_from_registry(cls, name: str) -> Callable[..., "Result"]:  # noqa: F821
         return cls.get_value_from_registry(name=name)
 
     @classmethod
     def resolve(
-        cls, model: Any,
-             datasets: Union[str, List[str]],
-             integration: Optional[str]
-    ) -> Callable[..., Any]:
+        cls,
+        model: Any,
+        datasets: Union[str, List[str]],
+        integration: Optional[str] = None,
+    ) -> Callable[..., "Result"]:  # noqa: F821
         """
         Chooses an evaluation function from the registry based on the target,
         datasets and integration.
 
         If integration is specified, attempts to load the evaluation function
         from the registry.
-
-        Currently:
-            if integration is not specified, default to 'llm-evaluation-harness'
-            for llm-type models. If the model is not a llm-type model, raise an error.
         """
+        from deepsparse.evaluation.utils import resolve_integration
+
         if integration is not None:
             try:
-                integration_eval = cls.load_from_registry(name=integration)
-                return integration_eval
-            except KeyError:
-                pass
-        # resolve
-        return cls.get_value_from_registry(name="llm-evaluation-harness")
+                return cls.load_from_registry(name=integration)
+            except KeyError as err:
+                raise KeyError(err)
+
+        _LOGGER.info(
+            "No integration specified, inferring the evaluation"
+            "function from the input arguments..."
+        )
+        integration = resolve_integration(model, datasets)
+
+        if integration is None:
+            raise ValueError(
+                "Unable to resolve an evaluation function for the given model. "
+                "Specify an integration name or use a model that is supported "
+            )
+        _LOGGER.info(f"Inferred the evaluation function: {integration}")
+
+        return cls.get_value_from_registry(name=integration)

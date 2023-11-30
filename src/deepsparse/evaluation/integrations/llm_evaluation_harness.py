@@ -26,10 +26,10 @@ from pydantic import BaseModel, Field
 from tqdm import tqdm
 
 import torch
+from deepsparse import Pipeline
+from deepsparse.evaluation.registry import EvaluationRegistry
+from deepsparse.evaluation.results import Dataset, Evaluation, Metric, Result
 from lm_eval import base, evaluator, tasks, utils
-from src.deepsparse import DEEPSPARSE_ENGINE, ORT_ENGINE, Pipeline
-from src.deepsparse.evaluation.registry import EvaluationRegistry
-from src.deepsparse.evaluation.results import Dataset, Evaluation, Metric, Result
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -58,7 +58,9 @@ def integration_eval(
     # The code that sets up the interface between deepsparse and llm_evaluation_harness
 
     if isinstance(model, Pipeline):
-        model = DeepSparseLM(pipeline=model, **kwargs)
+        # If the model is a Pipeline, we need to wrap
+        # it in a DeepSparseLM object
+        model = DeepSparseLM(pipeline=model, batch_size=batch_size, **kwargs)
 
     datasets = (",").join(datasets) if isinstance(datasets, list) else datasets
     # [END]
@@ -166,17 +168,12 @@ class EvaluatorInputSchema(BaseModel):
 
 
 class DeepSparseLM(base.BaseLM):
-    # Default max sequence length setting for when no `max_length` is provided
-    _DEFAULT_MAX_LENGTH = 2048
-
     def __init__(
         self,
         pipeline: Pipeline,
         tokenizer: Optional[str] = None,
         batch_size: int = 1,
         max_gen_toks: Optional[int] = 256,
-        max_length: Optional[int] = None,
-        trust_remote_code: Optional[bool] = False,
     ):
         """
         Wrapper around the DeepSparse pipeline to make it compatible with the
@@ -184,13 +181,13 @@ class DeepSparseLM(base.BaseLM):
         """
         super().__init__()
 
-        self._batch_size = int(batch_size)
-        self._max_length = max_length or self._DEFAULT_MAX_LENGTH
-        self._max_gen_toks = max_gen_toks
-
         # Initialize new model and tokenizer instances
         self.model = pipeline
         self.tokenizer = tokenizer if tokenizer else self.model.tokenizer
+
+        self._batch_size = int(batch_size)
+        self._max_length = pipeline.sequence_length
+        self._max_gen_toks = max_gen_toks
 
         self.vocab_size = self.tokenizer.vocab_size
 

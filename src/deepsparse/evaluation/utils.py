@@ -13,14 +13,51 @@
 # limitations under the License.
 
 import os
-from typing import Any, Dict, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
-from transformers import AutoModelForCausalLM
+from transformers import AutoModelForCausalLM, PreTrainedModel
 
 from deepsparse import DEEPSPARSE_ENGINE, ORT_ENGINE, Pipeline
 
 
-__all__ = ["create_model_from_target", "get_save_path", "args_to_dict"]
+__all__ = [
+    "create_model_from_target",
+    "get_save_path",
+    "args_to_dict",
+    "resolve_integration",
+]
+
+
+def resolve_integration(
+    model: Union[Pipeline, PreTrainedModel], datasets: Union[str, List[str]]
+) -> Union[str, None]:
+    """
+    Given a model and dataset, inferr the name of the evaluation integration
+    to use. If unable to infer a name, return None.
+
+    Currently:
+        if the model is llm-type model, default to 'llm-evaluation-harness'
+        otherwise return None
+
+    :param model: The model to infer the integration for
+    :param datasets: The datasets to infer the integration for
+    :return: The name of the integration to use or None if unable to infer
+    """
+    if is_model_llm(model):
+        return "llm-evaluation-harness"
+    return None
+
+
+def is_model_llm(model: Any) -> bool:
+    """
+    Checks if the model is a Large Language Model (LLM) type model.
+    """
+    if isinstance(model, Pipeline):
+        return model.__class__.__name__ == "TextGenerationPipeline"
+    elif isinstance(model, PreTrainedModel):
+        return "CausalLM" in model.__class__.__name__
+    else:
+        return False
 
 
 def args_to_dict(args: Tuple[Any, ...]) -> Dict[str, Any]:
@@ -70,7 +107,7 @@ def get_save_path(
 
 def create_model_from_target(
     target: str,
-    engine_type: str,
+    engine_type: Optional[str] = None,
     **kwargs,
 ) -> Union[Pipeline, AutoModelForCausalLM]:
     """
@@ -96,6 +133,7 @@ def create_model_from_target(
             trust_remote_code=kwargs.pop("trust_remote_code", False),
             engine_type=engine_type,
             batch_size=kwargs.pop("batch_size", 1),
-            **kwargs)
+            **kwargs,
+        )
     else:
         return AutoModelForCausalLM.from_pretrained(target, **kwargs)
