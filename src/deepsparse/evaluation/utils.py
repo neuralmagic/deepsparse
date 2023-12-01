@@ -28,6 +28,26 @@ __all__ = [
 ]
 
 
+def potentially_check_dependency_import(integration_name: str) -> bool:
+    """
+    Check if the `integration_name` requires importing a dependency.
+    If so, check if the dependency is installed and return True if it is.
+    Otherwise, return False.
+
+    :param integration_name: The name of the integration to check
+    :return: True if the dependency is installed, False otherwise
+    """
+
+    if integration_name.replace("-", "_") == "llm_evaluation_harness":
+        from src.deepsparse.evaluation.integrations import (
+            try_import_llm_evaluation_harness,
+        )
+
+        try_import_llm_evaluation_harness(raise_error=True)
+
+    return True
+
+
 def resolve_integration(
     model: Union[Pipeline, PreTrainedModel], datasets: Union[str, List[str]]
 ) -> Union[str, None]:

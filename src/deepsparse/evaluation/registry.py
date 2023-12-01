@@ -17,6 +17,10 @@ Implementation of a registry for evaluation functions
 import logging
 from typing import Any, Callable, List, Optional, Union
 
+from deepsparse.evaluation.utils import (
+    potentially_check_dependency_import,
+    resolve_integration,
+)
 from sparsezoo.utils.registry import RegistryMixin
 
 
@@ -49,25 +53,24 @@ class EvaluationRegistry(RegistryMixin):
         If integration is specified, attempts to load the evaluation function
         from the registry.
         """
-        from deepsparse.evaluation.utils import resolve_integration
-
-        if integration is not None:
-            try:
-                return cls.load_from_registry(name=integration)
-            except KeyError as err:
-                raise KeyError(err)
-
-        _LOGGER.info(
-            "No integration specified, inferring the evaluation"
-            "function from the input arguments..."
-        )
-        integration = resolve_integration(model, datasets)
 
         if integration is None:
-            raise ValueError(
-                "Unable to resolve an evaluation function for the given model. "
-                "Specify an integration name or use a model that is supported "
+            _LOGGER.info(
+                "No integration specified, inferring the evaluation"
+                "function from the input arguments..."
             )
-        _LOGGER.info(f"Inferred the evaluation function: {integration}")
+            integration = resolve_integration(model, datasets)
 
-        return cls.load_from_registry(name=integration)
+            if integration is None:
+                raise ValueError(
+                    "Unable to resolve an evaluation function for the given model. "
+                    "Specify an integration name or use a model that is supported "
+                )
+            _LOGGER.info(f"Inferred the evaluation function: {integration}")
+
+        potentially_check_dependency_import(integration)
+
+        try:
+            return cls.load_from_registry(name=integration)
+        except KeyError as err:
+            raise KeyError(err)

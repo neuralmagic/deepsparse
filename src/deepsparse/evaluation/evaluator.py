@@ -12,11 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import logging
-from typing import Any, List, Union
+from typing import Any, List, Optional, Union
 
-from src.deepsparse.evaluation.integrations import (  # noqa: F401
-    try_import_llm_evaluation_harness,
-)
 from src.deepsparse.evaluation.registry import EvaluationRegistry
 from src.deepsparse.evaluation.results import Result
 from src.deepsparse.evaluation.utils import create_model_from_target
@@ -31,7 +28,7 @@ _LOGGER = logging.getLogger(__name__)
 def evaluate(
     target: Any,
     datasets: Union[str, List[str]],
-    integration: str,
+    integration: Optional[str] = None,
     engine_type: Union[
         DEEPSPARSE_ENGINE, ORT_ENGINE, TORCHSCRIPT_ENGINE, None
     ] = DEEPSPARSE_ENGINE,
