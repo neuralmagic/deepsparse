@@ -20,7 +20,7 @@ from click.testing import CliRunner
 
 import pytest
 from src.deepsparse.evaluation.evaluator import evaluate
-from src.deepsparse.evaluation.integrations import try_import_llm_evaluation_harness
+from src.deepsparse.evaluation.integrations import try_import_lm_evaluation_harness
 from src.deepsparse.evaluation.registry import EvaluationRegistry
 from src.deepsparse.evaluation.results import (
     Dataset,
@@ -87,8 +87,8 @@ def test_evaluate(target, datasets, dummy_integration_name):
 
 
 @pytest.mark.skipif(
-    not try_import_llm_evaluation_harness(raise_error=False),
-    reason="llm_evaluation_harness not installed",
+    not try_import_lm_evaluation_harness(raise_error=False),
+    reason="lm_evaluation_harness not installed",
 )
 def test_evaluation_llm_evaluation_harness_integration_name(
     target,
@@ -99,7 +99,7 @@ def test_evaluation_llm_evaluation_harness_integration_name(
         datasets=datasets,
         limit=2,
         no_cache=True,
-        integration="llm_evaluation_harness",
+        integration="lm_evaluation_harness",
     )
 
 

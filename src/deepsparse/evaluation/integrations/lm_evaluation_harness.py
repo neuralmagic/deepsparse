@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """
-Integration of the `llm_evaluation_harness`:
+Integration of the `lm_evaluation_harness`:
 https://github.com/EleutherAI/lm-evaluation-harness
 """
 
@@ -37,7 +37,7 @@ _LOGGER = logging.getLogger(__name__)
 __all__ = ["integration_eval"]
 
 
-@EvaluationRegistry.register(name=["llm_evaluation_harness", "llm-evaluation-harness"])
+@EvaluationRegistry.register(name="lm-evaluation-harness")
 def integration_eval(
     model: Any,
     datasets: Union[List[str], str],
@@ -57,7 +57,7 @@ def integration_eval(
     :return the evaluation results
     """
     # [START]
-    # The code that sets up the interface between deepsparse and llm_evaluation_harness
+    # The code that sets up the interface between deepsparse and evaluation_harness
 
     if isinstance(model, Pipeline):
         # If the model is a Pipeline, we need to wrap
@@ -112,10 +112,10 @@ def integration_eval(
 
 def format_raw_results(results: Dict[str, Any]) -> List[Evaluation]:
     """
-    Format the raw results from llm_evaluation_harness into a list of
+    Format the raw results from lm_evaluation_harness into a list of
     Evaluation objects.
 
-    :param results: the raw results from llm_evaluation_harness
+    :param results: the raw results from lm_evaluation_harness
     :return: the formatted results as a list of Evaluation objects
     """
     formatted_results = []
@@ -128,7 +128,7 @@ def format_raw_results(results: Dict[str, Any]) -> List[Evaluation]:
             type=None, name=dataset_name, config=results["config"], split=None
         )
         evaluation = Evaluation(
-            task="llm_evaluation_harness",
+            task="lm_evaluation_harness",
             dataset=dataset,
             metrics=metrics,
             samples=None,

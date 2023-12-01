@@ -25,7 +25,7 @@ from deepsparse import Pipeline
 from src.deepsparse.evaluation.utils import (
     create_model_from_target,
     get_save_path,
-    is_model_llm,
+    if_generative_language_model,
     resolve_integration,
 )
 
@@ -52,7 +52,7 @@ def llm_type_pipeline():
 def test_resolve_known_llm_model(llm_type_hf_model):
     assert (
         resolve_integration(model=llm_type_hf_model, datasets="")
-        == "llm-evaluation-harness"
+        == "lm-evaluation-harness"
     )
 
 
@@ -60,16 +60,16 @@ def test_resolve_unknown_model(not_llm_type_hf_model):
     assert resolve_integration(model=not_llm_type_hf_model, datasets="") is None
 
 
-def test_is_model_llm_hf_true(llm_type_hf_model):
-    assert is_model_llm(llm_type_hf_model)
+def test_if_generative_language_model_true(llm_type_hf_model):
+    assert if_generative_language_model(llm_type_hf_model)
 
 
-def test_is_model_llm_hf_false(not_llm_type_hf_model):
-    assert not is_model_llm(not_llm_type_hf_model)
+def test_if_generative_language_model_false(not_llm_type_hf_model):
+    assert not if_generative_language_model(not_llm_type_hf_model)
 
 
-def test_is_model_llm_pipeline_true(llm_type_pipeline):
-    assert is_model_llm(llm_type_pipeline)
+def test_if_generative_language_pipeline_true(llm_type_pipeline):
+    assert if_generative_language_model(llm_type_pipeline)
 
 
 def test_get_save_path_path_provided(tmpdir):
