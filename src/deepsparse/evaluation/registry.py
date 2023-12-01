@@ -17,10 +17,6 @@ Implementation of a registry for evaluation functions
 import logging
 from typing import Any, Callable, List, Optional, Union
 
-from deepsparse.evaluation.utils import (
-    potentially_check_dependency_import,
-    resolve_integration,
-)
 from sparsezoo.utils.registry import RegistryMixin
 
 
@@ -53,6 +49,10 @@ class EvaluationRegistry(RegistryMixin):
         If integration is specified, attempts to load the evaluation function
         from the registry.
         """
+        from deepsparse.evaluation.utils import (
+            potentially_check_dependency_import,
+            resolve_integration,
+        )
 
         if integration is None:
             _LOGGER.info(

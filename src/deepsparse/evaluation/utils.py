@@ -27,6 +27,8 @@ __all__ = [
     "resolve_integration",
 ]
 
+LLM_EVALUATION_HARNESS_INTEGRATION_NAME = "llm-evaluation-harness"
+
 
 def potentially_check_dependency_import(integration_name: str) -> bool:
     """
@@ -38,7 +40,7 @@ def potentially_check_dependency_import(integration_name: str) -> bool:
     :return: True if the dependency is installed, False otherwise
     """
 
-    if integration_name.replace("-", "_") == "llm_evaluation_harness":
+    if integration_name.replace("_", "-") == LLM_EVALUATION_HARNESS_INTEGRATION_NAME:
         from src.deepsparse.evaluation.integrations import (
             try_import_llm_evaluation_harness,
         )
@@ -64,7 +66,7 @@ def resolve_integration(
     :return: The name of the integration to use or None if unable to infer
     """
     if is_model_llm(model):
-        return "llm-evaluation-harness"
+        return LLM_EVALUATION_HARNESS_INTEGRATION_NAME
     return None
 
 
