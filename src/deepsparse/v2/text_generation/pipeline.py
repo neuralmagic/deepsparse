@@ -57,6 +57,7 @@ class TextGenerationPipeline(Pipeline):
         generation_config=None,
         continuous_batch_sizes: Optional[List[int]] = None,
         engine_kwargs: Optional[Dict] = None,
+        **kwargs
     ):
         (
             self.model_path,
@@ -210,6 +211,7 @@ class TextGenerationPipeline(Pipeline):
             schedulers=scheduler,
             pipeline_state=pipeline_state,
             continuous_batching_scheduler=continuous_batching_scheduler,
+            **kwargs
         )
 
     def expand_inputs(self, items, batch_size):

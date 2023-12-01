@@ -20,6 +20,7 @@ from deepsparse.v2.operators import EngineOperator
 from deepsparse.v2.schedulers.utils.continuous_batching_queues import (
     ContinuousBatchingQueues,
 )
+from deepsparse.v2.utils import InferenceState
 
 
 __all__ = [
@@ -71,7 +72,9 @@ class ContinuousBatchingExecutorThread(Thread):
             ]
 
             # run the engine operator with the given engine at the joined batch size
-            joined_outputs = engine_operator(joined_inputs, inference_state=None)
+            inferece_state = InferenceState()
+            inferece_state.create_state({})
+            joined_outputs = engine_operator(joined_inputs, inference_state=inferece_state)
 
             # split outputs and return the results to their respective futures
             split_outputs = joined_outputs.split()

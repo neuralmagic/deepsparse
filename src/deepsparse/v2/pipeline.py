@@ -27,7 +27,7 @@ from deepsparse.v2.schedulers import (
 from deepsparse.v2.utils import InferenceState, PipelineState
 from deepsparse.v2.utils.data import SubGraph
 from deepsparse.v2.utils.helpers import run_func
-from src.deepsparse.v2.middleware.base_middleware import BaseMiddleware
+from deepsparse.v2.middleware.base_middleware import BaseMiddleware
 
 
 __all__ = ["Pipeline"]

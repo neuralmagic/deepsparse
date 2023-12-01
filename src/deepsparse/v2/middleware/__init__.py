@@ -14,6 +14,6 @@
 
 # flake8: noqa
 
-from deepsparse.v2.middleware.base_middleware import BaseMiddleware
-from deepsparse.v2.middleware.middleware_manager import MiddlewareManager
-from deepsparse.v2.middleware.timer_middleware import TimerMiddleware
+from .base_middleware import *
+from .middleware_manager import *
+from .timer_middleware import *
