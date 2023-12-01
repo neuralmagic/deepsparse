@@ -51,7 +51,7 @@ _LOGGER = logging.getLogger(__name__)
 
 OPENAI_CHAT_NOT_SUPPORTED = ["logit_bias", "best_ok", "ignore_eos", "use_beam_search"]
 OPENAI_TO_DEEPSPARSE_MAPPINGS = {
-    "max_tokens": "max_new_tokens",
+    "max_tokens": "max_length",
     "frequency_penalty": "repetition_penalty",
 }
 
@@ -102,7 +102,6 @@ class OpenAIServer(Server):
                     "be fastchat compliant."
                 )
                 try:
-                    from fastchat.conversation import Conversation, SeparatorStyle
                     from fastchat.model.model_adapter import get_conversation_template
                 except ImportError:
                     raise ImportError(
@@ -111,19 +110,6 @@ class OpenAIServer(Server):
                     )
 
                 conv = get_conversation_template(request.model)
-                conv = Conversation(
-                    name=conv.name,
-                    system_template=conv.system_template,
-                    system_message=conv.system_message,
-                    roles=conv.roles,
-                    messages=list(conv.messages),
-                    offset=conv.offset,
-                    sep_style=SeparatorStyle(conv.sep_style),
-                    sep=conv.sep,
-                    sep2=conv.sep2,
-                    stop_str=conv.stop_str,
-                    stop_token_ids=conv.stop_token_ids,
-                )
                 message = request.messages
                 # add the model to the Conversation template, based on the given role
                 msg_role = message["role"]
