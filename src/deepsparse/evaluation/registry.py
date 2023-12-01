@@ -70,4 +70,4 @@ class EvaluationRegistry(RegistryMixin):
             )
         _LOGGER.info(f"Inferred the evaluation function: {integration}")
 
-        return cls.get_value_from_registry(name=integration)
+        return cls.load_from_registry(name=integration)

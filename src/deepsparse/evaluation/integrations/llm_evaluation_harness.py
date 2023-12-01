@@ -34,6 +34,8 @@ from lm_eval import base, evaluator, tasks, utils
 
 _LOGGER = logging.getLogger(__name__)
 
+__all__ = ["integration_eval"]
+
 
 @EvaluationRegistry.register(name=["llm_evaluation_harness", "llm-evaluation-harness"])
 def integration_eval(
@@ -60,7 +62,11 @@ def integration_eval(
     if isinstance(model, Pipeline):
         # If the model is a Pipeline, we need to wrap
         # it in a DeepSparseLM object
-        model = DeepSparseLM(pipeline=model, batch_size=batch_size, **kwargs)
+        model = DeepSparseLM(
+            pipeline=model,
+            batch_size=batch_size,
+            max_gen_toks=kwargs.get("max_gen_toks"),
+        )
 
     datasets = (",").join(datasets) if isinstance(datasets, list) else datasets
     # [END]
@@ -173,7 +179,7 @@ class DeepSparseLM(base.BaseLM):
         pipeline: Pipeline,
         tokenizer: Optional[str] = None,
         batch_size: int = 1,
-        max_gen_toks: Optional[int] = 256,
+        max_gen_toks: Optional[int] = None,
     ):
         """
         Wrapper around the DeepSparse pipeline to make it compatible with the
@@ -185,9 +191,9 @@ class DeepSparseLM(base.BaseLM):
         self.model = pipeline
         self.tokenizer = tokenizer if tokenizer else self.model.tokenizer
 
-        self._batch_size = int(batch_size)
+        self._batch_size = batch_size
         self._max_length = pipeline.sequence_length
-        self._max_gen_toks = max_gen_toks
+        self._max_gen_toks = max_gen_toks or 256
 
         self.vocab_size = self.tokenizer.vocab_size
 
