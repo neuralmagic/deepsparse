@@ -15,8 +15,9 @@
 
 import copy
 from concurrent.futures import Future
-from typing import Any, Dict, List, Union
+from typing import Any, Dict, List, Optional, Union
 
+from deepsparse.v2.middleware.middlewares import MiddlewareManager
 from deepsparse.v2.operators import EngineOperator, Operator
 from deepsparse.v2.routers import Router
 from deepsparse.v2.schedulers import (
@@ -58,7 +59,6 @@ class Pipeline(Operator):
         continuous_batching_scheduler: ContinuousBatchingScheduler,
         pipeline_state: PipelineState = None,
     ):
-
         self.ops = ops
         self.router = router
         self.schedulers = schedulers
@@ -297,3 +297,19 @@ class Pipeline(Operator):
             raise ValueError(f"Invalid Router: {type(self.router)} for ops: {op_types}")
         elif isinstance(router_validation, str):
             raise ValueError(f"Invalid Router for operators: {router_validation}")
+
+
+class PipelineMiddleware(Pipeline):
+    def __init__(
+        self, middleware_manager: Optional[MiddlewareManager] = None, *args, **kwargs
+    ):
+        self.middleware_manager = middleware_manager
+        super().__init__(*args, **kwargs)
+
+    def __call__(self, *args, **kwargs):
+        next_call = super().__call__
+        if self.middleware_manager is not None:
+            for middleware, init_args in reversed(self.middleware_manager.middleware):
+                next_call = middleware(next_call, **init_args)
+
+        return next_call(*args, **kwargs)

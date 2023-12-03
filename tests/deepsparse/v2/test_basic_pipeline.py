@@ -21,9 +21,9 @@ from typing import Dict
 from pydantic import BaseModel
 
 from deepsparse.v2 import Pipeline
-from deepsparse.v2.operators import Operator
+from deepsparse.v2.operators import OperatorMiddleware as Operator
 from deepsparse.v2.routers import LinearRouter
-from deepsparse.v2.schedulers import OperatorScheduler
+from deepsparse.v2.schedulers import ContinuousBatchingScheduler, OperatorScheduler
 
 
 class IntSchema(BaseModel):
@@ -50,6 +50,7 @@ AddThreePipeline = Pipeline(
     ops=[AddOneOperator(), AddTwoOperator()],
     router=LinearRouter(end_route=2),
     schedulers=[OperatorScheduler()],
+    continuous_batching_scheduler=ContinuousBatchingScheduler,
 )
 
 

@@ -17,11 +17,12 @@ from typing import Any, Optional, Type
 
 from pydantic import BaseModel
 
-from deepsparse.v2.utils import InferenceState
+from deepsparse.v2.middleware.middlewares import MiddlewareManager
 from deepsparse.v2.operators.registry import OperatorRegistry
+from deepsparse.v2.utils import InferenceState
 
 
-__all__ = ["Operator"]
+__all__ = ["Operator", "OperatorMiddleware"]
 
 
 class Operator(ABC):
@@ -133,3 +134,19 @@ class Operator(ABC):
 
     def json(self):
         pass
+
+
+class OperatorMiddleware(Operator):
+    def __init__(
+        self, middleware_manager: Optional[MiddlewareManager] = None, *args, **kwargs
+    ):
+        self.middleware_manager = middleware_manager
+        super().__init__(*args, **kwargs)
+
+    def __call__(self, *args, **kwargs):
+        next_call = super().__call__
+        if self.middleware_manager is not None:
+            for middleware, init_args in reversed(self.middleware_manager.middleware):
+                next_call = middleware(next_call, **init_args)
+
+        return next_call(*args, **kwargs)
