@@ -55,7 +55,10 @@ def test_middleware_manager_add_middleware():
 
 
 def test_middleware_manager_recieve():
-
+    """
+    Check that the middleware's .send() is overwritten and
+    writes its update to the middleware state
+    """
     reducer_middleware = ReducerMiddleware
     middleware = [MiddlewareSpec(ReducerMiddleware)]
     middleware_manager = MiddlewareManager(middleware)

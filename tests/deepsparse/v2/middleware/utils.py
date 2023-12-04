@@ -57,7 +57,6 @@ class SendStateMiddleware(MiddlewareCallable):
         self.call_next: MiddlewareCallable = call_next
 
     def __call__(self, *args, **kwargs) -> Any:
-        name = self.__class__.__name__
         self.send(self.reducer, 0)
 
         result = self.call_next(*args, **kwargs)
