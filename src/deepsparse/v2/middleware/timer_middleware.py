@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import time
-from typing import Any
+from typing import Any, Dict
 
 from deepsparse.v2.middleware.middlewares import MiddlewareCallable
 
@@ -22,12 +22,20 @@ class TimerMiddleware(MiddlewareCallable):
     def __init__(self, call_next: MiddlewareCallable, identifier: str):
         self.identifier: str = identifier
         self.call_next: MiddlewareCallable = call_next
+        measurement = None
 
     def __call__(self, *args, **kwargs) -> Any:
         start_time = time.time()
         result = self.call_next(*args, **kwargs)
         measurement = time.time() - start_time
 
-        self.send({"measurements": measurement})
+        self.send(self.reducer, measurement)
 
         return result
+
+    def reducer(self, state: Dict, *args, **kwargs):
+        if "measurements" not in state:
+            state["measurements"] = []
+        state["measurements"].append(args[0])
+
+        return state

@@ -29,7 +29,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Any
+from typing import Any, Dict
 
 from deepsparse.v2.middleware import TimerMiddleware
 from deepsparse.v2.middleware.middlewares import (
@@ -66,12 +66,19 @@ class SendStateMiddleware(MiddlewareCallable):
 
     def __call__(self, *args, **kwargs) -> Any:
         name = self.__class__.__name__
-        self.send({name: 0})
+        self.send(self.reducer, 0)
 
         result = self.call_next(*args, **kwargs)
-        self.send({name: 1})
+        self.send(self.reducer, 1)
 
         return result
+
+    def reducer(self, state: Dict, *args, **kwargs):
+        name = self.__class__.__name__
+        if name not in state:
+            state[name] = []
+        state[name].append(args[0])
+        return state
 
 
 def test_timer_middleware():
