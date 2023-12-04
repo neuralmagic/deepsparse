@@ -16,7 +16,7 @@ import copy
 import os
 from pathlib import Path
 from typing import Any, List, Optional, Tuple, Union
-
+import time
 import numpy
 from pydantic import BaseModel, Field
 
@@ -151,6 +151,11 @@ class NLEngineOperator(EngineOperator):
 
         kwargs["engine_kwargs"] = engine_kwargs
         kwargs["model_path"] = onnx_file_path
+        self.times = {}
+        self.times["step_1"] = []
+        self.times["step_2"] = []
+        self.times["step_3"] = []
+        self.times["step_4"] = []
 
         super().__init__(**kwargs)
 
@@ -187,6 +192,7 @@ class NLEngineOperator(EngineOperator):
         return onnx_file_path
 
     def run(self, inp: NLEngineInputs, **kwargs) -> NLEngineOutputs:
+        
         engine_input = inp.engine_inputs
         kv_cache = inp.kv_cache
 
@@ -195,9 +201,11 @@ class NLEngineOperator(EngineOperator):
             split = False
             kv_cache = [kv_cache]
             engine_input = [engine_input]
-
+        
+        
         inputs = list(map(self._add_kv_cache_to_input, engine_input, kv_cache))
-
+        
+        
         if bool(kv_cache[0].engine_internal_cache):
             # conventionally, before dispatching
             # inputs to the engine, we validate them
@@ -213,7 +221,16 @@ class NLEngineOperator(EngineOperator):
         else:
             # run the engine without the LIB.kv_cache object
             # stack multiple batch inputs along the batch dimension
-            inputs = join_engine_outputs(inputs, len(inputs))
+            s = time.time()
+            if len(inputs) > 1:
+                inputs = join_engine_outputs(inputs, len(inputs))
+            else:
+                inputs = inputs[0]
+            e = time.time()
+            self.times["step_1"].append(e-s)
+
+        
+            s = time.time()
             out = (
                 super()
                 .run(
@@ -222,17 +239,27 @@ class NLEngineOperator(EngineOperator):
                 )
                 .get("engine_outputs")
             )
+            e = time.time()
+            self.times["step_2"].append(e-s)
+
+
 
         # logits should be stacked along batch dim
         # kv_cache_state should be a list where each dim 0 is batch_size
         logits, *kv_cache_state = out
+        s = time.time()
         kv_cache_state, _ = split_engine_inputs(kv_cache_state, 1)
+        e = time.time()
+        self.times["step_3"].append(e-s)
 
         if len(kv_cache_state) > 0:
             for i in range(len(kv_cache)):
+                s = time.time()
                 self._update_kv_cache(
                     kv_cache_state=kv_cache_state[i], kv_cache=kv_cache[i]
                 )
+                e = time.time()
+                self.times["step_4"].append(e-s)
         else:
             # internal kv cache case
             self._update_kv_cache(kv_cache=kv_cache[0])

@@ -49,4 +49,8 @@ class TimerMiddleware(BaseMiddleware):
             if name in self.start_time:
                 start_time = self.start_time[name]
                 del self.start_time[name]
-                self.measurements[name] = end_time - start_time
+                new_time = end_time - start_time
+                if name in self.measurements:
+                    self.measurements[name].append(new_time)
+                else:
+                    self.measurements[name] = [new_time]

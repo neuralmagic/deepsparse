@@ -22,6 +22,7 @@ from deepsparse import Engine, MultiModelEngine, Scheduler
 from deepsparse.benchmark import ORTEngine
 from deepsparse.utils import join_engine_outputs, model_to_path, split_engine_inputs
 from deepsparse.v2.operators import Operator
+import time
 
 
 DEEPSPARSE_ENGINE = "deepsparse"
@@ -97,6 +98,7 @@ class EngineOperator(Operator):
         self.model_path = model_to_path(model_path)
         self.engine_context = engine_context
         self._batch_size = 1
+        self.run_time = []
 
         if self.engine_context is not None:
             num_cores = num_cores or self.engine_context.num_cores
@@ -180,5 +182,13 @@ class EngineOperator(Operator):
             engine_outputs = inp.engine(inp.engine_inputs)
             return {"engine_outputs": engine_outputs}
 
+        s = time.time()
+        for i in inp.engine_inputs:
+            print(i.dtype)
+        print("\n")
+        print("starting")
         engine_outputs = self.engine(inp.engine_inputs)
+        print("done")
+        e = time.time()
+        self.run_time.append(e-s)
         return {"engine_outputs": engine_outputs}
