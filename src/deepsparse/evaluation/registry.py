@@ -33,7 +33,12 @@ class EvaluationRegistry(RegistryMixin):
 
     @classmethod
     def load_from_registry(cls, name: str) -> Callable[..., "Result"]:  # noqa: F821
-        return cls.get_value_from_registry(name=name)
+        # look for the name in the registry
+        # if not found, try replacing underscores with dashes
+        try:
+            return cls.get_value_from_registry(name=name)
+        except KeyError:
+            return cls.get_value_from_registry(name=name.replace("_", "-"))
 
     @classmethod
     def resolve(

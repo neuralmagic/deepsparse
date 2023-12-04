@@ -40,6 +40,18 @@ def registry_with_buzz():
     return Registry
 
 
+@pytest.fixture
+def registry_with_hyphens_and_underscores():
+    class Registry(EvaluationRegistry):
+        pass
+
+    @Registry.register(name=["chocolate-fudge"])
+    def buzz(*args, **kwargs):
+        return "fudge!"
+
+    return Registry
+
+
 def test_get_foo_from_registry(registry_with_foo):
     eval_function = registry_with_foo.load_from_registry("foo")
     assert eval_function() == "foo"
@@ -49,3 +61,9 @@ def test_get_multiple_buzz_from_registry(registry_with_buzz):
     eval_function_1 = registry_with_buzz.load_from_registry("buzz")
     eval_function_2 = registry_with_buzz.load_from_registry("buzzer")
     assert eval_function_1() == eval_function_2() == "buzz"
+
+
+def test_get_from_registry_with_hyphens(registry_with_hyphens_and_underscores):
+    func_1 = registry_with_hyphens_and_underscores.load_from_registry("chocolate-fudge")
+    func_2 = registry_with_hyphens_and_underscores.load_from_registry("chocolate_fudge")
+    assert func_1() == func_2() == "fudge!"
