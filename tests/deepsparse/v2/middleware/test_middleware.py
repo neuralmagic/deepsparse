@@ -63,9 +63,9 @@ def test_middleware_manager_recieve():
     original_state = copy.deepcopy(middleware_manager.state)
 
     # intialize the middleware
-    ptr = reducer_middleware()
+    intialized_reducer_middleaare = reducer_middleware()
     # trigger the callable
-    ptr()
+    intialized_reducer_middleaare()
     assert middleware_manager.state != original_state
     assert "ReducerMiddleware" in middleware_manager.state
     assert middleware_manager.state["ReducerMiddleware"] == [1]

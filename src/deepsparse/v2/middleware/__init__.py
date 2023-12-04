@@ -15,4 +15,3 @@
 # flake8: noqa
 
 from .middlewares import MiddlewareCallable, MiddlewareManager, MiddlewareSpec
-from .timer_middleware import TimerMiddleware
