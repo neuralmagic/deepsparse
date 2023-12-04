@@ -57,7 +57,7 @@ def integration_eval(
     :return the evaluation results
     """
     # [START]
-    # The code that sets up the interface between deepsparse and evaluation_harness
+    # The code that sets up the interface between deepsparse and lm_evaluation_harness
 
     if isinstance(model, Pipeline):
         # If the model is a Pipeline, we need to wrap
