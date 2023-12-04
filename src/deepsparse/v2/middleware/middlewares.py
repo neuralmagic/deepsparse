@@ -14,20 +14,20 @@
 
 """
 Description:
-Middlwares are used to as an intermediate step for a desired function to carry out any necessary logic. 
- Ex. Logging, timing, authentication, ...
- 
-Pipeline and Operator uses Middleware, but middlewares logic are not a core functionality of Op or Pipeline. 
-That is, Pipeline and Op can run without middlewares, and their outputs
- should be the same using middlewares
- 
+Middlwares are used to as an intermediate step for a desired function to carry out any
+ necessary logic. Ex. Logging, timing, authentication, ...
+
+Pipeline and Operator uses Middleware, but middlewares logic are not a core
+ functionality of Op or Pipeline. That is, Pipeline and Op can run without middlewares,
+ and their outputs should be the same using middlewares
+
 Lifecycle with Pipeline using Middleware:
 Pipeline -> Middleware -> Pipeline.__call__() -> Middleware
 
 Lifecycle with Pipeline and Ops using Middleware:
-Pipeline -> Middleware (from pipeline) -> Pipeline.__call__() 
- -> Middleware (from op) -> Op -> Middleware (from op) -> Middleware (from pipeline) 
- 
+Pipeline -> Middleware (from pipeline) -> Pipeline.__call__()
+ -> Middleware (from op) -> Op -> Middleware (from op) -> Middleware (from pipeline)
+
 Usage:
 Please check tests/deepsparse/v2/middleware
 """
@@ -38,7 +38,9 @@ from typing import Any, Callable, Dict, Iterator, Optional, Protocol, Sequence
 
 
 class MiddlewareCallable(Protocol):
-    """Used to crate any middleware"""
+    """
+    Newly created middlewares should inherit this class
+    """
 
     def __call__(self, *args, **kwargs):
         ...
@@ -80,7 +82,9 @@ class MiddlewareManager:
     A class to manage its state and the middlewares
 
     Useage:
-    middleware_manager = MiddlewareManager( [MiddlewareSpec(PrintingMiddleware, identifier="A"), ...])
+    middleware_manager = MiddlewareManager( [
+        MiddlewareSpec(PrintingMiddleware, identifier="A"), ...]
+    )
 
     :param middleware: List of MiddlewareSpecs
     :param state: state that is shared amongst all the middleware
@@ -99,7 +103,7 @@ class MiddlewareManager:
         with self._lock:
             self.state = reducer(self.state, *args, **kwargs)
 
-    def add(self, middleware: Sequence[MiddlewareSpec]):
+    def add_middleware(self, middleware: Sequence[MiddlewareSpec]):
         self._update_middleware_spec_send(middleware)
 
     def _update_middleware_spec_send(

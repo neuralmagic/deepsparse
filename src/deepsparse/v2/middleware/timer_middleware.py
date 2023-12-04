@@ -22,9 +22,9 @@ class TimerMiddleware(MiddlewareCallable):
     def __init__(self, call_next: MiddlewareCallable, identifier: str):
         self.identifier: str = identifier
         self.call_next: MiddlewareCallable = call_next
-        measurement = None
 
     def __call__(self, *args, **kwargs) -> Any:
+        breakpoint()
         start_time = time.time()
         result = self.call_next(*args, **kwargs)
         measurement = time.time() - start_time
