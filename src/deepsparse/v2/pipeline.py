@@ -173,6 +173,15 @@ class Pipeline(Operator):
         )
         return self.condense_inputs(outputs)
 
+    @staticmethod
+    def create(task: str, **kwargs) -> "Pipeline":
+        """
+        :param task: Pipeline task
+        :param kwargs: extra task specific kwargs to be passed to the Pipeline
+        :return: pipeline object initialized for the given task
+        """
+        return Operator.create(task=task, **kwargs)
+
     def run(
         self,
         *args,
