@@ -26,14 +26,14 @@ from deepsparse.v2.schedulers.utils import (
 
 def test_continuous_batching_executor_thread():
     # mobilenet model with batch_size=2
-    engine_operator = EngineOperator("zoo:mobilenet_v2-1.0-imagenet-base", batch_size=2)
+    engine_operator = EngineOperator("zoo:mobilenet_v2-1.0-imagenet-base")
 
     # create queues object and add operator
     queues = ContinuousBatchingQueues()
-    queues.add_queue(engine_operator, batch_sizes=[2])
+    queues.add_queue(engine_operator, batch_sizes=[1])
 
     # create engine map
-    operators_to_engines = {engine_operator: {2: engine_operator.engine}}
+    operators_to_engines = {engine_operator: {1: engine_operator.engine}}
 
     worker_thread = ContinuousBatchingExecutorThread(queues, operators_to_engines)
 
