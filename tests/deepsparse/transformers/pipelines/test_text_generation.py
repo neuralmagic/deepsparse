@@ -151,17 +151,17 @@ def test_stop_inference_kv_cache_full(prompt):
     # check for the "free" space in the kv cache
     assert kv_cache_state_full_minus_one["past_key_values.0.key"][:, :, 0, :].sum() == 0
     # check for the row A
-    assert numpy.allclose(
+    assert numpy.array_equal(
         kv_cache_state_full_minus_one["past_key_values.0.key"][:, :, 1, :],
         kv_cache_state_full["past_key_values.0.key"][:, :, 0, :],
     )
     # check for the row B
-    assert numpy.allclose(
+    assert numpy.array_equal(
         kv_cache_state_full["past_key_values.0.key"][:, :, 1, :],
         kv_cache_state_full_plus_one["past_key_values.0.key"][:, :, 0, :],
     )
     # check equality between plus_one and plus_two
-    assert numpy.allclose(
+    assert numpy.array_equal(
         kv_cache_state_full_plus_one["past_key_values.0.key"],
         kv_cache_state_full_plus_two["past_key_values.0.key"],
     )
