@@ -36,9 +36,9 @@ class GenerateNewTokenOperator(Operator):
             return True
         return False
 
-    def run(self, *args, inference_state: InferenceState, **kwargs):
-        logits = args[0].engine_outputs if args else kwargs.get("logits")
-        kv_cache = args[0].kv_cache if args else kwargs.get("kv_cache")
+    def run(self, inp: NLEngineOutputs, inference_state: InferenceState, **kwargs):
+        logits = inp.engine_outputs
+        kv_cache = inp.kv_cache
 
         token_generator = inference_state.current_state.get("token_generator")
         token = token_generator.generate(logits=logits[0, -1, :])

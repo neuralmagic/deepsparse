@@ -20,6 +20,7 @@ from deepsparse.transformers.pipelines.text_generation import FinishReason
 from deepsparse.transformers.utils.helpers import set_generated_length
 from deepsparse.v2.operators import Operator
 from deepsparse.v2.text_generation import TokenGeneratorOperator
+from deepsparse.v2.text_generation.nl_engine_operator import NLEngineOutputs
 from deepsparse.v2.utils import InferenceState
 
 
@@ -41,10 +42,11 @@ class PrepareGeneration(Operator):
         kv_cache = inp.get("kv_cache")
         tokens = inp.get("tokens")
 
-        # If the number of prompt tokens is greater than what we've processed,
-        # don't start generation. Should be equal when started as all prompt logits
-        # should be accounted for and we should have updated the kv_cache for the single
-        # token engine.
+        # If the number of prompt tokens is greater
+        # than what we've processed, don't start generation.
+        # Should be equal when started as all prompt logits
+        # should be accounted for, and we should have updated
+        # the kv_cache for the single token engine.
         if len(tokens) == kv_cache.total_num_processed_tokens:
             return True
         return False
@@ -90,10 +92,13 @@ class PrepareGeneration(Operator):
             "finished_reason": [],
             "token_generator": token_generator,
         }
+
         output = {
-            "logits": prompt_logits,
             "tokens": token_generator.tokens,
             "kv_cache": kv_cache,
             "in_generation": True,
         }
+        if kv_cache is None:
+            output = NLEngineOutputs(**output, engine_outputs=prompt_logits)
+
         return output, state_update
