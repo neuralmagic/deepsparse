@@ -14,7 +14,6 @@
 
 import asyncio
 import copy
-from concurrent.futures import Future
 from typing import Any, Dict, List, Optional, Union
 
 from deepsparse.v2.operators import EngineOperator, Operator
@@ -117,9 +116,9 @@ class Pipeline(Operator):
             )
 
         # Execute all sub graphs until all graphs have been completed.
-        while True:
+        while any(not x.completed for x in sub_graphs):
             for sub_graph in sub_graphs:
-                if isinstance(sub_graph.output, (asyncio.Future, Future)):
+                if not sub_graph.completed:
                     # get the result for the completed operator; resolve its output
                     if isinstance(sub_graph.output, asyncio.Future):
                         await sub_graph.output
@@ -139,6 +138,7 @@ class Pipeline(Operator):
                     # update the output value
                     if next_step in sub_graph.end:
                         sub_graph.output = operator_output
+                        sub_graph.completed = True
                     else:
                         sub_graph.output = self._run_next(
                             inp=operator_output,
@@ -146,13 +146,6 @@ class Pipeline(Operator):
                             next_step=next_step,
                             loop=loop,
                         )
-                    break
-
-            # keep running until all sub graphs have completed.
-            if not any(
-                isinstance(x.output, (asyncio.Future, Future)) for x in sub_graphs
-            ):
-                break
 
         return [x.output for x in sub_graphs]
 

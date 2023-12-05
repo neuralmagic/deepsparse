@@ -18,4 +18,5 @@ from .operators import *
 from .pipeline import *
 from .routers import *
 from .schedulers import *
+from .task import *
 from .utils import *
