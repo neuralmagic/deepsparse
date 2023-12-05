@@ -13,8 +13,9 @@
 # limitations under the License.
 
 
+import asyncio
 from concurrent.futures import Future, ThreadPoolExecutor
-from typing import Callable
+from typing import Callable, Optional
 
 from deepsparse.v2.operators import Operator
 
@@ -37,6 +38,21 @@ class OperatorScheduler:
     def __init__(self, max_workers: int = 1):
         self._threadpool = ThreadPoolExecutor(max_workers=max_workers)
 
+    def async_run(
+        self,
+        *args,
+        operator: Operator,
+        loop: Optional[asyncio.AbstractEventLoop],
+        **kwargs,
+    ) -> asyncio.Future:
+        import functools
+
+        """Use an asyncio event loop to run the operator"""
+
+        return loop.run_in_executor(
+            self._threadpool, functools.partial(operator, *args, **kwargs)
+        )
+
     def submit(
         self,
         *args,
@@ -47,11 +63,7 @@ class OperatorScheduler:
         :param operator: operator to run
         :return: future referencing the asynchronously run output of the operator
         """
-        return self._threadpool.submit(
-            operator,
-            *args,
-            **kwargs,
-        )
+        return self._threadpool.submit(operator, *args, **kwargs)
 
     def can_process(
         self,

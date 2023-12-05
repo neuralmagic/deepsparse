@@ -14,7 +14,7 @@
 
 
 from concurrent.futures import Future
-from typing import List
+from typing import Any, List
 
 from deepsparse.v2.operators import Operator
 from deepsparse.v2.schedulers.scheduler import OperatorScheduler
@@ -38,6 +38,7 @@ class SchedulerGroup(OperatorScheduler):
         self,
         *args,
         operator: Operator,
+        loop: Any = None,
         **kwargs,
     ) -> Future:
         """
@@ -50,6 +51,10 @@ class SchedulerGroup(OperatorScheduler):
                 operator=operator,
                 **kwargs,
             ):
+                if loop:
+                    return scheduler.async_run(
+                        *args, operator=operator, loop=loop, **kwargs
+                    )
                 return scheduler.submit(
                     *args,
                     operator=operator,
