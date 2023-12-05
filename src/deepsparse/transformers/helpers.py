@@ -39,6 +39,7 @@ from sparsezoo.utils import save_onnx
 
 
 __all__ = [
+    "get_deployment_path",
     "setup_transformers_pipeline",
     "overwrite_transformer_onnx_model_inputs",
     "fix_numpy_types",
@@ -54,7 +55,6 @@ def setup_transformers_pipeline(
     sequence_length: int,
     tokenizer_padding_side: str = "left",
     engine_kwargs: Optional[Dict] = None,
-    onnx_model_name: Optional[str] = None,
 ) -> Tuple[
     str, transformers.PretrainedConfig, transformers.PreTrainedTokenizer, Dict[str, Any]
 ]:
@@ -66,13 +66,9 @@ def setup_transformers_pipeline(
     :param tokenizer_padding_side: The side to pad on for the tokenizer,
         either "left" or "right"
     :param engine_kwargs: The kwargs to pass to the engine
-    :param onnx_model_name: The name of the onnx model to be loaded.
-        If not specified, defaults are used (see setup_onnx_file_path)
     :return The model path, config, tokenizer, and engine kwargs
     """
-    model_path, config, tokenizer = setup_onnx_file_path(
-        model_path, sequence_length, onnx_model_name
-    )
+    model_path, config, tokenizer = setup_onnx_file_path(model_path, sequence_length)
 
     tokenizer.padding_side = tokenizer_padding_side
     if not tokenizer.pad_token:
@@ -93,7 +89,6 @@ def setup_transformers_pipeline(
 def setup_onnx_file_path(
     model_path: str,
     sequence_length: int,
-    onnx_model_name: Optional[str] = None,
     task: Optional[str] = None,
 ) -> Tuple[str, transformers.PretrainedConfig, transformers.PreTrainedTokenizer]:
     """
@@ -102,12 +97,9 @@ def setup_onnx_file_path(
     derived from the `model_path` provided.
     :param model_path: path to the model to be parsed
     :param sequence_length: maximum sequence length of the model
-    :param onnx_model_name: optionally, the precise name of the ONNX model
-        of interest may be specified. If not specified, the default ONNX model
-        name will be used (refer to `get_deployment_path` for details)
     :return: file path to the processed ONNX file for the engine to compile
     """
-    deployment_path, onnx_path = get_deployment_path(model_path, onnx_model_name)
+    deployment_path, onnx_path = get_deployment_path(model_path)
 
     hf_logger = logging.getLogger("transformers")
     hf_logger_level = hf_logger.level
@@ -162,7 +154,7 @@ def get_deployment_path(model_path: str) -> Tuple[str, str]:
                 f"{os.path.join(model_path, _MODEL_DIR_ONNX_NAME)}"
             )
         return model_path, os.path.join(model_path, _MODEL_DIR_ONNX_NAME)
-      
+
     elif model_path.startswith("zoo:") or model_path.startswith("hf:"):
         onnx_model_path = model_to_path(model_path)
         return os.path.dirname(onnx_model_path), onnx_model_path

@@ -24,11 +24,12 @@ from typing import Any, Dict, List, Mapping, Optional, Union
 
 import numpy
 import transformers
+from transformers.models.auto import AutoTokenizer
 
 from deepsparse import Bucketable, Pipeline
-from deepsparse.transformers.helpers import overwrite_transformer_onnx_model_inputs
 from deepsparse.transformers.helpers import (
-    setup_onnx_file_path as setup_onnx_file_path_v2,
+    get_deployment_path,
+    overwrite_transformer_onnx_model_inputs,
 )
 
 
@@ -153,7 +154,7 @@ class TransformersPipeline(Pipeline, Bucketable):
             ) = overwrite_transformer_onnx_model_inputs(
                 onnx_path, max_length=self.sequence_length
             )
-        
+
         if not self.config or not self.tokenizer:
             raise RuntimeError(
                 "Invalid config or tokenizer provided. Please provide "
