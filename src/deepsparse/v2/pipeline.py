@@ -14,7 +14,6 @@
 
 
 import copy
-from concurrent.futures import Future
 from typing import Any, Dict, List, Union
 
 from deepsparse.v2.operators import EngineOperator, Operator
@@ -116,9 +115,9 @@ class Pipeline(Operator):
             )
 
         # Execute all sub graphs until all graphs have been completed.
-        while True:
+        while any(not x.completed for x in sub_graphs):
             for sub_graph in sub_graphs:
-                if isinstance(sub_graph.output, Future) and sub_graph.output.done():
+                if not sub_graph.completed:
                     # get the result for the completed operator; resolve its output
                     operator_output = sub_graph.output.result()
                     operator_output = sub_graph.parse_output(operator_output)
@@ -136,17 +135,13 @@ class Pipeline(Operator):
                     # update the output value
                     if next_step in sub_graph.end:
                         sub_graph.output = operator_output
+                        sub_graph.completed = True
                     else:
                         sub_graph.output = self._run_next(
                             inp=operator_output,
                             inference_state=sub_graph.inf,
                             next_step=next_step,
                         )
-                    break
-
-            # keep running until all sub graphs have completed.
-            if not any(isinstance(x.output, Future) for x in sub_graphs):
-                break
 
         return [x.output for x in sub_graphs]
 
