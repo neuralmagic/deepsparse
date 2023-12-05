@@ -68,7 +68,7 @@ def setup_transformers_pipeline(
     :param engine_kwargs: The kwargs to pass to the engine
     :return The model path, config, tokenizer, and engine kwargs
     """
-    model_path, config, tokenizer = setup_onnx_file_path(model_path, sequence_length)
+    model_path, config, tokenizer = fetch_onnx_file_path(model_path, sequence_length)
 
     tokenizer.padding_side = tokenizer_padding_side
     if not tokenizer.pad_token:
@@ -86,7 +86,7 @@ def setup_transformers_pipeline(
     return model_path, config, tokenizer, engine_kwargs
 
 
-def setup_onnx_file_path(
+def fetch_onnx_file_path(
     model_path: str,
     sequence_length: int,
     task: Optional[str] = None,
@@ -135,8 +135,6 @@ def get_deployment_path(model_path: str) -> Tuple[str, str]:
     for running the transformers model in the deepsparse pipeline
 
     :param model_path: path to model directory, sparsezoo stub, or ONNX file
-    :param onnx_model_name: name of the ONNX file to look for in the deployment
-        directory. Defaults to MODEL_ONNX_NAME
     :return: path to the deployment directory and path to the ONNX file inside
         the deployment directory
     """

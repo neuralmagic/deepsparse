@@ -54,8 +54,8 @@ class Pipeline(Operator):
         ops: Union[Dict[str, Operator], List[Operator]],
         router: Router,
         schedulers: List[OperatorScheduler],
-        continuous_batching_scheduler: ContinuousBatchingScheduler,
-        pipeline_state: PipelineState = None,
+        continuous_batching_scheduler: Optional[ContinuousBatchingScheduler] = None,
+        pipeline_state: Optional[PipelineState] = None,
     ):
 
         self.ops = ops
@@ -277,7 +277,7 @@ class Pipeline(Operator):
                 if operator_output is None:
                     raise ValueError(
                         f"{self.router.SPLIT_ROUTE} should appear after "
-                        f"{self.ROUTER.START_ROUTE}"
+                        f"{self.router.START_ROUTE}"
                     )
 
                 operator_output = asyncio.run(
