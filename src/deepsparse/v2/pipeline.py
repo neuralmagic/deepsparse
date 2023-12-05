@@ -173,6 +173,21 @@ class Pipeline(Operator):
         )
         return self.condense_inputs(outputs)
 
+    @staticmethod
+    def create(task: str, **kwargs) -> "Pipeline":
+        """
+        :param task: Pipeline task
+        :param kwargs: extra task specific kwargs to be passed to the Pipeline
+        :return: pipeline object initialized for the given task
+        """
+        pipeline = Operator.create(task=task, **kwargs)
+        if not isinstance(pipeline, Pipeline):
+            raise RuntimeError(
+                "Pipeline was not created for the given task. The "
+                "provided task should be registered using the OperatorRegistry"
+            )
+        return pipeline
+
     def run(
         self,
         *args,
