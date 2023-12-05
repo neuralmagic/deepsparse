@@ -16,7 +16,8 @@
 Base Pipeline class for transformers inference pipeline
 """
 
-
+import logging
+import os
 import warnings
 from pathlib import Path
 from typing import Any, Dict, List, Mapping, Optional, Union
@@ -98,8 +99,7 @@ class TransformersPipeline(Pipeline, Bucketable):
         self.config = config
         self.tokenizer = tokenizer
 
-        self.config_path = None
-        self.tokenizer_config_path = None  # path to 'tokenizer.json'
+        self._deployment_path = None
         self.onnx_input_names = None
         self._delay_overwriting_inputs = (
             kwargs.pop("_delay_overwriting_inputs", None) or False
@@ -123,15 +123,26 @@ class TransformersPipeline(Pipeline, Bucketable):
 
         :return: file path to the processed ONNX file for the engine to compile
         """
-        # we will be soon retiring V1 pipelines. This is why I am deciding
-        # to reuse the functions from V2 pipelines in the (soon) legacy pipelines
-        onnx_path, config, tokenizer = setup_onnx_file_path_v2(
-            model_path=self.model_path,
-            sequence_length=self.sequence_length,
-            task=self.task if hasattr(self, "task") else None,
+
+        deployment_path, onnx_path = get_deployment_path(self.model_path)
+        self._deployment_path = deployment_path
+
+        # temporarily set transformers logger to ERROR to avoid
+        # printing misleading warnings
+        hf_logger = logging.getLogger("transformers")
+        hf_logger_level = hf_logger.level
+        hf_logger.setLevel(logging.ERROR)
+        self.config = transformers.PretrainedConfig.from_pretrained(
+            deployment_path,
+            finetuning_task=self.task if hasattr(self, "task") else None,
         )
-        self.config = config
-        self.tokenizer = tokenizer
+        hf_logger.setLevel(hf_logger_level)
+
+        self.tokenizer = AutoTokenizer.from_pretrained(
+            deployment_path,
+            trust_remote_code=self._trust_remote_code,
+            model_max_length=self.sequence_length,
+        )
 
         if not self._delay_overwriting_inputs:
             # overwrite onnx graph to given required input shape
@@ -142,7 +153,13 @@ class TransformersPipeline(Pipeline, Bucketable):
             ) = overwrite_transformer_onnx_model_inputs(
                 onnx_path, max_length=self.sequence_length
             )
-
+        
+        if not self.config or not self.tokenizer:
+            raise RuntimeError(
+                "Invalid config or tokenizer provided. Please provide "
+                "paths to the files or ensure they exist in the `model_path` provided. "
+                "See `tokenizer` and `config` arguments for details."
+            )
         return onnx_path
 
     def tokens_to_engine_input(
@@ -210,6 +227,34 @@ class TransformersPipeline(Pipeline, Bucketable):
         if len(valid_pipelines) == 0:
             return max(buckets, key=lambda bucket: bucket.sequence_length)
         return min(valid_pipelines, key=lambda bucket: bucket.sequence_length)
+
+    @property
+    def config_path(self) -> str:
+        """
+        :return: full path to config.json for this pipeline if it exists,
+            otherwise returns deployment directory path
+        """
+        config_path = os.path.join(self._deployment_path, "config.json")
+        if os.path.exists(config_path):
+            return config_path
+        else:
+            return self._deployment_path
+
+    @property
+    def tokenizer_config_path(self) -> str:
+        """
+        :return: full path to tokenizer.json for this pipeline if it exists,
+            otherwise returns deployment directory path
+        """
+        tokenizer_path = os.path.join(self._deployment_path, "tokenizer.json")
+        tokenizer_config_path = os.path.join(
+            self._deployment_path, "tokenizer_config.json"
+        )
+        if os.path.exists(tokenizer_path):
+            return tokenizer_path
+        elif os.path.exists(tokenizer_config_path):
+            return tokenizer_path
+        return self._deployment_path
 
 
 def pipeline(

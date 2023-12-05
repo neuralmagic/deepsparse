@@ -12,7 +12,10 @@
 # # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # # See the License for the specific language governing permissions and
 # # limitations under the License.
+from typing import Any
+
 import yaml
+from pydantic import BaseModel
 
 import pytest
 from deepsparse.loggers import AsyncLogger, MultiLogger, PythonLogger
@@ -20,6 +23,12 @@ from deepsparse.server.config import ServerConfig
 from deepsparse.server.helpers import server_logger_from_config
 from tests.deepsparse.loggers.helpers import fetch_leaf_logger
 from tests.helpers import find_free_port
+
+
+class DummyOutputSchema(BaseModel):
+    field_1: Any
+    field_2: Any
+    field_3: Any
 
 
 yaml_config_1 = """

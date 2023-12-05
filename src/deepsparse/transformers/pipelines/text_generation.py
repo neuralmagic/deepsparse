@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import copy
 import datetime
 import logging
 import os
@@ -96,6 +97,10 @@ class TextGenerationInput(BaseModel):
         alias="prompt",
         description="The input sequences to generate the text from.",
     )
+    return_input_tokens: bool = Field(
+        default=False,
+        description="A flag that indicates whether to return " "the input_tokens. ",
+    )
     include_prompt_logits: bool = Field(
         default=False,
         description="A flag that indicates whether to return "
@@ -164,13 +169,15 @@ class GeneratedText(BaseModel):
         "streaming is enabled, this will be the next generated token."
     )
     score: Optional[Any] = Field(
+        default=None,
         description="The score for the generated token or sequence. "
-        "The scores have the shape [sequence_length, vocab_size]"
+        "The scores have the shape [sequence_length, vocab_size]",
     )
     finished: bool = Field(description="Whether generation has stopped.")
     finished_reason: Optional[str] = Field(
+        default=None,
         description="The reason for generation to stop. "
-        "Defined by FinishReason. One of stop, length, or time."
+        "Defined by FinishReason. One of stop, length, or time.",
     )
 
 
@@ -186,6 +193,15 @@ class TextGenerationOutput(BaseModel):
         "If multiple prompts are given, a list of GeneratedText is returned for each "
         "prompt provided. If streamng is enabled, the next generated token is returned."
         "Otherwise, the full generated sequence is returned."
+    )
+    input_tokens: Optional[
+        Any
+    ] = Field(  # dictionary mapping "token_ids" and "attention_mask" to numpy arrays
+        default=None,
+        description="The output of the tokenizer."
+        "Dictionary containing token_ids and attention_mask, "
+        "both mapping to arrays of size "
+        "[batch_size, sequence_length]",
     )
 
     class Config:
@@ -528,6 +544,8 @@ class TextGenerationPipeline(TransformersPipeline):
         context = dict(
             prompts=original_inputs,
             streaming=inputs.streaming,
+            return_input_tokens=inputs.return_input_tokens,
+            input_tokens=input_tokens,
             generation_config=generation_config,
             include_prompt_logits=inputs.include_prompt_logits,
             callback=inputs.callback,
@@ -563,10 +581,24 @@ class TextGenerationPipeline(TransformersPipeline):
         self, engine_outputs, prompts, generation_config, **kwargs
     ):
         for output in engine_outputs:
-            generated_tokens, generated_logits, finished_reason = output
+            (
+                generated_tokens,
+                generated_logits,
+                finished_reason,
+                past_tokens_queue,
+            ) = output
             logits = generated_logits if generation_config.output_scores else None
+            from transformers import LlamaTokenizer, LlamaTokenizerFast
+
+            if isinstance(self.tokenizer, (LlamaTokenizer, LlamaTokenizerFast)):
+                # temporary fix for LLama2/Mistral/... models
+                generated_string = self._generate_streamed_text_from_past_tokens(
+                    generated_tokens, past_tokens_queue
+                )
+            else:
+                generated_string = self.tokenizer.batch_decode(generated_tokens)[0]
             generation = self._create_generated_text_output(
-                self.tokenizer.batch_decode(generated_tokens)[0],
+                generated_string,
                 finished_reason[0],
                 logits,
             )
@@ -583,6 +615,33 @@ class TextGenerationPipeline(TransformersPipeline):
                 generations=[generation],
                 **schema_kwargs,
             )
+
+    def _generate_streamed_text_from_past_tokens(
+        self, generated_tokens: numpy.ndarray, past_tokens_queue: List[int]
+    ) -> str:
+        """
+        An auxiliary method that helps to properly generate the streamed text.
+        Some models like llama2 and mistral are using LlamaTokenizer which is
+        based on SentencePiece tokenizer. This specific tokenizer doesn't seem
+        to output appropriate prefix spaces when decoding token by token.
+        One can make it work if the previously generated tokens are included.
+        This allows the tokenizer to figure out that the appropriate spaces
+        from last n consecutive tokens.
+
+        :param generated_tokens: the generated tokens from the engine
+        :param past_tokens_queue: the queue of last n tokens (n is the
+            original prompt length in tokens)
+        :return: the generated string
+        """
+        string_from_n_tokens = self.tokenizer.decode(
+            past_tokens_queue, skip_special_tokens=True
+        )
+        past_tokens_queue.append(generated_tokens[0])
+        string_from_n_plus_1_tokens = self.tokenizer.decode(
+            past_tokens_queue, skip_special_tokens=True
+        )
+        past_tokens_queue.pop(0)
+        return string_from_n_plus_1_tokens[len(string_from_n_tokens) :]
 
     def process_engine_outputs(
         self, engine_outputs: List[Union[numpy.ndarray, FinishReason]], **kwargs
@@ -649,8 +708,15 @@ class TextGenerationPipeline(TransformersPipeline):
             ]
             generations = grouped_generations
 
+        input_tokens = (
+            kwargs.get("input_tokens") if kwargs.get("return_input_tokens") else None
+        )
+
         outputs = dict(
-            created=datetime.datetime.now(), prompts=prompts, generations=generations
+            created=datetime.datetime.now(),
+            prompts=prompts,
+            generations=generations,
+            input_tokens=input_tokens,
         )
 
         if "session_ids" in kwargs:
@@ -714,6 +780,9 @@ class TextGenerationPipeline(TransformersPipeline):
                     prompt_logits, session = self.prompt_inference(engine_inputs)
 
             tokens = engine_inputs[0][engine_inputs[1].nonzero()].tolist()
+            # copy the tokens so that we can use them for streaming
+            past_tokens_queue = copy.copy(tokens)
+
             token_generator = TokenGenerator(
                 logits_shape=prompt_logits[-1].shape[-1],
                 tokens=tokens,
@@ -752,6 +821,7 @@ class TextGenerationPipeline(TransformersPipeline):
                             numpy.array([generated_tokens[-1]]),
                             numpy.array([generated_logits[-1]]),
                             [None],
+                            past_tokens_queue,
                         )
 
                 while len(generated_tokens) < max_tokens:
@@ -792,7 +862,12 @@ class TextGenerationPipeline(TransformersPipeline):
                         break
 
                     if streaming:
-                        yield (numpy.array([token]), numpy.array([logits]), [None])
+                        yield (
+                            numpy.array([token]),
+                            numpy.array([logits]),
+                            [None],
+                            past_tokens_queue,
+                        )
 
                 # Run the autoregressive inference only to put the
                 # kv cache entry for the last generated token into the
@@ -807,12 +882,14 @@ class TextGenerationPipeline(TransformersPipeline):
                             numpy.array([generated_tokens]),
                             numpy.concatenate(generated_logits, axis=1),
                             [FinishReason.LENGTH],
+                            past_tokens_queue,
                         )
                     else:
                         yield (
                             numpy.array([token]),
                             numpy.array([logits]),
                             [finished_reason[-1]],
+                            past_tokens_queue,
                         )
 
         if not streaming:
@@ -1084,10 +1161,10 @@ class TextGenerationPipeline(TransformersPipeline):
             if debug:
                 sessions = debug[0]
                 kv_cache_state = numpy.stack(
-                    session.cached_inputs for session in sessions
+                    [session.cached_inputs for session in sessions]
                 )
                 num_processed_tokens = numpy.stack(
-                    session.total_num_processed_tokens for session in sessions
+                    [session.total_num_processed_tokens for session in sessions]
                 )
 
                 yield [

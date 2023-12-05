@@ -5,8 +5,6 @@ Similar to the Deepsparse server (see `README.md` for details), a config file ca
 created for the text generation models. A sample config is provided below
 
 ```yaml
-num_cores: 2
-num_workers: 2
 endpoints:
   - task: text_generation
     model: zoo:opt-1.3b-opt_pretrain-pruned50_quantW8A8
@@ -36,7 +34,7 @@ or through the OpenAI API.
 
 ### OpenAI API Requests
 
-- Starting the server with the config above, we have accesso to one model
+- Starting the server with the config above, we have access to one model
 `zoo:opt-1.3b-opt_pretrain-pruned50_quantW8A8`. We can send an inference request using
 the OpenAI API, as shown in the example code below:
 

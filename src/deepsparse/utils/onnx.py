@@ -129,7 +129,7 @@ def model_to_path(model: Union[str, Model, File]) -> str:
 
     if Model is not object and isinstance(model, Model):
         # trigger download and unzipping of deployment directory if not cached
-        model.deployment_directory_path
+        model.deployment.path
 
         # default to the main onnx file for the model
         model = model.deployment.get_file(MODEL_ONNX_NAME).path
@@ -137,6 +137,21 @@ def model_to_path(model: Union[str, Model, File]) -> str:
     elif File is not object and isinstance(model, File):
         # get the downloaded_path -- will auto download if not on local system
         model = model.path
+
+    if isinstance(model, str) and model.startswith("hf:"):
+        # load Hugging Face model from stub
+        from huggingface_hub import snapshot_download
+
+        deployment_path = snapshot_download(repo_id=model.replace("hf:", "", 1))
+        onnx_path = os.path.join(deployment_path, _MODEL_DIR_ONNX_NAME)
+        if not os.path.isfile(onnx_path):
+            raise ValueError(
+                f"Could not find the ONNX model file '{_MODEL_DIR_ONNX_NAME}' in the "
+                f"Hugging Face Hub repository located at {deployment_path}. Please "
+                f"ensure the model has been correctly exported to ONNX format and "
+                f"exists in the repository."
+            )
+        return onnx_path
 
     if not isinstance(model, str):
         raise ValueError("unsupported type for model: {}".format(type(model)))
@@ -549,7 +564,7 @@ def overwrite_onnx_model_inputs_for_kv_cache_models(
         else:
             raise ValueError(f"Unexpected external input name: {external_input.name}")
 
-    _LOGGER.info(
+    _LOGGER.debug(
         "Overwriting in-place the input shapes "
         f"of the transformer model at {onnx_file_path}"
     )

@@ -30,8 +30,11 @@ import transformers
 from onnx import ModelProto
 
 from deepsparse.log import get_main_logger
-from deepsparse.utils.onnx import MODEL_ONNX_NAME, truncate_onnx_model
-from sparsezoo import Model
+from deepsparse.utils.onnx import (
+    _MODEL_DIR_ONNX_NAME,
+    model_to_path,
+    truncate_onnx_model,
+)
 from sparsezoo.utils import save_onnx
 
 
@@ -131,9 +134,7 @@ def setup_onnx_file_path(
     return onnx_path, config, tokenizer
 
 
-def get_deployment_path(
-    model_path: str, onnx_model_name: Optional[str] = None
-) -> Tuple[str, str]:
+def get_deployment_path(model_path: str) -> Tuple[str, str]:
     """
     Returns the path to the deployment directory
     for the given model path and the path to the mandatory
@@ -147,7 +148,6 @@ def get_deployment_path(
     :return: path to the deployment directory and path to the ONNX file inside
         the deployment directory
     """
-    onnx_model_name = onnx_model_name or MODEL_ONNX_NAME
     if os.path.isfile(model_path):
         # return the parent directory of the ONNX file
         return os.path.dirname(model_path), model_path
@@ -155,30 +155,17 @@ def get_deployment_path(
     if os.path.isdir(model_path):
         model_files = os.listdir(model_path)
 
-        if onnx_model_name not in model_files:
+        if _MODEL_DIR_ONNX_NAME not in model_files:
             raise ValueError(
-                f"{onnx_model_name} not found in transformers model directory "
+                f"{_MODEL_DIR_ONNX_NAME} not found in transformers model directory "
                 f"{model_path}. Be sure that an export of the model is written to "
-                f"{os.path.join(model_path, onnx_model_name)}"
+                f"{os.path.join(model_path, _MODEL_DIR_ONNX_NAME)}"
             )
-        return model_path, os.path.join(model_path, onnx_model_name)
-
-    elif model_path.startswith("zoo:"):
-        zoo_model = Model(model_path)
-        deployment_path = zoo_model.deployment_directory_path
-        return deployment_path, os.path.join(deployment_path, onnx_model_name)
-    elif model_path.startswith("hf:"):
-        from huggingface_hub import snapshot_download
-
-        deployment_path = snapshot_download(repo_id=model_path.replace("hf:", "", 1))
-        onnx_path = os.path.join(deployment_path, onnx_model_name)
-        if not os.path.isfile(onnx_path):
-            raise ValueError(
-                f"{onnx_model_name} not found in transformers model directory "
-                f"{deployment_path}. Be sure that an export of the model is written to "
-                f"{onnx_path}"
-            )
-        return deployment_path, onnx_path
+        return model_path, os.path.join(model_path, _MODEL_DIR_ONNX_NAME)
+      
+    elif model_path.startswith("zoo:") or model_path.startswith("hf:"):
+        onnx_model_path = model_to_path(model_path)
+        return os.path.dirname(onnx_model_path), onnx_model_path
     else:
         raise ValueError(
             f"model_path {model_path} is not a valid file, directory, or zoo stub"

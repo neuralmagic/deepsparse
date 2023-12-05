@@ -42,8 +42,7 @@ After training your model with `SparseML`, locate the `.pt` file for the model y
 
 ```bash
 sparseml.ultralytics.export_onnx \
-    --weights path/to/your/model \
-    --dynamic #Allows for dynamic input shape
+    --model path/to/your/model \
 ```
 This creates a `model.onnx` file, in the directory of your `weights` (e.g. `runs/train/weights/model.onnx`).
 
@@ -83,7 +82,7 @@ deepsparse.yolov8.annotate --source basilica.jpg --model_filepath "yolov8n.onnx"
 
 Running the above command will create an `annotation-results` folder and save the annotated image inside.
 
-#### Annotate CLI
+#### Eval CLI
 You can also use the `eval` command to have the engine run inference on a dataset (in the same fashion as it is being done in `ultralytics` module)
 ```bash
 deepsparse.yolov8.eval --model_path yolov8n.onnx
