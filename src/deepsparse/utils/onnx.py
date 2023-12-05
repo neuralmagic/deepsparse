@@ -129,7 +129,7 @@ def model_to_path(model: Union[str, Model, File]) -> str:
 
     if Model is not object and isinstance(model, Model):
         # trigger download and unzipping of deployment directory if not cached
-        model.deployment.download()
+        model.deployment.path
 
         # default to the main onnx file for the model
         model = model.deployment.get_file(_MODEL_DIR_ONNX_NAME).path
