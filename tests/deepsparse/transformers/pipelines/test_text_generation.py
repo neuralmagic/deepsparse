@@ -104,6 +104,22 @@ def test_token_generation_non_deterministic(pipeline, prompt):
     assert len(set(text_outputs)) == 3
 
 
+def test_pipeline_for_ppl_eval(pipeline, prompt):
+    predictions = pipeline(
+        prompt,
+        output_scores=True,
+        return_input_tokens=True,
+        fixed_sequences_length=True,
+        include_prompt_logits=True,
+        max_length=1,
+    )
+    assert hasattr(predictions, "generations")
+    assert hasattr(predictions, "input_tokens")
+    assert hasattr(predictions.generations[0], "score")
+    assert "input_ids" in predictions.input_tokens
+    assert "attention_mask" in predictions.input_tokens
+
+
 def test_streaming_mode_returns_generator(pipeline, prompt):
     response_generator = pipeline(prompt, streaming=True)
     assert inspect.isgenerator(
@@ -114,3 +130,29 @@ def test_streaming_mode_returns_generator(pipeline, prompt):
         isinstance(response, pipeline.output_schema) for response in response_generator
     ), "Pipeline should return a generator of output_schema \
            objects in streaming mode"
+
+
+def test_streaming_with_several_prompts(pipeline, prompt):
+    additional_prompt = "Never gonna run around and desert you"
+    prompts = [prompt, additional_prompt]
+
+    generations_first_prompt_only = list(pipeline(prompt=prompts[0], streaming=True))
+    generations_second_prompt_only = list(pipeline(prompt=prompts[1], streaming=True))
+
+    bag_of_words_first_prompt = [
+        g.generations[0].text for g in generations_first_prompt_only
+    ]
+    bag_of_words_second_prompt = [
+        g.generations[0].text for g in generations_second_prompt_only
+    ]
+
+    generations = pipeline(prompt=prompts, streaming=True)
+    bag_of_words_shared = []
+    for r in generations:
+        for gen in r.generations:
+            text = gen.text
+            bag_of_words_shared.append(text)
+
+    assert sorted(bag_of_words_first_prompt + bag_of_words_second_prompt) == sorted(
+        bag_of_words_shared
+    )

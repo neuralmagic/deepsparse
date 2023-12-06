@@ -33,6 +33,7 @@ class SubGraph:
     inf: InferenceState
     end: List[str]
     output: Any = None
+    completed: bool = False
 
     def parse_output(self, operator_output: Any):
         if isinstance(operator_output, tuple):

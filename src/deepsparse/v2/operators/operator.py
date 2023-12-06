@@ -19,6 +19,7 @@ from pydantic import BaseModel
 
 from deepsparse.v2.operators.registry import OperatorRegistry
 from deepsparse.v2.utils import InferenceState, StreamingOutput
+from deepsparse.v2.utils import InferenceState
 
 
 __all__ = ["Operator"]

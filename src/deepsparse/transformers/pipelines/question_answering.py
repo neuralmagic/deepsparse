@@ -37,6 +37,7 @@ import collections
 import json
 import logging
 import os
+import warnings
 from typing import Any, Dict, List, Optional, Tuple, Type
 
 import numpy
@@ -504,6 +505,20 @@ class QuestionAnsweringPipeline(TransformersPipeline):
     def _tokenize(self, example: SquadExample, *args):
         # The logic here closely matches the tokenization step performed
         # on evaluation dataset in the SparseML question answering training script
+
+        added_special_tokens = self.tokenizer.num_special_tokens_to_add()
+        effective_max_length = self.sequence_length - added_special_tokens
+        if self.doc_stride >= effective_max_length:
+            new_doc_stride = effective_max_length
+            warnings.warn(
+                f"Tokenizer stride set to {self.doc_stride}, "
+                f"which is greater than or equal to its effective max length "
+                f"of {effective_max_length} (= {self.sequence_length} "
+                f"original max length - {added_special_tokens} added special tokens). "
+                f"Capping the doc stride to {new_doc_stride}"
+            )
+            self._doc_stride = new_doc_stride
+
         if not self.tokenizer.is_fast:
             raise ValueError(
                 "This example script only works for models that have a fast tokenizer."

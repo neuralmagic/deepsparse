@@ -148,8 +148,7 @@ class TextGenerationPipeline(Pipeline):
         if continuous_batch_sizes:
             if internal_kv_cache:
                 _LOGGER.warn(
-                    "internal kv_cache is currently not supported with continuous ",
-                    "batching",
+                    "internal kv_cache is not supported with continuous_batching "
                 )
             else:
                 continuous_batching_scheduler = self._get_continuous_batching_scheduler(

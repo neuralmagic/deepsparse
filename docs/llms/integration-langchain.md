@@ -23,7 +23,7 @@ It is broken into two parts: installation and then examples of DeepSparse usage.
 
 - Install the Python packages with `pip install deepsparse-nightly langchain`
 - Choose a [SparseZoo model](https://sparsezoo.neuralmagic.com/?useCase=text_generation) or export a support model to ONNX [using Optimum](https://github.com/neuralmagic/notebooks/blob/main/notebooks/opt-text-generation-deepsparse-quickstart/OPT_Text_Generation_DeepSparse_Quickstart.ipynb)
-- Models hosted on HuggingFace are also supported by prepending `"hf:"` to the model id, such as [`"hf:mgoin/TinyStories-33M-quant-deepsparse"`](https://huggingface.co/mgoin/TinyStories-33M-quant-deepsparse)
+- Models hosted on Hugging Face are also supported by prepending `"hf:"` to the model id, such as [`"hf:mgoin/TinyStories-33M-quant-deepsparse"`](https://huggingface.co/mgoin/TinyStories-33M-quant-deepsparse)
 
 ## Using DeepSparse With LangChain
 
@@ -41,7 +41,7 @@ llm = DeepSparse(model='zoo:nlg/text_generation/codegen_mono-350m/pytorch/huggin
 print(llm('def fib():'))
 ```
 ## Streaming
-The DeepSparse LangChain wrapper also supports per token output streaming:
+The DeepSparse LangChain wrapper also supports per-token output streaming:
 
 ```python
 from langchain.llms import DeepSparse
@@ -53,7 +53,7 @@ for chunk in llm.stream("Tell me a joke", stop=["'","\n"]):
     print(chunk, end='', flush=True)
 ```
 ## Using Instruction Fine-tune Models With DeepSparse
-Here's an example of how to prompt an instruction fine-tuned model using DeepSparse and the MPT-Instruct model:
+Here's an example of how to prompt an instruction in a fine-tuned model using DeepSparse and the MPT-Instruct model:
 ```python
 prompt="""
 Below is an instruction that describes a task. Write a response that appropriately completes the request. ### Instruction: what is quantization? ### Response:
@@ -84,7 +84,7 @@ List how to Become a great software engineer
 By TechRadar Staff
 Here are some tips on how to become a great software engineer:
 1. Develop good programming skills: To become a great software engineer, you need to have a strong understanding of programming concepts and techniques. You should be able to write clean, efficient code that meets the requirements of the project.
-2. Learn new technologies: To stay up-to in the field, you should be familiar with new technologies and programming languages. You should also be able to adapt to new environments and work with different tools and platforms.
+2. Learn new technologies: To stay up-to-date in the field, you should be familiar with new technologies and programming languages. You should also be able to adapt to new environments and work with different tools and platforms.
 3. Build a portfolio: To showcase your skills, you should build a portfolio of your work. This will help you showcase your skills and abilities to potential employers.
 4. Network: Networking is an important aspect of your career. You should attend industry events and conferences to meet other professionals in the field.
 5. Stay up-to-date with industry trends: Stay up-to-date with industry trends and developments. This will help you stay relevant in your field and help you stay ahead of your competition.
