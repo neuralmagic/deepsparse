@@ -60,8 +60,6 @@ def test_image_classification_pipeline_preprocessing(
     data_originals_path = None
 
     if zoo_model.sample_inputs is not None:
-        if not zoo_model.sample_inputs.files:
-            zoo_model.sample_inputs.unzip()
         data_originals_path = zoo_model.sample_inputs.path
 
     for idx, sample in enumerate(load_numpy_list(data_originals_path)):
