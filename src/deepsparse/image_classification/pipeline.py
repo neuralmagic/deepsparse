@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import logging
-import warnings
 from typing import Dict, Optional, Tuple, Union
 
 from deepsparse.image_classification.postprocess_operator import (

@@ -252,7 +252,7 @@ class Pipeline(Operator):
                     "Pipeline was not created for the given task. The "
                     "provided task should be registered using the OperatorRegistry"
                 )
-        except Exception as e:
+        except Exception:
             from deepsparse.legacy import Pipeline
 
             pipeline = Pipeline.create(task=task, **kwargs)

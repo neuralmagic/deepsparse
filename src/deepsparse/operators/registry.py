@@ -74,6 +74,6 @@ class OperatorRegistry(RegistryMixin):
         # step needed to import relevant files required to load the operator
         try:
             SupportedTasks.check_register_task(task, tasks)
-        except:
+        except Exception:
             raise
         return get_from_registry(Operator, task)
