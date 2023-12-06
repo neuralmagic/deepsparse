@@ -26,7 +26,7 @@ import numpy
 import transformers
 from transformers.models.auto import AutoTokenizer
 
-from deepsparse import Bucketable, Pipeline
+from deepsparse.legacy import Bucketable, Pipeline
 from deepsparse.transformers.helpers import (
     get_deployment_path,
     overwrite_transformer_onnx_model_inputs,

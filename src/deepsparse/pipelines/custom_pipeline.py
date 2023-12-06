@@ -18,7 +18,7 @@ from typing import Any, Callable, Dict, List, Optional, Tuple, Type, Union
 import numpy
 from pydantic import BaseModel
 
-from deepsparse.pipeline import Pipeline
+from deepsparse.legacy.pipeline import Pipeline
 from deepsparse.utils.onnx import model_to_path
 
 

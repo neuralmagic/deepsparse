@@ -19,7 +19,11 @@ from src.deepsparse.evaluation.integrations import (  # noqa: F401
 )
 from src.deepsparse.evaluation.registry import EvaluationRegistry
 from src.deepsparse.evaluation.results import Result
-from src.deepsparse.pipeline import DEEPSPARSE_ENGINE, ORT_ENGINE, TORCHSCRIPT_ENGINE
+from src.deepsparse.operators.engine_operator import (
+    DEEPSPARSE_ENGINE,
+    ORT_ENGINE,
+    TORCHSCRIPT_ENGINE,
+)
 
 
 __all__ = ["evaluate"]

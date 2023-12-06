@@ -18,7 +18,7 @@ from typing import Dict, List, Union
 import numpy
 from pydantic import BaseModel, Field
 
-from deepsparse.v2.operators import Operator
+from deepsparse.operators import Operator
 
 
 class ImageClassificationOutput(BaseModel):
