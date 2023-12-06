@@ -115,7 +115,7 @@ class Operator(ABC):
         """
         try:
             operator_constructor = OperatorRegistry.get_task_constructor(task)
-        except:
+        except Exception:
             raise
         return operator_constructor(**kwargs)
 

@@ -173,7 +173,8 @@ class SupportedTasks:
             import deepsparse.pipelines.custom_pipeline  # noqa: F401
 
         elif cls.is_text_generation(task):
-            import deepsparse.legacy.transformers.pipelines.text_generation  # noqa: F401
+            # noqa: F401
+            import deepsparse.legacy.transformers.pipelines.text_generation
 
         elif cls.is_chat(task):
             import deepsparse.transformers.pipelines.chat  # noqa: F401

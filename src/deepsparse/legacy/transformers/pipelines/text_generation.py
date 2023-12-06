@@ -18,22 +18,11 @@ import logging
 import os
 import pathlib
 import warnings
-from typing import (
-    Any,
-    Callable,
-    Dict,
-    Generator,
-    List,
-    Optional,
-    Sequence,
-    Tuple,
-    Type,
-    Union,
-)
+from typing import Any, Dict, Generator, List, Optional, Sequence, Tuple, Type, Union
 
 import numpy
 import onnx
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from transformers import GenerationConfig
 
 from deepsparse.legacy import Pipeline
