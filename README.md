@@ -58,7 +58,7 @@ Neural Magic is excited to announce initial support for performant LLM inference
 
 Install (requires Linux):
 ```bash
-pip install -U deepsparse-nightly[llm]
+pip install -U deepsparse[llm]
 ```
 
 Run inference:
