@@ -77,7 +77,11 @@ from src.deepsparse.evaluation.integrations import (  # noqa: F401
 )
 from src.deepsparse.evaluation.results import Result, save_evaluations
 from src.deepsparse.evaluation.utils import args_to_dict, get_save_path
-from src.deepsparse.pipeline import DEEPSPARSE_ENGINE, ORT_ENGINE, TORCHSCRIPT_ENGINE
+from src.deepsparse.operators.engine_operator import (
+    DEEPSPARSE_ENGINE,
+    ORT_ENGINE,
+    TORCHSCRIPT_ENGINE,
+)
 
 
 _LOGGER = logging.getLogger(__name__)

@@ -23,8 +23,8 @@ from deepsparse.image_classification.constants import (
     IMAGENET_RGB_MEANS,
     IMAGENET_RGB_STDS,
 )
+from deepsparse.operators import Operator
 from deepsparse.pipelines.computer_vision import ComputerVisionSchema
-from deepsparse.v2.operators import Operator
 
 
 class ImageClassificationInput(ComputerVisionSchema):

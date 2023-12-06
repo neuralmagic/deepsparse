@@ -19,7 +19,7 @@ from typing import Callable, List, Type, Union
 import numpy
 
 import torch
-from deepsparse import Pipeline
+from deepsparse.legacy import Pipeline
 from deepsparse.yolo import YOLOOutput as YOLODetOutput
 from deepsparse.yolo import YOLOPipeline
 from deepsparse.yolov8.schemas import YOLOSegOutput

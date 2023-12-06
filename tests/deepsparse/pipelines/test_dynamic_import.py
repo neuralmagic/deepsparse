@@ -15,7 +15,9 @@
 import os
 
 import pytest
-from deepsparse.pipeline import _REGISTERED_PIPELINES, Pipeline
+
+# TODO: update to test the new Pipeline
+from deepsparse.legacy.pipeline import _REGISTERED_PIPELINES, Pipeline
 from deepsparse.tasks import _split_dir_and_name, dynamic_import_task
 
 

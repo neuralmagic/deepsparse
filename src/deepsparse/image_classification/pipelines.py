@@ -31,7 +31,7 @@ from deepsparse.image_classification.schemas import (
     ImageClassificationInput,
     ImageClassificationOutput,
 )
-from deepsparse.pipeline import Pipeline
+from deepsparse.legacy.pipeline import Pipeline
 from deepsparse.utils import model_to_path
 
 

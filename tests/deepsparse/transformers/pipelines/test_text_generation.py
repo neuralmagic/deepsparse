@@ -17,7 +17,9 @@ import inspect
 import numpy
 
 import pytest
-from deepsparse import Pipeline
+
+# TODO: update to use/be compliant with new pipeline
+from deepsparse.legacy.pipeline import Pipeline
 from deepsparse.transformers.utils.helpers import prepends_bos_token
 
 
@@ -26,7 +28,7 @@ def pipeline():
     return Pipeline.create(
         task="text_generation",
         model_path="hf:mgoin/TinyStories-1M-deepsparse",
-        engine_type="onnxruntime",
+        engine_kwargs={"engine_type": "onnxruntime"},
     )
 
 

@@ -13,8 +13,10 @@
 # limitations under the License.
 
 
-from deepsparse import Pipeline
-from deepsparse.transformers.pipelines.text_generation import TextGenerationPipeline
+from deepsparse.legacy import Pipeline
+from deepsparse.legacy.transformers.pipelines.text_generation import (
+    TextGenerationPipeline,
+)
 
 
 __all__ = ["CodeGenerationPipeline"]

@@ -19,7 +19,7 @@ from numpy import linalg as lingalg
 from pydantic import BaseModel, Field
 
 from deepsparse.clip import CLIPTextInput, CLIPVisualInput
-from deepsparse.pipeline import BasePipeline, Pipeline
+from deepsparse.legacy.pipeline import BasePipeline, Pipeline
 from scipy.special import softmax
 
 

@@ -16,16 +16,16 @@ import logging
 import warnings
 from typing import Dict, Optional, Tuple, Union
 
+from deepsparse.operators.engine_operator import EngineOperator
+from deepsparse.pipeline import Pipeline
+from deepsparse.routers.router import LinearRouter
+from deepsparse.schedulers.scheduler import OperatorScheduler
 from deepsparse.v2.image_classification.postprocess_operator import (
     ImageClassificationPostProcess,
 )
 from deepsparse.v2.image_classification.preprocess_operator import (
     ImageClassificationPreProcess,
 )
-from deepsparse.v2.operators.engine_operator import EngineOperator
-from deepsparse.v2.pipeline import Pipeline
-from deepsparse.v2.routers.router import LinearRouter
-from deepsparse.v2.schedulers.scheduler import OperatorScheduler
 
 
 _LOGGER = logging.getLogger(__name__)

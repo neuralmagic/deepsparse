@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import pytest
-from deepsparse import BucketingPipeline, Pipeline
+from deepsparse.legacy import BucketingPipeline, Pipeline
 from tests.utils import mock_engine
 
 
