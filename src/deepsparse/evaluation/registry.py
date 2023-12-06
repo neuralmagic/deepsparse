@@ -11,30 +11,24 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""
+Implementation of a registry for evaluation functions
+"""
 
-from dataclasses import dataclass
-from typing import Any, List
+from typing import Any, Callable
 
-from deepsparse.v2.utils import InferenceState
-
-
-__all__ = ["SubGraph"]
+from sparsezoo.utils.registry import RegistryMixin
 
 
-@dataclass
-class SubGraph:
+__all__ = ["EvaluationRegistry"]
+
+
+class EvaluationRegistry(RegistryMixin):
     """
-    Helper dataclass to store information about each running sub graph.
+    Extends the RegistryMixin to enable registering and loading of evaluation
+    functions.
     """
 
-    step: int
-    inf: InferenceState
-    end: List[str]
-    output: Any = None
-    completed: bool = False
-
-    def parse_output(self, operator_output: Any):
-        if isinstance(operator_output, tuple):
-            operator_output, state_update = operator_output[0], operator_output[-1]
-            self.inf.update_state(state_update)
-        return operator_output
+    @classmethod
+    def load_from_registry(cls, name: str) -> Callable[..., Any]:
+        return cls.get_value_from_registry(name=name)

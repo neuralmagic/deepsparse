@@ -34,6 +34,10 @@ def test_image_classification(get_images):
         "zoo:cv/classification/resnet_v1-50/pytorch/sparseml/imagenet/pruned95-none"
     )
     pipeline = ImageClassificationPipeline(model_path=model_path)
-    output = pipeline(ImageClassificationInput(images=get_images))
-    assert output.labels == [[207], [670]]
-    assert numpy.allclose(output.scores, [[21.85], [17.33]], atol=0.01)
+    ground_truth = [[207], [670]]
+    scores = [[21.85], [17.33]]
+
+    for i in range(len(get_images)):
+        output = pipeline(ImageClassificationInput(images=get_images[i]))
+        assert output.labels == ground_truth[i]
+        assert numpy.allclose(output.scores, scores[i], atol=0.01)

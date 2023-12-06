@@ -412,7 +412,7 @@ def pad_to_fixed_length(
 ) -> numpy.ndarray:
     """
     Pads the array to a fixed length along the given axis.
-    The padding is done on the right side of the array.
+    The padding is done on the left side of the array.
 
     :param array: array to pad
     :param max_len: maximum length to pad to
@@ -424,7 +424,7 @@ def pad_to_fixed_length(
     padding = [(0, 0)] * len(array.shape)
     # for the specified axis, pad to the max length
     # (from the right side of the array)
-    padding[axis] = (0, max_len - array.shape[axis])
+    padding[axis] = (max_len - array.shape[axis], 0)
     return numpy.pad(array, padding, mode="constant", constant_values=value)
 
 

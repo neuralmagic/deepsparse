@@ -222,7 +222,7 @@ For more general questions about Neural Magic, [complete this form.](http://neur
 
 ### License
 
-- **DeepSparse Community** is licensed under the [Neural Magic DeepSparse Community License.](https://github.com/neuralmagic/deepsparse/blob/main/LICENSE-NEURALMAGIC)
+- **DeepSparse Community** is free to use and is licensed under the [Neural Magic DeepSparse Community License.](https://github.com/neuralmagic/deepsparse/blob/main/LICENSE-NEURALMAGIC)
 Some source code, example files, and scripts included in the DeepSparse GitHub repository or directory are licensed under the [Apache License Version 2.0](https://github.com/neuralmagic/deepsparse/blob/main/LICENSE) as noted.
 
 - **DeepSparse Enterprise** requires a Trial License or [can be fully licensed](https://neuralmagic.com/legal/master-software-license-and-service-agreement/) for production, commercial applications.
@@ -283,3 +283,8 @@ Find this project useful in your research or other communications? Please consid
   bibsource = {dblp computer science bibliography, https://dblp.org}
 }
 ```
+# All Thanks To Our Contributors
+
+<a href="https://github.com/neuralmagic/deepsparse/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=neuralmagic/deepsparse" />
+</a>

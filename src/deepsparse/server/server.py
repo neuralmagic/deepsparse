@@ -28,14 +28,12 @@ from deepsparse.engine import Context
 from deepsparse.pipeline import Pipeline
 from deepsparse.server.config import ServerConfig, SystemLoggingConfig
 from deepsparse.server.config_hot_reloading import start_config_watcher
-from deepsparse.server.helpers import (
-    prep_outputs_for_serialization,
-    server_logger_from_config,
-)
+from deepsparse.server.helpers import server_logger_from_config
 from deepsparse.server.system_logging import (
     SystemLoggingMiddleware,
     log_system_information,
 )
+from deepsparse.utils.data import prep_for_serialization
 from fastapi import FastAPI, Request, UploadFile
 from fastapi.exceptions import HTTPException
 from starlette.responses import RedirectResponse
@@ -252,7 +250,7 @@ class Server:
             log_system_information(
                 server_logger=server_logger, system_logging_config=system_logging_config
             )
-        return prep_outputs_for_serialization(pipeline_outputs)
+        return prep_for_serialization(pipeline_outputs)
 
     @staticmethod
     def predict_from_files(
@@ -269,4 +267,4 @@ class Server:
             log_system_information(
                 server_logger=server_logger, system_logging_config=system_logging_config
             )
-        return prep_outputs_for_serialization(pipeline_outputs)
+        return prep_for_serialization(pipeline_outputs)

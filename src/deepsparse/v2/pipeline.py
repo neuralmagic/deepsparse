@@ -12,9 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
+import asyncio
 import copy
-from concurrent.futures import Future
 from typing import Any, Dict, List, Optional, Union
 
 from deepsparse.v2.operators import EngineOperator, Operator
@@ -56,7 +55,7 @@ class Pipeline(Operator):
         router: Router,
         schedulers: List[OperatorScheduler],
         continuous_batching_scheduler: Optional[ContinuousBatchingScheduler] = None,
-        pipeline_state: PipelineState = None,
+        pipeline_state: Optional[PipelineState] = None,
     ):
 
         self.ops = ops
@@ -69,10 +68,7 @@ class Pipeline(Operator):
         self._scheduler_group = SchedulerGroup(self.schedulers)
 
     def _run_next(
-        self,
-        inp: Any,
-        inference_state: InferenceState,
-        next_step: str,
+        self, inp: Any, inference_state: InferenceState, next_step: str, **kwargs
     ):
         if (
             isinstance(self.ops[next_step], EngineOperator)
@@ -89,10 +85,14 @@ class Pipeline(Operator):
             inp=inp,
             pipeline_state=self.pipeline_state,
             inference_state=inference_state,
+            **kwargs,
         )
 
-    def _run_sub_graphs(
-        self, sub_graph_inputs: List[Any], sub_graphs: List[SubGraph]
+    async def _run_sub_graphs(
+        self,
+        sub_graph_inputs: List[Any],
+        sub_graphs: List[SubGraph],
+        loop: Optional[asyncio.AbstractEventLoop] = None,
     ) -> List[Any]:
         """
         Run a list of sub_graphs asynchronously. Polls to identify the sub graph that is
@@ -112,14 +112,16 @@ class Pipeline(Operator):
         """
         for i in range(len(sub_graphs)):
             sub_graphs[i].output = self._run_next(
-                sub_graph_inputs[i], sub_graphs[i].inf, sub_graphs[i].step
+                sub_graph_inputs[i], sub_graphs[i].inf, sub_graphs[i].step, loop=loop
             )
 
         # Execute all sub graphs until all graphs have been completed.
-        while True:
+        while any(not x.completed for x in sub_graphs):
             for sub_graph in sub_graphs:
-                if isinstance(sub_graph.output, Future) and sub_graph.output.done():
+                if not sub_graph.completed:
                     # get the result for the completed operator; resolve its output
+                    if isinstance(sub_graph.output, asyncio.Future):
+                        await sub_graph.output
                     operator_output = sub_graph.output.result()
                     operator_output = sub_graph.parse_output(operator_output)
 
@@ -136,28 +138,86 @@ class Pipeline(Operator):
                     # update the output value
                     if next_step in sub_graph.end:
                         sub_graph.output = operator_output
+                        sub_graph.completed = True
                     else:
                         sub_graph.output = self._run_next(
                             inp=operator_output,
                             inference_state=sub_graph.inf,
                             next_step=next_step,
+                            loop=loop,
                         )
-                    break
-
-            # keep running until all sub graphs have completed.
-            if not any(isinstance(x.output, Future) for x in sub_graphs):
-                break
 
         return [x.output for x in sub_graphs]
 
-    def _apply_split(self, inp: Any, inference_state: InferenceState):
+    async def run_async(self, *args, inference_state: InferenceState, **kwargs):
         """
-        Split inputs using the pipeline's expand_inputs function. Inputs are split
-        into a batch size of one when a SPLIT_ROUTE node is found in a given pipeline's
-        provided router. The split batches are run asynchronously and then joined when
-        a JOIN_ROUTE node is found, using the pipeline's condense_inputs function.
-        """
+        Run through the operators using the provided router and scheduler.
+        The input to a given operator is the output of the previous operator.
 
+        :param inference_state: inference_state for the pipeline.
+        :param pipeline_state: pipeline_state for the pipeline. The values in the state
+            are created during pipeline creation and are read-only during inference.
+        """
+        loop = asyncio.get_running_loop()
+
+        next_step = self.router.START_ROUTE
+        operator_output = None
+
+        while next_step != self.router.END_ROUTE:
+            # Either a dictionary key or valid index
+
+            if next_step == self.router.SPLIT_ROUTE:
+                if operator_output is None:
+                    raise ValueError(
+                        f"{self.router.SPLIT_ROUTE} should appear after "
+                        f"{self.ROUTER.START_ROUTE}"
+                    )
+
+                operator_output = await self._apply_split(
+                    operator_output, inference_state, loop=loop
+                )
+                next_step = self.router.route[self.router.JOIN_ROUTE]
+                if next_step == self.router.END_ROUTE:
+                    return operator_output
+
+            if next_step == self.router.START_ROUTE:
+                outputs = run_func(
+                    *args,
+                    func=self._scheduler_group.submit,
+                    operator=self.ops[next_step],
+                    inference_state=inference_state,
+                    pipeline_state=self.pipeline_state,
+                    loop=loop,
+                    **kwargs,
+                )
+                await outputs
+                operator_output = outputs.result()
+
+            else:
+                outputs = self._run_next(
+                    inp=operator_output,
+                    next_step=next_step,
+                    inference_state=inference_state,
+                    loop=loop,
+                )
+                await outputs
+                operator_output = outputs.result()
+
+            if isinstance(operator_output, tuple):
+                state_update = operator_output[-1]
+                operator_output = operator_output[0]
+
+            next_step = self.router.next(next_step, self.ops, operator_output)
+            if state_update:
+                inference_state.update_state(state_update)
+        return operator_output
+
+    async def _apply_split(
+        self,
+        inp: Any,
+        inference_state: InferenceState,
+        loop: Optional[asyncio.AbstractEventLoop] = None,
+    ):
         batches, orig_batch_size = self.expand_inputs(inp, 1)
 
         # Create a list of SplitRoutes, per batch size 1
@@ -173,10 +233,25 @@ class Pipeline(Operator):
             for i in range(len(batches))
         ]
 
-        outputs = self._run_sub_graphs(
-            sub_graph_inputs=batches, sub_graphs=split_graphs
+        outputs = await self._run_sub_graphs(
+            sub_graph_inputs=batches, sub_graphs=split_graphs, loop=loop
         )
         return self.condense_inputs(outputs)
+
+    @staticmethod
+    def create(task: str, **kwargs) -> "Pipeline":
+        """
+        :param task: Pipeline task
+        :param kwargs: extra task specific kwargs to be passed to the Pipeline
+        :return: pipeline object initialized for the given task
+        """
+        pipeline = Operator.create(task=task, **kwargs)
+        if not isinstance(pipeline, Pipeline):
+            raise RuntimeError(
+                "Pipeline was not created for the given task. The "
+                "provided task should be registered using the OperatorRegistry"
+            )
+        return pipeline
 
     def run(
         self,
@@ -202,10 +277,12 @@ class Pipeline(Operator):
                 if operator_output is None:
                     raise ValueError(
                         f"{self.router.SPLIT_ROUTE} should appear after "
-                        f"{self.ROUTER.START_ROUTE}"
+                        f"{self.router.START_ROUTE}"
                     )
 
-                operator_output = self._apply_split(operator_output, inference_state)
+                operator_output = asyncio.run(
+                    self._apply_split(operator_output, inference_state)
+                )
                 next_step = self.router.route[self.router.JOIN_ROUTE]
                 if next_step == self.router.END_ROUTE:
                     return operator_output
@@ -237,8 +314,10 @@ class Pipeline(Operator):
                     end=[self.router.SPLIT_ROUTE, self.router.END_ROUTE],
                 )
 
-                operator_output = self._run_sub_graphs(
-                    sub_graph_inputs=[operator_output], sub_graphs=[graph]
+                operator_output = asyncio.run(
+                    self._run_sub_graphs(
+                        sub_graph_inputs=[operator_output], sub_graphs=[graph]
+                    )
                 )[0]
 
                 inference_state = graph.inf
