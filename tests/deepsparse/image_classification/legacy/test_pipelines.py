@@ -16,11 +16,11 @@
 import numpy
 
 import pytest
-from deepsparse import Pipeline
 from deepsparse.image_classification.constants import (
     IMAGENET_RGB_MEANS,
     IMAGENET_RGB_STDS,
 )
+from deepsparse.legacy import Pipeline
 from sparsezoo import Model
 from sparsezoo.utils import load_numpy_list
 from tests.utils import mock_engine

@@ -86,6 +86,13 @@ class SupportedTasks:
         bloom=AliasedTask("bloom", []),
     )
 
+    image_classification = namedtuple("image_classification", ["image_classification"])(
+        image_classification=AliasedTask(
+            "image_classification",
+            ["image_classification"],
+        ),
+    )
+
     all_task_categories = [text_generation]
 
     @classmethod
@@ -99,6 +106,11 @@ class SupportedTasks:
         """
         if cls.is_text_generation(task):
             import deepsparse.transformers.pipelines.text_generation  # noqa: F401
+
+        elif cls.is_image_classification(task):
+            # trigger image classification pipelines to
+            # register with Pipeline.register
+            import deepsparse.image_classification.pipeline  # noqa: F401
 
         all_tasks = set(cls.task_names() + (list(extra_tasks or [])))
         if task not in all_tasks:
@@ -118,6 +130,15 @@ class SupportedTasks:
             text_generation_task.matches(task)
             for text_generation_task in cls.text_generation
         )
+
+    @classmethod
+    def is_image_classification(cls, task: str) -> bool:
+        """
+        :param task: the name of the task to check whether it is an image
+            classification task
+        :return: True if it is an image classification task, False otherwise
+        """
+        return any([ic_task.matches(task) for ic_task in cls.image_classification])
 
     @classmethod
     def task_names(cls):

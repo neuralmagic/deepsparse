@@ -16,16 +16,17 @@ import logging
 import warnings
 from typing import Dict, Optional, Tuple, Union
 
+from deepsparse.image_classification.postprocess_operator import (
+    ImageClassificationPostProcess,
+)
+from deepsparse.image_classification.preprocess_operator import (
+    ImageClassificationPreProcess,
+)
 from deepsparse.operators.engine_operator import EngineOperator
+from deepsparse.operators.registry import OperatorRegistry
 from deepsparse.pipeline import Pipeline
 from deepsparse.routers.router import LinearRouter
 from deepsparse.schedulers.scheduler import OperatorScheduler
-from deepsparse.v2.image_classification.postprocess_operator import (
-    ImageClassificationPostProcess,
-)
-from deepsparse.v2.image_classification.preprocess_operator import (
-    ImageClassificationPreProcess,
-)
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -33,6 +34,7 @@ _LOGGER = logging.getLogger(__name__)
 __all__ = ["ImageClassificationPipeline"]
 
 
+@OperatorRegistry.register(name="image_classification")
 class ImageClassificationPipeline(Pipeline):
     def __init__(
         self,
@@ -46,7 +48,8 @@ class ImageClassificationPipeline(Pipeline):
             engine_kwargs = {}
             engine_kwargs["model_path"] = model_path
         elif engine_kwargs.get("model_path") != model_path:
-            warnings.warn(f"Updating engine_kwargs to include {model_path}")
+            _LOGGER.warn(f"Updating engine_kwargs to include {model_path}")
+            engine_kwargs["model_path"] = model_path
 
         engine = EngineOperator(**engine_kwargs)
         preproces = ImageClassificationPreProcess(
