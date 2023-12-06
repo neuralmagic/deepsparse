@@ -27,10 +27,6 @@ Options:
                                   on Imagenette  [default: zoo:cv/classificati
                                   on/resnet_v1-50/pytorch/sparseml/imagenette/
                                   base-none]
-  --batch-size, --batch_size INTEGER
-                                  Test batch size, must divide the dataset
-                                  evenly, else last batch will be dropped
-                                  [default: 1]
   --image-size, --image_size INTEGER
                                   integer size to evaluate images at (will be
                                   reshaped to square shape)  [default: 224]
@@ -112,15 +108,6 @@ def parse_json_callback(ctx, params, value: str) -> Dict:
     show_default=True,
 )
 @click.option(
-    "--batch-size",
-    "--batch_size",
-    type=int,
-    default=1,
-    show_default=True,
-    help="Test batch size, must divide the dataset evenly, else last "
-    "batch will be dropped",
-)
-@click.option(
     "--image-size",
     "--image_size",
     type=int,
@@ -155,7 +142,6 @@ def parse_json_callback(ctx, params, value: str) -> Dict:
 def main(
     dataset_path: str,
     model_path: str,
-    batch_size: int,
     image_size: int,
     num_cores: int,
     dataset_kwargs: Dict,
@@ -206,16 +192,14 @@ def main(
 
     data_loader = DataLoader(
         dataset=dataset,
-        batch_size=batch_size,
+        batch_size=1,
         drop_last=True,
     )
 
     pipeline = Pipeline.create(
         task="image_classification",
         model_path=model_path,
-        batch_size=batch_size,
-        num_cores=num_cores,
-        engine_type=engine,
+        engine_kwargs={"engine_type": engine, "num_cores": num_cores},
     )
     print(f"engine info: {pipeline.engine}")
     correct = total = 0

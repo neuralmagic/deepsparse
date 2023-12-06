@@ -173,7 +173,7 @@ class SupportedTasks:
             import deepsparse.pipelines.custom_pipeline  # noqa: F401
 
         elif cls.is_text_generation(task):
-            import deepsparse.transformers.pipelines.text_generation  # noqa: F401
+            import deepsparse.legacy.transformers.pipelines.text_generation  # noqa: F401
 
         elif cls.is_chat(task):
             import deepsparse.transformers.pipelines.chat  # noqa: F401
@@ -188,7 +188,7 @@ class SupportedTasks:
         elif cls.is_image_classification(task):
             # trigger image classification pipelines to
             # register with Pipeline.register
-            import deepsparse.image_classification.pipelines  # noqa: F401
+            import deepsparse.legacy.image_classification.pipelines  # noqa: F401
 
         elif cls.is_yolact(task):
             # trigger yolo pipelines to register with Pipeline.register

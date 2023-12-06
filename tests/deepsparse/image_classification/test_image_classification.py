@@ -15,10 +15,8 @@
 import numpy
 
 import pytest
-from deepsparse.v2.image_classification import ImageClassificationPipeline
-from deepsparse.v2.image_classification.preprocess_operator import (
-    ImageClassificationInput,
-)
+from deepsparse.image_classification import ImageClassificationPipeline
+from deepsparse.image_classification.preprocess_operator import ImageClassificationInput
 from tests.deepsparse.pipelines.data_helpers import computer_vision
 
 

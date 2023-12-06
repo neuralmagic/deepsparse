@@ -25,9 +25,12 @@ except ImportError:
         "Please install deepsparse[image_classification] to use this pathway"
     )
 
-
 from .constants import *
-from .pipelines import *
+from .pipeline import *
+
+# flake8: noqa
+from .postprocess_operator import *
+from .preprocess_operator import *
 from .schemas import *
 
 
