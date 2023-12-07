@@ -23,7 +23,8 @@ from src.deepsparse.evaluation.results import (
     EvalSample,
     Evaluation,
     Metric,
-    save_evaluations,
+    Result,
+    save_result,
 )
 
 
@@ -56,124 +57,22 @@ def evaluations():
 
 
 @pytest.fixture()
-def evaluations_json():
-    return """[
-    {
-        "task": "task_1",
-        "dataset": {
-            "type": "type_1",
-            "name": "name_1",
-            "config": "config_1",
-            "split": "split_1"
-        },
-        "metrics": [
-            {
-                "name": "metric_name_1",
-                "value": 1.0
-            }
-        ],
-        "samples": [
-            {
-                "input": [
-                    [
-                        5
-                    ]
-                ],
-                "output": 5
-            }
-        ]
-    },
-    {
-        "task": "task_2",
-        "dataset": {
-            "type": "type_2",
-            "name": "name_2",
-            "config": "config_2",
-            "split": "split_2"
-        },
-        "metrics": [
-            {
-                "name": "metric_name_2",
-                "value": 2.0
-            },
-            {
-                "name": "metric_name_3",
-                "value": 3.0
-            }
-        ],
-        "samples": [
-            {
-                "input": [
-                    [
-                        10.0
-                    ]
-                ],
-                "output": 10.0
-            },
-            {
-                "input": [
-                    [
-                        20.0
-                    ]
-                ],
-                "output": 20.0
-            }
-        ]
-    }
-]"""  # noqa: E501
+def result(evaluations):
+    return Result(formatted=evaluations, raw="dummy_raw_evaluation")
 
 
-@pytest.fixture()
-def evaluations_yaml():
-    return """- task: task_1
-  dataset:
-    config: config_1
-    name: name_1
-    split: split_1
-    type: type_1
-  metrics:
-  - name: metric_name_1
-    value: 1.0
-  samples:
-  - input:
-    - - 5
-    output: 5
-- task: task_2
-  dataset:
-    config: config_2
-    name: name_2
-    split: split_2
-    type: type_2
-  metrics:
-  - name: metric_name_2
-    value: 2.0
-  - name: metric_name_3
-    value: 3.0
-  samples:
-  - input:
-    - - 10.0
-    output: 10.0
-  - input:
-    - - 20.0
-    output: 20.0
-"""
-
-
-def test_serialize_evaluation_json(tmp_path, evaluations, evaluations_json):
+def test_serialize_result_json(tmp_path, result):
     path_to_file = tmp_path / "result.json"
-    evaluations_serialized = save_evaluations(
-        evaluations=evaluations, save_format="json", save_path=path_to_file.as_posix()
-    )
+    save_result(result=result, save_format="json", save_path=path_to_file.as_posix())
+
     with open(path_to_file.as_posix(), "r") as f:
-        assert json.load(f)
-    assert evaluations_serialized == evaluations_json
+        reloaded_results = json.load(f)
+    assert reloaded_results == result.dict()
 
 
-def test_serialize_evaluation_yaml(tmp_path, evaluations, evaluations_yaml):
+def test_serialize_result_yaml(tmp_path, result):
     path_to_file = tmp_path / "result.yaml"
-    evaluations_serialized = save_evaluations(
-        evaluations=evaluations, save_format="yaml", save_path=path_to_file.as_posix()
-    )
+    save_result(result=result, save_format="yaml", save_path=path_to_file.as_posix())
     with open(path_to_file.as_posix(), "r") as f:
-        assert yaml.safe_load(f)
-    assert evaluations_serialized == evaluations_yaml
+        reloaded_results = yaml.safe_load(f)
+    assert reloaded_results == result.dict()
