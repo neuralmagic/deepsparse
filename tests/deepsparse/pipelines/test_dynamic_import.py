@@ -18,7 +18,7 @@ import pytest
 
 # TODO: update to test the new Pipeline
 from deepsparse.legacy.pipeline import _REGISTERED_PIPELINES, Pipeline
-from deepsparse.tasks import _split_dir_and_name, dynamic_import_task
+from deepsparse.legacy.tasks import _split_dir_and_name, dynamic_import_task
 
 
 def test_split_dir_and_name_module():
