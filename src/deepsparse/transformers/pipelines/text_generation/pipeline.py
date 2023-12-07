@@ -55,7 +55,7 @@ class TextGenerationPipeline(Pipeline):
         force_max_tokens: bool = False,
         generation_config=None,
         continuous_batch_sizes: Optional[List[int]] = None,
-        engine_kwargs: Optional[Dict] = None,
+        **engine_kwargs,
     ):
         (
             self.model_path,
@@ -144,7 +144,7 @@ class TextGenerationPipeline(Pipeline):
         continuous_batching_scheduler = None
         if continuous_batch_sizes:
             if internal_kv_cache:
-                _LOGGER.warn(
+                _LOGGER.warning(
                     "continuous_batching is not supported with internal_kv_cache"
                 )
             else:

@@ -18,14 +18,14 @@ import numpy
 from transformers import AutoTokenizer
 
 import pytest
-from deepsparse.legacy.transformers.pipelines.text_generation import (
-    GenerationDefaults,
-    TextGenerationInput,
-)
 from deepsparse.transformers.helpers import get_deployment_path
 from deepsparse.transformers.pipelines.text_generation import (
     NLEngineOperator,
     TokenGeneratorOperator,
+)
+from deepsparse.transformers.schemas.text_generation_schemas import (
+    GenerationDefaults,
+    TextGenerationInput,
 )
 from deepsparse.transformers.utils import DecoderKVCache
 from deepsparse.transformers.utils.helpers import initialize_kv_cache_state
