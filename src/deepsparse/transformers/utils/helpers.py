@@ -14,7 +14,7 @@
 import logging
 import pathlib
 import uuid
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 import numpy
 from transformers import AutoTokenizer, GenerationConfig
@@ -33,6 +33,7 @@ __all__ = [
     "override_config",
     "process_generation_config",
     "validate_session_ids",
+    "compute_engine_inputs",
     "set_generated_length",
 ]
 
@@ -79,6 +80,95 @@ def set_generated_length(
         (sequence_length, finish_reason_choices.CAPACITY)
         if sequence_length < max_tokens
         else (max_tokens, finish_reason)
+    )
+
+
+def compute_engine_inputs(onnx_input_names: str, **kwargs) -> List[numpy.ndarray]:
+    """
+    Given the names of the onnx inputs, compute the inputs
+    to the engine. The inputs will be calculating from the
+    passed kwargs. The information about the required kwargs
+    can be found in the docstring of the individual compute
+    functions.
+
+    :param onnx_input_names: The names of the onnx inputs
+    :param kwargs: The kwargs to compute the inputs from
+    :return: The computed inputs to the engine
+    """
+    engine_inputs = []
+    for input_name in onnx_input_names:
+        if input_name == "causal_mask":
+            # delay the computation of the causal mask
+            continue
+        # fetch the compute function for the
+        # given input_name
+        compute_func = _get_compute_func(input_name)
+        # compute the engine input from the kwargs
+        # and append it to the engine_inputs
+        engine_inputs.append(compute_func(**kwargs))
+
+    if "causal_mask" in onnx_input_names:
+        # compute the causal mask and append it to the engine_inputs
+        input_ids, attention_mask, *_ = engine_inputs
+        engine_inputs.append(create_causal_mask(input_ids, attention_mask))
+
+    return engine_inputs
+
+
+def _get_compute_func(input_name: str) -> Callable[..., numpy.ndarray]:
+    # given the input_name, return the appropriate compute function
+    compute_func = {
+        "input_ids": _compute_input_ids,
+        "attention_mask": _compute_attention_mask,
+        "positions": _compute_positions,
+    }.get(input_name)
+    if compute_func is None:
+        raise ValueError(
+            "Could not find compute function " f"for the input_name: {input_name}"
+        )
+    return compute_func
+
+
+def _compute_input_ids(token_batch: List[int], **kwargs) -> numpy.ndarray:
+    # convert the token_batch to a numpy array
+    return numpy.array([token_batch])
+
+
+def _compute_attention_mask(
+    sequence_length: int,
+    prompt_sequence_length: int,
+    num_total_processed_tokens: int,
+    **kwargs,
+) -> numpy.ndarray:
+    # create a fully masked attention mask with the appropriate
+    # shape (equal to the sequence_length)
+    attention_mask = numpy.zeros((1, sequence_length), dtype=numpy.int64)
+    # unmask the appropriate number of tokens, the sum of
+    # - the number of tokens already processed and cached (num_total_processed_tokens)
+    # - the number of tokens currently processed (prompt_sequence_length)
+    # the sum cannot exceed the maximum length of the attention_mask
+    num_attention_entries_to_unmask = min(
+        num_total_processed_tokens + prompt_sequence_length, sequence_length
+    )
+    # unmask the bits from the right-hand side
+    attention_mask[:, -num_attention_entries_to_unmask:] = 1
+    return attention_mask
+
+
+def _compute_positions(
+    num_total_processed_tokens: int, prompt_sequence_length: int, **kwargs
+):
+    # create the positions array with the appropriate shape
+    # positions count starts from the number of tokens already processed
+    # and ends at the number of tokens already processed + the number of tokens
+    # currently processed
+    return (
+        numpy.arange(
+            num_total_processed_tokens,
+            num_total_processed_tokens + prompt_sequence_length,
+        )
+        .reshape(1, -1)
+        .astype(numpy.int64)
     )
 
 
