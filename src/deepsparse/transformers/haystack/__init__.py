@@ -116,5 +116,5 @@ def _check_haystack_install():
 _check_haystack_install()
 
 from .nodes import *
-from .legacy.pipeline import *
+from .pipeline import *
 from .helpers import *
