@@ -75,7 +75,7 @@ from src.deepsparse.evaluation.evaluator import evaluate
 from src.deepsparse.evaluation.integrations import (  # noqa: F401
     try_import_llm_evaluation_harness,
 )
-from src.deepsparse.evaluation.results import Result, save_evaluations
+from src.deepsparse.evaluation.results import Result, save_result
 from src.deepsparse.evaluation.utils import args_to_dict, get_save_path
 from src.deepsparse.operators.engine_operator import (
     DEEPSPARSE_ENGINE,
@@ -214,7 +214,7 @@ def main(
         **integration_args,
     )
 
-    _LOGGER.info(f"Evaluation done. Results:\n{result}")
+    _LOGGER.info(f"Evaluation done. Result:\n{result.formatted}")
 
     save_path = get_save_path(
         save_path=save_path,
@@ -223,8 +223,8 @@ def main(
     )
     if save_path:
         _LOGGER.info(f"Saving the evaluation results to {save_path}")
-        save_evaluations(
-            evaluations=result.formatted,
+        save_result(
+            result=result,
             save_path=save_path,
             save_format=type_serialization,
         )
