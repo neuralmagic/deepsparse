@@ -100,14 +100,28 @@ def integration_eval(
 
     results_raw = evaluator.simple_evaluate(**evaluator_input.dict())
 
-    inputs_dict = evaluator_input.dict()
-    del inputs_dict["model"]
     results = Result(
-        raw=dict(output=results_raw, input=inputs_dict),
+        raw=dict(output=results_raw, input=filter_evaluator_input(evaluator_input)),
         formatted=format_raw_results(results_raw),
     )
 
     return results
+
+
+def filter_evaluator_input(
+    evaluator_input: "EvaluatorInputSchema",
+) -> Dict[str, Any]:  # noqa: F821
+    """
+    Filter the evaluator input to remove the model field.
+    The model field is a complex object that cannot be serialized.
+
+    :param evaluator_input: the evaluator input to filter
+    :return: the filtered evaluator input
+    """
+    evaluator = evaluator_input.dict()
+    del evaluator["model"]
+
+    return evaluator
 
 
 def format_raw_results(results: Dict[str, Any]) -> List[Evaluation]:
