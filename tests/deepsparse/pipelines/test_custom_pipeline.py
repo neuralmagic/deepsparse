@@ -52,6 +52,9 @@ def model_path():
     ],
 )
 def test_custom_pipeline_task_names(task_name):
+    # TODO: update test to be compatible with new pipeline
+    from deepsparse.legacy.pipeline import Pipeline
+
     cls = Pipeline._get_task_constructor(task_name)
     assert cls == CustomTaskPipeline
 
