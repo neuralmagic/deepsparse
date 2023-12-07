@@ -27,7 +27,8 @@ from typing import Optional
 import click
 import yaml
 
-from deepsparse.pipeline import SupportedTasks
+# TODO: update to use new tasks once server support lands
+from deepsparse.legacy.tasks import SupportedTasks
 from deepsparse.server.config import EndpointConfig, ServerConfig
 from deepsparse.server.deepsparse_server import DeepsparseServer
 from deepsparse.server.openai_server import OpenAIServer
