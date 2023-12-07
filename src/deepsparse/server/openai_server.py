@@ -97,17 +97,14 @@ class OpenAIServer(Server):
             else:
                 # else case assums a FastChat-compliant dictionary
                 # Fetch a model-specific template from FastChat
-                _LOGGER.warn(
+                _LOGGER.warning(
                     "A dictionary message was found. This dictionary must "
                     "be fastchat compliant."
                 )
                 try:
                     from fastchat.model.model_adapter import get_conversation_template
-                except ImportError:
-                    raise ImportError(
-                        "fastchat was not found. To run chat completion"
-                        "with dictionary messages, run `pip install fschat`"
-                    )
+                except ImportError as e:
+                    return create_error_response(HTTPStatus.FAILED_DEPENDENCY, str(e))
 
                 conv = get_conversation_template(request.model)
                 message = request.messages
@@ -120,7 +117,9 @@ class OpenAIServer(Server):
                 elif msg_role == "assistant":
                     conv.append_message(conv.roles[1], message["content"])
                 else:
-                    raise ValueError(f"Unknown role: {msg_role}")
+                    return create_error_response(
+                        HTTPStatus.BAD_REQUEST, "Message role not recognized"
+                    )
 
                 # blank message to start generation
                 conv.append_message(conv.roles[1], None)
