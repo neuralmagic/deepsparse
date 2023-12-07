@@ -130,7 +130,9 @@ class NLEngineOperator(EngineOperator):
         self.internal_kv_cache = internal_kv_cache
         self.model_path = kwargs.get("model_path")
         (onnx_file_path, additional_outputs) = self.override_model_inputs(
-            self.model_path, batch_size=1, return_additional_outputs=True
+            self.model_path,
+            batch_size=kwargs.get("batch_size", 1),
+            return_additional_outputs=True,
         )
         output_indices_to_be_cached, kv_cache_data_type, = additional_outputs.get(
             "output_indices_to_be_cached"

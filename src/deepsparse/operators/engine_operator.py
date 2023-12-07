@@ -94,6 +94,7 @@ class EngineOperator(Operator):
     def __init__(
         self,
         model_path: str,
+        batch_size: int = 1,
         engine_type: str = DEEPSPARSE_ENGINE,
         num_cores: int = None,
         num_streams: int = None,
@@ -104,7 +105,7 @@ class EngineOperator(Operator):
     ):
         self.model_path = model_to_path(model_path)
         self.engine_context = engine_context
-        self._batch_size = 1
+        self._batch_size = batch_size
 
         if self.engine_context is not None:
             num_cores = num_cores or self.engine_context.num_cores
