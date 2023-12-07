@@ -46,11 +46,9 @@ import pytest
 # NOTE: this tests the legacy text generation pipeline. integration tests exist
 # for the new pipeline under v2
 from deepsparse.legacy import Pipeline
-from deepsparse.legacy.transformers.pipelines.text_generation import (
-    TextGenerationOutput,
-)
+from deepsparse.transformers.schemas.text_generation_schemas import TextGenerationOutput
 from sparsezoo import Model
-from tests.deepsparse.transformers.pipelines.integration_tests.helpers import (
+from tests.deepsparse.transformers.pipelines.legacy.integration_tests.helpers import (
     TorchGroundTruthSource,
     parse_params,
     validate_internal_kv_cache,
@@ -58,7 +56,9 @@ from tests.deepsparse.transformers.pipelines.integration_tests.helpers import (
 )
 
 
-CONFIGS_DIRECTORY = "tests/deepsparse/transformers/pipelines/integration_tests/configs"
+CONFIGS_DIRECTORY = (
+    "tests/deepsparse/transformers/pipelines/legacy/integration_tests/configs"
+)
 
 
 @pytest.fixture()

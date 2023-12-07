@@ -137,7 +137,7 @@ class TestsIntegrationLLMsPipelines:
 
         pipeline = self.get_pipeline(
             prompt_sequence_length=1,
-            engine_kwargs={"engine_type": "onnxruntime"},
+            engine_type="onnxruntime",
         )
         output = pipeline(
             prompt=self.prompt,
@@ -165,7 +165,7 @@ class TestsIntegrationLLMsPipelines:
                 "Cannot run ORT pipeline with the internal deepsparse cache enabled."
             )
         pipeline = self.get_pipeline(
-            engine_kwargs={"engine_type": "onnxruntime"},
+            engine_type="onnxruntime",
         )
         output = pipeline(
             prompt=self.prompt,
@@ -246,7 +246,7 @@ class TestsIntegrationLLMsPipelines:
     def _test_inference_no_kv_cache(self, engine_type):
         model_path_no_cache = self._get_model_path_no_cache()
         pipeline = self.get_pipeline(
-            model_path=model_path_no_cache, engine_kwargs={"engine_type": engine_type}
+            model_path=model_path_no_cache, engine_type=engine_type
         )
         assert not pipeline.cache_support_enabled, (
             "This pipeline test inference using non-kv cache "

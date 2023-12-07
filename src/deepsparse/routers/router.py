@@ -83,7 +83,7 @@ class LinearRouter(Router):
 
     def __init__(self, end_route: int, start_route: int = 0):
         super().__init__(end_route=end_route, start_route=start_route)
-        _LOGGER.warn("SPLIT and JOIN are not yet supported for the LinearRouter.")
+        _LOGGER.warning("SPLIT and JOIN are not yet supported for the LinearRouter.")
 
     def next(
         self, past: int, ops: Optional[List[Operator]] = None, inp: Optional[Any] = None

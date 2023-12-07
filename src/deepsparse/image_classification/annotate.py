@@ -210,7 +210,8 @@ def main(
     cv_pipeline = Pipeline.create(
         task="image_classification",
         model_path=model_filepath,
-        engine_kwargs={"engine_type": engine, "num_cores": num_cores},
+        engine_type=engine,
+        num_cores=num_cores,
         top_k=top_k,
         class_names={idx: label for idx, label in enumerate(IMAGENET_LABELS)},
     )

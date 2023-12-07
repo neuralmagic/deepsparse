@@ -199,9 +199,9 @@ def main(
     pipeline = Pipeline.create(
         task="image_classification",
         model_path=model_path,
-        engine_kwargs={"engine_type": engine, "num_cores": num_cores},
+        engine_type=engine,
+        num_cores=num_cores,
     )
-    print(f"engine info: {pipeline.engine}")
     correct = total = 0
     progress_bar = tqdm(data_loader)
 

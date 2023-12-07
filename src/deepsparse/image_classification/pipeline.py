@@ -38,16 +38,17 @@ class ImageClassificationPipeline(Pipeline):
     def __init__(
         self,
         model_path: str,
-        engine_kwargs: Optional[Dict] = None,
         class_names: Union[None, str, Dict[str, str]] = None,
         image_size: Optional[Tuple[int]] = None,
         top_k: int = 1,
+        **engine_kwargs,
     ):
+
         if not engine_kwargs:
             engine_kwargs = {}
             engine_kwargs["model_path"] = model_path
         elif engine_kwargs.get("model_path") != model_path:
-            _LOGGER.warn(f"Updating engine_kwargs to include {model_path}")
+            _LOGGER.warning(f"Updating engine_kwargs to include {model_path}")
             engine_kwargs["model_path"] = model_path
 
         engine = EngineOperator(**engine_kwargs)
