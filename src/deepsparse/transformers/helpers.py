@@ -17,14 +17,16 @@ Helper functions for working with ONNX exports of transformer models and deepspa
 """
 
 
+import logging
 import os
 import re
 from pathlib import Path
 from tempfile import NamedTemporaryFile
-from typing import List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy
 import onnx
+import transformers
 from onnx import ModelProto
 
 from deepsparse.log import get_main_logger
@@ -38,6 +40,7 @@ from sparsezoo.utils import save_onnx
 
 __all__ = [
     "get_deployment_path",
+    "setup_transformers_pipeline",
     "overwrite_transformer_onnx_model_inputs",
     "fix_numpy_types",
     "get_transformer_layer_init_names",
@@ -45,6 +48,82 @@ __all__ = [
 ]
 
 _LOGGER = get_main_logger()
+
+
+def setup_transformers_pipeline(
+    model_path: str,
+    sequence_length: int,
+    tokenizer_padding_side: str = "left",
+    engine_kwargs: Optional[Dict] = None,
+) -> Tuple[
+    str, transformers.PretrainedConfig, transformers.PreTrainedTokenizer, Dict[str, Any]
+]:
+    """
+    A helper function that sets up the model path, config, tokenizer,
+    and engine kwargs for a transformers model.
+    :param model_path: The path to the model to load
+    :param sequence_length: The sequence length to use for the model
+    :param tokenizer_padding_side: The side to pad on for the tokenizer,
+        either "left" or "right"
+    :param engine_kwargs: The kwargs to pass to the engine
+    :return The model path, config, tokenizer, and engine kwargs
+    """
+    model_path, config, tokenizer = fetch_onnx_file_path(model_path, sequence_length)
+
+    tokenizer.padding_side = tokenizer_padding_side
+    if not tokenizer.pad_token:
+        tokenizer.pad_token = tokenizer.eos_token
+
+    engine_kwargs = engine_kwargs or {}
+    if engine_kwargs.get("model_path"):
+        raise ValueError(
+            "The engine kwargs already specify "
+            f"a model path: {engine_kwargs['model_path']}, "
+            f"but a model path was also provided: {model_path}. "
+            "Please only provide one."
+        )
+    engine_kwargs["model_path"] = model_path
+    return model_path, config, tokenizer, engine_kwargs
+
+
+def fetch_onnx_file_path(
+    model_path: str,
+    sequence_length: int,
+    task: Optional[str] = None,
+) -> Tuple[str, transformers.PretrainedConfig, transformers.PreTrainedTokenizer]:
+    """
+    Parses ONNX model from the `model_path` provided. It additionally
+    creates config and tokenizer objects from the `deployment path`,
+    derived from the `model_path` provided.
+    :param model_path: path to the model to be parsed
+    :param sequence_length: maximum sequence length of the model
+    :return: file path to the processed ONNX file for the engine to compile
+    """
+    deployment_path, onnx_path = get_deployment_path(model_path)
+
+    hf_logger = logging.getLogger("transformers")
+    hf_logger_level = hf_logger.level
+    hf_logger.setLevel(logging.ERROR)
+
+    config = transformers.PretrainedConfig.from_pretrained(
+        deployment_path, finetuning_task=task
+    )
+    hf_logger.setLevel(hf_logger_level)
+
+    trust_remote_code = False
+    tokenizer = transformers.AutoTokenizer.from_pretrained(
+        deployment_path,
+        trust_remote_code=trust_remote_code,
+        model_max_length=sequence_length,
+    )
+
+    if not config or not tokenizer:
+        raise RuntimeError(
+            "Invalid config or tokenizer provided. Please provide "
+            "paths to the files or ensure they exist in the `model_path` provided. "
+            "See `tokenizer` and `config` arguments for details."
+        )
+    return onnx_path, config, tokenizer
 
 
 def get_deployment_path(model_path: str) -> Tuple[str, str]:

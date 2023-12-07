@@ -834,6 +834,11 @@ class TextGenerationPipeline(TransformersPipeline):
                     generated_tokens.append(token)
                     generated_logits.append(logits)
 
+                    if session.total_num_processed_tokens >= session.capacity:
+                        # if the kv cache is full, stop generation
+                        finished_reason.append(FinishReason.CAPACITY)
+                        break
+
                     if (
                         token == self.tokenizer.eos_token_id
                         and not self.force_max_tokens

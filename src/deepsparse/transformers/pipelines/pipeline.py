@@ -124,6 +124,7 @@ class TransformersPipeline(Pipeline, Bucketable):
 
         :return: file path to the processed ONNX file for the engine to compile
         """
+
         deployment_path, onnx_path = get_deployment_path(self.model_path)
         self._deployment_path = deployment_path
 
