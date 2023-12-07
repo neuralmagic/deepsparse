@@ -28,7 +28,7 @@ def pipeline():
     return Pipeline.create(
         task="text_generation",
         model_path="hf:mgoin/TinyStories-1M-deepsparse",
-        engine_kwargs={"engine_type": "onnxruntime"},
+        engine_type="onnxruntime",
     )
 
 
