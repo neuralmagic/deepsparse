@@ -108,6 +108,15 @@ def parse_json_callback(ctx, params, value: str) -> Dict:
     show_default=True,
 )
 @click.option(
+    "--batch-size",
+    "--batch_size",
+    type=int,
+    default=1,
+    show_default=True,
+    help="Test batch size, must divide the dataset evenly, else last "
+    "batch will be dropped",
+)
+@click.option(
     "--image-size",
     "--image_size",
     type=int,
@@ -142,6 +151,7 @@ def parse_json_callback(ctx, params, value: str) -> Dict:
 def main(
     dataset_path: str,
     model_path: str,
+    batch_size: int,
     image_size: int,
     num_cores: int,
     dataset_kwargs: Dict,
@@ -192,7 +202,7 @@ def main(
 
     data_loader = DataLoader(
         dataset=dataset,
-        batch_size=1,
+        batch_size=batch_size,
         drop_last=True,
     )
 
@@ -200,6 +210,7 @@ def main(
         task="image_classification",
         model_path=model_path,
         engine_type=engine,
+        batch_size=batch_size,
         num_cores=num_cores,
     )
     correct = total = 0
