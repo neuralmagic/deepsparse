@@ -33,7 +33,7 @@ Options:
   --batch-size, --batch_size INTEGER
                                   Test batch size, must divide the dataset
                                   evenly, else last batch will be dropped
-                                  [default: 1]                                
+                                  [default: 1]
   --num-cores, --num_cores INTEGER
                                   Number of CPU cores to run deepsparse with,
                                   default is all available
