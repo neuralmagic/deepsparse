@@ -31,6 +31,7 @@ from .cpu import (
     cpu_vnni_compatible,
 )
 from .engine import *
+from .pipeline_config import *
 from .tasks import *
 from .pipeline import *
 from .loggers import *

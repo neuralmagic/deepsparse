@@ -17,9 +17,9 @@ from typing import Dict, List, Optional, Union
 
 from pydantic import BaseModel, Field
 
-from deepsparse import Context as EngineContext
-from deepsparse import Engine, MultiModelEngine, Scheduler
 from deepsparse.benchmark import ORTEngine
+from deepsparse.engine import Context as EngineContext
+from deepsparse.engine import Engine, MultiModelEngine, Scheduler
 from deepsparse.operators import Operator
 from deepsparse.utils import join_engine_outputs, model_to_path, split_engine_inputs
 
