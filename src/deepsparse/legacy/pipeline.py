@@ -36,6 +36,7 @@ from deepsparse.legacy.base_pipeline import (
 )
 from deepsparse.loggers.base_logger import BaseLogger
 from deepsparse.loggers.constants import MetricCategories, SystemGroups
+from deepsparse.pipeline_config import PipelineConfig
 from deepsparse.utils import (
     InferenceStages,
     StagedTimer,
@@ -54,7 +55,6 @@ __all__ = [
     "BasePipeline",
     "SupportedTasks",
     "_REGISTERED_PIPELINES",
-    "PipelineConfig",
     "question_answering_pipeline",
     "text_classification_pipeline",
     "zero_shot_text_classification_pipeline",
@@ -306,6 +306,7 @@ class Pipeline(BasePipeline):
 
         return pipeline_outputs
 
+    # TODO: remove to just use the new pipeline function
     @classmethod
     def from_config(
         cls,
@@ -560,69 +561,6 @@ class Pipeline(BasePipeline):
             self.__class__.__qualname__,
             "\n".join(formatted_props),
         )
-
-
-class PipelineConfig(BaseModel):
-    """
-    Configuration for creating a Pipeline object
-
-    Can be used to create a Pipeline from a config object or file with
-    Pipeline.from_config(), or used as a building block for other configs
-    such as for deepsparse.server
-    """
-
-    task: str = Field(
-        description="name of task to create a pipeline for",
-    )
-    model_path: str = Field(
-        default=None,
-        description="path on local system or SparseZoo stub to load the model from",
-    )
-    engine_type: str = Field(
-        default=DEEPSPARSE_ENGINE,
-        description=(
-            "inference engine to use. Currently supported values include "
-            "'deepsparse' and 'onnxruntime'. Default is 'deepsparse'"
-        ),
-    )
-    batch_size: Optional[int] = Field(
-        default=1,
-        description=("static batch size to use for inference. Default is 1"),
-    )
-    num_cores: int = Field(
-        default=None,
-        description=(
-            "number of CPU cores to allocate for inference engine. None"
-            "specifies all available cores. Default is None"
-        ),
-    )
-    scheduler: Optional[str] = Field(
-        default="async",
-        description=(
-            "(deepsparse only) kind of scheduler to execute with. Defaults to async"
-        ),
-    )
-    input_shapes: List[List[int]] = Field(
-        default=None,
-        description=(
-            "list of shapes to set ONNX the inputs to. Pass None to use model as-is. "
-            "Default is None"
-        ),
-    )
-    alias: str = Field(
-        default=None,
-        description=(
-            "optional name to give this pipeline instance, useful when inferencing "
-            "with multiple models. Default is None"
-        ),
-    )
-    kwargs: Dict[str, Any] = Field(
-        default={},
-        description=(
-            "Additional arguments for inference with the model that will be passed "
-            "into the pipeline as kwargs"
-        ),
-    )
 
 
 class BucketingPipeline(object):

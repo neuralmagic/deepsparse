@@ -14,9 +14,11 @@
 
 import asyncio
 import copy
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
 from deepsparse.operators import EngineOperator, Operator
+from deepsparse.pipeline_config import PipelineConfig
 from deepsparse.routers import Router
 from deepsparse.schedulers import (
     ContinuousBatchingScheduler,
@@ -29,6 +31,8 @@ from deepsparse.utils.subgraph import SubGraph
 
 
 __all__ = ["Pipeline"]
+
+V2_NOT_SUPPORTED = ["alias", "logger"]
 
 
 class Pipeline(Operator):
@@ -245,6 +249,9 @@ class Pipeline(Operator):
         :param kwargs: extra task specific kwargs to be passed to the Pipeline
         :return: pipeline object initialized for the given task
         """
+        for k in kwargs.keys():
+            if k in V2_NOT_SUPPORTED:
+                _LOGGER.warning(f"{k} is not yet supported in the v2 pipeline.")
         try:
             pipeline = Operator.create(task=task, **kwargs)
             if not isinstance(pipeline, cls):
@@ -257,6 +264,38 @@ class Pipeline(Operator):
 
             pipeline = Pipeline.create(task=task, **kwargs)
         return pipeline
+
+    @classmethod
+    def from_config(
+        cls, config: Union["PipelineConfig", str, Path], **kwargs
+    ) -> "Pipeline":
+        """
+        :param config: PipelineConfig object, filepath to a json serialized
+            PipelineConfig, or raw string of a json serialized PipelineConfig.
+            Optionally, pipeline arguments not defined in the PipelineConfig may be
+            passed as key-word arguments to this function.
+        """
+        if isinstance(config, Path) or (
+            isinstance(config, str) and os.path.exists(config)
+        ):
+            if isinstance(config, str):
+                config = Path(config)
+            config = PipelineConfig.parse_file(config)
+        if isinstance(config, str):
+            config = PipelineConfig.parse_raw(config)
+
+        kwargs.update(config.kwargs)
+        return cls.create(
+            task=config.task,
+            model_path=config.model_path,
+            engine_type=config.engine_type,
+            batch_size=config.batch_size,
+            num_cores=config.num_cores,
+            scheduler=config.scheduler,
+            input_shapes=config.input_shapes,
+            alias=config.alias,
+            **kwargs,
+        )
 
     def run(
         self,
