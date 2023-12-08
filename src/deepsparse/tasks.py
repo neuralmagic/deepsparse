@@ -86,6 +86,14 @@ class SupportedTasks:
         bloom=AliasedTask("bloom", []),
     )
 
+    code_generation = namedtuple(
+        "code_generation", ["code_generation", "code_gen", "codegen"]
+    )(
+        code_generation=AliasedTask("code_generation", []),
+        code_gen=AliasedTask("code_gen", []),
+        codegen=AliasedTask("codegen", []),
+    )
+
     image_classification = namedtuple("image_classification", ["image_classification"])(
         image_classification=AliasedTask(
             "image_classification",
@@ -93,7 +101,7 @@ class SupportedTasks:
         ),
     )
 
-    all_task_categories = [text_generation]
+    all_task_categories = [text_generation, code_generation, image_classification]
 
     @classmethod
     def check_register_task(
@@ -106,6 +114,9 @@ class SupportedTasks:
         """
         if cls.is_text_generation(task):
             import deepsparse.transformers.pipelines.text_generation  # noqa: F401
+
+        elif cls.is_code_generation(task):
+            import deepsparse.transformers.pipelines.code_generation  # noqa: F401
 
         elif cls.is_image_classification(task):
             # trigger image classification pipelines to
@@ -142,7 +153,7 @@ class SupportedTasks:
 
     @classmethod
     def task_names(cls):
-        task_names = ["custom"]
+        task_names = []
         for task_category in cls.all_task_categories:
             for task in task_category:
                 unique_aliases = (
@@ -150,6 +161,18 @@ class SupportedTasks:
                 )
                 task_names += (task._name, *unique_aliases)
         return task_names
+
+    @classmethod
+    def is_code_generation(cls, task: str) -> bool:
+        """
+        :param task: the name of the task to check whether it is a text generation task
+            such as codegen
+        :return: True if it is a text generation task, False otherwise
+        """
+        return any(
+            code_generation_task.matches(task)
+            for code_generation_task in cls.code_generation
+        )
 
 
 def dynamic_import_task(module_or_path: str) -> str:
