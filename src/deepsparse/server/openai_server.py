@@ -90,7 +90,7 @@ class OpenAIServer(Server):
             # for the API specification. This API mimics the OpenAI ChatCompletion API.
 
             request = ChatCompletionRequest(**await raw_request.json())
-            _LOGGER.info(f"Received chat completion request: {request}")
+            _LOGGER.debug(f"Received chat completion request: {request}")
 
             if isinstance(request.messages, str):
                 prompt = request.messages
@@ -219,7 +219,7 @@ class OpenAIServer(Server):
         )
         async def create_completion(raw_request: Request):
             request = CompletionRequest(**await raw_request.json())
-            _LOGGER.info(f"Received completion request: {request}")
+            _LOGGER.debug(f"Received completion request: {request}")
 
             model = request.model
 
@@ -323,7 +323,7 @@ class OpenAIServer(Server):
         pipeline_config = endpoint_config.to_pipeline_config()
         pipeline_config.kwargs["executor"] = self.executor
 
-        _LOGGER.info(f"Initializing pipeline for '{endpoint_config.name}'")
+        _LOGGER.debug(f"Initializing pipeline for '{endpoint_config.name}'")
 
         if not SupportedTasks.is_text_generation(pipeline_config.task):
             raise ValueError(
@@ -348,7 +348,7 @@ class OpenAIServer(Server):
     @staticmethod
     async def generate(
         prompt: str, request_id: str, generation_kwargs: dict, pipeline: Pipeline
-    ):
+    ) -> AsyncGenerator[RequestOutput, None]:
         def tokenize(text: str) -> List[int]:
             return pipeline.tokenizer(text)
 
@@ -431,7 +431,7 @@ def map_generation_schema(generation_kwargs: Dict) -> Dict:
     if generation_kwargs["num_return_sequences"] > 1:
         generation_kwargs["do_sample"] = True
 
-    return dict(generation_kwargs)
+    return generation_kwargs
 
 
 def create_stream_response_json(
