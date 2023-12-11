@@ -44,7 +44,7 @@ import numpy
 from pydantic import BaseModel, Field
 from transformers.data import SquadExample
 
-from deepsparse import Pipeline
+from deepsparse.legacy import Pipeline
 from deepsparse.transformers.pipelines import TransformersPipeline
 
 

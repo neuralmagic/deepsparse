@@ -41,7 +41,7 @@ import numpy
 from pydantic import BaseModel, Field
 from transformers.tokenization_utils_base import PaddingStrategy, TruncationStrategy
 
-from deepsparse import Pipeline
+from deepsparse.legacy import Pipeline
 from deepsparse.log import get_main_logger
 from deepsparse.transformers.helpers import truncate_transformer_onnx_model
 from deepsparse.transformers.pipelines import TransformersPipeline

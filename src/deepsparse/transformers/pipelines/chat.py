@@ -20,12 +20,14 @@ from typing import Any, Callable, Dict, List, Tuple, Type, Union
 import numpy
 from pydantic import Field, validator
 
-from deepsparse import Pipeline
-from deepsparse.transformers.pipelines.text_generation import (
+from deepsparse.legacy import Pipeline
+from deepsparse.legacy.transformers.pipelines.text_generation import (
+    TextGenerationPipeline,
+)
+from deepsparse.transformers.schemas.text_generation_schemas import (
     FinishReason,
     TextGenerationInput,
     TextGenerationOutput,
-    TextGenerationPipeline,
 )
 from deepsparse.transformers.utils import (
     DecoderKVCache,

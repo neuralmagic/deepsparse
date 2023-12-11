@@ -23,7 +23,7 @@ from typing import Any, List, Type, Union
 import numpy
 from pydantic import BaseModel, Field
 
-from deepsparse import Pipeline
+from deepsparse.legacy import Pipeline
 from deepsparse.log import get_main_logger
 from deepsparse.utils import truncate_onnx_embedding_model
 

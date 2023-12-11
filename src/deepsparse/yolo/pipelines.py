@@ -18,7 +18,7 @@ from typing import Any, Callable, Dict, List, Optional, Tuple, Type, Union
 import numpy
 import onnx
 
-from deepsparse.pipeline import Pipeline
+from deepsparse.legacy.pipeline import Pipeline
 from deepsparse.utils import model_to_path
 from deepsparse.yolo.schemas import YOLOInput, YOLOOutput
 from deepsparse.yolo.utils import (

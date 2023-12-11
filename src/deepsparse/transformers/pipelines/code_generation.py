@@ -13,17 +13,14 @@
 # limitations under the License.
 
 
-from deepsparse import Pipeline
+from deepsparse.operators import OperatorRegistry
 from deepsparse.transformers.pipelines.text_generation import TextGenerationPipeline
 
 
 __all__ = ["CodeGenerationPipeline"]
 
 
-@Pipeline.register(
-    task="code_generation",
-    task_aliases=["codegen"],
-)
+@OperatorRegistry.register(name=["code_generation", "code_gen", "codegen"])
 class CodeGenerationPipeline(TextGenerationPipeline):
     """
     Subclass of text generation pipeline to support any defaults or
