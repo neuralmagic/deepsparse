@@ -27,7 +27,7 @@ import open_clip
 import torch
 import torch.nn.functional as F
 from deepsparse.clip import CLIPDecoderInput, CLIPTextInput, CLIPVisualInput
-from deepsparse.pipeline import BasePipeline, Pipeline
+from deepsparse.legacy.pipeline import BasePipeline, Pipeline
 
 
 __all__ = ["CLIPCaptionInput", "CLIPCaptionOutput", "CLIPCaptionPipeline"]

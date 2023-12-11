@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import pytest
-from deepsparse import BasePipeline, Pipeline
 from deepsparse.clip import (
     CLIPCaptionInput,
     CLIPCaptionPipeline,
@@ -48,6 +47,8 @@ def text_input():
 @pytest.mark.skip(reason="No CLIP models currently available to run tests")
 @mock_engine(rng_seed=0)
 def test_visual_clip(engine, visual_input):
+    from deepsparse import Pipeline
+
     model_path = visual_input[-1]
     pipeline = Pipeline.create(task="clip_visual", model_path=model_path)
     assert isinstance(pipeline, CLIPVisualPipeline)
@@ -59,6 +60,8 @@ def test_visual_clip(engine, visual_input):
 @pytest.mark.skip(reason="No CLIP models curently available to run tests")
 @mock_engine(rng_seed=0)
 def test_text_clip(engine, text_input):
+    from deepsparse import Pipeline
+
     model_path = text_input[-1]
     pipeline = Pipeline.create(task="clip_text", model_path=model_path)
     assert isinstance(pipeline, CLIPTextPipeline)
@@ -70,6 +73,8 @@ def test_text_clip(engine, text_input):
 @pytest.mark.skip(reason="No CLIP models currently available to run tests")
 @mock_engine(rng_seed=0)
 def test_zero_shot(engine, visual_input, text_input):
+    from deepsparse.legacy import BasePipeline
+
     model_path_text = text_input[-1]
     model_path_visual = visual_input[-1]
     kwargs = {
@@ -88,6 +93,8 @@ def test_zero_shot(engine, visual_input, text_input):
 @pytest.mark.skip(reason="No CLIP models currently available to run tests")
 @mock_engine(rng_seed=0)
 def test_caption(engine, visual_input, text_input):
+    from deepsparse.legacy import BasePipeline
+
     model_path_visual = text_input[-1]
     model_path_text = text_input[-1]
     model_path_decoder = None
