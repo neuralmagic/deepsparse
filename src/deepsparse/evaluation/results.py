@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import json
-from collections import OrderedDict
 from typing import Any, List, Optional
 
 import yaml
@@ -28,7 +26,7 @@ __all__ = [
     "EvalSample",
     "Evaluation",
     "Result",
-    "save_evaluations",
+    "save_result",
 ]
 
 
@@ -63,68 +61,43 @@ class Evaluation(BaseModel):
 
 class Result(BaseModel):
     formatted: List[Evaluation] = Field(
-        description="Evaluation results represented in the unified, structured format"
+        description="Evaluation result represented in the unified, structured format"
     )
     raw: Any = Field(
-        description="Evaluation results represented in the raw format "
+        description="Evaluation result represented in the raw format "
         "(characteristic for the specific evaluation integration)"
     )
 
-    def __str__(self):
-        """
-        The string representation of the Result object is
-        the formatted evaluation results serialized in JSON.
-        """
-        return save_evaluations(self.formatted, save_format="json", save_path=None)
 
-
-def save_evaluations(
-    evaluations: List[Evaluation], save_format: str = "json", save_path: str = None
+def save_result(
+    result: Result,
+    save_path: str,
+    save_format: str = "json",
 ):
     """
     Saves a list of Evaluation objects to a file in the specified format.
 
-    :param evaluations: List of Evaluation objects to save
+    :param result: Result object to save
     :param save_format: Format to save the evaluations in.
     :param save_path: Path to save the evaluations to.
-        If None, the evaluations will not be saved.
     :return: The serialized evaluations
     """
-    # serialize the evaluations
-    evaluations: List[Evaluation] = prep_for_serialization(evaluations)
-    # convert to ordered dicts to preserve order
-    evaluations: List[OrderedDict] = evaluations_to_dicts(evaluations)
+    # prepare the Result object for serialization
+    result: Result = prep_for_serialization(result)
     if save_format == "json":
-        return _save_to_json(evaluations, save_path)
+        _save_to_json(result, save_path)
     elif save_format == "yaml":
-        return _save_to_yaml(evaluations, save_path)
+        _save_to_yaml(result, save_path)
     else:
         NotImplementedError("Currently only json and yaml formats are supported")
 
 
-def _save_to_json(evaluations: List[OrderedDict], save_path: Optional[str]) -> str:
-    data = json.dumps(evaluations, indent=4)
-    if save_path:
-        _save(data, save_path, expected_ext=".json")
-    return data
+def _save_to_json(result: Result, save_path: str):
+    _save(result.json(), save_path, expected_ext=".json")
 
 
-def _save_to_yaml(evaluations: List[OrderedDict], save_path: Optional[str]) -> str:
-    # required to properly process OrderedDicts
-    yaml.add_representer(
-        OrderedDict,
-        lambda dumper, data: dumper.represent_mapping(
-            "tag:yaml.org,2002:map", data.items()
-        ),
-    )
-    data = yaml.dump(evaluations, default_flow_style=False)
-    if save_path:
-        _save(data, save_path, expected_ext=".yaml")
-    return data
-
-
-def evaluations_to_dicts(evaluations: List[Evaluation]):
-    return [OrderedDict(**evaluation.dict()) for evaluation in evaluations]
+def _save_to_yaml(result: Result, save_path: str):
+    _save(yaml.dump(result.dict()), save_path, expected_ext=".yaml")
 
 
 def _save(data: str, save_path: str, expected_ext: str):
