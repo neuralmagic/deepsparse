@@ -86,7 +86,7 @@ from typing import Any, Callable
 from pydantic import BaseModel
 
 from deepsparse import Pipeline
-from deepsparse.pipeline import SUPPORTED_PIPELINE_ENGINES
+from deepsparse.operators.engine_operator import SUPPORTED_PIPELINE_ENGINES
 from deepsparse.transformers import fix_numpy_types
 from deepsparse.transformers.loaders import SUPPORTED_EXTENSIONS, get_batch_loader
 

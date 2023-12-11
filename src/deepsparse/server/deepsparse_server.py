@@ -15,7 +15,7 @@
 import logging
 from functools import partial
 
-from deepsparse import Pipeline
+from deepsparse.legacy import Pipeline
 from deepsparse.server.config import EndpointConfig
 from deepsparse.server.server import CheckReady, ModelMetaData, ProxyPipeline, Server
 from fastapi import FastAPI

@@ -22,12 +22,12 @@ import numpy
 
 import cv2
 import torch
+from deepsparse.legacy.pipeline import Pipeline
 from deepsparse.open_pif_paf.schemas import (
     OpenPifPafFields,
     OpenPifPafInput,
     OpenPifPafOutput,
 )
-from deepsparse.pipeline import Pipeline
 from deepsparse.utils import model_to_path
 from deepsparse.yolact.utils import preprocess_array
 from openpifpaf import decoder, network

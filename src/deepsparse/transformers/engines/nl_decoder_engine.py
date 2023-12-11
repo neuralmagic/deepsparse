@@ -18,7 +18,7 @@ from typing import Any, Dict, List, Optional, Tuple
 import numpy
 
 from deepsparse.engine import Context
-from deepsparse.pipeline import DEEPSPARSE_ENGINE, create_engine
+from deepsparse.legacy.pipeline import DEEPSPARSE_ENGINE, create_engine
 from deepsparse.transformers.utils.decoder_kv_cache import DecoderKVCache
 from deepsparse.transformers.utils.timings import TextGenerationTimings
 from deepsparse.utils import TimerManager

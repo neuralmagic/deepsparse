@@ -18,7 +18,7 @@ from typing import Dict, List, Optional, Tuple, Type, Union
 import numpy
 
 import torch
-from deepsparse import Pipeline
+from deepsparse.legacy import Pipeline
 from deepsparse.utils import model_to_path
 from deepsparse.yolact.schemas import YOLACTInputSchema, YOLACTOutputSchema
 from deepsparse.yolact.utils import (
