@@ -19,8 +19,10 @@ op = [Op()]
 
 p = Pipeline(op=op)
 # breakpoint()
-print(p.get_timer())
-print(p.get_timer().timer())
+
+time_str = p.get_timer()
+print(time_str)
+print(time_str.timer())
 
 # p = Pipeline()
 # print(p.get_timer())

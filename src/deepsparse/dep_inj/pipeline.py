@@ -6,7 +6,7 @@ from dependency_injector import containers, providers
 
 
 from dependency_injector.wiring import Provide, inject
-from deepsparse.dep_inj.container    import Container, UserService
+from deepsparse.dep_inj.container    import Container, UserService, TimerService
 
 
 # class BaseService:
@@ -57,8 +57,19 @@ class Pipeline:
     def  get_timer(
         self,
         user_service: UserService = Provide[Container.user_service],
+        timer_service: TimerService = Provide[Container.timer_service],
     ):
         print("pipeline", user_service)
+        
+        print("pipeline", timer_service)
+        
+        import time
+        id = "pipeline"
+        
+        timer_service.start(id)
+        time.sleep(1)
+        timer_service.end(id)
+        print(timer_service.get(id))
         
         self.op[0].foo()
         return user_service
