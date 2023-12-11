@@ -19,6 +19,9 @@ from pydantic import BaseModel
 
 from deepsparse.operators.registry import OperatorRegistry
 from deepsparse.utils import InferenceState
+from deepsparse.dependency_injector.container import Container
+from deepsparse.dependency_injector.services import TimerService
+from dependency_injector.wiring import Provide, inject
 
 
 __all__ = ["Operator"]
@@ -54,10 +57,12 @@ class Operator(ABC):
 
         return issubclass(cls.output_schema, BaseModel)
 
+    @inject
     def __call__(
         self,
         *args,
         inference_state: InferenceState,
+        timer_service: TimerService = Provide[Container.timer_service],
         **kwargs,
     ) -> Any:
         """
@@ -71,6 +76,9 @@ class Operator(ABC):
         :param kwargs: kwargs when not initializing from an instantiated schema
         :return: operator output
         """
+        with timer_service.record("op"):
+            import time
+            time.sleep(1)
         if self.has_input_schema():
             if len(args) > 1:
                 raise ValueError(
