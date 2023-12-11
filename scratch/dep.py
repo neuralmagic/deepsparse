@@ -4,31 +4,25 @@ import sqlite3
 from typing import Dict
 from dependency_injector import containers, providers
 
-
-
 from dependency_injector.wiring import Provide, inject
 
-from deepsparse.dep_inj.container    import Container, UserService
-from deepsparse.dep_inj.pipeline import Pipeline
-from deepsparse.dep_inj.ops import Op
+from deepsparse.dependency_injector.container    import Container
+from deepsparse.dependency_injector.pipeline import Pipeline
+from deepsparse.dependency_injector.ops import Op
 
 
 print(0)
 
-op = [Op()]
+op = [Op(), Op()]
 
 p = Pipeline(op=op)
-# breakpoint()
 
-time_str = p.get_timer()
-print(time_str)
-print(time_str.timer())
+timer_service = p.get_timer()
+print(timer_service)
+print(timer_service.timer.measurements)
 
-# p = Pipeline()
-# print(p.get_timer())
 
 class MockOp(Op):
-    
     def foo():
         mocker.patch("")
         ...
