@@ -33,6 +33,7 @@ from deepsparse.server.system_logging import (
     SystemLoggingMiddleware,
     log_system_information,
 )
+from deepsparse.utils import InferenceState
 from deepsparse.utils.data import prep_for_serialization
 from fastapi import FastAPI, Request, UploadFile
 from fastapi.exceptions import HTTPException
@@ -244,12 +245,28 @@ class Server:
         system_logging_config: SystemLoggingConfig,
         raw_request: Request,
     ):
-        pipeline_outputs = proxy_pipeline.pipeline(**await raw_request.json())
-        server_logger = proxy_pipeline.pipeline.logger
-        if server_logger:
-            log_system_information(
-                server_logger=server_logger, system_logging_config=system_logging_config
+
+        if hasattr(proxy_pipeline.pipeline, "run_async"):
+            inference_state = InferenceState()
+            inference_state.create_state({})
+
+            pipeline_outputs = await proxy_pipeline.pipeline.run_async(
+                **await raw_request.json(), inference_state=inference_state
             )
+        else:
+            pipeline_outputs = proxy_pipeline.pipeline(**await raw_request.json())
+        try:
+            server_logger = proxy_pipeline.pipeline.logger
+            if server_logger:
+                log_system_information(
+                    server_logger=server_logger,
+                    system_logging_config=system_logging_config,
+                )
+        except Exception:
+            _LOGGER.debug(
+                f"{proxy_pipeline.pipeline} does not have a logger. Skipping logging."
+            )
+
         return prep_for_serialization(pipeline_outputs)
 
     @staticmethod
@@ -258,6 +275,7 @@ class Server:
         system_logging_config: SystemLoggingConfig,
         request: List[UploadFile],
     ):
+        # NOTE: /from_files is not yet supported in the new pipeline
         request = proxy_pipeline.pipeline.input_schema.from_files(
             (file.file for file in request), from_server=True
         )
