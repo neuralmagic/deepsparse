@@ -255,6 +255,7 @@ class Server:
             )
         else:
             pipeline_outputs = proxy_pipeline.pipeline(**await raw_request.json())
+
         try:
             server_logger = proxy_pipeline.pipeline.logger
             if server_logger:
@@ -262,10 +263,8 @@ class Server:
                     server_logger=server_logger,
                     system_logging_config=system_logging_config,
                 )
-        except Exception:
-            _LOGGER.debug(
-                f"{proxy_pipeline.pipeline} does not have a logger. Skipping logging."
-            )
+        except Exception as e:
+            _LOGGER.debug(f"Logging failed, {e}")
 
         return prep_for_serialization(pipeline_outputs)
 
