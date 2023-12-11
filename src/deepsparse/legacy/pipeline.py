@@ -24,7 +24,7 @@ from pathlib import Path
 from typing import Any, Dict, Generator, List, Optional, Tuple, Type, Union
 
 import numpy
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 from deepsparse import Context, Engine, MultiModelEngine, Scheduler
 from deepsparse.benchmark import ORTEngine, TorchScriptEngine
