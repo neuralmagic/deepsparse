@@ -15,7 +15,7 @@ import warnings
 from abc import ABC
 from contextlib import contextmanager
 from copy import deepcopy
-from typing import Any, Dict, Union
+from typing import Any, Union
 
 from deepsparse.utils.time import Timer
 
@@ -30,7 +30,6 @@ class State(ABC):
     """
 
     def __init__(self):
-        super().__init__()
         self._current_state = None
 
     @property
@@ -51,10 +50,6 @@ class PipelineState(State):
 
 
 class TimerState:
-    def __init__(self):
-        super().__init__()
-        self._timer = Timer()
-
     @contextmanager
     def time(self, id: str):
         if self._timer is not None:
@@ -62,11 +57,6 @@ class TimerState:
                 yield
         else:
             yield  # null context
-
-    def extract_timer_state(self, state: Dict):
-        if "timer" in state:
-            timer = state.pop("timer")
-            return timer
 
     def set_timer(self, timer: Timer):
         self._timer = timer
@@ -84,9 +74,6 @@ class InferenceState(State, TimerState):
     """
     Inference state, created during every inference run.
     """
-
-    def __init__(self):
-        super().__init__()
 
     def create_state(self, new_state: dict):
         if self._current_state:

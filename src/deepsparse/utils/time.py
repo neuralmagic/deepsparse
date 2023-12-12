@@ -22,7 +22,9 @@ from typing import Dict
 
 class Timer:
     def __init__(self):
-        self._lock = threading.Lock()
+        self._lock = (
+            threading.RLock()
+        )  # reenterant lock, thread can acquire lock multiple times
         self.measurements = defaultdict(list)
 
     @contextmanager
@@ -35,7 +37,7 @@ class Timer:
 
 class TimerManager:
     def __init__(self):
-        self.lock = threading.RLock()  # reenter lock, same thread can get the lock
+        self.lock = threading.RLock()
         self.measurements = []
 
     def get_new_timer(self):
