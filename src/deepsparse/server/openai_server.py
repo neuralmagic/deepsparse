@@ -19,6 +19,7 @@ from http import HTTPStatus
 from typing import AsyncGenerator, Dict, List, Optional
 
 from deepsparse.legacy import Pipeline
+from deepsparse.legacy.tasks import SupportedTasks
 from deepsparse.server.config import EndpointConfig
 from deepsparse.server.helpers import create_error_response
 from deepsparse.server.output import CompletionOutput, RequestOutput
@@ -42,7 +43,6 @@ from deepsparse.server.protocol import (
     random_uuid,
 )
 from deepsparse.server.server import Server
-from deepsparse.tasks import SupportedTasks
 from fastapi import BackgroundTasks, FastAPI, Request
 from fastapi.responses import StreamingResponse
 
