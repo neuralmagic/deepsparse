@@ -14,7 +14,7 @@
 import warnings
 from abc import ABC
 from typing import Any, Union, Optional, Dict
-from deepsparse.utils.timer import Timer
+from deepsparse.utils.time import Timer
 from contextlib import contextmanager
 from copy import deepcopy
 

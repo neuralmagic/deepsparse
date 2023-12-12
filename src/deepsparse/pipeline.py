@@ -26,7 +26,7 @@ from deepsparse.schedulers import (
 from deepsparse.utils import InferenceState, PipelineState
 from deepsparse.utils.helpers import run_func
 from deepsparse.utils.subgraph import SubGraph
-from deepsparse.utils import TimerManager
+from deepsparse.utils.time import TimerManager
 
 
 __all__ = ["Pipeline"]
@@ -334,7 +334,6 @@ class Pipeline(Operator):
         timer = inference_state.get_state("timer")
         if timer is not None:
             self.timer_manager.update(timer.measurements)
-        breakpoint()
         return operator_output
 
     def __call__(self, *args, **kwargs):
@@ -352,11 +351,14 @@ class Pipeline(Operator):
             inference_state.create_state({**{"timer": self.timer_manager.get_new_timer()}})
 
         kwargs["inference_state"] = inference_state
-
-        rtn = self.run(*args, **kwargs)
-        breakpoint()
-        return rtn
         
+        timer = inference_state.get_state("timer")
+        with timer.record("total"):
+            rtn= self.run(*args, **kwargs)
+        self.timer_manager.update(timer.measurements)
+        
+        return rtn
+
 
     def expand_inputs(self, *args, **kwargs):
         """

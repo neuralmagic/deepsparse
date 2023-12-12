@@ -37,10 +37,12 @@ class Timer:
 
 class TimerManager:
     def __init__(self):
+        self.lock = threading.Lock()
         self.measurements = {}
         
     def get_new_timer(self):
         return Timer()
     
     def update(self, measurements: Dict[str, float]):
-        self.measurements.update(measurements)
+        with self.lock:
+            self.measurements.update(measurements)

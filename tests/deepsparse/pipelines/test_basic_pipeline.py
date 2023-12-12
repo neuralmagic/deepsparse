@@ -56,5 +56,7 @@ AddThreePipeline = Pipeline(
 def test_run_simple_pipeline():
     pipeline_input = IntSchema(value=5)
     pipeline_output = AddThreePipeline(pipeline_input)
+    xx = AddThreePipeline
+    breakpoint()
 
     assert pipeline_output.value == 8
