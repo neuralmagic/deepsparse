@@ -12,6 +12,9 @@ from deepsparse.dependency_injector.services import TimerService
 
     
 class Container(containers.DeclarativeContainer):
+    # timer_service = providers.Factory(
+    #     TimerService,
+    # )
     timer_service = providers.Singleton(
         TimerService,
     )

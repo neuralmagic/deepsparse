@@ -76,6 +76,7 @@ class Operator(ABC):
         :param kwargs: kwargs when not initializing from an instantiated schema
         :return: operator output
         """
+
         with timer_service.record("op"):
             import time
             time.sleep(1)

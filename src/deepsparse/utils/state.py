@@ -13,7 +13,7 @@
 # limitations under the License.
 import warnings
 from abc import ABC
-from typing import Any, Union
+from typing import Any, Union, Callable
 
 
 __all__ = ["State", "PipelineState", "InferenceState"]

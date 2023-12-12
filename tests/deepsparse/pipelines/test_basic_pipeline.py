@@ -46,16 +46,45 @@ class AddTwoOperator(Operator):
         return {"value": inp.value + 2}
 
 
-AddThreePipeline = Pipeline(
-    ops=[AddOneOperator(), AddTwoOperator()],
-    router=LinearRouter(end_route=2),
-    schedulers=[OperatorScheduler()],
-)
+# AddThreePipeline = Pipeline(
+#     ops=[AddOneOperator(), AddTwoOperator()],
+#     router=LinearRouter(end_route=2),
+#     schedulers=[OperatorScheduler()],
+# )
+
+# AddThreePipeline2 = Pipeline(
+#     ops=[AddOneOperator(), AddTwoOperator()],
+#     router=LinearRouter(end_route=2),
+#     schedulers=[OperatorScheduler()],
+# )
 
 
 def test_run_simple_pipeline():
     pipeline_input = IntSchema(value=5)
+    AddThreePipeline = Pipeline(
+        ops=[AddOneOperator(), AddTwoOperator()],
+        router=LinearRouter(end_route=2),
+        schedulers=[OperatorScheduler()],
+    )
+
     pipeline_output = AddThreePipeline(pipeline_input)
+    breakpoint()
+    
+    AddThreePipeline2 = Pipeline(
+        ops=[AddOneOperator(), AddTwoOperator()],
+        router=LinearRouter(end_route=2),
+        schedulers=[OperatorScheduler()],
+    )
+    p2 = AddThreePipeline2(pipeline_input)
+    
+    
 
     assert pipeline_output.value == 8
     breakpoint()
+
+"""
+
+
+AddThreePipeline.container.timer_service().measurements()
+AddThreePipeline2.container.timer_service().measurements()
+"""

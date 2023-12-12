@@ -26,6 +26,8 @@ from deepsparse.schedulers import (
 from deepsparse.utils import InferenceState, PipelineState
 from deepsparse.utils.helpers import run_func
 from deepsparse.utils.subgraph import SubGraph
+
+
 from deepsparse.dependency_injector.container import Container
 from deepsparse.dependency_injector.services import TimerService
 from dependency_injector.wiring import Provide, inject
@@ -69,7 +71,7 @@ class Pipeline(Operator):
         self.pipeline_state = pipeline_state
         self._continuous_batching_scheduler = continuous_batching_scheduler
         self.validate()
-        self._initialize_dependency_injector()
+        self._initialize_dependency_injector_container()
 
         self._scheduler_group = SchedulerGroup(self.schedulers)
 
@@ -118,10 +120,12 @@ class Pipeline(Operator):
         :returns: a list of outputs for all the completed Subgraph objects. Returned
         in the same order that the subgraphs were passed to the function.
         """
-        with timer_service.record("id"):
+        import time
+        key = str(time.time())
+        with timer_service.record(key):
             import time
             time.sleep(1)
-
+        
         for i in range(len(sub_graphs)):
             sub_graphs[i].output = self._run_next(
                 sub_graph_inputs[i], sub_graphs[i].inf, sub_graphs[i].step, loop=loop
@@ -394,9 +398,7 @@ class Pipeline(Operator):
         elif isinstance(router_validation, str):
             raise ValueError(f"Invalid Router for operators: {router_validation}")
         
-    def _initialize_dependency_injector(self):
+    def _initialize_dependency_injector_container(self):
         container = Container()
-        # container.init_resources()
-        container.wire(packages=[__name__, "deepsparse.operators"])
+        container.wire(packages=[__name__, "deepsparse.operators"])    
         self.container = container
-        
