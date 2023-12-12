@@ -36,18 +36,25 @@ class InferenceStages:
 class StagedTimer:
     """
     Timer object that enables simultaneous starting and stopping of various stages.
+
     example usage of measuring two operation times with the overall time:
+
     ```python
     timer = StagedTimer()
+
     timer.start("overall_time")
+
     timer.start("operation_1")
     # DO OPERATION 1
     timer.stop("operation_1")
+
     timer.start("operation_2")
     # DO OPERATION 2
     timer.stop("operation_2")
+
     timer.stop("overall_time")
     ```
+
     :param enabled: if False, start/stop become no-ops. default True
     """
 
@@ -59,6 +66,7 @@ class StagedTimer:
     def __repr__(self):
         """
         Provide a string representation of the StagedTimer object.
+
         :return: a string representing the timer object with its times.
         """
         return f"StagedTimer({self.times})"
@@ -67,6 +75,7 @@ class StagedTimer:
     def stages(self) -> List[str]:
         """
         Get the stages for the timer object.
+
         :return: list of stages as strings.
         """
         return list(self._staged_start_times.keys())
@@ -75,6 +84,7 @@ class StagedTimer:
     def times(self) -> Dict[str, float]:
         """
         Get the average time for each stage.
+
         :return: a dictionary with stage names as keys and their average time as values.
         """
         return {stage: self.stage_average_time(stage) for stage in self.stages}
@@ -83,6 +93,7 @@ class StagedTimer:
     def all_times(self) -> Dict[str, List[float]]:
         """
         Get the list of times for each stage.
+
         :return: a dictionary with stages as keys and their list of times as values.
         """
         return {stage: self.stage_times(stage) for stage in self.stages}
@@ -97,6 +108,7 @@ class StagedTimer:
     def has_stage(self, stage: str) -> bool:
         """
         Check if a stage exists in the timer.
+
         :param stage: the name of the stage to check.
         :return: True if the stage exists, False otherwise.
         """
@@ -106,11 +118,13 @@ class StagedTimer:
     def time(self, stage: str):
         """
         Context Manager to record the time for a stage in the given context
+
         example:
         ```
         with timer.time(STAGE_NAME):
             # do something...
         ```
+
         :param stage: the name of the stage to time
         """
         self.start(stage)
@@ -121,6 +135,7 @@ class StagedTimer:
         """
         Start the timer for a specific stage. If the stage doesn't exist,
         it's added to the timer.
+
         :param stage: the name of the stage to start.
         :raises ValueError: if trying to start a stage before a previous one
                             has been stopped.
@@ -143,6 +158,7 @@ class StagedTimer:
     def stop(self, stage: str):
         """
         Stop the timer for a specific stage.
+
         :param stage: the name of the stage to stop.
         :raises ValueError: if trying to stop a stage that has not been started
                             or if trying to stop a stage before a previous one
@@ -170,6 +186,7 @@ class StagedTimer:
     def stage_times(self, stage: str) -> List[float]:
         """
         Get the list of time deltas for a specific stage.
+
         :param stage: the name of the stage to get time deltas for.
         :return: a list of time deltas.
         :raises ValueError: if trying to get time deltas for a stage that has not been
@@ -195,6 +212,7 @@ class StagedTimer:
     def stage_average_time(self, stage: str) -> float:
         """
         Get the average time for a specific stage.
+
         :param stage: the name of the stage to get the average time for.
         :return: the average time for the specified stage.
         """
@@ -207,20 +225,26 @@ class TimerManager:
     """
     Object to manage creation and aggregation of StagedTimers for benchmarking
     performance timings.
+
     Intended workflow:
+
     ```python
     timer_manager = TimerManager(multi=True)
+
     # process 1
     timer_1 = timer_manager.new_timer()
     timer_2.start(...)
     ...
+
     # process 2
     timer_2 = timer_manager.new_timer()
     timer_2.start(...)
     ...
+
     # aggregate times for benchmarking
     do_some_postprocessing(timer_manager.all_times)
     ```
+
     :param enabled: if False, no timings are measured by new staged timers. Default True
     :param multi: if True, keep track of all newly created staged timers. if False, only
         stores the latest created staged timer. Default False
@@ -234,6 +258,7 @@ class TimerManager:
     def __repr__(self):
         """
         Provide a string representation of the TimerManager object.
+
         :return: a string representing the timer manager object with its times.
         """
         return f"TimerManager({self.times})"
@@ -242,6 +267,7 @@ class TimerManager:
     def latest(self) -> Optional[StagedTimer]:
         """
         Get the latest created StagedTimer.
+
         :return: the latest created StagedTimer object or None if no timers are present.
         """
         return self._timers[-1] if self._timers else None
@@ -250,6 +276,7 @@ class TimerManager:
     def current(self) -> Optional[StagedTimer]:
         """
         Get the current active StagedTimer in the context.
+
         :return: the current active StagedTimer object in the context or
                  None if no timers are active.
         """
@@ -263,6 +290,7 @@ class TimerManager:
     def timers(self) -> List[StagedTimer]:
         """
         Get the list of all StagedTimer objects.
+
         :return: a list of all StagedTimer objects.
         """
         return self._timers
@@ -271,6 +299,7 @@ class TimerManager:
     def stages(self) -> List[str]:
         """
         Get the unique list of stages from all StagedTimer objects.
+
         :return: a list of unique stages.
         """
         stages = set()
@@ -284,6 +313,7 @@ class TimerManager:
     def times(self) -> Dict[str, float]:
         """
         Get the average time for each stage across all StagedTimer objects.
+
         :return: a dictionary with stage names as keys and their average time as values.
         """
         all_times = self.all_times
@@ -297,6 +327,7 @@ class TimerManager:
     def all_times(self) -> Dict[str, List[float]]:
         """
         Get the list of times for each stage across all StagedTimer objects.
+
         :return: a dictionary with stages as keys and their list of times as values.
         """
         all_times = {stage: [] for stage in self.stages}
@@ -325,6 +356,7 @@ class TimerManager:
     def new_timer_context(self, total_inference: bool = True) -> StagedTimer:
         """
         Create a new StagedTimer object and set it as the current context.
+
         :param total_inference: if True, measures the entire context as total inference
             automatically and assumes this is the main inference thread. if False,
             assumes this is not the main inference thread and will not overwrite
@@ -345,49 +377,3 @@ class TimerManager:
         yield timer
         if total_inference:
             timer.stop(InferenceStages.TOTAL_INFERENCE)
-
-import time
-from contextlib import contextmanager
-import threading
-from typing import Dict
-
-class Timer:
-    def __init__(self):
-        self._lock = threading.Lock()
-        self.start_time = {}
-        self.measurements = {}
-
-    def start(
-        self,
-        id: str,
-    ):
-        with self._lock:
-            self.start_time[id] = time.time()
-
-    def stop(
-        self,
-        id: str,
-    ):
-        end_time = time.time()
-        with self._lock:
-            if id in self.start_time:
-                start_time = self.start_time[id]
-                del self.start_time[id]
-                self.measurements[id] = end_time - start_time
-
-    @contextmanager
-    def record(self, id: str):
-        start = time.time()
-        yield
-        with self._lock:
-            self.measurements[id] = time.time() - start
-
-class TimerManager:
-    def __init__(self):
-        self.measurements = {}
-        
-    def get_new_timer(self):
-        return Timer()
-    
-    def update(self, measurements: Dict[str, float]):
-        self.measurements.update(measurements)
