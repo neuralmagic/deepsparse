@@ -21,6 +21,7 @@ from .join_output import *
 from .kv_cache_operator import *
 from .multi_engine_prefill_operator import *
 from .nl_engine_operator import *
+from .parse_inputs import *
 from .prep_for_prefill import *
 from .process_inputs import *
 from .process_outputs import *
