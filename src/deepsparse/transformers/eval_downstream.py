@@ -70,7 +70,8 @@ import numpy
 from tqdm.auto import tqdm
 
 from datasets import load_dataset, load_metric
-from deepsparse import DEEPSPARSE_ENGINE, ORT_ENGINE, Pipeline
+from deepsparse import Pipeline
+from deepsparse.operators.engine_operator import DEEPSPARSE_ENGINE, ORT_ENGINE
 from deepsparse.transformers.metrics import Perplexity, PrecisionRecallF1
 from deepsparse.transformers.utils.eval_helpers import process_concatenated_datasets
 
