@@ -13,7 +13,10 @@
 # limitations under the License.
 import warnings
 from abc import ABC
-from typing import Any, Union
+from typing import Any, Union, Optional, Dict
+from deepsparse.utils.timer import Timer
+from contextlib import contextmanager
+from copy import deepcopy
 
 
 __all__ = ["State", "PipelineState", "InferenceState"]
@@ -43,9 +46,23 @@ class PipelineState(State):
         if self._current_state:
             raise ValueError("State creation is only allowed during initialization.")
         self._current_state = new_state
+        
+class TimerState:
+    def __init__(self, timer: Optional[Timer] = None):
+        self.timer = timer
+        
+    @contextmanager
+    def record(self, id: str):
+        if self.timer is not None:
+            return self.timer.record(id=id)
+        yield
+        
+    def extract_attr_from_state(self, state: Dict):
+        if "timer" in state:
+            timer = state.pop("timer")
+            return timer
 
-
-class InferenceState(State):
+class InferenceState(State, TimerState):
     """
     Inference state, created during every inference run.
     """
@@ -62,3 +79,14 @@ class InferenceState(State):
 
     def update_state(self, value: Any):
         self._current_state.update(value)
+        
+    def get_state(self, key):
+        if key in self.current_state:
+            return self.current_state[key]
+        
+    def copy_state(self):
+        timer = super().extract_attr_from_state(self._current_state)
+        copied_state = deepcopy(self)
+        copied_state.update_state({"timer": timer})
+        return copied_state
+        
