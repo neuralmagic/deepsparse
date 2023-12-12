@@ -102,7 +102,8 @@ class UsageInfo(BaseModel):
 class ChatCompletionRequest(BaseModel):
     """
     Expected structure for requests sent to the /v1/chat/completions endpoint,
-    as part of the OpenAI integration.
+    as part of the OpenAI integration. This payload is mapped to the input
+    expected by the TextGenerationPipeline.
     """
 
     model: Optional[str] = None
@@ -125,6 +126,12 @@ class ChatCompletionRequest(BaseModel):
 
 
 class CompletionRequest(BaseModel):
+    """
+    Expected structure for requests sent to the /v1/completions endpoint,
+    as part of the OpenAI integration. This payload is mapped to the input
+    expected by the TextGenerationPipeline.
+    """
+
     model: str
     prompt: str
     suffix: Optional[str] = None
@@ -153,7 +160,11 @@ class ChatMessage(BaseModel):
 
 
 class ChatCompletionResponseChoice(BaseModel):
-    index: int
+    """
+    Expected structure of each response choice. This schema defines the structure
+    of each item in the `choices` field of the ChatCompletionResponse.
+    """
+
     message: ChatMessage
     finish_reason: Optional[
         Literal["stop", "length", "callback", "capacity", "max_new_tokens"]
@@ -175,7 +186,11 @@ class ChatCompletionResponse(BaseModel):
 
 
 class CompletionResponseChoice(BaseModel):
-    index: int
+    """
+    Expected structure of each response choice. This schema defines the structure
+    of each item in the `choices` field of the CompletionResponse.
+    """
+
     text: str
     logprobs: Optional[LogProbs] = None
     finish_reason: Optional[
@@ -184,6 +199,11 @@ class CompletionResponseChoice(BaseModel):
 
 
 class CompletionResponse(BaseModel):
+    """
+    Expected structure for responses returned from the /v1/completions endpoint,
+    as part of the OpenAI integration.
+    """
+
     id: str = Field(default_factory=lambda: f"cmpl-{random_uuid()}")
     object: str = "text_completion"
     created: int = Field(default_factory=lambda: int(time.time()))
@@ -193,7 +213,6 @@ class CompletionResponse(BaseModel):
 
 
 class CompletionResponseStreamChoice(BaseModel):
-    index: int
     text: str
     logprobs: Optional[LogProbs] = None
     finish_reason: Optional[
@@ -202,6 +221,11 @@ class CompletionResponseStreamChoice(BaseModel):
 
 
 class CompletionStreamResponse(BaseModel):
+    """
+    Expected structure for responses returned from the /v1/completions endpoint
+    when streaming is enabled, as part of the OpenAI integration.
+    """
+
     id: str = Field(default_factory=lambda: f"cmpl-{random_uuid()}")
     object: str = "text_completion"
     created: int = Field(default_factory=lambda: int(time.time()))
@@ -215,7 +239,6 @@ class DeltaMessage(BaseModel):
 
 
 class ChatCompletionResponseStreamChoice(BaseModel):
-    index: int
     delta: DeltaMessage
     finish_reason: Optional[
         Literal["stop", "length", "callback", "capacity", "max_new_tokens"]

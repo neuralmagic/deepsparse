@@ -90,7 +90,7 @@ class OpenAIServer(Server):
             # for the API specification. This API mimics the OpenAI ChatCompletion API.
 
             request = ChatCompletionRequest(**await raw_request.json())
-            _LOGGER.debug(f"Received chat completion request: {request}")
+            _LOGGER.debug("Received chat completion request %s" % request)
 
             if isinstance(request.messages, str):
                 prompt = request.messages
@@ -154,14 +154,10 @@ class OpenAIServer(Server):
                 prompt, request_id, sampling_params, pipeline
             )
 
-            async def abort_request() -> None:
-                await pipeline.abort(request_id)
-
             # Streaming response
             if request.stream:
                 background_tasks = BackgroundTasks()
                 # Abort the request if the client disconnects.
-                background_tasks.add_task(abort_request)
                 return StreamingResponse(
                     chat_completion_stream_generator(
                         request,
@@ -179,7 +175,6 @@ class OpenAIServer(Server):
             async for res in result_generator:
                 if await raw_request.is_disconnected():
                     # Abort the request if the client disconnects.
-                    await abort_request()
                     return create_error_response(
                         HTTPStatus.BAD_REQUEST, "Client disconnected"
                     )
@@ -188,7 +183,6 @@ class OpenAIServer(Server):
             choices = []
             for output in final_res.outputs:
                 choice_data = ChatCompletionResponseChoice(
-                    index=output.index,
                     message=ChatMessage(role="assistant", content=output.text),
                     finish_reason=output.finish_reason,
                 )
@@ -219,7 +213,7 @@ class OpenAIServer(Server):
         )
         async def create_completion(raw_request: Request):
             request = CompletionRequest(**await raw_request.json())
-            _LOGGER.debug(f"Received completion request: {request}")
+            _LOGGER.debug("Received completion request: %s" % request)
 
             model = request.model
 
@@ -255,14 +249,10 @@ class OpenAIServer(Server):
                 pipeline=pipeline,
             )
 
-            async def abort_request() -> None:
-                await pipeline.abort(request_id)
-
             # Streaming response
             if request.stream:
                 background_tasks = BackgroundTasks()
                 # Abort the request if the client disconnects.
-                background_tasks.add_task(abort_request)
                 return StreamingResponse(
                     completion_stream_generator(
                         request=request,
@@ -280,7 +270,6 @@ class OpenAIServer(Server):
             async for res in result_generator:
                 if await raw_request.is_disconnected():
                     # Abort the request if the client disconnects.
-                    await abort_request()
                     return create_error_response(
                         HTTPStatus.BAD_REQUEST, "Client disconnected"
                     )
@@ -289,7 +278,6 @@ class OpenAIServer(Server):
             choices = []
             for output in final_res.outputs:
                 choice_data = CompletionResponseChoice(
-                    index=output.index,
                     text=output.text,
                     finish_reason=output.finish_reason,
                 )
@@ -320,10 +308,19 @@ class OpenAIServer(Server):
         app: FastAPI,
         endpoint_config: EndpointConfig,
     ):
+        """
+        Function to add models to the app. All models are added when the server is
+        first launched and stored as individual ModelCard objects in the model_list
+        attribute. Mapping between the model identifier (i.e the model_path/zoostub)
+        and pipeline is stored in the model_to_pipeline attribute.
+
+        :param app: FastAPI app
+        :param endpoint_config: endpoint config for the specific model being added
+        """
         pipeline_config = endpoint_config.to_pipeline_config()
         pipeline_config.kwargs["executor"] = self.executor
 
-        _LOGGER.debug(f"Initializing pipeline for '{endpoint_config.name}'")
+        _LOGGER.debug("Initializing pipeline for %s" % endpoint_config.name)
 
         if not SupportedTasks.is_text_generation(pipeline_config.task):
             raise ValueError(
@@ -349,6 +346,19 @@ class OpenAIServer(Server):
     async def generate(
         prompt: str, request_id: str, generation_kwargs: dict, pipeline: Pipeline
     ) -> AsyncGenerator[RequestOutput, None]:
+        """
+        Map the request input to the TextGenerationInput schema using the
+        map_generation_schema function. Call the pipeline and return the generations
+        using a generator
+
+        :param prompt: prompt to run inference on
+        :param request_id: request_id for the specific inference call
+        :param generation_kwargs: generation_kwargs for inference
+        :para pipeline: TextGenerationPipeline object
+
+        :return: generator consisting of each of the generations
+        """
+
         def tokenize(text: str) -> List[int]:
             return pipeline.tokenizer(text)
 
@@ -376,7 +386,6 @@ class OpenAIServer(Server):
             generated_outputs = []
             for prompt_generation in generations:
                 completion = CompletionOutput(
-                    index=0,
                     text=prompt_generation.text,
                     token_ids=tokenize(prompt_generation.text),
                     finish_reason=prompt_generation.finished_reason,
@@ -391,11 +400,10 @@ class OpenAIServer(Server):
                 finished=True,
             )
         else:
-            concat_text = ""
             concat_token_ids = []
             for generation in output:
                 output = generation.generations[0]
-                concat_text += output.text
+                print("output", output.text)
                 concat_token_ids.append(tokenize(output.text))
                 yield RequestOutput(
                     request_id=request_id,
@@ -403,8 +411,7 @@ class OpenAIServer(Server):
                     prompt_token_ids=prompt_token_ids,
                     outputs=[
                         CompletionOutput(
-                            index=0,
-                            text=concat_text,
+                            text=output.text,
                             token_ids=concat_token_ids,
                             finish_reason=output.finished_reason,
                         )
@@ -435,15 +442,16 @@ def map_generation_schema(generation_kwargs: Dict) -> Dict:
 
 
 def create_stream_response_json(
-    index: int,
     text: str,
     request_id: str,
     created_time: int,
     pipeline: Pipeline,
     finish_reason: Optional[str] = None,
 ) -> str:
+    """
+    Create the response for /v1/chat/completions endpoint when streaming is enabled.
+    """
     choice_data = ChatCompletionResponseStreamChoice(
-        index=index,
         delta=DeltaMessage(content=text),
         finish_reason=finish_reason,
     )
@@ -459,15 +467,16 @@ def create_stream_response_json(
 
 
 def create_completion_stream_response_json(
-    index: int,
     text: str,
     request_id: str,
     created_time: int,
     pipeline: Pipeline,
     finish_reason: Optional[str] = None,
 ) -> str:
+    """
+    Create the response for /v1/completions endpoint when streaming is enabled.
+    """
     choice_data = CompletionResponseStreamChoice(
-        index=index,
         text=text,
         finish_reason=finish_reason,
     )
@@ -485,18 +494,11 @@ def create_completion_stream_response_json(
 async def completion_stream_generator(
     request, result_generator, request_id, created_time, pipeline
 ) -> AsyncGenerator[str, None]:
-    previous_texts = [""] * request.n
-    previous_num_tokens = [0] * request.n
     async for res in result_generator:
         res: RequestOutput
         for output in res.outputs:
-            i = output.index
-            delta_text = output.text[len(previous_texts[i]) :]
-            previous_texts[i] = output.text
-            previous_num_tokens[i] = len(output.token_ids)
             response_json = create_completion_stream_response_json(
-                index=i,
-                text=delta_text,
+                text=output.text,
                 request_id=request_id,
                 created_time=created_time,
                 pipeline=pipeline,
@@ -504,7 +506,6 @@ async def completion_stream_generator(
             yield f"data: {response_json}\n\n"
             if output.finish_reason is not None:
                 response_json = create_completion_stream_response_json(
-                    index=i,
                     text="",
                     request_id=request_id,
                     created_time=created_time,
@@ -521,7 +522,6 @@ async def chat_completion_stream_generator(
     # First chunk with role
     for i in range(request.n):
         choice_data = ChatCompletionResponseStreamChoice(
-            index=i,
             delta=DeltaMessage(role="assistant"),
             finish_reason=None,
         )
@@ -531,18 +531,11 @@ async def chat_completion_stream_generator(
         data = chunk.json(exclude_unset=True, ensure_ascii=False)
         yield f"data: {data}\n\n"
 
-    previous_texts = [""] * request.n
-    previous_num_tokens = [0] * request.n
     async for res in result_generator:
         res: RequestOutput
         for output in res.outputs:
-            i = output.index
-            delta_text = output.text[len(previous_texts[i]) :]
-            previous_texts[i] = output.text
-            previous_num_tokens[i] = len(output.token_ids)
             response_json = create_stream_response_json(
-                index=i,
-                text=delta_text,
+                text=output.text,
                 request_id=request_id,
                 created_time=created_time,
                 pipeline=pipeline,
@@ -550,7 +543,6 @@ async def chat_completion_stream_generator(
             yield f"data: {response_json}\n\n"
             if output.finish_reason is not None:
                 response_json = create_stream_response_json(
-                    index=i,
                     text="",
                     finish_reason=output.finish_reason,
                     request_id=request_id,
