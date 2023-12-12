@@ -17,7 +17,8 @@ from typing import Any, Dict, Optional, Tuple, Union
 
 from transformers import AutoModelForCausalLM
 
-from deepsparse import DEEPSPARSE_ENGINE, ORT_ENGINE, Pipeline
+from deepsparse import Pipeline
+from deepsparse.operators.engine_operator import DEEPSPARSE_ENGINE, ORT_ENGINE
 
 
 __all__ = ["text_generation_model_from_target", "get_save_path", "args_to_dict"]

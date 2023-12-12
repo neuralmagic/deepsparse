@@ -18,7 +18,7 @@ import time
 from http import HTTPStatus
 from typing import AsyncGenerator, Dict, List, Optional
 
-from deepsparse import Pipeline
+from deepsparse.legacy import Pipeline
 from deepsparse.server.config import EndpointConfig
 from deepsparse.server.helpers import create_error_response
 from deepsparse.server.output import CompletionOutput, RequestOutput

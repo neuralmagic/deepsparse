@@ -17,7 +17,9 @@ import inspect
 import numpy
 
 import pytest
-from deepsparse import Pipeline
+
+# TODO: update to use/be compliant with new pipeline
+from deepsparse.legacy.pipeline import Pipeline
 from deepsparse.transformers.utils.helpers import prepends_bos_token
 
 
