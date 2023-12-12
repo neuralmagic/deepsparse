@@ -15,7 +15,7 @@ import warnings
 from abc import ABC
 from contextlib import contextmanager
 from copy import deepcopy
-from typing import Any, Dict, Optional, Union
+from typing import Any, Dict, Union
 
 from deepsparse.utils.time import Timer
 
@@ -30,6 +30,7 @@ class State(ABC):
     """
 
     def __init__(self):
+        super().__init__()
         self._current_state = None
 
     @property
@@ -50,21 +51,23 @@ class PipelineState(State):
 
 
 class TimerState:
-  
-    _timer = None
+    def __init__(self):
+        super().__init__()
+        self._timer = Timer()
 
     @contextmanager
     def time(self, id: str):
-        self._timer = None
         if self._timer is not None:
-            return self.timer.time(id=id)
-        yield # null context
+            with self.timer.time(id=id):
+                yield
+        else:
+            yield  # null context
 
     def extract_timer_state(self, state: Dict):
         if "timer" in state:
             timer = state.pop("timer")
             return timer
-        
+
     def set_timer(self, timer: Timer):
         self._timer = timer
 
@@ -72,9 +75,9 @@ class TimerState:
     def timer(self):
         return self._timer
 
-    @timer.setter 
+    @timer.setter
     def timer(self, timer: Timer):
-        self._timer = timer 
+        self._timer = timer
 
 
 class InferenceState(State, TimerState):
@@ -82,11 +85,13 @@ class InferenceState(State, TimerState):
     Inference state, created during every inference run.
     """
 
+    def __init__(self):
+        super().__init__()
+
     def create_state(self, new_state: dict):
         if self._current_state:
             warnings.warn("Current state already exists, overriding.")
-        # timer  = self.extract_timer_state(new_state)
-        # self.timer = timer
+
         self._current_state = new_state
 
     def update_value(self, attribute: str, value: Union[str, int, list]):
@@ -101,17 +106,17 @@ class InferenceState(State, TimerState):
         if key in self.current_state:
             return self.current_state[key]
 
-    def copy_state(self, props = ["timer"]):
+    def copy_state(self, props=["timer"]):
         """copy everything except the attrs in props"""
 
-        original_values = {prop: getattr(self, prop) for prop in props if hasattr(self, prop)}
-
+        original_values = {
+            prop: getattr(self, prop) for prop in props if hasattr(self, prop)
+        }
         for prop in props:
             setattr(self, prop, None)
 
         copied_state = deepcopy(self)
 
         for prop, value in original_values.items():
-            setattr(self, prop, value)
-
+            setattr(copied_state, prop, value)
         return copied_state

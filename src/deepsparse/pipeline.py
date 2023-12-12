@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import asyncio
-import copy
 from typing import Any, Dict, List, Optional, Union
 
 from deepsparse.operators import EngineOperator, Operator

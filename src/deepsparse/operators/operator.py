@@ -28,6 +28,14 @@ class Operator(ABC):
     """
     Base operator class - an operator should be defined for each atomic, functional
     part of the pipeline.
+
+    To add fine grained timings use:
+    with inference_state.time(id="foo"):
+        time.sleep(0.1)
+
+    The timer object under the hood is shared among all operators
+
+    To access the timings from timer_manager.measurements from Pipeline
     """
 
     # expected structured input and output types, to be defined by child classes
@@ -71,11 +79,6 @@ class Operator(ABC):
         :param kwargs: kwargs when not initializing from an instantiated schema
         :return: operator output
         """
-        breakpoint()
-        import time
-        with inference_state.time(time.time()):
-            time.sleep(0.1)
-            
         if self.has_input_schema():
             if len(args) > 1:
                 raise ValueError(

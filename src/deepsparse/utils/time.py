@@ -15,9 +15,10 @@
 
 import threading
 import time
+from collections import defaultdict
 from contextlib import contextmanager
 from typing import Dict
-from collections import defaultdict
+
 
 class Timer:
     def __init__(self):
@@ -27,16 +28,14 @@ class Timer:
     @contextmanager
     def time(self, id: str):
         start = time.time()
-        breakpoint()
+        yield
         with self._lock:
-            yield
             self.measurements[id].append(time.time() - start)
-        # self.measurements[id].append(time.time() - start)
-    
+
 
 class TimerManager:
     def __init__(self):
-        self.lock = threading.Lock()
+        self.lock = threading.RLock()  # reenter lock, same thread can get the lock
         self.measurements = []
 
     def get_new_timer(self):
@@ -45,6 +44,6 @@ class TimerManager:
     def update(self, measurements: Dict[str, float]):
         with self.lock:
             self.measurements.append(measurements)
-            
+
     def average_times(self):
         ...
