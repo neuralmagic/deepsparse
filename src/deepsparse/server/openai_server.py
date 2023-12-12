@@ -403,7 +403,6 @@ class OpenAIServer(Server):
             concat_token_ids = []
             for generation in output:
                 output = generation.generations[0]
-                print("output", output.text)
                 concat_token_ids.append(tokenize(output.text))
                 yield RequestOutput(
                     request_id=request_id,
