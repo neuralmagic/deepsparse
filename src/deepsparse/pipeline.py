@@ -28,7 +28,21 @@ from deepsparse.utils.helpers import run_func
 from deepsparse.utils.subgraph import SubGraph
 
 
-__all__ = ["Pipeline"]
+__all__ = [
+    "Pipeline",
+    "TextGeneration",
+    "CodeGeneration",
+    "Chat",
+    "question_answering_pipeline",
+    "text_classification_pipeline",
+    "zero_shot_text_classification_pipeline",
+    "token_classification_pipeline",
+    "haystack_pipeline",
+    "sentiment_analysis_pipeline",
+    "embedding_extraction_pipeline",
+    "image_classification_pipeline",
+    "yolo_pipeline",
+]
 
 
 class Pipeline(Operator):
@@ -381,3 +395,110 @@ class Pipeline(Operator):
             raise ValueError(f"Invalid Router: {type(self.router)} for ops: {op_types}")
         elif isinstance(router_validation, str):
             raise ValueError(f"Invalid Router for operators: {router_validation}")
+
+
+def text_generation_pipeline(*args, **kwargs) -> "Pipeline":
+    """
+    :return: text generation pipeline with the given args and
+        kwargs passed to Pipeline.create
+    """
+    return Pipeline.create("text_generation", *args, **kwargs)
+
+
+def code_generation_pipeline(*args, **kwargs) -> "Pipeline":
+    """
+    :return: text generation pipeline with the given args and
+        kwargs passed to Pipeline.create
+    """
+    return Pipeline.create("code_generation", *args, **kwargs)
+
+
+def chat_pipeline(*args, **kwargs) -> "Pipeline":
+    """
+    :return: text generation pipeline with the given args and
+        kwargs passed to Pipeline.create
+    """
+    return Pipeline.create("chat", *args, **kwargs)
+
+
+TextGeneration = text_generation_pipeline
+CodeGeneration = code_generation_pipeline
+Chat = chat_pipeline
+
+
+def question_answering_pipeline(*args, **kwargs) -> "Pipeline":
+    """
+    transformers question_answering pipeline
+    """
+
+    return Pipeline.create("question_answering", *args, **kwargs)
+
+
+def text_classification_pipeline(*args, **kwargs) -> "Pipeline":
+    """
+    transformers text classification pipeline
+    """
+
+    return Pipeline.create("text_classification", *args, **kwargs)
+
+
+def sentiment_analysis_pipeline(*args, **kwargs) -> "Pipeline":
+    """
+    transformers text classification pipeline
+
+    """
+    return Pipeline.create("text_classification", *args, **kwargs)
+
+
+def token_classification_pipeline(*args, **kwargs) -> "Pipeline":
+    """
+    transformers token classification pipeline
+    """
+
+    return Pipeline.create("token_classification", *args, **kwargs)
+
+
+def image_classification_pipeline(*args, **kwargs) -> "Pipeline":
+    """
+    Image classification pipeline for DeepSparse
+    """
+
+    return Pipeline.create("image_classification", *args, **kwargs)
+
+
+def yolo_pipeline(*args, **kwargs) -> "Pipeline":
+    """
+    Image Segmentation YOLO pipeline for DeepSparse
+
+    """
+    return Pipeline.create("yolo", *args, **kwargs)
+
+
+def haystack_pipeline(*args, **kwargs) -> "Pipeline":
+    """
+    Neural Magic pipeline for running Haystack DocumentSearchPipeline.
+    Supports selected Haystack Nodes as well as Haystack nodes integrated
+    with the Neural Magic DeepSparse Engine
+    """
+    return Pipeline.create("information_retrieval_haystack", *args, **kwargs)
+
+
+def embedding_extraction_pipeline(*args, **kwargs) -> "Pipeline":
+    """
+    embedding extraction pipeline for extracting intermediate layer embeddings
+    from transformer models
+    """
+    return Pipeline.create("embedding_extraction", *args, **kwargs)
+
+
+def zero_shot_text_classification_pipeline(*args, **kwargs) -> "Pipeline":
+    """
+    Transformers zero shot text classification pipeline. This pipeline allows for
+    text classification using models which were trained on datasets not originally
+    meant for this task.
+
+    This class upon construction returns an instance of a child Pipeline which
+    inherits from ZeroShotTextClassificationPipelineBase. Which type of Pipeline
+    is returned depends on the value of the passed model_scheme argument.
+    """
+    return Pipeline.create("zero_shot_text_classification", *args, **kwargs)
