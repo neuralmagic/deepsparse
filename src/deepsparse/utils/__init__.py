@@ -22,4 +22,3 @@ from .state import *
 from .subgraph import *
 from .timer import *
 from .types import *
-from .timer import *

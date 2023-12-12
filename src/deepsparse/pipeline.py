@@ -331,9 +331,6 @@ class Pipeline(Operator):
                 inference_state = graph.inf
                 next_step = graph.step
 
-        timer = inference_state.get_state("timer")
-        if timer is not None:
-            self.timer_manager.update(timer.measurements)
         return operator_output
 
     def __call__(self, *args, **kwargs):
@@ -348,17 +345,19 @@ class Pipeline(Operator):
             inference_state = kwargs.pop("inference_state")
         else:
             inference_state = InferenceState()
-            inference_state.create_state({**{"timer": self.timer_manager.get_new_timer()}})
+            if self.timer_manager is not None:
+                timer = self.timer_manager.get_new_timer()
+            inference_state.create_state({})
+            inference_state.set_timer(timer)
 
         kwargs["inference_state"] = inference_state
-        
-        timer = inference_state.get_state("timer")
-        with timer.record("total"):
-            rtn= self.run(*args, **kwargs)
-        self.timer_manager.update(timer.measurements)
-        
-        return rtn
 
+        timer = inference_state.timer
+        with timer.time("total"):
+            rtn = self.run(*args, **kwargs)
+        self.timer_manager.update(timer.measurements)
+
+        return rtn
 
     def expand_inputs(self, *args, **kwargs):
         """

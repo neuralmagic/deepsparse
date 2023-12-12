@@ -19,7 +19,7 @@ from pydantic import BaseModel
 
 from deepsparse.operators.registry import OperatorRegistry
 from deepsparse.utils import InferenceState
-from contextlib import contextmanager
+
 
 __all__ = ["Operator"]
 
@@ -71,41 +71,40 @@ class Operator(ABC):
         :param kwargs: kwargs when not initializing from an instantiated schema
         :return: operator output
         """
-
-        timer = empty_context_manager
-        if "timer" in inference_state.current_state:
-            timer = inference_state.get_state("timer").record
-        
-        with timer(id=self.__class__.__name__):
-            if self.has_input_schema():
-                if len(args) > 1:
-                    raise ValueError(
-                        f"The operator requires an {self.input_schema}. Too many arguments"
-                        "provided."
-                    )
-                elif args and isinstance(args[0], self.input_schema):
-                    inference_input = args[0]
-                elif kwargs:
-                    inference_input = self.input_schema(**kwargs)
-                else:
-                    raise ValueError(
-                        "Can't resolve inputs. The values for the schema must be provided"
-                        "in the form of a dictionary or an instance of the input_schema"
-                        "object"
-                    )
-                run_output = self.run(
-                    inference_input,
-                    inference_state=inference_state,
+        breakpoint()
+        import time
+        with inference_state.time(time.time()):
+            time.sleep(0.1)
+            
+        if self.has_input_schema():
+            if len(args) > 1:
+                raise ValueError(
+                    f"The operator requires an {self.input_schema}. Too many arguments"
+                    "provided."
                 )
+            elif args and isinstance(args[0], self.input_schema):
+                inference_input = args[0]
+            elif kwargs:
+                inference_input = self.input_schema(**kwargs)
             else:
-                run_output = self.run(
-                    *args,
-                    inference_state=inference_state,
-                    **kwargs,
+                raise ValueError(
+                    "Can't resolve inputs. The values for the schema must be provided"
+                    "in the form of a dictionary or an instance of the input_schema"
+                    "object"
                 )
-            if self.has_output_schema():
-                return self.output_schema(**run_output)
-            return run_output
+            run_output = self.run(
+                inference_input,
+                inference_state=inference_state,
+            )
+        else:
+            run_output = self.run(
+                *args,
+                inference_state=inference_state,
+                **kwargs,
+            )
+        if self.has_output_schema():
+            return self.output_schema(**run_output)
+        return run_output
 
     @classmethod
     def create(
@@ -143,8 +142,3 @@ class Operator(ABC):
 
     def json(self):
         pass
-
-@contextmanager
-def empty_context_manager(**kwargs):
-    yield
-    

@@ -43,6 +43,7 @@ class AddTwoOperator(Operator):
     output_schema = IntSchema
 
     def run(self, inp: IntSchema, **kwargs) -> Dict:
+        breakpoint()
         return {"value": inp.value + 2}
 
 
