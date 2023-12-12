@@ -21,7 +21,10 @@ from deepsparse.transformers.schemas.text_generation_schemas import (
 from deepsparse.utils import InferenceState, PipelineState
 
 
-class ParseInputs(Operator):
+__all__ = ["ParseTextGenerationInputs"]
+
+
+class ParseTextGenerationInputs(Operator):
     def run(
         self,
         *args,

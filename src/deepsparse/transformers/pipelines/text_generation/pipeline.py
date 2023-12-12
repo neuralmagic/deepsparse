@@ -31,7 +31,7 @@ from deepsparse.transformers.pipelines.text_generation import (
     KVCacheCreator,
     MultiEnginePrefill,
     NLEngineOperator,
-    ParseInputs,
+    ParseTextGenerationInputs,
     PrepareforPrefill,
     PrepareGeneration,
     ProcessInputsTextGeneration,
@@ -99,7 +99,7 @@ class TextGenerationPipeline(Pipeline):
         ] = single_engine_operator.kv_cache_data_type
         pipeline_state.create_state(pipeline_state_vals)
 
-        parse_inputs = ParseInputs()
+        parse_inputs = ParseTextGenerationInputs()
         process_inputs = ProcessInputsTextGeneration(
             generation_config=process_generation_config(generation_config),
             sequence_length=sequence_length,
