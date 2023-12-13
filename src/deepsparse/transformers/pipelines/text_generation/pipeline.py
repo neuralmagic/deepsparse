@@ -31,6 +31,7 @@ from deepsparse.transformers.pipelines.text_generation import (
     KVCacheCreator,
     MultiEnginePrefill,
     NLEngineOperator,
+    ParseTextGenerationInputs,
     PrepareforPrefill,
     PrepareGeneration,
     ProcessInputsTextGeneration,
@@ -98,6 +99,7 @@ class TextGenerationPipeline(Pipeline):
         ] = single_engine_operator.kv_cache_data_type
         pipeline_state.create_state(pipeline_state_vals)
 
+        parse_inputs = ParseTextGenerationInputs()
         process_inputs = ProcessInputsTextGeneration(
             generation_config=process_generation_config(generation_config),
             sequence_length=sequence_length,
@@ -154,6 +156,7 @@ class TextGenerationPipeline(Pipeline):
                 )
 
         ops = {
+            "parse_inputs": parse_inputs,
             "process_input": process_inputs,
             "single_engine": single_engine_operator,
             "multi_engine": multi_engine_operator,
@@ -171,6 +174,7 @@ class TextGenerationPipeline(Pipeline):
         }
 
         routes = {
+            "parse_inputs": "process_input",
             "process_input": "SPLIT",
             "SPLIT": "prepare_prefill",
             "prepare_prefill": ["multi_engine_prefill", "autoregressive_preprocess"],
@@ -198,9 +202,7 @@ class TextGenerationPipeline(Pipeline):
             "process_outputs": "STOP",
         }
 
-        router = GraphRouter(
-            end_route="STOP", start_route="process_input", route=routes
-        )
+        router = GraphRouter(end_route="STOP", start_route="parse_inputs", route=routes)
         scheduler = [OperatorScheduler()]
         super().__init__(
             ops=ops,
