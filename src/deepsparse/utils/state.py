@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import traceback
 import warnings
 from abc import ABC
 from contextlib import contextmanager
@@ -50,6 +51,10 @@ class PipelineState(State):
 
 
 class TimerState:
+    """TimerState shared among all InferenceState"""
+
+    _timer = None
+
     @contextmanager
     def time(self, id: str):
         if self._timer is not None:
@@ -106,4 +111,6 @@ class InferenceState(State, TimerState):
 
         for prop, value in original_values.items():
             setattr(copied_state, prop, value)
+            setattr(self, prop, value)
+
         return copied_state
