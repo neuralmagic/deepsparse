@@ -20,7 +20,6 @@ from typing import Dict, List, Optional
 class CompletionOutput:
     """The output data of one completion output of a request.
 
-    :param index: The index of the output in the request.
     :param text: The generated output text.
     :param token_ids: The token IDs of the generated output text.
     :param cumulative_logprob: The cumulative log probability of the generated output
@@ -30,7 +29,6 @@ class CompletionOutput:
     :param finish_reason: The reason why the sequence is finished.
     """
 
-    index: int
     text: str
     token_ids: List[int]
     cumulative_logprob: float = 0.0

@@ -26,6 +26,13 @@ def random_uuid() -> str:
     return str(uuid.uuid4().hex)
 
 
+class LogProbs(BaseModel):
+    text_offset: List[int] = Field(default_factory=list)
+    token_logprobs: List[Optional[float]] = Field(default_factory=list)
+    tokens: List[str] = Field(default_factory=list)
+    top_logprobs: List[Optional[Dict[str, float]]] = Field(default_factory=list)
+
+
 class ErrorResponse(BaseModel):
     """
     Structure of the error messages returned for any errors returned as part of the
@@ -95,11 +102,12 @@ class UsageInfo(BaseModel):
 class ChatCompletionRequest(BaseModel):
     """
     Expected structure for requests sent to the /v1/chat/completions endpoint,
-    as part of the OpenAI integration.
+    as part of the OpenAI integration. This payload is mapped to the input
+    expected by the TextGenerationPipeline.
     """
 
     model: Optional[str] = None
-    messages: Union[str, List[Dict[str, str]]]
+    messages: Union[str, Dict[str, str]]
     temperature: Optional[float] = 0.7
     top_p: Optional[float] = 1.0
     n: Optional[int] = 1
@@ -117,15 +125,50 @@ class ChatCompletionRequest(BaseModel):
     use_beam_search: Optional[bool] = False
 
 
+class CompletionRequest(BaseModel):
+    """
+    Expected structure for requests sent to the /v1/completions endpoint,
+    as part of the OpenAI integration. This payload is mapped to the input
+    expected by the TextGenerationPipeline.
+    """
+
+    model: str
+    prompt: str
+    suffix: Optional[str] = None
+    max_tokens: Optional[int] = 16
+    temperature: Optional[float] = 1.0
+    top_p: Optional[float] = 1.0
+    n: Optional[int] = 1
+    stream: Optional[bool] = False
+    logprobs: Optional[int] = None
+    echo: Optional[bool] = False
+    stop: Optional[Union[str, List[str]]] = Field(default_factory=list)
+    presence_penalty: Optional[float] = 0.0
+    frequency_penalty: Optional[float] = 0.0
+    best_of: Optional[int] = None
+    logit_bias: Optional[Dict[str, float]] = None
+    user: Optional[str] = None
+    # Additional parameters
+    top_k: Optional[int] = -1
+    ignore_eos: Optional[bool] = False
+    use_beam_search: Optional[bool] = False
+
+
 class ChatMessage(BaseModel):
     role: str
     content: str
 
 
 class ChatCompletionResponseChoice(BaseModel):
-    index: int
+    """
+    Expected structure of each response choice. This schema defines the structure
+    of each item in the `choices` field of the ChatCompletionResponse.
+    """
+
     message: ChatMessage
-    finish_reason: Optional[Literal["stop", "length", "callback"]] = None
+    finish_reason: Optional[
+        Literal["stop", "length", "callback", "capacity", "max_new_tokens"]
+    ] = None
 
 
 class ChatCompletionResponse(BaseModel):
@@ -142,15 +185,64 @@ class ChatCompletionResponse(BaseModel):
     usage: UsageInfo
 
 
+class CompletionResponseChoice(BaseModel):
+    """
+    Expected structure of each response choice. This schema defines the structure
+    of each item in the `choices` field of the CompletionResponse.
+    """
+
+    text: str
+    logprobs: Optional[LogProbs] = None
+    finish_reason: Optional[
+        Literal["stop", "length", "callback", "capacity", "max_new_tokens"]
+    ] = None
+
+
+class CompletionResponse(BaseModel):
+    """
+    Expected structure for responses returned from the /v1/completions endpoint,
+    as part of the OpenAI integration.
+    """
+
+    id: str = Field(default_factory=lambda: f"cmpl-{random_uuid()}")
+    object: str = "text_completion"
+    created: int = Field(default_factory=lambda: int(time.time()))
+    model: str
+    choices: List[CompletionResponseChoice]
+    usage: UsageInfo
+
+
+class CompletionResponseStreamChoice(BaseModel):
+    text: str
+    logprobs: Optional[LogProbs] = None
+    finish_reason: Optional[
+        Literal["stop", "length", "callback", "capacity", "max_new_tokens"]
+    ] = None
+
+
+class CompletionStreamResponse(BaseModel):
+    """
+    Expected structure for responses returned from the /v1/completions endpoint
+    when streaming is enabled, as part of the OpenAI integration.
+    """
+
+    id: str = Field(default_factory=lambda: f"cmpl-{random_uuid()}")
+    object: str = "text_completion"
+    created: int = Field(default_factory=lambda: int(time.time()))
+    model: str
+    choices: List[CompletionResponseStreamChoice]
+
+
 class DeltaMessage(BaseModel):
     role: Optional[str] = None
     content: Optional[str] = None
 
 
 class ChatCompletionResponseStreamChoice(BaseModel):
-    index: int
     delta: DeltaMessage
-    finish_reason: Optional[Literal["stop", "length", "callback"]] = None
+    finish_reason: Optional[
+        Literal["stop", "length", "callback", "capacity", "max_new_tokens"]
+    ] = None
 
 
 class ChatCompletionStreamResponse(BaseModel):
