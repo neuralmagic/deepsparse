@@ -219,7 +219,6 @@ def test_token_generation_non_deterministic(pipeline, prompt):
     assert len(set(text_outputs)) == 3
 
 
-@pytest.mark.skip("input tokens not yet in v2")
 def test_pipeline_for_ppl_eval(pipeline, prompt):
     predictions = pipeline(
         prompt,
