@@ -16,6 +16,7 @@ import asyncio
 import copy
 from typing import Any, Dict, List, Optional, Union
 
+from deepsparse.middlewares import MiddlewareManager
 from deepsparse.operators import EngineOperator, Operator
 from deepsparse.routers import Router
 from deepsparse.schedulers import (
@@ -45,7 +46,7 @@ __all__ = [
 ]
 
 
-class Pipeline(Operator):
+class BasePipeline(Operator):
     """
     Pipeline accepts a series of operators, schedulers, and a router. Calling a pipeline
     will use the router to run through all the defined operators. The operators should
@@ -502,3 +503,18 @@ def zero_shot_text_classification_pipeline(*args, **kwargs) -> "Pipeline":
     is returned depends on the value of the passed model_scheme argument.
     """
     return Pipeline.create("zero_shot_text_classification", *args, **kwargs)
+
+
+class Pipeline(BasePipeline):
+    def __init__(
+        self, middleware_manager: Optional[MiddlewareManager] = None, *args, **kwargs
+    ):
+        self.middleware_manager = middleware_manager
+        super().__init__(*args, **kwargs)
+
+    def __call__(self, *args, **kwargs):
+        next_call = super().__call__
+        if self.middleware_manager is not None:
+            next_call = self.middleware_manager.build_middleware_stack(next_call)
+
+        return next_call(*args, **kwargs)
