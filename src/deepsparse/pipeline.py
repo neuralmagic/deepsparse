@@ -409,7 +409,9 @@ class Pipeline(Operator):
         operator: Operator,
         **kwargs,
     ):
-        wrapped_operator = self.middleware_manager.wrap(operator)
+        wrapped_operator = operator
+        if self.middleware_manager is not None:
+            wrapped_operator = self.middleware_manager.wrap(operator)
         return run_func(*args, operator=wrapped_operator, **kwargs)
 
 
