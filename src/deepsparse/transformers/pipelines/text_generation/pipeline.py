@@ -38,7 +38,10 @@ from deepsparse.transformers.pipelines.text_generation import (
     ProcessOutputs,
     TokenGeneratorOperator,
 )
-from deepsparse.transformers.utils.helpers import process_generation_config
+from deepsparse.transformers.utils.helpers import (
+    causal_mask_input_present,
+    process_generation_config,
+)
 from deepsparse.utils import PipelineState, split_engine_inputs
 
 
@@ -58,6 +61,7 @@ class TextGenerationPipeline(Pipeline):
         continuous_batch_sizes: Optional[List[int]] = None,
         **engine_kwargs,
     ):
+        # Note: this will add the model_path to the eninge_kwargs
         (
             self.model_path,
             self.config,
@@ -66,6 +70,14 @@ class TextGenerationPipeline(Pipeline):
         ) = setup_transformers_pipeline(
             model_path, sequence_length, engine_kwargs=engine_kwargs
         )
+
+        causal_mask_present = causal_mask_input_present(self.model_path)
+        if not causal_mask_present:
+            _LOGGER.warning(
+                "This ONNX graph does not support processing the prompt"
+                "with processing length > 1. Setting prompt_sequence_length to 1."
+            )
+            prompt_sequence_length = 1
 
         pipeline_state = PipelineState()
         pipeline_state_vals = {}
