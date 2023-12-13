@@ -105,6 +105,9 @@ class ProcessInputsTextGeneration(Operator):
             frequency_penalty=generation_config.repetition_penalty,
         )
 
+        if inp.return_input_tokens:
+            inference_state_update.update({"input_tokens": input_tokens})
+
         return {
             "input_ids": input_ids,
             "attention_mask": attention_mask,
