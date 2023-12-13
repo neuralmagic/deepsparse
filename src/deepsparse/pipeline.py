@@ -46,7 +46,7 @@ __all__ = [
 ]
 
 
-class BasePipeline(Operator):
+class Pipeline(Operator):
     """
     Pipeline accepts a series of operators, schedulers, and a router. Calling a pipeline
     will use the router to run through all the defined operators. The operators should
@@ -71,6 +71,7 @@ class BasePipeline(Operator):
         schedulers: List[OperatorScheduler],
         continuous_batching_scheduler: Optional[ContinuousBatchingScheduler] = None,
         pipeline_state: Optional[PipelineState] = None,
+        middleware_manager: Optional[MiddlewareManager] = None,
     ):
 
         self.ops = ops
@@ -78,6 +79,7 @@ class BasePipeline(Operator):
         self.schedulers = schedulers
         self.pipeline_state = pipeline_state
         self._continuous_batching_scheduler = continuous_batching_scheduler
+        self.middleware_manager = middleware_manager
         self.validate()
 
         self._scheduler_group = SchedulerGroup(self.schedulers)
@@ -94,7 +96,7 @@ class BasePipeline(Operator):
         else:
             func = self._scheduler_group.submit
 
-        return run_func(
+        return self.run_func_with_middleware(
             func=func,
             operator=self.ops[next_step],
             inp=inp,
@@ -196,7 +198,7 @@ class BasePipeline(Operator):
                     return operator_output
 
             if next_step == self.router.START_ROUTE:
-                outputs = run_func(
+                outputs = self.run_func_with_middleware(
                     *args,
                     func=self._scheduler_group.submit,
                     operator=self.ops[next_step],
@@ -308,7 +310,7 @@ class BasePipeline(Operator):
                     return operator_output
 
             if next_step == self.router.START_ROUTE:
-                operator_output = run_func(
+                operator_output = self.run_func_with_middleware(
                     *args,
                     func=self._scheduler_group.submit,
                     operator=self.ops[next_step],
@@ -361,7 +363,11 @@ class BasePipeline(Operator):
 
         kwargs["inference_state"] = inference_state
 
-        return self.run(*args, **kwargs)
+        next_call = self.run
+        if self.middleware_manager is not None:
+            next_call = self.middleware_manager.build_middleware_stack(next_call)
+
+        return next_call(*args, **kwargs)
 
     def expand_inputs(self, *args, **kwargs):
         """
@@ -396,6 +402,15 @@ class BasePipeline(Operator):
             raise ValueError(f"Invalid Router: {type(self.router)} for ops: {op_types}")
         elif isinstance(router_validation, str):
             raise ValueError(f"Invalid Router for operators: {router_validation}")
+
+    def run_func_with_middleware(
+        self,
+        *args,
+        operator: Operator,
+        **kwargs,
+    ):
+        wrapped_operator = self.middleware_manager.wrap(operator)
+        return run_func(*args, operator=wrapped_operator, **kwargs)
 
 
 def text_generation_pipeline(*args, **kwargs) -> "Pipeline":
@@ -503,18 +518,3 @@ def zero_shot_text_classification_pipeline(*args, **kwargs) -> "Pipeline":
     is returned depends on the value of the passed model_scheme argument.
     """
     return Pipeline.create("zero_shot_text_classification", *args, **kwargs)
-
-
-class Pipeline(BasePipeline):
-    def __init__(
-        self, middleware_manager: Optional[MiddlewareManager] = None, *args, **kwargs
-    ):
-        self.middleware_manager = middleware_manager
-        super().__init__(*args, **kwargs)
-
-    def __call__(self, *args, **kwargs):
-        next_call = super().__call__
-        if self.middleware_manager is not None:
-            next_call = self.middleware_manager.build_middleware_stack(next_call)
-
-        return next_call(*args, **kwargs)

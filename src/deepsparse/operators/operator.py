@@ -17,7 +17,6 @@ from typing import Any, Optional, Type
 
 from pydantic import BaseModel
 
-from deepsparse.middlewares import MiddlewareManager
 from deepsparse.operators.registry import OperatorRegistry
 from deepsparse.utils import InferenceState
 
@@ -25,7 +24,7 @@ from deepsparse.utils import InferenceState
 __all__ = ["Operator"]
 
 
-class BaseOperator(ABC):
+class Operator(ABC):
     """
     Base operator class - an operator should be defined for each atomic, functional
     part of the pipeline.
@@ -138,18 +137,3 @@ class BaseOperator(ABC):
 
     def json(self):
         pass
-
-
-class Operator(BaseOperator):
-    def __init__(
-        self, middleware_manager: Optional[MiddlewareManager] = None, *args, **kwargs
-    ):
-        self.middleware_manager = middleware_manager
-        super().__init__(*args, **kwargs)
-
-    def __call__(self, *args, **kwargs):
-        next_call = super().__call__
-        if self.middleware_manager is not None:
-            next_call = self.middleware_manager.build_middleware_stack(next_call)
-
-        return next_call(*args, **kwargs)

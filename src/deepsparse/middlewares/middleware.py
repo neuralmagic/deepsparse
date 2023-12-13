@@ -32,6 +32,8 @@ Please check tests/deepsparse/v2/middleware
 import threading
 from typing import Any, Callable, Dict, Iterator, Optional, Protocol, Sequence, Type
 
+from deepsparse.operators import Operator
+
 
 class MiddlewareCallable(Protocol):
     """
@@ -39,12 +41,19 @@ class MiddlewareCallable(Protocol):
     """
 
     def __call__(self, *args, **kwargs):
+        """
+        Pipeline, Operator callable will be overwritten
+        and will eventually its callable
+        """
         ...
 
-    def send(self, dct: Dict):
+    def send(self, reducer: Callable[[Dict], Dict]):
         """
         Update middleware Manager state
         Logic defined in MiddlewareManager._update_middleware_spec_send
+
+        :param reducer: A callable that contains logic to update
+         the middleware state
         """
         ...
 
@@ -108,12 +117,18 @@ class MiddlewareManager:
         if middleware is not None:
             for next_middleware, init_args in middleware:
 
-                # allow the middleware to communivate with the manager
+                # allow the middleware to communicate with the manager
                 next_middleware.send = self.recieve
 
                 self.middleware.append(MiddlewareSpec(next_middleware, **init_args))
 
     def build_middleware_stack(self, next_call: Callable):
-        for middleware, init_args in reversed(self.middleware):
-            next_call = middleware(next_call, **init_args)
+        if self.middleware is not None:
+            for middleware, init_args in reversed(self.middleware):
+                next_call = middleware(next_call, **init_args)
         return next_call
+
+    def wrap(self, operator: Operator) -> Callable:
+        """Add middleware to the operator"""
+        wrapped_operator = self.build_middleware_stack(operator)
+        return wrapped_operator
