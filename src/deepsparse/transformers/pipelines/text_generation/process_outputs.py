@@ -92,6 +92,7 @@ class ProcessOutputs(Operator):
             created=datetime.datetime.now(),
             prompts=inference_state.current_state.get("prompts"),
             generations=generations,
+            input_tokens=inference_state.current_state.get("input_tokens"),
         )
 
         return outputs
