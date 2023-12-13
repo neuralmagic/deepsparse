@@ -224,12 +224,11 @@ class Pipeline(Operator):
                 operator_output = outputs.result()
 
             if isinstance(operator_output, tuple):
-                state_update = operator_output[-1]
-                operator_output = operator_output[0]
+                operator_output, state_update = operator_output[0], operator_output[-1]
+                inference_state.update_state(state_update)
 
             next_step = self.router.next(next_step, self.ops, operator_output)
-            if state_update:
-                inference_state.update_state(state_update)
+
         return operator_output
 
     async def _apply_split(
