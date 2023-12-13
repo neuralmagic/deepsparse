@@ -90,9 +90,6 @@ class MiddlewareManager:
         self.middleware: Optional[
             Sequence[MiddlewareSpec]
         ] = []  # user defined middlewre
-        self.middleware_stack: Optional[
-            Callable[MiddlewareSpec]
-        ] = None  # instiated chain of callables
         self.state = {}
         self._lock = threading.Lock()
 
@@ -117,6 +114,6 @@ class MiddlewareManager:
                 self.middleware.append(MiddlewareSpec(next_middleware, **init_args))
 
     def build_middleware_stack(self, next_call: Callable):
-        for middleware, init_args in reversed(self.middleware_manager.middleware):
+        for middleware, init_args in reversed(self.middleware):
             next_call = middleware(next_call, **init_args)
         return next_call
