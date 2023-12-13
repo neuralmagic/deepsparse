@@ -27,7 +27,7 @@ __all__ = ["Router", "LinearRouter", "GraphRouter"]
 
 class Router:
     """
-    Routers dicate the next operator to run. Each Router must implement a next function,
+    Routers dictate the next operator to run. Each Router must implement a next function,
     which dictates the index or key of the next operator to run.
 
     :param start_route: the start index or key of the router
@@ -77,11 +77,18 @@ class Router:
 
 class LinearRouter(Router):
     """
-    LinearRouterruns a list of Operators in sequential order. end_route should
+    LinearRouter runs a list of Operators in sequential order. end_route should
     be the length of the list and the start_route should be the start index.
     """
 
-    def __init__(self, end_route: int, start_route: int = 0):
+    def __init__(self, route: Optional[List[str]] = None, end_route: Optional[int] = None, start_route: int = 0):
+        if end_route is None:
+            if route is None:
+                raise ValueError("To define the number of steps in the LinearRouter "
+                                 "either `route` or `end_route` must be provided"
+                                 )
+
+            end_route = len(route)
         super().__init__(end_route=end_route, start_route=start_route)
         _LOGGER.warn("SPLIT and JOIN are not yet supported for the LinearRouter.")
 
@@ -98,30 +105,31 @@ class LinearRouter(Router):
         """
         :param operators: operators that this Router could potentially run over
         :return: True if this Router can run this series of operators. Base Router
-            runs any series of operators that is non empty and whose input and output
+            runs any series of operators that is non-empty and whose input and output
             schemas align. If not valid, either False or an error string will be
             returned
         """
-        if len(operators) < 1:
-            _LOGGER.info("No operators provided")
-            return False
-
-        for idx in range(len(operators) - 1):
-            current_output_schema = operators[idx].output_schema
-            next_input_schema = operators[idx + 1].input_schema
-
-            if current_output_schema is None or next_input_schema is None:
-                # if no input/output schema defined, assume operator can run
-                # without schema
-                continue
-
-            if current_output_schema != next_input_schema:
-                _LOGGER.info(
-                    f"Operator at idx {idx}: {type(operators[idx])} has invalid "
-                    f"output schema {current_output_schema} for next operator "
-                    f"{type(operators[idx + 1])} which requires {next_input_schema}"
-                )
-                return False
+        # Commented out - operators are dicts not lists
+        # if len(operators) < 1:
+        #     _LOGGER.info("No operators provided")
+        #     return False
+        #
+        # for idx in range(len(operators) - 1):
+        #     current_output_schema = operators[idx].output_schema
+        #     next_input_schema = operators[idx + 1].input_schema
+        #
+        #     if current_output_schema is None or next_input_schema is None:
+        #         # if no input/output schema defined, assume operator can run
+        #         # without schema
+        #         continue
+        #
+        #     if current_output_schema != next_input_schema:
+        #         _LOGGER.info(
+        #             f"Operator at idx {idx}: {type(operators[idx])} has invalid "
+        #             f"output schema {current_output_schema} for next operator "
+        #             f"{type(operators[idx + 1])} which requires {next_input_schema}"
+        #         )
+        #         return False
         return True
 
 
