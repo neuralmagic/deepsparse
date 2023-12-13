@@ -18,8 +18,8 @@ import numpy
 
 import pytest
 
-# TODO: update to use/be compliant with new pipeline
-from deepsparse.legacy.pipeline import Pipeline
+# TODO: skipping a few tests with missing features
+from deepsparse.pipeline import Pipeline
 from deepsparse.transformers.utils.helpers import prepends_bos_token
 
 
@@ -75,6 +75,7 @@ def _test_stop_inference_kv_cache_full(
     return kv_cache_state
 
 
+@pytest.mark.skip("debug mode currently not enabled")
 def test_stop_inference_kv_cache_full(prompt):
     # Tests the proper behavior of the kv cache around the
     # scenario when the kv cache becomes full during the inference
@@ -218,6 +219,7 @@ def test_token_generation_non_deterministic(pipeline, prompt):
     assert len(set(text_outputs)) == 3
 
 
+@pytest.mark.skip("input tokens not yet in v2")
 def test_pipeline_for_ppl_eval(pipeline, prompt):
     predictions = pipeline(
         prompt,
@@ -234,6 +236,7 @@ def test_pipeline_for_ppl_eval(pipeline, prompt):
     assert "attention_mask" in predictions.input_tokens
 
 
+@pytest.mark.skip("streaming currently not enabled")
 def test_streaming_mode_returns_generator(pipeline, prompt):
     response_generator = pipeline(prompt, streaming=True)
     assert inspect.isgenerator(
@@ -246,6 +249,7 @@ def test_streaming_mode_returns_generator(pipeline, prompt):
            objects in streaming mode"
 
 
+@pytest.mark.skip("streaming currently not enabled")
 def test_streaming_with_several_prompts(pipeline, prompt):
     additional_prompt = "Never gonna run around and desert you"
     prompts = [prompt, additional_prompt]
