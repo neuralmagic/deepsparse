@@ -46,6 +46,3 @@ class TimerManager:
     def update(self, measurements: Dict[str, float]):
         with self.lock:
             self.measurements.append(measurements)
-
-    def average_times(self):
-        ...
