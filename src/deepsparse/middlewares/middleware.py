@@ -30,7 +30,7 @@ Please check tests/deepsparse/v2/middleware
 
 
 import threading
-from typing import Any, Callable, Dict, Iterator, Optional, Protocol, Sequence
+from typing import Any, Callable, Dict, Iterator, Optional, Protocol, Sequence, Type
 
 
 class MiddlewareCallable(Protocol):
@@ -56,7 +56,7 @@ class MiddlewareSpec:
     :kwargs init_args: the args used to intialize the cls
     """
 
-    def __init__(self, cls: type[MiddlewareCallable], **init_args: Any) -> None:
+    def __init__(self, cls: Type[MiddlewareCallable], **init_args: Any) -> None:
         self.cls = cls
         self.init_args = init_args
 
