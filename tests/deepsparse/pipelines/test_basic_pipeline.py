@@ -20,10 +20,16 @@ from typing import Dict
 
 from pydantic import BaseModel
 
+# import asyncio
+import pytest
 from deepsparse import Pipeline
 from deepsparse.operators import Operator
 from deepsparse.routers import LinearRouter
 from deepsparse.schedulers import OperatorScheduler
+from deepsparse.utils import InferenceState
+
+
+# pytest_plugins = ('pytest_asyncio',)
 
 
 class IntSchema(BaseModel):
@@ -56,5 +62,18 @@ AddThreePipeline = Pipeline(
 def test_run_simple_pipeline():
     pipeline_input = IntSchema(value=5)
     pipeline_output = AddThreePipeline(pipeline_input)
+
+    assert pipeline_output.value == 8
+
+
+@pytest.mark.asyncio
+async def test_run_async_simple_pipeline():
+    inference_state = InferenceState()
+    inference_state.create_state({})
+    pipeline_input = IntSchema(value=5)
+
+    pipeline_output = await AddThreePipeline.run_async(
+        pipeline_input, inference_state=inference_state
+    )
 
     assert pipeline_output.value == 8
