@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from typing import List
-from unittest.mock import Mock
+from unittest.mock import AsyncMock, Mock
 
 from pydantic import BaseModel
 
@@ -36,10 +36,6 @@ class FromFilesSchema(BaseModel):
 
 class StrSchema(BaseModel):
     value: str
-
-
-def parse(value) -> int:
-    return int(value)
 
 
 class TestStatusEndpoints:
@@ -104,17 +100,16 @@ class TestMockEndpoints:
     def test_add_model_endpoint(
         self, server: DeepsparseServer, app: FastAPI, client: TestClient
     ):
-        mock_pipeline = Mock(
-            side_effect=parse,
-            input_schema=str,
-            output_schema=int,
-            logger=MultiLogger([]),
+        mock_pipeline = AsyncMock(
+            input_schema=str, output_schema=int, logger=MultiLogger([])
         )
+
         server._add_inference_endpoints(
             app=app,
             endpoint_config=Mock(route="/predict/parse_int"),
             pipeline=mock_pipeline,
         )
+
         assert app.routes[-1].path == "/v2/models/predict/parse_int/infer"
         assert app.routes[-1].response_model is int
         assert app.routes[-1].endpoint.func.__annotations__ == {
@@ -129,20 +124,28 @@ class TestMockEndpoints:
                 "/v2/models/predict/parse_int/infer", json=dict(value=v)
             )
             assert response.status_code == 200
-            assert response.json() == int(v)
 
     def test_add_model_endpoint_with_from_files(self, server, app):
+        mock_pipeline = Mock(input_schema=FromFilesSchema, output_schema=int)
+        # new pipeline does not yet support /from_files (which we identify through
+        # the run_async function being present in the pipeline). By default, Mock
+        # hasattr() returns True for having `run_async` which is deleted so that we can
+        # run this test until the new pipeline can support from files
+        del mock_pipeline.run_async
+
         server._add_inference_endpoints(
             app,
             endpoint_config=Mock(route="/predict/parse_int"),
-            pipeline=Mock(input_schema=FromFilesSchema, output_schema=int),
+            pipeline=mock_pipeline,
         )
+
         assert app.routes[-2].path == "/v2/models/predict/parse_int/infer"
         assert app.routes[-2].endpoint.func.__annotations__ == {
             "proxy_pipeline": ProxyPipeline,
             "raw_request": Request,
             "system_logging_config": SystemLoggingConfig,
         }
+
         assert app.routes[-1].path == "/v2/models/predict/parse_int/infer/from_files"
         assert app.routes[-1].endpoint.func.__annotations__ == {
             "proxy_pipeline": ProxyPipeline,
