@@ -37,3 +37,39 @@ class ReducerMiddleware(DummyMiddleware):
             state[name] = []
         state[name].append(args[0])
         return state
+
+
+class PrintingMiddleware(MiddlewareCallable):
+    def __init__(
+        self, call_next: MiddlewareCallable, identifier: str = "PrintingMiddleware"
+    ):
+        self.identifier: str = identifier
+        self.call_next: MiddlewareCallable = call_next
+
+    def __call__(self, *args, **kwargs) -> Any:
+        print(f"{self.identifier}: before call_next")
+        result = self.call_next(*args, **kwargs)
+        print(f"{self.identifier}: after call_next: {result}")
+        return result
+
+
+class SendStateMiddleware(MiddlewareCallable):
+    def __init__(
+        self, call_next: MiddlewareCallable, identifier: str = "SendStateMiddleware"
+    ):
+        self.identifier: str = identifier
+        self.call_next: MiddlewareCallable = call_next
+
+    def __call__(self, *args, **kwargs) -> Any:
+        self.send(self.reducer, 0)
+        result = self.call_next(*args, **kwargs)
+        self.send(self.reducer, 1)
+
+        return result
+
+    def reducer(self, state: Dict, *args, **kwargs):
+        name = self.__class__.__name__
+        if name not in state:
+            state[name] = []
+        state[name].append(args[0])
+        return state
