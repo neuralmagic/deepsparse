@@ -20,7 +20,6 @@ from typing import Dict
 
 from pydantic import BaseModel
 
-# import asyncio
 import pytest
 from deepsparse import Pipeline
 from deepsparse.operators import Operator
