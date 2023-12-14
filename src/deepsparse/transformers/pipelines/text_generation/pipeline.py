@@ -95,6 +95,7 @@ class TextGenerationPipeline(Pipeline):
                 f"prompt_sequence_length is {prompt_sequence_length}"
             )
 
+        # Note: this will add the model_path to the eninge_kwargs
         (
             self.model_path,
             self.config,
@@ -104,7 +105,6 @@ class TextGenerationPipeline(Pipeline):
             model_path, sequence_length, engine_kwargs=engine_kwargs
         )
 
-        # Note: this will add the model_path to the eninge_kwargs
         causal_mask_present = causal_mask_input_present(self.model_path)
         if not causal_mask_present:
             _LOGGER.warning(
