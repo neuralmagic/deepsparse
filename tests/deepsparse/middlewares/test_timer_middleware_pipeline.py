@@ -26,17 +26,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Any, Dict
+from collections import defaultdict
+from typing import List
 
-from deepsparse.middlewares import (
-    MiddlewareCallable,
-    MiddlewareManager,
-    MiddlewareSpec,
-    TimerMiddleware,
-)
+from deepsparse.middlewares import MiddlewareManager, MiddlewareSpec, TimerMiddleware
 from deepsparse.pipeline import Pipeline
 from deepsparse.routers import LinearRouter
 from deepsparse.schedulers import ContinuousBatchingScheduler, OperatorScheduler
+from tests.deepsparse.middlewares import PrintingMiddleware, SendStateMiddleware
 from tests.deepsparse.pipelines.test_basic_pipeline import (
     AddOneOperator,
     AddTwoOperator,
@@ -44,81 +41,55 @@ from tests.deepsparse.pipelines.test_basic_pipeline import (
 )
 
 
-class PrintingMiddleware(MiddlewareCallable):
-    def __init__(self, call_next: MiddlewareCallable, identifier: str):
-        self.identifier: str = identifier
-        self.call_next: MiddlewareCallable = call_next
-
-    def __call__(self, *args, **kwargs) -> Any:
-        print(f"{self.identifier}: before call_next")
-        result = self.call_next(*args, **kwargs)
-        print(f"{self.identifier}: after call_next: {result}")
-        return result
-
-
-class SendStateMiddleware(MiddlewareCallable):
-    def __init__(self, call_next: MiddlewareCallable, identifier: str):
-        self.identifier: str = identifier
-        self.call_next: MiddlewareCallable = call_next
-
-    def __call__(self, *args, **kwargs) -> Any:
-        self.send(self.reducer, 0)
-        result = self.call_next(*args, **kwargs)
-        self.send(self.reducer, 1)
-
-        return result
-
-    def reducer(self, state: Dict, *args, **kwargs):
-        name = self.__class__.__name__
-        if name not in state:
-            state[name] = []
-        state[name].append(args[0])
-        return state
-
-
-def test_timer_middleware():
-    """Check that timer gets saved in Pipeline and Ops"""
+def test_timer_middleware_timings_saved_in_timer_manager():
+    """Check runtimes from timer manager saved into timer_manager"""
 
     middlewares = [
-        MiddlewareSpec(PrintingMiddleware, identifier="A"),
-        MiddlewareSpec(SendStateMiddleware, identifier="D"),
-        MiddlewareSpec(TimerMiddleware, identifier="C"),
+        MiddlewareSpec(PrintingMiddleware),  # debugging
+        MiddlewareSpec(SendStateMiddleware),  # for callable entry and exit order
+        MiddlewareSpec(TimerMiddleware),  # for timer
     ]
 
-    middleware_manager = MiddlewareManager(middlewares)
-    ops = [
-        AddOneOperator(middleware_manager=middleware_manager),
-        AddTwoOperator(middleware_manager=middleware_manager),
-    ]
+    ops = [AddOneOperator(), AddTwoOperator()]
 
     AddThreePipeline = Pipeline(
         ops=ops,
         router=LinearRouter(end_route=2),
         schedulers=[OperatorScheduler()],
         continuous_batching_scheduler=ContinuousBatchingScheduler,
-        middleware_manager=middleware_manager,
+        middleware_manager=MiddlewareManager(middlewares),
     )
 
     pipeline_input = IntSchema(value=5)
     pipeline_output = AddThreePipeline(pipeline_input)
     assert pipeline_output.value == 8
 
-    state = AddThreePipeline.middleware_manager.state
-    assert "measurements" in state
-    assert "SendStateMiddleware" in state
+    pipeline_measurements: List[
+        defaultdict
+    ] = AddThreePipeline.timer_manager.measurements
+    measurements = pipeline_measurements[0]
 
-    measurements = state["measurements"]
+    # Pipeline, AddOneOperator, AddTwoOperator should have one measurement each
+    assert len(measurements) == 3
+
+    # assert pipeline time is more than the sum of two ops
+    pipeline_time: List[float] = measurements["total"]
+    add_one_operator_time, add_two_operator_time = (
+        measurements["AddOneOperator"],
+        measurements["AddTwoOperator"],
+    )
+
+    assert pipeline_time > add_one_operator_time + add_two_operator_time
+
+    # check middleware triggered for Pipeline and Ops as expected
+    state = AddThreePipeline.middleware_manager.state
+    assert "SendStateMiddleware" in state
 
     # three measurements, two operators + one pipeline
     assert len(measurements) == len(ops) + 1
 
-    # assert pipeline time is more than the sum of two ops
-    op_time1, op_time_2 = measurements[0], measurements[1]
-    pipeline_time = measurements[-1]
-    assert pipeline_time > op_time1 + op_time_2
-
     # SendStateMiddleware, order of calls:
     # Pipeline start, AddOneOperator start, AddOneOperator end
-    # AddTwoOperator start, AddTwoOperator end, Pipeline_ end
+    # AddTwoOperator start, AddTwoOperator end, Pipeline end
     expected_order = [0, 0, 1, 0, 1, 1]
     assert state["SendStateMiddleware"] == expected_order

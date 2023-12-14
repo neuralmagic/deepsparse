@@ -290,6 +290,7 @@ class Pipeline(Operator):
         :param pipeline_state: pipeline_state for the pipeline. The values in the state
             are created during pipeline creation and are read-only during inference.
         """
+
         next_step = self.router.START_ROUTE
         operator_output = None
         while next_step != self.router.END_ROUTE:
@@ -365,19 +366,22 @@ class Pipeline(Operator):
             inference_state.create_state({})
             inference_state.set_timer(timer)
 
-        kwargs["inference_state"] = inference_state
-
-        # timer = inference_state.timer
-        # with timer.time("total"):
-        #     rtn = self.run(*args, **kwargs)
-        # self.timer_manager.update(timer.measurements)
-
-        # return rtn
         next_call = self.run
         if self.middleware_manager is not None:
+            # make next calls to be middlewares if any
             next_call = self.middleware_manager.build_middleware_stack(next_call)
 
-        return next_call(*args, **kwargs)
+        kwargs["inference_state"] = inference_state
+        # add name for timer measurements key
+        kwargs["name"] = "total"
+        rtn = next_call(*args, **kwargs)
+
+        # timer shared across all operators, has all measurements
+        timer = inference_state.timer
+
+        # update all the measurments
+        self.timer_manager.update(timer.measurements)
+        return rtn
 
     def expand_inputs(self, *args, **kwargs):
         """
@@ -422,6 +426,9 @@ class Pipeline(Operator):
         wrapped_operator = operator
         if self.middleware_manager is not None:
             wrapped_operator = self.middleware_manager.wrap(operator)
+
+        # add name for timer measurements key
+        kwargs["name"] = operator.__class__.__name__
         return run_func(*args, operator=wrapped_operator, **kwargs)
 
 

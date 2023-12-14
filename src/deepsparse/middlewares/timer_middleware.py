@@ -12,29 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import time
-from typing import Any, Dict
+from typing import Any
 
 from deepsparse.middlewares.middleware import MiddlewareCallable
 
 
 class TimerMiddleware(MiddlewareCallable):
-    def __init__(self, call_next: MiddlewareCallable, identifier: str):
+    def __init__(
+        self, call_next: MiddlewareCallable, identifier: str = "TimerMiddleware"
+    ):
         self.identifier: str = identifier
         self.call_next: MiddlewareCallable = call_next
 
     def __call__(self, *args, **kwargs) -> Any:
-        start_time = time.time()
-        result = self.call_next(*args, **kwargs)
-        measurement = time.time() - start_time
+        name = kwargs.get("name")
 
-        self.send(self.reducer, measurement)
-
-        return result
-
-    def reducer(self, state: Dict, *args, **kwargs):
-        if "measurements" not in state:
-            state["measurements"] = []
-        state["measurements"].append(args[0])
-
-        return state
+        inference_state = kwargs.get("inference_state")
+        timer = inference_state.timer
+        with timer.time(name):
+            return self.call_next(*args, **kwargs)
