@@ -62,14 +62,14 @@ def test_run_simple_pipeline():
     assert pipeline_output.value == 8
 
 
-# @pytest.mark.asyncio
-# async def test_run_async_simple_pipeline():
-#     inference_state = InferenceState()
-#     inference_state.create_state({})
-#     pipeline_input = IntSchema(value=5)
+@pytest.mark.asyncio
+async def test_run_async_simple_pipeline():
+    inference_state = InferenceState()
+    inference_state.create_state({})
+    pipeline_input = IntSchema(value=5)
 
-#     pipeline_output = await AddThreePipeline.run_async(
-#         pipeline_input, inference_state=inference_state
-#     )
+    pipeline_output = await AddThreePipeline.run_async(
+        pipeline_input, inference_state=inference_state
+    )
 
-#     assert pipeline_output.value == 8
+    assert pipeline_output.value == 8
