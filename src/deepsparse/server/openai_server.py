@@ -18,8 +18,7 @@ import time
 from http import HTTPStatus
 from typing import AsyncGenerator, Dict, List, Optional
 
-from deepsparse.legacy import Pipeline
-from deepsparse.legacy.tasks import SupportedTasks
+from deepsparse import Pipeline
 from deepsparse.server.config import EndpointConfig
 from deepsparse.server.helpers import create_error_response
 from deepsparse.server.output import CompletionOutput, RequestOutput
@@ -43,6 +42,8 @@ from deepsparse.server.protocol import (
     random_uuid,
 )
 from deepsparse.server.server import Server
+from deepsparse.tasks import SupportedTasks
+from deepsparse.utils import InferenceState
 from fastapi import BackgroundTasks, FastAPI, Request
 from fastapi.responses import StreamingResponse
 
@@ -91,6 +92,12 @@ class OpenAIServer(Server):
 
             request = ChatCompletionRequest(**await raw_request.json())
             _LOGGER.debug("Received chat completion request %s" % request)
+
+            # disable streaming until enabled for v2.
+            if request.stream:
+                return create_error_response(
+                    HTTPStatus.BAD_REQUEST, "Streaming is unavilable"
+                )
 
             if isinstance(request.messages, str):
                 prompt = request.messages
@@ -215,6 +222,12 @@ class OpenAIServer(Server):
             request = CompletionRequest(**await raw_request.json())
             _LOGGER.debug("Received completion request: %s" % request)
 
+            # disable streaming until enabled for v2.
+            if request.stream:
+                return create_error_response(
+                    HTTPStatus.BAD_REQUEST, "Streaming is unavilable"
+                )
+
             model = request.model
 
             pipeline = app.model_to_pipeline.get(model)
@@ -318,19 +331,20 @@ class OpenAIServer(Server):
         :param endpoint_config: endpoint config for the specific model being added
         """
         pipeline_config = endpoint_config.to_pipeline_config()
-        pipeline_config.kwargs["executor"] = self.executor
 
         _LOGGER.debug("Initializing pipeline for %s" % endpoint_config.name)
 
-        if not SupportedTasks.is_text_generation(pipeline_config.task):
+        if not (
+            SupportedTasks.is_text_generation(pipeline_config.task)
+            or SupportedTasks.is_code_generation(pipeline_config.task)
+        ):
             raise ValueError(
                 "OpenAI API is only available for one of the following "
-                f"tasks: {SupportedTasks.text_generation._fields}"
+                f"tasks: {SupportedTasks.text_generation._fields}, "
+                f"{SupportedTasks.code_generation._fields}"
             )
 
-        pipeline = Pipeline.from_config(
-            pipeline_config, self.context, self.server_logger
-        )
+        pipeline = Pipeline.from_config(pipeline_config, context=self.context)
 
         if not self.model_to_pipeline.get(endpoint_config.model):
             model_card = ModelCard(
@@ -369,7 +383,11 @@ class OpenAIServer(Server):
         presence_penalty = generation_kwargs.pop("presence_penalty")
         stop = generation_kwargs.pop("stop")
 
-        output = pipeline(
+        inference_state = InferenceState()
+        inference_state.create_state({})
+
+        output = await pipeline.run_async(
+            inference_state=inference_state,
             sequences=prompt,
             generation_config=generation_kwargs,
             streaming=stream,

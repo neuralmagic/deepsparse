@@ -15,7 +15,7 @@
 import logging
 from functools import partial
 
-from deepsparse.legacy import Pipeline
+from deepsparse import Pipeline
 from deepsparse.server.config import EndpointConfig
 from deepsparse.server.server import CheckReady, ModelMetaData, ProxyPipeline, Server
 from fastapi import FastAPI
@@ -76,7 +76,7 @@ class DeepsparseServer(Server):
 
         _LOGGER.info(f"Initializing pipeline for '{endpoint_config.name}'")
         pipeline = Pipeline.from_config(
-            pipeline_config, self.context, self.server_logger
+            pipeline_config, context=self.context, logger=self.server_logger
         )
 
         _LOGGER.info(f"Adding endpoints for '{endpoint_config.name}'")
@@ -147,7 +147,10 @@ class DeepsparseServer(Server):
                 ),
             )
         )
-        if hasattr(pipeline.input_schema, "from_files"):
+        # NOTE: the new pipeline does not yet support from_files
+        if hasattr(pipeline.input_schema, "from_files") and not hasattr(
+            pipeline, "run_async"
+        ):
             routes_and_fns.append(
                 (
                     route + "/from_files",
