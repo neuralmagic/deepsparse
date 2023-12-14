@@ -17,6 +17,7 @@ import uuid
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 import numpy
+import onnx
 from transformers import AutoTokenizer, GenerationConfig
 
 from deepsparse.utils.onnx import CACHE_INPUT_PREFIX, CACHE_OUTPUT_PREFIX
@@ -35,9 +36,26 @@ __all__ = [
     "validate_session_ids",
     "compute_engine_inputs",
     "set_generated_length",
+    "causal_mask_input_present",
 ]
 
 _LOGGER = logging.getLogger(__name__)
+
+
+def causal_mask_input_present(model_path: str) -> bool:
+    """
+    Check whether the model has causal_mask input present or not.
+    In general, the absence of causal_mask input means that the model
+    cannot be run through the multitoken engine.
+
+    :param model_path: path to the model
+    :return: True if causal_mask input is present, False otherwise
+    """
+    is_causal_mask_input = any(
+        inp.name == "causal_mask"
+        for inp in onnx.load(model_path, load_external_data=False).graph.input
+    )
+    return is_causal_mask_input
 
 
 def set_generated_length(

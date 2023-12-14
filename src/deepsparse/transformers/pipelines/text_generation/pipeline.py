@@ -38,7 +38,10 @@ from deepsparse.transformers.pipelines.text_generation import (
     ProcessOutputs,
     TokenGeneratorOperator,
 )
-from deepsparse.transformers.utils.helpers import process_generation_config
+from deepsparse.transformers.utils.helpers import (
+    causal_mask_input_present,
+    process_generation_config,
+)
 from deepsparse.utils import PipelineState, split_engine_inputs
 
 
@@ -58,6 +61,41 @@ class TextGenerationPipeline(Pipeline):
         continuous_batch_sizes: Optional[List[int]] = None,
         **engine_kwargs,
     ):
+        """
+        Pipeline for text generation tasks.
+
+        :param model_path: path to the model to use for text generation.
+        :param sequence_length: sequence length to compile model and tokenizer for.
+            This controls the maximum context length of the pipeline. Default is 1024
+        :param prompt_sequence_length: For large prompts, the prompt is
+            processed in chunks of this length. This is to maximize the inference
+            speed. By default, this is set to 16. The length should also be 1 or a
+            multiple of 4.
+        :param internal_kv_cache: if True, the pipeline will use the deepsparse kv cache
+            for caching the model outputs.
+        :param force_max_tokens: if True, the pipeline will generate the maximum number
+            of tokens supplied even if the stop token is reached.
+        :param continuous_batch_sizes: Batch sizes to use for the continuous batching
+            scheduler. If this scheduler is desired, a list of batch sizes can be
+            provided. Each batch size must be a power of 2.
+        :param generation_config: config file consisting of parameters used to control
+            sequences generated for each prompt. The current supported parameters are:
+            max_length, max_new_tokens, num_return_sequences, output_scores, top_p,
+            top_k, repetition_penalty, do_sample, temperature. If None is provided,
+            deepsparse defaults will be used. For all other input types, HuggingFace
+            defaults for GenerationConfig will be used.
+        :param engine_kwargs: kwargs for the engine. These will be used to initialize
+            the EngineOperator.
+
+        """
+
+        if (prompt_sequence_length % 4 != 0) and (prompt_sequence_length != 1):
+            raise ValueError(
+                f"prompt_sequence_length must be 1 or multiple of 4. "
+                f"prompt_sequence_length is {prompt_sequence_length}"
+            )
+
+        # Note: this will add the model_path to the eninge_kwargs
         (
             self.model_path,
             self.config,
@@ -66,6 +104,14 @@ class TextGenerationPipeline(Pipeline):
         ) = setup_transformers_pipeline(
             model_path, sequence_length, engine_kwargs=engine_kwargs
         )
+
+        causal_mask_present = causal_mask_input_present(self.model_path)
+        if not causal_mask_present:
+            _LOGGER.warning(
+                "This ONNX graph does not support processing the prompt"
+                "with processing length > 1. Setting prompt_sequence_length to 1."
+            )
+            prompt_sequence_length = 1
 
         pipeline_state = PipelineState()
         pipeline_state_vals = {}
