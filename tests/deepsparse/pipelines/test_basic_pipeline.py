@@ -29,9 +29,6 @@ from deepsparse.schedulers import OperatorScheduler
 from deepsparse.utils import InferenceState
 
 
-# pytest_plugins = ('pytest_asyncio',)
-
-
 class IntSchema(BaseModel):
     value: int
 
