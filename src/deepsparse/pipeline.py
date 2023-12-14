@@ -11,12 +11,15 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import asyncio
+import logging
+import os
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
 from deepsparse.middlewares import MiddlewareManager
 from deepsparse.operators import EngineOperator, Operator
+from deepsparse.pipeline_config import PipelineConfig
 from deepsparse.routers import Router
 from deepsparse.schedulers import (
     ContinuousBatchingScheduler,
@@ -45,6 +48,9 @@ __all__ = [
     "yolo_pipeline",
 ]
 
+_LOGGER = logging.getLogger(__name__)
+V2_NOT_SUPPORTED = ["alias", "logger", "executor"]
+
 
 class Pipeline(Operator):
     """
@@ -61,7 +67,7 @@ class Pipeline(Operator):
     :param router: A Router which dictates the next operator to call.
     :param schedulers: A list of schedulers to run operators.
     :param pipeline_state: pipeline_state created during pipeline initialization
-
+    :param middleware_manager: middlewares to be used in Pipeline and Operator
     """
 
     def __init__(
@@ -222,12 +228,11 @@ class Pipeline(Operator):
                 operator_output = outputs.result()
 
             if isinstance(operator_output, tuple):
-                state_update = operator_output[-1]
-                operator_output = operator_output[0]
+                operator_output, state_update = operator_output[0], operator_output[-1]
+                inference_state.update_state(state_update)
 
             next_step = self.router.next(next_step, self.ops, operator_output)
-            if state_update:
-                inference_state.update_state(state_update)
+
         return operator_output
 
     async def _apply_split(
@@ -263,8 +268,15 @@ class Pipeline(Operator):
         :param kwargs: extra task specific kwargs to be passed to the Pipeline
         :return: pipeline object initialized for the given task
         """
+        new_kwargs = {}
+        for k in kwargs:
+            if k in V2_NOT_SUPPORTED:
+                _LOGGER.warning(f"{k} is not yet supported in the v2 pipeline.")
+            else:
+                new_kwargs[k] = kwargs.get(k)
+
         try:
-            pipeline = Operator.create(task=task, **kwargs)
+            pipeline = Operator.create(task=task, **new_kwargs)
             if not isinstance(pipeline, cls):
                 raise RuntimeError(
                     "Pipeline was not created for the given task. The "
@@ -275,6 +287,38 @@ class Pipeline(Operator):
 
             pipeline = Pipeline.create(task=task, **kwargs)
         return pipeline
+
+    @classmethod
+    def from_config(
+        cls, config: Union["PipelineConfig", str, Path], **kwargs
+    ) -> "Pipeline":
+        """
+        :param config: PipelineConfig object, filepath to a json serialized
+            PipelineConfig, or raw string of a json serialized PipelineConfig.
+            Optionally, pipeline arguments not defined in the PipelineConfig may be
+            passed as key-word arguments to this function.
+        """
+        if isinstance(config, Path) or (
+            isinstance(config, str) and os.path.exists(config)
+        ):
+            if isinstance(config, str):
+                config = Path(config)
+            config = PipelineConfig.parse_file(config)
+        if isinstance(config, str):
+            config = PipelineConfig.parse_raw(config)
+
+        kwargs.update(config.kwargs)
+        return cls.create(
+            task=config.task,
+            model_path=config.model_path,
+            engine_type=config.engine_type,
+            batch_size=config.batch_size,
+            num_cores=config.num_cores,
+            scheduler=config.scheduler,
+            input_shapes=config.input_shapes,
+            alias=config.alias,
+            **kwargs,
+        )
 
     def run(
         self,

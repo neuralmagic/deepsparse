@@ -17,9 +17,9 @@ from typing import Dict, List, Optional, Union
 
 from pydantic import BaseModel, Field
 
-from deepsparse import Context as EngineContext
-from deepsparse import Engine, MultiModelEngine, Scheduler
 from deepsparse.benchmark import ORTEngine
+from deepsparse.engine import Context as EngineContext
+from deepsparse.engine import Engine, MultiModelEngine, Scheduler
 from deepsparse.operators import Operator
 from deepsparse.utils import join_engine_outputs, model_to_path, split_engine_inputs
 
@@ -100,18 +100,18 @@ class EngineOperator(Operator):
         num_streams: int = None,
         scheduler: Scheduler = None,
         input_shapes: List[List[int]] = None,
-        engine_context: Optional[EngineContext] = None,
+        context: Optional[EngineContext] = None,
         engine_kwargs: Dict = None,
     ):
         self.model_path = model_to_path(model_path)
-        self.engine_context = engine_context
+        self.context = context
         self._batch_size = batch_size
 
-        if self.engine_context is not None:
-            num_cores = num_cores or self.engine_context.num_cores
-            if self.engine_context.num_cores != num_cores:
+        if self.context is not None:
+            num_cores = num_cores or self.context.num_cores
+            if self.context.num_cores != num_cores:
                 raise ValueError(
-                    f"num_cores mismatch. Expected {self.engine_context.num_cores} "
+                    f"num_cores mismatch. Expected {self.context.num_cores} "
                     f"from passed context, but got {num_cores} while "
                     f"instantiating Pipeline"
                 )
@@ -159,13 +159,11 @@ class EngineOperator(Operator):
         engine_type = self._engine_type.lower()
 
         if engine_type == DEEPSPARSE_ENGINE:
-            if self.engine_context is not None and isinstance(
-                self.engine_context, EngineContext
-            ):
+            if self.context is not None and isinstance(self.context, EngineContext):
                 engine_args.pop("num_cores", None)
                 engine_args.pop("scheduler", None)
                 engine_args.pop("num_streams", None)
-                engine_args["context"] = self.engine_context
+                engine_args["context"] = self.context
                 return MultiModelEngine(
                     model=onnx_file_path,
                     **engine_args,
