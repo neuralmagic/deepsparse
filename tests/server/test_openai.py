@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import pytest
-from deepsparse.legacy import Pipeline
+from deepsparse import Pipeline
 from deepsparse.server.config import EndpointConfig, ServerConfig
 from deepsparse.server.openai_server import (
     ChatCompletionRequest,
