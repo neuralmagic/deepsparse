@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import asyncio
-import copy
 from typing import Any, Dict, List, Optional, Union
 
 from deepsparse.middlewares import MiddlewareManager
@@ -27,6 +26,7 @@ from deepsparse.schedulers import (
 from deepsparse.utils import InferenceState, PipelineState
 from deepsparse.utils.helpers import run_func
 from deepsparse.utils.subgraph import SubGraph
+from deepsparse.utils.time import TimerManager
 
 
 __all__ = [
@@ -78,6 +78,7 @@ class BasePipeline(Operator):
         self.schedulers = schedulers
         self.pipeline_state = pipeline_state
         self._continuous_batching_scheduler = continuous_batching_scheduler
+        self.timer_manager = TimerManager()
         self.validate()
 
         self._scheduler_group = SchedulerGroup(self.schedulers)
@@ -241,7 +242,7 @@ class BasePipeline(Operator):
         # with the same inference_state.
         split_graphs = [
             SubGraph(
-                inf=copy.deepcopy(inference_state),
+                inf=inference_state.copy_state(),
                 step=self.router.route[self.router.SPLIT_ROUTE],
                 end=[self.router.JOIN_ROUTE],
             )
@@ -329,7 +330,7 @@ class BasePipeline(Operator):
             else:
                 # Single graph execution
                 graph = SubGraph(
-                    inf=copy.deepcopy(inference_state),
+                    inf=inference_state.copy_state(),
                     step=next_step,
                     end=[self.router.SPLIT_ROUTE, self.router.END_ROUTE],
                 )
@@ -357,11 +358,19 @@ class BasePipeline(Operator):
             inference_state = kwargs.pop("inference_state")
         else:
             inference_state = InferenceState()
+            if self.timer_manager is not None:
+                timer = self.timer_manager.get_new_timer()
             inference_state.create_state({})
+            inference_state.set_timer(timer)
 
         kwargs["inference_state"] = inference_state
 
-        return self.run(*args, **kwargs)
+        timer = inference_state.timer
+        with timer.time("total"):
+            rtn = self.run(*args, **kwargs)
+        self.timer_manager.update(timer.measurements)
+
+        return rtn
 
     def expand_inputs(self, *args, **kwargs):
         """
