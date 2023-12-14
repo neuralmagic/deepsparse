@@ -67,7 +67,7 @@ class Pipeline(Operator):
     :param router: A Router which dictates the next operator to call.
     :param schedulers: A list of schedulers to run operators.
     :param pipeline_state: pipeline_state created during pipeline initialization
-
+    :param middleware_manager: middlewares to be used in Pipeline and Operator
     """
 
     def __init__(
