@@ -25,7 +25,7 @@ from deepsparse import Pipeline
 from deepsparse.operators import Operator
 from deepsparse.routers import LinearRouter
 from deepsparse.schedulers import OperatorScheduler
-from deepsparse.utils import InferenceState
+from deepsparse.utils.state import InferenceState
 
 
 class IntSchema(BaseModel):
