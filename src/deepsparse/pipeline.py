@@ -91,24 +91,62 @@ class Pipeline(Operator):
             ops=self.ops, router=self.router, run_next=self._run_next
         )
 
-    def _run_next(
-        self, inp: Any, inference_state: InferenceState, next_step: str, **kwargs
-    ):
-        if (
-            isinstance(self.ops[next_step], EngineOperator)
-            and self._continuous_batching_scheduler
-        ):
-            func = self._continuous_batching_scheduler.submit
-            inp = self.ops[next_step].input_schema(**inp)
-        else:
-            func = self._scheduler_group.submit
+    @classmethod
+    def create(cls, task: str, **kwargs) -> "Pipeline":
+        """
+        :param task: Pipeline task
+        :param kwargs: extra task specific kwargs to be passed to the Pipeline
+        :return: pipeline object initialized for the given task
+        """
+        new_kwargs = {}
+        for k in kwargs:
+            if k in V2_NOT_SUPPORTED:
+                _LOGGER.warning(f"{k} is not yet supported in the v2 pipeline.")
+            else:
+                new_kwargs[k] = kwargs.get(k)
 
-        return run_func(
-            func=func,
-            operator=self.ops[next_step],
-            inp=inp,
-            pipeline_state=self.pipeline_state,
-            inference_state=inference_state,
+        try:
+            pipeline = Operator.create(task=task, **new_kwargs)
+            if not isinstance(pipeline, cls):
+                raise RuntimeError(
+                    "Pipeline was not created for the given task. The "
+                    "provided task should be registered using the OperatorRegistry"
+                )
+        except Exception:
+            from deepsparse.legacy import Pipeline
+
+            pipeline = Pipeline.create(task=task, **kwargs)
+        return pipeline
+
+    @classmethod
+    def from_config(
+        cls, config: Union["PipelineConfig", str, Path], **kwargs
+    ) -> "Pipeline":
+        """
+        :param config: PipelineConfig object, filepath to a json serialized
+            PipelineConfig, or raw string of a json serialized PipelineConfig.
+            Optionally, pipeline arguments not defined in the PipelineConfig may be
+            passed as key-word arguments to this function.
+        """
+        if isinstance(config, Path) or (
+            isinstance(config, str) and os.path.exists(config)
+        ):
+            if isinstance(config, str):
+                config = Path(config)
+            config = PipelineConfig.parse_file(config)
+        if isinstance(config, str):
+            config = PipelineConfig.parse_raw(config)
+
+        kwargs.update(config.kwargs)
+        return cls.create(
+            task=config.task,
+            model_path=config.model_path,
+            engine_type=config.engine_type,
+            batch_size=config.batch_size,
+            num_cores=config.num_cores,
+            scheduler=config.scheduler,
+            input_shapes=config.input_shapes,
+            alias=config.alias,
             **kwargs,
         )
 
@@ -174,116 +212,6 @@ class Pipeline(Operator):
 
         return operator_output
 
-    async def _apply_split_async(
-        self,
-        inp: Any,
-        inference_state: InferenceState,
-        loop: Optional[asyncio.AbstractEventLoop] = None,
-    ):
-        batches, orig_batch_size = self.expand_inputs(inp, 1)
-
-        # Create a list of SplitRoutes, per batch size 1
-        # Each SplitRoute object holds information about the particular path it
-        # follows. All start at the same step defined by SPLIT_ROUTE and start
-        # with the same inference_state.
-        split_graphs = [
-            SubGraph(
-                inf=copy.deepcopy(inference_state),
-                step=self.router.route[self.router.SPLIT_ROUTE],
-                end=[self.router.JOIN_ROUTE],
-            )
-            for i in range(len(batches))
-        ]
-
-        split_graphs = self.subgraph_executor.start_subgraphs(
-            sub_graph_inputs=batches, sub_graphs=split_graphs, loop=loop
-        )
-        outputs = await self.subgraph_executor.run_sub_graphs_async(
-            sub_graphs=split_graphs, loop=loop
-        )
-        return self.condense_inputs(outputs)
-
-    def _apply_split(self, inp: Any, inference_state: InferenceState):
-        batches, orig_batch_size = self.expand_inputs(inp, 1)
-
-        # Create a list of SplitRoutes, per batch size 1
-        # Each SplitRoute object holds information about the particular path it
-        # follows. All start at the same step defined by SPLIT_ROUTE and start
-        # with the same inference_state.
-        split_graphs = [
-            SubGraph(
-                inf=copy.deepcopy(inference_state),
-                step=self.router.route[self.router.SPLIT_ROUTE],
-                end=[self.router.JOIN_ROUTE],
-            )
-            for i in range(len(batches))
-        ]
-
-        split_graphs = self.subgraph_executor.start_subgraphs(
-            sub_graph_inputs=batches, sub_graphs=split_graphs
-        )
-        outputs = self.subgraph_executor.run_sub_graphs(sub_graphs=split_graphs)
-        return self.condense_inputs(outputs)
-
-    @classmethod
-    def create(cls, task: str, **kwargs) -> "Pipeline":
-        """
-        :param task: Pipeline task
-        :param kwargs: extra task specific kwargs to be passed to the Pipeline
-        :return: pipeline object initialized for the given task
-        """
-        new_kwargs = {}
-        for k in kwargs:
-            if k in V2_NOT_SUPPORTED:
-                _LOGGER.warning(f"{k} is not yet supported in the v2 pipeline.")
-            else:
-                new_kwargs[k] = kwargs.get(k)
-
-        try:
-            pipeline = Operator.create(task=task, **new_kwargs)
-            if not isinstance(pipeline, cls):
-                raise RuntimeError(
-                    "Pipeline was not created for the given task. The "
-                    "provided task should be registered using the OperatorRegistry"
-                )
-        except Exception:
-            from deepsparse.legacy import Pipeline
-
-            pipeline = Pipeline.create(task=task, **kwargs)
-        return pipeline
-
-    @classmethod
-    def from_config(
-        cls, config: Union["PipelineConfig", str, Path], **kwargs
-    ) -> "Pipeline":
-        """
-        :param config: PipelineConfig object, filepath to a json serialized
-            PipelineConfig, or raw string of a json serialized PipelineConfig.
-            Optionally, pipeline arguments not defined in the PipelineConfig may be
-            passed as key-word arguments to this function.
-        """
-        if isinstance(config, Path) or (
-            isinstance(config, str) and os.path.exists(config)
-        ):
-            if isinstance(config, str):
-                config = Path(config)
-            config = PipelineConfig.parse_file(config)
-        if isinstance(config, str):
-            config = PipelineConfig.parse_raw(config)
-
-        kwargs.update(config.kwargs)
-        return cls.create(
-            task=config.task,
-            model_path=config.model_path,
-            engine_type=config.engine_type,
-            batch_size=config.batch_size,
-            num_cores=config.num_cores,
-            scheduler=config.scheduler,
-            input_shapes=config.input_shapes,
-            alias=config.alias,
-            **kwargs,
-        )
-
     def run(
         self,
         *args,
@@ -339,6 +267,78 @@ class Pipeline(Operator):
             next_step = self.router.next(next_step, self.ops, operator_output)
 
         return operator_output
+
+    def _run_next(
+        self, inp: Any, inference_state: InferenceState, next_step: str, **kwargs
+    ):
+        if (
+            isinstance(self.ops[next_step], EngineOperator)
+            and self._continuous_batching_scheduler
+        ):
+            func = self._continuous_batching_scheduler.submit
+            inp = self.ops[next_step].input_schema(**inp)
+        else:
+            func = self._scheduler_group.submit
+
+        return run_func(
+            func=func,
+            operator=self.ops[next_step],
+            inp=inp,
+            pipeline_state=self.pipeline_state,
+            inference_state=inference_state,
+            **kwargs,
+        )
+
+    async def _apply_split_async(
+        self,
+        inp: Any,
+        inference_state: InferenceState,
+        loop: Optional[asyncio.AbstractEventLoop] = None,
+    ):
+        batches, orig_batch_size = self.expand_inputs(inp, 1)
+
+        # Create a list of SplitRoutes, per batch size 1
+        # Each SplitRoute object holds information about the particular path it
+        # follows. All start at the same step defined by SPLIT_ROUTE and start
+        # with the same inference_state.
+        split_graphs = [
+            SubGraph(
+                inf=copy.deepcopy(inference_state),
+                step=self.router.route[self.router.SPLIT_ROUTE],
+                end=[self.router.JOIN_ROUTE],
+            )
+            for i in range(len(batches))
+        ]
+
+        split_graphs = self.subgraph_executor.start_subgraphs(
+            sub_graph_inputs=batches, sub_graphs=split_graphs, loop=loop
+        )
+        outputs = await self.subgraph_executor.run_sub_graphs_async(
+            sub_graphs=split_graphs, loop=loop
+        )
+        return self.condense_inputs(outputs)
+
+    def _apply_split(self, inp: Any, inference_state: InferenceState):
+        batches, orig_batch_size = self.expand_inputs(inp, 1)
+
+        # Create a list of SplitRoutes, per batch size 1
+        # Each SplitRoute object holds information about the particular path it
+        # follows. All start at the same step defined by SPLIT_ROUTE and start
+        # with the same inference_state.
+        split_graphs = [
+            SubGraph(
+                inf=copy.deepcopy(inference_state),
+                step=self.router.route[self.router.SPLIT_ROUTE],
+                end=[self.router.JOIN_ROUTE],
+            )
+            for i in range(len(batches))
+        ]
+
+        split_graphs = self.subgraph_executor.start_subgraphs(
+            sub_graph_inputs=batches, sub_graphs=split_graphs
+        )
+        outputs = self.subgraph_executor.run_sub_graphs(sub_graphs=split_graphs)
+        return self.condense_inputs(outputs)
 
     def __call__(self, *args, **kwargs):
         """
