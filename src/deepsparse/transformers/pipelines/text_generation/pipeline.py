@@ -15,7 +15,7 @@
 import logging
 from typing import List, Optional
 
-from deepsparse.operators import EngineOperator
+from deepsparse.operators import EngineOperator, Operator
 from deepsparse.operators.registry import OperatorRegistry
 from deepsparse.pipeline import Pipeline
 from deepsparse.routers import GraphRouter
@@ -36,6 +36,7 @@ from deepsparse.transformers.pipelines.text_generation import (
     PrepareGeneration,
     ProcessInputsTextGeneration,
     ProcessOutputs,
+    ProcessStreamingOperator,
     TokenGeneratorOperator,
 )
 from deepsparse.transformers.utils.helpers import (
@@ -47,6 +48,13 @@ from deepsparse.utils import PipelineState, split_engine_inputs
 
 _LOGGER = logging.getLogger(__name__)
 
+
+class DummyStep(Operator):
+    def can_operate(self, inp):
+        return True
+
+    def run(self, **kwargs):
+        return kwargs
 
 @OperatorRegistry.register(name="text_generation")
 class TextGenerationPipeline(Pipeline):
@@ -184,6 +192,7 @@ class TextGenerationPipeline(Pipeline):
             tokenizer=self.tokenizer, force_max_tokens=force_max_tokens
         )
         process_output = ProcessOutputs(tokenizer=self.tokenizer)
+        process_streaming_output = ProcessStreamingOperator(tokenizer=self.tokenizer)
         compile_generations = CompileGenerations()
         compile_generated_tokens = CompileGeneratedTokens()
         join_output = JoinOutput(tokenizer=self.tokenizer)
@@ -201,6 +210,8 @@ class TextGenerationPipeline(Pipeline):
                     engines=[single_engine_operator, multi_engine_operator],
                 )
 
+        dummy_step = DummyStep()
+
         ops = {
             "parse_inputs": parse_inputs,
             "process_input": process_inputs,
@@ -217,6 +228,8 @@ class TextGenerationPipeline(Pipeline):
             "compile_generations": compile_generations,
             "compile_generated_tokens": compile_generated_tokens,
             "join_output": join_output,
+            "streaming_outputs": process_streaming_output,
+            "dummy_step": dummy_step
         }
 
         routes = {
@@ -237,13 +250,17 @@ class TextGenerationPipeline(Pipeline):
                 "generate_new_token",
             ],
             "prep_for_generation": "autoregressive_preprocess",
+            "streaming_outputs": ["autoregressive_preprocess", "dummy_step"],
+            "dummy_step": "JOIN",
             "generate_new_token": "compile_generated_tokens",
             "compile_generated_tokens": [
+                "streaming_outputs",
                 "autoregressive_preprocess",
                 "compile_generations",
             ],
             "compile_generations": "JOIN",
-            "JOIN": "join_output",
+            "JOIN": "STOP",
+            #"JOIN": ["join_output", "STOP"],
             "join_output": "process_outputs",
             "process_outputs": "STOP",
         }

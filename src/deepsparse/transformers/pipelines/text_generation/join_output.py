@@ -34,6 +34,13 @@ class JoinOutput(Operator):
     def __init__(self, tokenizer):
         self.tokenizer = tokenizer
 
+    
+    def can_operate(self, inp: List[CompileGenerationsOutput]):
+        batch_outputs = [x for x in inp[0]]
+        if batch_outputs[0].streaming:
+            return False
+        return True
+
     def run(self, inp: List[CompileGenerationsOutput], **kwargs):
         batch_outputs = [x for x in inp[0]]
         generated_tokens = [x.generated_tokens for x in batch_outputs]

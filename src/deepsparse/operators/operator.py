@@ -97,6 +97,8 @@ class Operator(ABC):
                 inference_state=inference_state,
                 **kwargs,
             )
+
+        # TODO: fix bug
         if self.has_output_schema():
             return self.output_schema(**run_output)
         return run_output

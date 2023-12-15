@@ -28,6 +28,7 @@ class CompileGenerationsOutput(BaseModel):
     generated_tokens: Any = Field(description="generated_tokens")
     generated_logits: Any = Field(description="generated_logits")
     finished_reason: Any = Field(description="finished_reason")
+    streaming: bool = Field(description="streaming")
 
 
 class CompileGenerations(Operator):
@@ -52,4 +53,5 @@ class CompileGenerations(Operator):
             "generated_tokens": generated_tokens,
             "generated_logits": generated_logits,
             "finished_reason": finished_reason,
+            "streaming": inference_state.current_state.get("streaming")
         }

@@ -16,7 +16,7 @@ import copy
 import logging
 import os
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union, Generator
 
 from deepsparse.operators import EngineOperator, Operator
 from deepsparse.pipeline_config import PipelineConfig
@@ -29,6 +29,8 @@ from deepsparse.schedulers import (
 from deepsparse.utils import InferenceState, PipelineState
 from deepsparse.utils.helpers import run_func
 from deepsparse.utils.subgraph import SubGraph
+
+from pydantic import BaseModel, Field 
 
 
 __all__ = [
@@ -50,6 +52,22 @@ __all__ = [
 _LOGGER = logging.getLogger(__name__)
 V2_NOT_SUPPORTED = ["alias", "logger", "executor"]
 
+
+from pydantic import BaseModel, Field 
+class StreamingOutput(BaseModel):
+    """
+    Helper object to store the output of a streaming operator. Facilitates
+    returning data to be used in the next step of the pipeline and yielding
+    the data immediately from the pipeline.
+    """
+
+    data_to_return: Any = Field(
+        description="Any data that should be returned to be used in the next step of the pipeline"
+    )
+    data_to_yield: Any = Field(
+        description="Any data that should be yielded to the user"
+    )
+    
 
 class Pipeline(Operator):
     """
@@ -108,7 +126,7 @@ class Pipeline(Operator):
             **kwargs,
         )
 
-    async def _run_sub_graphs(
+    def _run_sub_graphs(
         self,
         sub_graph_inputs: List[Any],
         sub_graphs: List[SubGraph],
@@ -136,14 +154,21 @@ class Pipeline(Operator):
             )
 
         # Execute all sub graphs until all graphs have been completed.
+        output_to_yield = None
+        streaming = False
         while any(not x.completed for x in sub_graphs):
             for sub_graph in sub_graphs:
                 if not sub_graph.completed:
                     # get the result for the completed operator; resolve its output
-                    if isinstance(sub_graph.output, asyncio.Future):
-                        await sub_graph.output
+                    #if isinstance(sub_graph.output, asyncio.Future):
+                    #    await sub_graph.output
                     operator_output = sub_graph.output.result()
                     operator_output = sub_graph.parse_output(operator_output)
+                    
+                    if isinstance(operator_output, StreamingOutput):
+                        streaming = True
+                        output_to_yield = operator_output.data_to_yield
+                        operator_output = operator_output.data_to_return
 
                     # determine the next step for the particular operator, using
                     # its previous output and previously stored step
@@ -166,8 +191,12 @@ class Pipeline(Operator):
                             next_step=next_step,
                             loop=loop,
                         )
+                    if output_to_yield:
+                        yield output_to_yield
+                        output_to_yield = None
 
-        return [x.output for x in sub_graphs]
+        if not streaming:
+            yield [x.output for x in sub_graphs]
 
     async def run_async(self, *args, inference_state: InferenceState, **kwargs):
         """
@@ -231,7 +260,7 @@ class Pipeline(Operator):
 
         return operator_output
 
-    async def _apply_split(
+    def _apply_split(
         self,
         inp: Any,
         inference_state: InferenceState,
@@ -243,6 +272,7 @@ class Pipeline(Operator):
         # Each SplitRoute object holds information about the particular path it
         # follows. All start at the same step defined by SPLIT_ROUTE and start
         # with the same inference_state.
+        """
         split_graphs = [
             SubGraph(
                 inf=copy.deepcopy(inference_state),
@@ -252,10 +282,26 @@ class Pipeline(Operator):
             for i in range(len(batches))
         ]
 
-        outputs = await self._run_sub_graphs(
+        outputs = self._run_sub_graphs(
             sub_graph_inputs=batches, sub_graphs=split_graphs, loop=loop
         )
-        return self.condense_inputs(outputs)
+        """
+
+        for i in range(len(batches)):
+            graph = SubGraph(
+                inf=copy.deepcopy(inference_state),
+                step=self.router.route[self.router.SPLIT_ROUTE],
+                end=[self.router.JOIN_ROUTE],
+            )
+            outputs = self._run_sub_graphs(
+                sub_graph_inputs=[batches[i]], sub_graphs=[graph], loop=loop
+            )
+
+            if inference_state.current_state.get("streaming"):
+                for o in outputs:
+                    yield o
+            else:
+                yield self.condense_inputs(next(outputs))
 
     @classmethod
     def create(cls, task: str, **kwargs) -> "Pipeline":
@@ -271,8 +317,10 @@ class Pipeline(Operator):
             else:
                 new_kwargs[k] = kwargs.get(k)
 
+        pipeline = Operator.create(task=task, **new_kwargs)
+        """
         try:
-            pipeline = Operator.create(task=task, **new_kwargs)
+            
             if not isinstance(pipeline, cls):
                 raise RuntimeError(
                     "Pipeline was not created for the given task. The "
@@ -282,6 +330,7 @@ class Pipeline(Operator):
             from deepsparse.legacy import Pipeline
 
             pipeline = Pipeline.create(task=task, **kwargs)
+        """
         return pipeline
 
     @classmethod
@@ -343,10 +392,15 @@ class Pipeline(Operator):
                         f"{self.router.START_ROUTE}"
                     )
 
-                operator_output = asyncio.run(
-                    self._apply_split(operator_output, inference_state)
-                )
-                next_step = self.router.route[self.router.JOIN_ROUTE]
+                operator_output = self._apply_split(operator_output, inference_state)
+                
+                if inference_state.current_state.get("streaming"):
+                     for o in operator_output:
+                        yield o
+                else:
+                    operator_output = next(operator_output)
+                        
+                next_step = self.router.next(self.router.JOIN_ROUTE, self.ops, operator_output)
                 if next_step == self.router.END_ROUTE:
                     return operator_output
 
@@ -360,13 +414,6 @@ class Pipeline(Operator):
                     **kwargs,
                 ).result()
 
-                if isinstance(operator_output, tuple):
-                    operator_output, state_update = (
-                        operator_output[0],
-                        operator_output[-1],
-                    )
-                    inference_state.update_state(state_update)
-
                 next_step = self.router.next(next_step, self.ops, operator_output)
 
             else:
@@ -377,11 +424,15 @@ class Pipeline(Operator):
                     end=[self.router.SPLIT_ROUTE, self.router.END_ROUTE],
                 )
 
-                operator_output = asyncio.run(
-                    self._run_sub_graphs(
-                        sub_graph_inputs=[operator_output], sub_graphs=[graph]
-                    )
-                )[0]
+                operator_output = self._run_sub_graphs(
+                    sub_graph_inputs=[operator_output], sub_graphs=[graph]
+                )
+                
+                if inference_state.current_state.get("streaming"):
+                    for o in operator_output:
+                        yield o
+                else:
+                    operator_output = next(operator_output)[0]
 
                 inference_state = graph.inf
                 next_step = graph.step
