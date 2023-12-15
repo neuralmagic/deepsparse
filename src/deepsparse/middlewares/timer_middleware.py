@@ -26,7 +26,6 @@ class TimerMiddleware(MiddlewareCallable):
 
     def __call__(self, *args, **kwargs) -> Any:
         name = kwargs.get("name")
-
         inference_state = kwargs.get("inference_state")
         timer = inference_state.timer
         with timer.time(name):

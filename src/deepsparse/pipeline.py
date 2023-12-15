@@ -182,6 +182,10 @@ class Pipeline(Operator):
         :param pipeline_state: pipeline_state for the pipeline. The values in the state
             are created during pipeline creation and are read-only during inference.
         """
+
+        timer = self.timer_manager.get_new_timer()
+        inference_state.set_timer(timer)
+
         loop = asyncio.get_running_loop()
 
         next_step = self.router.START_ROUTE
@@ -233,7 +237,9 @@ class Pipeline(Operator):
 
             next_step = self.router.next(next_step, self.ops, operator_output)
 
-        return operator_output
+        rtn = operator_output
+        self.timer_manager.update(inference_state.timer.measurements)
+        return rtn
 
     async def _apply_split(
         self,
@@ -405,9 +411,9 @@ class Pipeline(Operator):
             inference_state = kwargs.pop("inference_state")
         else:
             inference_state = InferenceState()
-            if self.timer_manager is not None:
-                timer = self.timer_manager.get_new_timer()
             inference_state.create_state({})
+
+            timer = self.timer_manager.get_new_timer()
             inference_state.set_timer(timer)
 
         next_call = self.run
