@@ -26,6 +26,7 @@ from deepsparse.schedulers import (
     OperatorScheduler,
     SchedulerGroup,
 )
+from deepsparse.subgraph_execute import SubGraphExecutor
 from deepsparse.utils import InferenceState, PipelineState
 from deepsparse.utils.helpers import run_func
 from deepsparse.utils.subgraph import SubGraph
@@ -86,6 +87,9 @@ class Pipeline(Operator):
         self.validate()
 
         self._scheduler_group = SchedulerGroup(self.schedulers)
+        self.subgraph_executor = SubGraphExecutor(
+            ops=self.ops, router=self.router, run_next=self._run_next
+        )
 
     def _run_next(
         self, inp: Any, inference_state: InferenceState, next_step: str, **kwargs
@@ -107,67 +111,6 @@ class Pipeline(Operator):
             inference_state=inference_state,
             **kwargs,
         )
-
-    async def _run_sub_graphs(
-        self,
-        sub_graph_inputs: List[Any],
-        sub_graphs: List[SubGraph],
-        loop: Optional[asyncio.AbstractEventLoop] = None,
-    ) -> List[Any]:
-        """
-        Run a list of sub_graphs asynchronously. Polls to identify the sub graph that is
-        still running but has completed its current step. Schedules the next step
-        subgraph step. This is repeated until all subgraphs have finished running and
-        have reached their end step (stored in the Subgraph.end attribute).
-
-        :param sub_graph_inputs: A list of inputs that should be passed to each
-        subgraph. Each subgraph is given an element of the list as input to its
-        first node.
-        :param sub_graphs: A list of Subgraph objects. Each stores the relevant
-        execution information for the particular subgraph, such as its current step
-        in the sub graph, inference state, output, and end step.
-
-        :returns: a list of outputs for all the completed Subgraph objects. Returned
-        in the same order that the subgraphs were passed to the function.
-        """
-        for i in range(len(sub_graphs)):
-            sub_graphs[i].output = self._run_next(
-                sub_graph_inputs[i], sub_graphs[i].inf, sub_graphs[i].step, loop=loop
-            )
-
-        # Execute all sub graphs until all graphs have been completed.
-        while any(not x.completed for x in sub_graphs):
-            for sub_graph in sub_graphs:
-                if not sub_graph.completed:
-                    # get the result for the completed operator; resolve its output
-                    if isinstance(sub_graph.output, asyncio.Future):
-                        await sub_graph.output
-                    operator_output = sub_graph.output.result()
-                    operator_output = sub_graph.parse_output(operator_output)
-
-                    # determine the next step for the particular operator, using
-                    # its previous output and previously stored step
-                    next_step = self.router.next(
-                        sub_graph.step, self.ops, operator_output
-                    )
-                    # update the step
-                    sub_graph.step = next_step
-
-                    # store the output for the next step. If the next step is
-                    # end step, this particular route has completed. Simply
-                    # update the output value
-                    if next_step in sub_graph.end:
-                        sub_graph.output = operator_output
-                        sub_graph.completed = True
-                    else:
-                        sub_graph.output = self._run_next(
-                            inp=operator_output,
-                            inference_state=sub_graph.inf,
-                            next_step=next_step,
-                            loop=loop,
-                        )
-
-        return [x.output for x in sub_graphs]
 
     async def run_async(self, *args, inference_state: InferenceState, **kwargs):
         """
@@ -193,7 +136,7 @@ class Pipeline(Operator):
                         f"{self.ROUTER.START_ROUTE}"
                     )
 
-                operator_output = await self._apply_split(
+                operator_output = await self._apply_split_async(
                     operator_output, inference_state, loop=loop
                 )
                 next_step = self.router.route[self.router.JOIN_ROUTE]
@@ -231,7 +174,7 @@ class Pipeline(Operator):
 
         return operator_output
 
-    async def _apply_split(
+    async def _apply_split_async(
         self,
         inp: Any,
         inference_state: InferenceState,
@@ -252,9 +195,34 @@ class Pipeline(Operator):
             for i in range(len(batches))
         ]
 
-        outputs = await self._run_sub_graphs(
+        split_graphs = self.subgraph_executor.start_subgraphs(
             sub_graph_inputs=batches, sub_graphs=split_graphs, loop=loop
         )
+        outputs = await self.subgraph_executor.run_sub_graphs_async(
+            sub_graphs=split_graphs, loop=loop
+        )
+        return self.condense_inputs(outputs)
+
+    def _apply_split(self, inp: Any, inference_state: InferenceState):
+        batches, orig_batch_size = self.expand_inputs(inp, 1)
+
+        # Create a list of SplitRoutes, per batch size 1
+        # Each SplitRoute object holds information about the particular path it
+        # follows. All start at the same step defined by SPLIT_ROUTE and start
+        # with the same inference_state.
+        split_graphs = [
+            SubGraph(
+                inf=copy.deepcopy(inference_state),
+                step=self.router.route[self.router.SPLIT_ROUTE],
+                end=[self.router.JOIN_ROUTE],
+            )
+            for i in range(len(batches))
+        ]
+
+        split_graphs = self.subgraph_executor.start_subgraphs(
+            sub_graph_inputs=batches, sub_graphs=split_graphs
+        )
+        outputs = self.subgraph_executor.run_sub_graphs(sub_graphs=split_graphs)
         return self.condense_inputs(outputs)
 
     @classmethod
@@ -343,9 +311,7 @@ class Pipeline(Operator):
                         f"{self.router.START_ROUTE}"
                     )
 
-                operator_output = asyncio.run(
-                    self._apply_split(operator_output, inference_state)
-                )
+                operator_output = self._apply_split(operator_output, inference_state)
                 next_step = self.router.route[self.router.JOIN_ROUTE]
                 if next_step == self.router.END_ROUTE:
                     return operator_output
@@ -359,32 +325,18 @@ class Pipeline(Operator):
                     pipeline_state=self.pipeline_state,
                     **kwargs,
                 ).result()
-
-                if isinstance(operator_output, tuple):
-                    operator_output, state_update = (
-                        operator_output[0],
-                        operator_output[-1],
-                    )
-                    inference_state.update_state(state_update)
-
-                next_step = self.router.next(next_step, self.ops, operator_output)
-
             else:
-                # Single graph execution
-                graph = SubGraph(
-                    inf=copy.deepcopy(inference_state),
-                    step=next_step,
-                    end=[self.router.SPLIT_ROUTE, self.router.END_ROUTE],
-                )
+                operator_output = self._run_next(
+                    inp=operator_output,
+                    next_step=next_step,
+                    inference_state=inference_state,
+                ).result()
 
-                operator_output = asyncio.run(
-                    self._run_sub_graphs(
-                        sub_graph_inputs=[operator_output], sub_graphs=[graph]
-                    )
-                )[0]
+            if isinstance(operator_output, tuple):
+                operator_output, state_update = operator_output[0], operator_output[-1]
+                inference_state.update_state(state_update)
 
-                inference_state = graph.inf
-                next_step = graph.step
+            next_step = self.router.next(next_step, self.ops, operator_output)
 
         return operator_output
 
