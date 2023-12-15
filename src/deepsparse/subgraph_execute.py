@@ -15,10 +15,27 @@
 import asyncio
 from typing import Any, List, Optional
 
+from pydantic import BaseModel, Field
+
 from deepsparse.utils import SubGraph
 
 
-__all__ = ["SubGraphExecutor"]
+__all__ = ["SubGraphExecutor", "StreamingOutput"]
+
+
+class StreamingOutput(BaseModel):
+    """
+    Helper object to store the output of a streaming operator. Facilitates
+    returning data to be used in the next step of the pipeline and yielding
+    the data immediately from the pipeline.
+    """
+
+    data_to_return: Any = Field(
+        description="Any data that should be returned to be used in the next step of the pipeline"
+    )
+    data_to_yield: Any = Field(
+        description="Any data that should be yielded to the user"
+    )
 
 
 class SubGraphExecutor:
@@ -44,7 +61,9 @@ class SubGraphExecutor:
             )
         return sub_graphs
 
-    def run_sub_graphs(self, sub_graphs: List[SubGraph]) -> List[Any]:
+    def run_sub_graphs(
+        self, sub_graphs: List[SubGraph], generating: bool = False
+    ) -> List[Any]:
         """
         Run a list of sub_graphs asynchronously. Polls to identify the sub graph that is
         still running but has completed its current step. Schedules the next step
@@ -58,14 +77,24 @@ class SubGraphExecutor:
         :returns: a list of outputs for all the completed Subgraph objects. Returned
         in the same order that the subgraphs were passed to the function.
         """
+
+        ## TODO: separate these two
         # Execute all sub graphs until all graphs have been completed.
         while any(not x.completed for x in sub_graphs):
             for sub_graph in sub_graphs:
+                output_to_yield = None
                 if not sub_graph.completed:
                     # get the result for the completed operator; resolve its output
                     operator_output = self._update_subgraph(sub_graph)
+                    operator_output, output_to_yield = self._parse_streaming_output(
+                        operator_output
+                    )
                     self._run_next_step(sub_graph, operator_output)
-        return [x.output for x in sub_graphs]
+                    if generating and output_to_yield:
+                        yield output_to_yield, sub_graph.inf
+
+        if not generating:
+            return [x.output for x in sub_graphs]
 
     async def run_sub_graphs_async(
         self,
@@ -115,3 +144,10 @@ class SubGraphExecutor:
         operator_output = sub_graph.output.result()
         operator_output = sub_graph.parse_output(operator_output)
         return operator_output
+
+    def _parse_streaming_output(self, operator_output):
+        output_to_yield = None
+        if isinstance(operator_output, StreamingOutput):
+            output_to_yield = operator_output.data_to_yield
+            operator_output = operator_output.data_to_return
+        return operator_output, output_to_yield

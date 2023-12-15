@@ -12,17 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import datetime
-from typing import Optional
+from typing import Any, Optional
 
 import numpy
 
 from deepsparse.operators import Operator
+from deepsparse.subgraph_execute import StreamingOutput
 from deepsparse.transformers.schemas.text_generation_schemas import (
     FinishReason,
     GeneratedText,
     TextGenerationOutput,
 )
 from deepsparse.utils import InferenceState
+
+
+__all__ = ["ProcessOutputs", "ProcessStreamingOperator"]
 
 
 class ProcessOutputs(Operator):
@@ -64,7 +68,10 @@ class ProcessOutputs(Operator):
             generated_tokens, skip_special_tokens=True
         )
 
-        finished_reason = [f[-1] for f in finished_reason]
+        try:
+            finished_reason = [f[-1] for f in finished_reason]
+        except:
+            pass
 
         if generated_logits is not None:
             generations = list(
@@ -96,3 +103,36 @@ class ProcessOutputs(Operator):
         )
 
         return outputs
+
+
+class ProcessStreamingOperator(ProcessOutputs):
+    output_schema = StreamingOutput
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+    def can_operate(self, inp):
+        if inp.get("streaming"):
+            return True
+
+    def run(self, inference_state: InferenceState, **kwargs):
+        generated_token = inference_state.current_state.get("generated_tokens")[-1]
+        generated_logit = inference_state.current_state.get("generated_logits")[-1]
+        finish_reason = inference_state.current_state.get("finished_reason")[-1]
+
+        yield_output = super().run(
+            generated_tokens=[generated_token],
+            generated_logits=[generated_logit],
+            finished_reason=[finish_reason],
+            inference_state=inference_state,
+        )
+        yield_output = super().output_schema(**yield_output)
+        return {
+            "data_to_yield": yield_output,
+            "data_to_return": {
+                "tokens": kwargs.get("tokens"),
+                "kv_cache": kwargs.get("kv_cache"),
+                "in_generation": kwargs.get("in_generation"),
+                "streaming": True,
+            },
+        }

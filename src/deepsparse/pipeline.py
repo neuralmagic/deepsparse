@@ -16,7 +16,7 @@ import copy
 import logging
 import os
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, Generator, List, Optional, Union
 
 from deepsparse.operators import EngineOperator, Operator
 from deepsparse.pipeline_config import PipelineConfig
@@ -104,7 +104,8 @@ class Pipeline(Operator):
                 _LOGGER.warning(f"{k} is not yet supported in the v2 pipeline.")
             else:
                 new_kwargs[k] = kwargs.get(k)
-
+        pipeline = Operator.create(task=task, **new_kwargs)
+        """
         try:
             pipeline = Operator.create(task=task, **new_kwargs)
             if not isinstance(pipeline, cls):
@@ -116,6 +117,7 @@ class Pipeline(Operator):
             from deepsparse.legacy import Pipeline
 
             pipeline = Pipeline.create(task=task, **kwargs)
+        """
         return pipeline
 
     @classmethod
@@ -177,40 +179,70 @@ class Pipeline(Operator):
                 operator_output = await self._apply_split_async(
                     operator_output, inference_state, loop=loop
                 )
-                next_step = self.router.route[self.router.JOIN_ROUTE]
-                if next_step == self.router.END_ROUTE:
-                    return operator_output
-
-            if next_step == self.router.START_ROUTE:
-                outputs = run_func(
-                    *args,
-                    func=self._scheduler_group.submit,
-                    operator=self.ops[next_step],
-                    inference_state=inference_state,
-                    pipeline_state=self.pipeline_state,
-                    loop=loop,
-                    **kwargs,
-                )
-                await outputs
-                operator_output = outputs.result()
+                next_step = self.router.JOIN_ROUTE
 
             else:
-                outputs = self._run_next(
-                    inp=operator_output,
-                    next_step=next_step,
-                    inference_state=inference_state,
-                    loop=loop,
-                )
+                if next_step == self.router.START_ROUTE:
+                    outputs = run_func(
+                        *args,
+                        func=self._scheduler_group.submit,
+                        operator=self.ops[next_step],
+                        inference_state=inference_state,
+                        pipeline_state=self.pipeline_state,
+                        loop=loop,
+                        **kwargs,
+                    )
+                else:
+                    outputs = self._run_next(
+                        inp=operator_output,
+                        next_step=next_step,
+                        inference_state=inference_state,
+                        loop=loop,
+                    )
+
                 await outputs
                 operator_output = outputs.result()
 
-            if isinstance(operator_output, tuple):
-                operator_output, state_update = operator_output[0], operator_output[-1]
-                inference_state.update_state(state_update)
+                if isinstance(operator_output, tuple):
+                    operator_output, state_update = (
+                        operator_output[0],
+                        operator_output[-1],
+                    )
+                    inference_state.update_state(state_update)
 
             next_step = self.router.next(next_step, self.ops, operator_output)
 
         return operator_output
+
+    def _run_generate(
+        self, *args, operator_output, inference_state, next_step, **kwargs
+    ):
+
+        while next_step != self.router.END_ROUTE:
+            start_step = next_step
+
+            if next_step == self.router.SPLIT_ROUTE:
+                end = [self.router.JOIN_ROUTE]
+                step = self.router.route[self.router.SPLIT_ROUTE]
+                initial_inference_state = inference_state
+            else:
+                step = next_step
+                end = [self.router.END_ROUTE]
+
+            for output in self._apply_split_generation(
+                operator_output, inference_state, step, end
+            ):
+
+                ## For more complex stream, what do we store, data to yield, data_to_return?
+                current_output, inference_state = output
+                yield current_output
+
+            if start_step == self.router.SPLIT_ROUTE:
+                inference_state = initial_inference_state
+                next_step = self.router.route[self.router.JOIN_ROUTE]
+            else:
+                operator_output = current_output
+                next_step = self.router.END_ROUTE
 
     def run(
         self,
@@ -229,43 +261,53 @@ class Pipeline(Operator):
         next_step = self.router.START_ROUTE
         operator_output = None
         while next_step != self.router.END_ROUTE:
-
             # Split Grap Execution (i.e multiple subgraphs)
-            # NOTE: split_route should only appear after the start route node
+            # NOTE: split_route should only appear after the start route nod
+
+            ## generation pathway
+
+            if inference_state.current_state.get("streaming"):
+                return self._run_generate(
+                    operator_output=operator_output,
+                    inference_state=inference_state,
+                    next_step=next_step,
+                )
+
+            ## non_generation pathways
             if next_step == self.router.SPLIT_ROUTE:
                 if operator_output is None:
                     raise ValueError(
                         f"{self.router.SPLIT_ROUTE} should appear after "
                         f"{self.router.START_ROUTE}"
                     )
-
                 operator_output = self._apply_split(operator_output, inference_state)
                 next_step = self.router.route[self.router.JOIN_ROUTE]
-                if next_step == self.router.END_ROUTE:
-                    return operator_output
 
-            if next_step == self.router.START_ROUTE:
-                operator_output = run_func(
-                    *args,
-                    func=self._scheduler_group.submit,
-                    operator=self.ops[next_step],
-                    inference_state=inference_state,
-                    pipeline_state=self.pipeline_state,
-                    **kwargs,
-                ).result()
             else:
-                operator_output = self._run_next(
-                    inp=operator_output,
-                    next_step=next_step,
-                    inference_state=inference_state,
-                ).result()
+                if next_step == self.router.START_ROUTE:
+                    operator_output = run_func(
+                        *args,
+                        func=self._scheduler_group.submit,
+                        operator=self.ops[next_step],
+                        inference_state=inference_state,
+                        pipeline_state=self.pipeline_state,
+                        **kwargs,
+                    ).result()
+                else:
+                    operator_output = self._run_next(
+                        inp=operator_output,
+                        next_step=next_step,
+                        inference_state=inference_state,
+                    ).result()
 
-            if isinstance(operator_output, tuple):
-                operator_output, state_update = operator_output[0], operator_output[-1]
-                inference_state.update_state(state_update)
+                if isinstance(operator_output, tuple):
+                    operator_output, state_update = (
+                        operator_output[0],
+                        operator_output[-1],
+                    )
+                    inference_state.update_state(state_update)
 
-            next_step = self.router.next(next_step, self.ops, operator_output)
-
+                next_step = self.router.next(next_step, self.ops, operator_output)
         return operator_output
 
     def _run_next(
@@ -339,6 +381,25 @@ class Pipeline(Operator):
         )
         outputs = self.subgraph_executor.run_sub_graphs(sub_graphs=split_graphs)
         return self.condense_inputs(outputs)
+
+    def _apply_split_generation(
+        self, inp: Any, inference_state: InferenceState, step: str, end: str
+    ):
+        batches, orig_batch_size = self.expand_inputs(inp, 1)
+
+        for i in range(len(batches)):
+            graph = SubGraph(
+                inf=copy.deepcopy(inference_state),
+                step=step,
+                end=end,
+            )
+            split_graphs = self.subgraph_executor.start_subgraphs(
+                sub_graph_inputs=[batches[i]], sub_graphs=[graph]
+            )
+            for output in self.subgraph_executor.run_sub_graphs(
+                sub_graphs=split_graphs, generating=True
+            ):
+                yield output
 
     def __call__(self, *args, **kwargs):
         """
