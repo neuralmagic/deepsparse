@@ -37,10 +37,6 @@ class StrSchema(BaseModel):
     value: str
 
 
-def run_func(value: str):
-    return int(value)
-
-
 class TestStatusEndpoints:
     @pytest.fixture(scope="class")
     def server_config(self):
