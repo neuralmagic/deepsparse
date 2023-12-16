@@ -75,21 +75,21 @@ class Pipeline(Operator):
         ops: Union[Dict[str, Operator], List[Operator]],
         router: Router,
         schedulers: List[OperatorScheduler],
+        generator_router: Optional[Router] = None,
         continuous_batching_scheduler: Optional[ContinuousBatchingScheduler] = None,
         pipeline_state: Optional[PipelineState] = None,
     ):
 
         self.ops = ops
         self.router = router
+        self.generator_router = generator_router
         self.schedulers = schedulers
         self.pipeline_state = pipeline_state
         self._continuous_batching_scheduler = continuous_batching_scheduler
         self.validate()
 
         self._scheduler_group = SchedulerGroup(self.schedulers)
-        self.subgraph_executor = SubGraphExecutor(
-            ops=self.ops, router=self.router, run_next=self._run_next
-        )
+        self.subgraph_executor = SubGraphExecutor(ops=self.ops)
 
     @classmethod
     def create(cls, task: str, **kwargs) -> "Pipeline":
@@ -214,36 +214,6 @@ class Pipeline(Operator):
 
         return operator_output
 
-    def _run_generate(
-        self, *args, operator_output, inference_state, next_step, **kwargs
-    ):
-
-        while next_step != self.router.END_ROUTE:
-            start_step = next_step
-
-            if next_step == self.router.SPLIT_ROUTE:
-                end = [self.router.JOIN_ROUTE]
-                step = self.router.route[self.router.SPLIT_ROUTE]
-                initial_inference_state = inference_state
-            else:
-                step = next_step
-                end = [self.router.END_ROUTE]
-
-            for output in self._apply_split_generation(
-                operator_output, inference_state, step, end
-            ):
-
-                ## For more complex stream, what do we store, data to yield, data_to_return?
-                current_output, inference_state = output
-                yield current_output
-
-            if start_step == self.router.SPLIT_ROUTE:
-                inference_state = initial_inference_state
-                next_step = self.router.route[self.router.JOIN_ROUTE]
-            else:
-                operator_output = current_output
-                next_step = self.router.END_ROUTE
-
     def run(
         self,
         *args,
@@ -261,11 +231,7 @@ class Pipeline(Operator):
         next_step = self.router.START_ROUTE
         operator_output = None
         while next_step != self.router.END_ROUTE:
-            # Split Grap Execution (i.e multiple subgraphs)
-            # NOTE: split_route should only appear after the start route nod
-
-            ## generation pathway
-
+            ## generation pathway; if streaming is set, a generator router must be set
             if inference_state.current_state.get("streaming"):
                 return self._run_generate(
                     operator_output=operator_output,
@@ -281,7 +247,7 @@ class Pipeline(Operator):
                         f"{self.router.START_ROUTE}"
                     )
                 operator_output = self._apply_split(operator_output, inference_state)
-                next_step = self.router.route[self.router.JOIN_ROUTE]
+                next_step = self.router.JOIN_ROUTE
 
             else:
                 if next_step == self.router.START_ROUTE:
@@ -307,8 +273,42 @@ class Pipeline(Operator):
                     )
                     inference_state.update_state(state_update)
 
-                next_step = self.router.next(next_step, self.ops, operator_output)
+            next_step = self.router.next(next_step, self.ops, operator_output)
         return operator_output
+
+    def _run_generate(
+        self, *args, operator_output, inference_state, next_step, **kwargs
+    ):
+        while next_step != self.generator_router.END_ROUTE:
+            start_step = next_step
+
+            if next_step == self.router.SPLIT_ROUTE:
+                end = [self.generator_router.JOIN_ROUTE]
+                step = self.generator_router.route[self.generator_router.SPLIT_ROUTE]
+                initial_inference_state = inference_state
+            else:
+                step = next_step
+                end = [self.generator_router.END_ROUTE]
+
+            for output in self._apply_split_generation(
+                operator_output, inference_state, step, end
+            ):
+
+                ## For more complex stream, what do we store, data to yield, data_to_return?
+                current_output, inference_state = output
+                yield current_output
+
+            next_step = self.generator_router.route[self.router.JOIN_ROUTE]
+
+            """
+            ## TODO: work on this condition.
+            if start_step == self.router.SPLIT_ROUTE:
+                inference_state = initial_inference_state
+                next_step = self.router.route[self.router.JOIN_ROUTE]
+            else:
+                operator_output = current_output
+                next_step = self.router.END_ROUTE
+            """
 
     def _run_next(
         self, inp: Any, inference_state: InferenceState, next_step: str, **kwargs
@@ -377,9 +377,11 @@ class Pipeline(Operator):
         ]
 
         split_graphs = self.subgraph_executor.start_subgraphs(
-            sub_graph_inputs=batches, sub_graphs=split_graphs
+            func=self._run_next, sub_graph_inputs=batches, sub_graphs=split_graphs
         )
-        outputs = self.subgraph_executor.run_sub_graphs(sub_graphs=split_graphs)
+        outputs = self.subgraph_executor.run_sub_graphs(
+            router=self.router, func=self._run_next, sub_graphs=split_graphs
+        )
         return self.condense_inputs(outputs)
 
     def _apply_split_generation(
@@ -394,10 +396,12 @@ class Pipeline(Operator):
                 end=end,
             )
             split_graphs = self.subgraph_executor.start_subgraphs(
-                sub_graph_inputs=[batches[i]], sub_graphs=[graph]
+                func=self._run_next, sub_graph_inputs=[batches[i]], sub_graphs=[graph]
             )
-            for output in self.subgraph_executor.run_sub_graphs(
-                sub_graphs=split_graphs, generating=True
+            for output in self.subgraph_executor.run_sub_graphs_generator(
+                router=self.generator_router,
+                func=self._run_next,
+                sub_graphs=split_graphs,
             ):
                 yield output
 

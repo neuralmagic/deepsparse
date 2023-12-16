@@ -232,7 +232,7 @@ class TextGenerationPipeline(Pipeline):
             "dummy_step": dummy_step,
         }
 
-        routes = {
+        base_routes = {
             "parse_inputs": "process_input",
             "process_input": "SPLIT",
             "SPLIT": "prepare_prefill",
@@ -251,6 +251,9 @@ class TextGenerationPipeline(Pipeline):
             ],
             "prep_for_generation": "autoregressive_preprocess",
             "generate_new_token": "compile_generated_tokens",
+        }
+
+        routes = {
             "compile_generated_tokens": [
                 "autoregressive_preprocess",
                 "compile_generations",
@@ -262,42 +265,28 @@ class TextGenerationPipeline(Pipeline):
         }
 
         streaming_route = {
-            "parse_inputs": "process_input",
-            "process_input": "SPLIT",
-            "SPLIT": "prepare_prefill",
-            "prepare_prefill": ["multi_engine_prefill", "autoregressive_preprocess"],
-            "multi_engine_prefill": "multi_engine",
-            "multi_engine": "compile_logits",
-            "compile_logits": [
-                "multi_engine_prefill",
-                "prep_for_generation",
-                "autoregressive_preprocess",
-            ],
-            "autoregressive_preprocess": "single_engine",
-            "single_engine": [
-                "compile_logits",
-                "generate_new_token",
-            ],
-            "prep_for_generation": "autoregressive_preprocess",
-            "generate_new_token": "compile_generated_tokens",
             "streaming_outputs": ["autoregressive_preprocess", "JOIN"],
-            "compile_generated_tokens": [
-                "streaming_outputs",
-                "autoregressive_preprocess",
-                "compile_generations",
-            ],
+            "compile_generated_tokens": "streaming_outputs",
             "JOIN": "STOP",
         }
+
+        routes.update(base_routes)
+        streaming_route.update(base_routes)
 
         router = GraphRouter(
             end_route="STOP",
             start_route="parse_inputs",
-            route=streaming_route,
+            route=routes,
+        )
+
+        generator_router = GraphRouter(
+            end_route="STOP", start_route="parse_inputs", route=streaming_route
         )
         scheduler = [OperatorScheduler()]
         super().__init__(
             ops=ops,
             router=router,
+            generator_router=generator_router,
             schedulers=scheduler,
             pipeline_state=pipeline_state,
             continuous_batching_scheduler=continuous_batching_scheduler,

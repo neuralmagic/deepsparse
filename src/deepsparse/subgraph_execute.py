@@ -13,10 +13,11 @@
 # limitations under the License.
 
 import asyncio
-from typing import Any, List, Optional
+from typing import Any, Callable, List, Optional
 
 from pydantic import BaseModel, Field
 
+from deepsparse.routers import Router
 from deepsparse.utils import SubGraph
 
 
@@ -39,13 +40,12 @@ class StreamingOutput(BaseModel):
 
 
 class SubGraphExecutor:
-    def __init__(self, router, ops, run_next):
-        self.router = router
+    def __init__(self, ops):
         self.ops = ops
-        self._run_next = run_next
 
     def start_subgraphs(
         self,
+        func: Callable,
         sub_graph_inputs: List[Any],
         sub_graphs: List[SubGraph],
         loop: Optional[asyncio.AbstractEventLoop] = None,
@@ -56,13 +56,29 @@ class SubGraphExecutor:
         first node.
         """
         for i in range(len(sub_graphs)):
-            sub_graphs[i].output = self._run_next(
+            sub_graphs[i].output = func(
                 sub_graph_inputs[i], sub_graphs[i].inf, sub_graphs[i].step, loop=loop
             )
         return sub_graphs
 
+    def run_sub_graphs_generator(
+        self, router: Router, func: Callable, sub_graphs: List[SubGraph]
+    ):
+        while any(not x.completed for x in sub_graphs):
+            for sub_graph in sub_graphs:
+                output_to_yield = None
+                if not sub_graph.completed:
+                    # get the result for the completed operator; resolve its output
+                    operator_output = self._update_subgraph(sub_graph)
+                    operator_output, output_to_yield = self._parse_streaming_output(
+                        operator_output
+                    )
+                    self._run_next_step(router, func, sub_graph, operator_output)
+                    if output_to_yield:
+                        yield output_to_yield, sub_graph.inf
+
     def run_sub_graphs(
-        self, sub_graphs: List[SubGraph], generating: bool = False
+        self, router: Router, func: Callable, sub_graphs: List[SubGraph]
     ) -> List[Any]:
         """
         Run a list of sub_graphs asynchronously. Polls to identify the sub graph that is
@@ -77,27 +93,19 @@ class SubGraphExecutor:
         :returns: a list of outputs for all the completed Subgraph objects. Returned
         in the same order that the subgraphs were passed to the function.
         """
-
-        ## TODO: separate these two
-        # Execute all sub graphs until all graphs have been completed.
         while any(not x.completed for x in sub_graphs):
             for sub_graph in sub_graphs:
-                output_to_yield = None
                 if not sub_graph.completed:
                     # get the result for the completed operator; resolve its output
                     operator_output = self._update_subgraph(sub_graph)
-                    operator_output, output_to_yield = self._parse_streaming_output(
-                        operator_output
-                    )
-                    self._run_next_step(sub_graph, operator_output)
-                    if generating and output_to_yield:
-                        yield output_to_yield, sub_graph.inf
+                    self._run_next_step(router, func, sub_graph, operator_output)
 
-        if not generating:
-            return [x.output for x in sub_graphs]
+        return [x.output for x in sub_graphs]
 
     async def run_sub_graphs_async(
         self,
+        router: Router,
+        func: Callable,
         sub_graphs: List[SubGraph],
         loop: Optional[asyncio.AbstractEventLoop] = None,
     ) -> List[Any]:
@@ -108,14 +116,26 @@ class SubGraphExecutor:
                 if not sub_graph.completed:
                     # get the result for the completed operator; resolve its output
                     operator_output = await self._update_subgraph_async(sub_graph)
-                    self._run_next_step(sub_graph, operator_output, loop=loop)
+                    self._run_next_step(
+                        router, func, sub_graph, operator_output, loop=loop
+                    )
 
         return [x.output for x in sub_graphs]
 
-    def _run_next_step(self, sub_graph, operator_output, loop=None):
+    async def run_sub_graphs_async_generator(self):
+        pass
+
+    def _run_next_step(
+        self,
+        router: Router,
+        func: Callable,
+        sub_graph: SubGraph,
+        operator_output: Any,
+        loop=None,
+    ):
         # determine the next step for the particular operator, using
         # its previous output and previously stored step
-        next_step = self.router.next(sub_graph.step, self.ops, operator_output)
+        next_step = router.next(sub_graph.step, self.ops, operator_output)
         # update the step
         sub_graph.step = next_step
 
@@ -126,26 +146,26 @@ class SubGraphExecutor:
             sub_graph.output = operator_output
             sub_graph.completed = True
         else:
-            sub_graph.output = self._run_next(
+            sub_graph.output = func(
                 inp=operator_output,
                 inference_state=sub_graph.inf,
                 next_step=next_step,
                 loop=loop,
             )
 
-    async def _update_subgraph_async(self, sub_graph):
+    async def _update_subgraph_async(self, sub_graph: SubGraph):
         if isinstance(sub_graph.output, asyncio.Future):
             await sub_graph.output
         operator_output = sub_graph.output.result()
         operator_output = sub_graph.parse_output(operator_output)
         return operator_output
 
-    def _update_subgraph(self, sub_graph):
+    def _update_subgraph(self, sub_graph: SubGraph):
         operator_output = sub_graph.output.result()
         operator_output = sub_graph.parse_output(operator_output)
         return operator_output
 
-    def _parse_streaming_output(self, operator_output):
+    def _parse_streaming_output(self, operator_output: Any):
         output_to_yield = None
         if isinstance(operator_output, StreamingOutput):
             output_to_yield = operator_output.data_to_yield
