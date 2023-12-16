@@ -238,6 +238,7 @@ class Pipeline(Operator):
         operator_output = None
         while next_step != self.router.END_ROUTE:
             ## generation pathway; if streaming is set, a generator router must be set
+            ## always start from after the first operator as need to determine if in streaming or not
             if inference_state.current_state.get("streaming"):
                 return self._run_generate(
                     operator_output=operator_output,
@@ -294,14 +295,23 @@ class Pipeline(Operator):
                 initial_inference_state = inference_state
             else:
                 step = next_step
-                end = [self.generator_router.END_ROUTE]
+                end = [
+                    self.generator_router.SPLIT_ROUTE,
+                    self.generator_router.END_ROUTE,
+                ]
 
             async for output in self._apply_split_generation_async(
                 operator_output, inference_state, step, end
             ):
-                yield output
+                output_to_yield, next_step, operator_output, inference_state = output
+                yield output_to_yield
 
-            next_step = self.generator_router.route[self.router.JOIN_ROUTE]
+            if start_step == self.generator_router.SPLIT_ROUTE:
+                inferece_state = initial_inference_state
+
+            ## next_step yielded will be transition, figure out where we're going
+            ## TODO: might need additional processing on operator_output
+            next_step = self.generator_router.next(next_step, self.ops, operator_output)
 
     def _run_generate(
         self, *args, operator_output, inference_state, next_step, **kwargs
@@ -315,17 +325,21 @@ class Pipeline(Operator):
                 initial_inference_state = inference_state
             else:
                 step = next_step
-                end = [self.generator_router.END_ROUTE]
+                end = [
+                    self.generator_router.SPLIT_ROUTE,
+                    self.generator_router.END_ROUTE,
+                ]
 
             for output in self._apply_split_generation(
                 operator_output, inference_state, step, end
             ):
+                output_to_yield, next_step, operator_output, inference_state = output
+                yield output_to_yield
 
-                ## For more complex stream, what do we store, data to yield, data_to_return?
-                current_output, inference_state = output
-                yield current_output
+            if start_step == self.generator_router.SPLIT_ROUTE:
+                inference_state = initial_inference_state
 
-            next_step = self.generator_router.route[self.router.JOIN_ROUTE]
+            next_step = self.generator_router.next(next_step, self.ops, operator_output)
 
             """
             ## TODO: work on this condition.

@@ -75,7 +75,7 @@ class SubGraphExecutor:
                     )
                     self._run_next_step(router, func, sub_graph, operator_output)
                     if output_to_yield:
-                        yield output_to_yield, sub_graph.inf
+                        yield output_to_yield, sub_graph.step, operator_output, sub_graph.inf
 
     def run_sub_graphs(
         self, router: Router, func: Callable, sub_graphs: List[SubGraph]
@@ -141,7 +141,7 @@ class SubGraphExecutor:
                     )
                     self._run_next_step(router, func, sub_graph, operator_output)
                     if output_to_yield:
-                        yield output_to_yield
+                        yield output_to_yield, sub_graph.step, operator_output, sub_graph.inf
 
     def _run_next_step(
         self,

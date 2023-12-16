@@ -49,14 +49,6 @@ from deepsparse.utils import PipelineState, split_engine_inputs
 _LOGGER = logging.getLogger(__name__)
 
 
-class DummyStep(Operator):
-    def can_operate(self, inp):
-        return True
-
-    def run(self, **kwargs):
-        return kwargs
-
-
 @OperatorRegistry.register(name="text_generation")
 class TextGenerationPipeline(Pipeline):
     def __init__(
@@ -197,7 +189,6 @@ class TextGenerationPipeline(Pipeline):
         compile_generated_tokens = CompileGeneratedTokens()
         join_output = JoinOutput(tokenizer=self.tokenizer)
         process_streaming_output = ProcessStreamingOperator(tokenizer=self.tokenizer)
-        dummy_step = DummyStep()
 
         # TODO: do we want to support lists for different engines?
         continuous_batching_scheduler = None
@@ -229,7 +220,6 @@ class TextGenerationPipeline(Pipeline):
             "compile_generated_tokens": compile_generated_tokens,
             "join_output": join_output,
             "streaming_outputs": process_streaming_output,
-            "dummy_step": dummy_step,
         }
 
         base_routes = {
