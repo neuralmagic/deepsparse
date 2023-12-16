@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from typing import List
-from unittest.mock import AsyncMock, Mock
+from unittest.mock import Mock
 
 from pydantic import BaseModel
 
@@ -36,6 +36,10 @@ class FromFilesSchema(BaseModel):
 
 class StrSchema(BaseModel):
     value: str
+
+
+def run_func(value: str):
+    return int(value)
 
 
 class TestStatusEndpoints:
@@ -100,13 +104,16 @@ class TestMockEndpoints:
     def test_add_model_endpoint(
         self, server: DeepsparseServer, app: FastAPI, client: TestClient
     ):
-        mock_pipeline = AsyncMock(
-            input_schema=str, output_schema=int, logger=MultiLogger([])
+        mock_pipeline = Mock(
+            input_schema=str,
+            output_schema=int,
+            side_effect=run_func,
+            logger=MultiLogger([]),
         )
 
         server._add_inference_endpoints(
             app=app,
-            endpoint_config=Mock(route="/predict/parse_int"),
+            endpoint_config=Mock(route="/predict/parse_int", task="some_task"),
             pipeline=mock_pipeline,
         )
 
@@ -131,11 +138,13 @@ class TestMockEndpoints:
         # the run_async function being present in the pipeline). By default, Mock
         # hasattr() returns True for having `run_async` which is deleted so that we can
         # run this test until the new pipeline can support from files
-        del mock_pipeline.run_async
+        # del mock_pipeline.run_async
 
         server._add_inference_endpoints(
             app,
-            endpoint_config=Mock(route="/predict/parse_int"),
+            endpoint_config=Mock(
+                route="/predict/parse_int", task="image_classification"
+            ),
             pipeline=mock_pipeline,
         )
 
