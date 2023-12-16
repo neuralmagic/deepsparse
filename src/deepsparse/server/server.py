@@ -246,15 +246,13 @@ class Server:
         raw_request: Request,
     ):
         # New and old pipelines are called directly
-        if isinstance(proxy_pipeline.pipeline, Pipeline):
-
+        if hasattr(proxy_pipeline.pipeline, "run_async"):
             inference_state = InferenceState()
             inference_state.create_state({})
 
             pipeline_outputs = await proxy_pipeline.pipeline.run_async(
                 **await raw_request.json(), inference_state=inference_state
             )
-
         else:
             pipeline_outputs = proxy_pipeline.pipeline(**await raw_request.json())
 
@@ -271,7 +269,7 @@ class Server:
         return prep_for_serialization(pipeline_outputs)
 
     @staticmethod
-    def predict_from_files(
+    async def predict_from_files(
         proxy_pipeline: ProxyPipeline,
         system_logging_config: SystemLoggingConfig,
         request: List[UploadFile],
@@ -279,13 +277,21 @@ class Server:
         # TODO: New pipelines do not have to have an input_schema.
         # enable from_files for image_classification for now; leverage SupportedTasks
         # or additional pipeline attributes to do this in the future
-        if isinstance(proxy_pipeline.pipeline, Pipeline):
-            from_files_func = proxy_pipeline.pipeline.ops[0].input_schema.from_files
-        else:
-            from_files_func = proxy_pipeline.pipeline.input_schema.from_files
+        if hasattr(proxy_pipeline.pipeline, "run_async"):
+            inference_state = InferenceState()
+            inference_state.create_state({})
 
-        request = from_files_func((file.file for file in request), from_server=True)
-        pipeline_outputs = proxy_pipeline.pipeline(request)
+            request = proxy_pipeline.pipeline.ops[0].input_schema.from_files(
+                (file.file for file in request), from_server=True
+            )
+            pipeline_outputs = await proxy_pipeline.pipeline.run_async(
+                request, inference_state=InferenceState
+            )
+        else:
+            request = proxy_pipeline.pipeline.input_schema.from_files(
+                (file.file for file in request), from_server=True
+            )
+            pipeline_outputs = proxy_pipeline.pipeline(request)
 
         try:
             server_logger = proxy_pipeline.pipeline.logger

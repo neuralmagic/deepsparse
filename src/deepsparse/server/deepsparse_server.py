@@ -156,6 +156,7 @@ class DeepsparseServer(Server):
         # names for now but can keep a list of supported from_files tasks in
         # SupportedTasks as more pipelines are migrated as well as output schemas.
         new_pipeline = SupportedTasks.is_image_classification(endpoint_config.task)
+
         if legacy_pipeline or new_pipeline:
             routes_and_fns.append(
                 (
