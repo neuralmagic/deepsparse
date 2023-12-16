@@ -122,8 +122,26 @@ class SubGraphExecutor:
 
         return [x.output for x in sub_graphs]
 
-    async def run_sub_graphs_async_generator(self):
-        pass
+    async def run_sub_graphs_async_generator(
+        self,
+        router: Router,
+        func: Callable,
+        sub_graphs: List[SubGraph],
+        loop: Optional[asyncio.AbstractEventLoop] = None,
+    ) -> List[Any]:
+
+        while any(not x.completed for x in sub_graphs):
+            for sub_graph in sub_graphs:
+                output_to_yield = None
+                if not sub_graph.completed:
+                    # get the result for the completed operator; resolve its output
+                    operator_output = await self._update_subgraph_async(sub_graph)
+                    operator_output, output_to_yield = self._parse_streaming_output(
+                        operator_output
+                    )
+                    self._run_next_step(router, func, sub_graph, operator_output)
+                    if output_to_yield:
+                        yield output_to_yield
 
     def _run_next_step(
         self,
