@@ -206,6 +206,9 @@ def create_input_schema(
         if input_schema_requirement == SchemaType.IMAGE:
             input_data = generate_random_image_data(config, batch_size)
             inputs = pipeline.input_schema(images=input_data, **kwargs)
+        elif input_schema_requirement == SchemaType.TEXT_PROMPT:
+            input_data = generate_random_text_data(config, batch_size)
+            inputs = pipeline.input_schema(prompt=input_data, **kwargs)
         elif input_schema_requirement == SchemaType.TEXT_SEQ:
             input_data = generate_random_text_data(config, batch_size)
             inputs = pipeline.input_schema(sequences=input_data, **kwargs)

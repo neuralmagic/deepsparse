@@ -24,7 +24,7 @@ model stub, path to a local ONNX file, or deployment directory with an ONNX file
 ### Example Usage
 
 ```python
-from deepsparse import Pipeline
+from deepsparse.legacy import Pipeline
 
 # create a QuestionAnsweringPipeline with a default sparse QA model
 qa_pipeline = Pipeline.create(task="question-answering")
@@ -69,7 +69,7 @@ scripts and flows by referring to the new task name.
 
 #### `@Pipeline.register` Example
 ```python
-from deepsparse import Pipeline
+from deepsparse.legacy import Pipeline
 
 # register and define custom pipeline
 @Pipeline.register(task="my-custom-task")

@@ -11,315 +11,288 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-"""
-Classes and registry for end to end inference pipelines that wrap an underlying
-inference engine and include pre/postprocessing
-"""
+import asyncio
+import copy
+import logging
 import os
-from abc import ABC, abstractmethod
-from concurrent.futures import ThreadPoolExecutor
-from functools import partial
 from pathlib import Path
-from typing import Any, Dict, Generator, List, Optional, Tuple, Type, Union
+from typing import Any, Dict, List, Optional, Union
 
-import numpy
-from pydantic import BaseModel, Field
-
-from deepsparse import Context, Engine, MultiModelEngine, Scheduler
-from deepsparse.base_pipeline import _REGISTERED_PIPELINES, BasePipeline, SupportedTasks
-from deepsparse.benchmark import ORTEngine, TorchScriptEngine
-from deepsparse.cpu import cpu_details
-from deepsparse.loggers.base_logger import BaseLogger
-from deepsparse.loggers.constants import MetricCategories, SystemGroups
-from deepsparse.utils import (
-    InferenceStages,
-    StagedTimer,
-    TimerManager,
-    join_engine_outputs,
-    split_engine_inputs,
+from deepsparse.operators import EngineOperator, Operator
+from deepsparse.pipeline_config import PipelineConfig
+from deepsparse.routers import Router
+from deepsparse.schedulers import (
+    ContinuousBatchingScheduler,
+    OperatorScheduler,
+    SchedulerGroup,
 )
+from deepsparse.utils import InferenceState, PipelineState
+from deepsparse.utils.helpers import run_func
+from deepsparse.utils.subgraph import SubGraph
 
 
 __all__ = [
-    "DEEPSPARSE_ENGINE",
-    "ORT_ENGINE",
-    "TORCHSCRIPT_ENGINE",
-    "SUPPORTED_PIPELINE_ENGINES",
     "Pipeline",
-    "BasePipeline",
-    "SupportedTasks",
-    "_REGISTERED_PIPELINES",
-    "PipelineConfig",
+    "TextGeneration",
+    "CodeGeneration",
+    "Chat",
     "question_answering_pipeline",
     "text_classification_pipeline",
     "zero_shot_text_classification_pipeline",
     "token_classification_pipeline",
+    "haystack_pipeline",
+    "sentiment_analysis_pipeline",
+    "embedding_extraction_pipeline",
     "image_classification_pipeline",
     "yolo_pipeline",
-    "Bucketable",
-    "BucketingPipeline",
-    "create_engine",
-    "TextGeneration",
-    "CodeGeneration",
-    "Chat",
 ]
 
-DEEPSPARSE_ENGINE = "deepsparse"
-ORT_ENGINE = "onnxruntime"
-TORCHSCRIPT_ENGINE = "torchscript"
-
-SUPPORTED_PIPELINE_ENGINES = [DEEPSPARSE_ENGINE, ORT_ENGINE]
+_LOGGER = logging.getLogger(__name__)
+V2_NOT_SUPPORTED = ["alias", "logger", "executor"]
 
 
-class Pipeline(BasePipeline):
+class Pipeline(Operator):
     """
-    Generic Pipeline abstract class meant to wrap inference engine objects to include
-    data pre/post-processing. Inputs and outputs of pipelines should be serialized
-    as pydantic Models. See the BasePipeline above for additional parameters provided
-    during inference.
+    Pipeline accepts a series of operators, schedulers, and a router. Calling a pipeline
+    will use the router to run through all the defined operators. The operators should
+    be implemented using the Operator class and each implemented operator should be
+    responsible for a functional component of the pipelines. The flow of inputs/outputs
+    between the operators and the steps in the pipeline should be defined by the router,
+    (based off of the Router class), which dicates the next operator in the pipeline.
+    Execution of the operators will be handled by the provided schedulers.
 
-    Pipelines should not be instantiated by their constructors, but rather the
-    `Pipeline.create()` method. The task name given to `create` will be used to
-    load the appropriate pipeline. When creating a Pipeline, the pipeline should
-    inherit from `Pipeline` and implement the `setup_onnx_file_path`, `process_inputs`,
-    `process_engine_outputs`, `input_schema`, and `output_schema` abstract methods.
+    :param ops: Operators to run within the pipeline. Can either be a list of operators
+        or dictionary of operators.
+    :param router: A Router which dictates the next operator to call.
+    :param schedulers: A list of schedulers to run operators.
+    :param pipeline_state: pipeline_state created during pipeline initialization
 
-    Finally, the class definition should be decorated by the `Pipeline.register`
-    function. This defines the task name and task aliases for the pipeline and
-    ensures that it will be accessible by `Pipeline.create`. The implemented
-    `Pipeline` subclass must be imported at runtime to be accessible.
-
-    Pipeline lifecycle:
-     - On instantiation
-         * `onnx_file_path` <- `setup_onnx_file_path`
-         * `engine` <- `_initialize_engine`
-
-     - on __call__:
-         * `parsed_inputs: input_schema` <- `parse_inputs(*args, **kwargs)`
-         * `pre_processed_inputs` <- `process_inputs(parsed_inputs)`
-         * `engine_outputs` <- `engine(pre_processed_inputs)`
-         * `outputs: output_schema` <- `process_engine_outputs(engine_outputs)`
-
-    Example use of register:
-     ```python
-     @Pipeline.register(
-     task="example_task",
-     task_aliases=["example_alias_1", "example_alias_2"],
-     )
-     class PipelineImplementation(Pipeline):
-     # implementation of Pipeline abstract methods here
-     ```
-
-    Example use of pipeline:
-     ```python
-     example_pipeline = Pipeline.create(
-         task="example_task",
-         model_path="model.onnx",
-     )
-     pipeline_outputs = example_pipeline(pipeline_inputs)
-     ```
-
-    :param model_path: path on local system or SparseZoo stub to load the model from
-    :param engine_type: inference engine to use. Currently supported values include
-        'deepsparse' and 'onnxruntime'. Default is 'deepsparse'
-    :param batch_size: static batch size to use for inference. None represents
-        dynamic batch mode (Pipeline will accept any batch size). Default is 1
-    :param num_cores: number of CPU cores to allocate for inference engine. None
-        specifies all available cores. Default is None
-    :param num_streams: The max number of requests the model can handle
-        concurrently. None or 0 implies a scheduler-defined default value;
-        default None
-    :param scheduler: (deepsparse only) kind of scheduler to execute with.
-        Pass None for the default
-    :param input_shapes: list of shapes to set ONNX the inputs to. Pass None
-        to use model as-is. Default is None
-    :param context: Optional Context object to use for creating instances of
-        MultiModelEngine. The Context contains a shared scheduler along with
-        other runtime information that will be used across instances of the
-        MultiModelEngine to provide optimal performance when running multiple
-        models concurrently
-    :param executor: An optional ThreadPoolExecutor() object, if provided the
-        pipeline executes inference requests in a non-blocking manner and returns
-        a Future object, call Future.result() on returned object to get the result.
-        Can also accept an int number of workers, a ThreadPoolExecutor object is
-        auto-initialized with the specified integer in that case; None represents
-        synchronous execution - if running in dynamic batch mode a default
-        ThreadPoolExecutor with default workers equal to the number of available
-        cores / 2
     """
 
     def __init__(
         self,
-        model_path: str,
-        engine_type: str = DEEPSPARSE_ENGINE,
-        batch_size: Optional[int] = 1,
-        num_cores: int = None,
-        num_streams: int = None,
-        scheduler: Scheduler = None,
-        input_shapes: List[List[int]] = None,
-        context: Optional[Context] = None,
-        executor: Optional[Union[ThreadPoolExecutor, int]] = None,
-        benchmark: bool = False,
-        _delay_engine_initialize: bool = False,  # internal use only
-        **kwargs,
+        ops: Union[Dict[str, Operator], List[Operator]],
+        router: Router,
+        schedulers: List[OperatorScheduler],
+        continuous_batching_scheduler: Optional[ContinuousBatchingScheduler] = None,
+        pipeline_state: Optional[PipelineState] = None,
     ):
-        self._benchmark = benchmark
-        self._model_path_orig = model_path
-        self._model_path = model_path
-        self._engine_type = engine_type
-        self._batch_size = batch_size
-        self._timer_manager = TimerManager(enabled=True, multi=benchmark)
-        self.context = context
-        super().__init__(**kwargs)
 
-        self.executor, self._num_async_workers = _initialize_executor_and_workers(
-            batch_size=batch_size,
-            workers_or_executor=executor,
-        )
+        self.ops = ops
+        self.router = router
+        self.schedulers = schedulers
+        self.pipeline_state = pipeline_state
+        self._continuous_batching_scheduler = continuous_batching_scheduler
+        self.validate()
 
-        if self.context is not None:
-            num_cores = num_cores or self.context.num_cores
-            if self.context.num_cores != num_cores:
-                raise ValueError(
-                    f"num_cores mismatch. Expected {self.context.num_cores} "
-                    f"from passed context, but got {num_cores} while "
-                    f"instantiating Pipeline"
-                )
+        self._scheduler_group = SchedulerGroup(self.schedulers)
 
-        self._engine_args = dict(
-            batch_size=self._batch_size or 1,  # bs=1 for dynamic batch
-            num_cores=num_cores,
-            input_shapes=input_shapes,
-        )
-        if engine_type.lower() == DEEPSPARSE_ENGINE:
-            self._engine_args["scheduler"] = scheduler
-            self._engine_args["num_streams"] = num_streams
-
-        self.onnx_file_path = self.setup_onnx_file_path()
-
-        if _delay_engine_initialize:
-            self.engine = None
+    def _run_next(
+        self, inp: Any, inference_state: InferenceState, next_step: str, **kwargs
+    ):
+        if (
+            isinstance(self.ops[next_step], EngineOperator)
+            and self._continuous_batching_scheduler
+        ):
+            func = self._continuous_batching_scheduler.submit
+            inp = self.ops[next_step].input_schema(**inp)
         else:
-            self.engine = self._initialize_engine()
-        self._batch_size = self._batch_size or 1
+            func = self._scheduler_group.submit
 
-        self.log(
-            identifier=f"{SystemGroups.INFERENCE_DETAILS}/num_cores_total",
-            value=num_cores,
-            category=MetricCategories.SYSTEM,
+        return run_func(
+            func=func,
+            operator=self.ops[next_step],
+            inp=inp,
+            pipeline_state=self.pipeline_state,
+            inference_state=inference_state,
+            **kwargs,
         )
 
-    def __call__(self, *args, **kwargs) -> BaseModel:
-        with self.timer_manager.new_timer_context() as timer:
-            if "engine_inputs" in kwargs:
-                raise ValueError(
-                    "invalid kwarg engine_inputs. engine inputs determined "
-                    f"by {self.__class__.__qualname__}.parse_inputs"
-                )
+    async def _run_sub_graphs(
+        self,
+        sub_graph_inputs: List[Any],
+        sub_graphs: List[SubGraph],
+        loop: Optional[asyncio.AbstractEventLoop] = None,
+    ) -> List[Any]:
+        """
+        Run a list of sub_graphs asynchronously. Polls to identify the sub graph that is
+        still running but has completed its current step. Schedules the next step
+        subgraph step. This is repeated until all subgraphs have finished running and
+        have reached their end step (stored in the Subgraph.end attribute).
 
-            # ------ PREPROCESSING ------
-            timer.start(InferenceStages.PRE_PROCESS)
-            # parse inputs into input_schema
-            pipeline_inputs = self.parse_inputs(*args, **kwargs)
-            self.log(
-                identifier="pipeline_inputs",
-                value=pipeline_inputs,
-                category=MetricCategories.DATA,
+        :param sub_graph_inputs: A list of inputs that should be passed to each
+        subgraph. Each subgraph is given an element of the list as input to its
+        first node.
+        :param sub_graphs: A list of Subgraph objects. Each stores the relevant
+        execution information for the particular subgraph, such as its current step
+        in the sub graph, inference state, output, and end step.
+
+        :returns: a list of outputs for all the completed Subgraph objects. Returned
+        in the same order that the subgraphs were passed to the function.
+        """
+        for i in range(len(sub_graphs)):
+            sub_graphs[i].output = self._run_next(
+                sub_graph_inputs[i], sub_graphs[i].inf, sub_graphs[i].step, loop=loop
             )
 
-            if not isinstance(pipeline_inputs, self.input_schema):
-                raise RuntimeError(
-                    f"Unable to parse {self.__class__} inputs into a "
-                    f"{self.input_schema} object. "
-                    f"Inputs parsed to {type(pipeline_inputs)}"
+        # Execute all sub graphs until all graphs have been completed.
+        while any(not x.completed for x in sub_graphs):
+            for sub_graph in sub_graphs:
+                if not sub_graph.completed:
+                    # get the result for the completed operator; resolve its output
+                    if isinstance(sub_graph.output, asyncio.Future):
+                        await sub_graph.output
+                    operator_output = sub_graph.output.result()
+                    operator_output = sub_graph.parse_output(operator_output)
+
+                    # determine the next step for the particular operator, using
+                    # its previous output and previously stored step
+                    next_step = self.router.next(
+                        sub_graph.step, self.ops, operator_output
+                    )
+                    # update the step
+                    sub_graph.step = next_step
+
+                    # store the output for the next step. If the next step is
+                    # end step, this particular route has completed. Simply
+                    # update the output value
+                    if next_step in sub_graph.end:
+                        sub_graph.output = operator_output
+                        sub_graph.completed = True
+                    else:
+                        sub_graph.output = self._run_next(
+                            inp=operator_output,
+                            inference_state=sub_graph.inf,
+                            next_step=next_step,
+                            loop=loop,
+                        )
+
+        return [x.output for x in sub_graphs]
+
+    async def run_async(self, *args, inference_state: InferenceState, **kwargs):
+        """
+        Run through the operators using the provided router and scheduler.
+        The input to a given operator is the output of the previous operator.
+
+        :param inference_state: inference_state for the pipeline.
+        :param pipeline_state: pipeline_state for the pipeline. The values in the state
+            are created during pipeline creation and are read-only during inference.
+        """
+        loop = asyncio.get_running_loop()
+
+        next_step = self.router.START_ROUTE
+        operator_output = None
+
+        while next_step != self.router.END_ROUTE:
+            # Either a dictionary key or valid index
+
+            if next_step == self.router.SPLIT_ROUTE:
+                if operator_output is None:
+                    raise ValueError(
+                        f"{self.router.SPLIT_ROUTE} should appear after "
+                        f"{self.ROUTER.START_ROUTE}"
+                    )
+
+                operator_output = await self._apply_split(
+                    operator_output, inference_state, loop=loop
                 )
-            # batch size of the inputs may be `> self._batch_size` at this point
-            engine_inputs = self.process_inputs(pipeline_inputs)
-            if isinstance(engine_inputs, tuple):
-                engine_inputs, context = engine_inputs
+                next_step = self.router.route[self.router.JOIN_ROUTE]
+                if next_step == self.router.END_ROUTE:
+                    return operator_output
+
+            if next_step == self.router.START_ROUTE:
+                outputs = run_func(
+                    *args,
+                    func=self._scheduler_group.submit,
+                    operator=self.ops[next_step],
+                    inference_state=inference_state,
+                    pipeline_state=self.pipeline_state,
+                    loop=loop,
+                    **kwargs,
+                )
+                await outputs
+                operator_output = outputs.result()
+
             else:
-                context = {}
-
-            timer.stop(InferenceStages.PRE_PROCESS)
-            self.log(
-                identifier="engine_inputs",
-                value=engine_inputs,
-                category=MetricCategories.DATA,
-            )
-
-            # ------ INFERENCE ------
-            # split inputs into batches of size `self._batch_size`
-            timer.start(InferenceStages.ENGINE_FORWARD)
-            batches, orig_batch_size = self.split_engine_inputs(
-                engine_inputs, self._batch_size
-            )
-
-            # submit split batches to engine threadpool
-            engine_forward_with_context = partial(self.engine_forward, context=context)
-            batch_outputs = list(
-                self.executor.map(engine_forward_with_context, batches)
-            )
-
-            # join together the batches of size `self._batch_size`
-            engine_outputs = self.join_engine_outputs(
-                batch_outputs, orig_batch_size, **context
-            )
-            timer.stop(InferenceStages.ENGINE_FORWARD)
-
-            self.log(
-                identifier=f"{SystemGroups.INFERENCE_DETAILS}/input_batch_size_total",
-                # to get the batch size of the inputs, we need to look
-                # to multiply the engine batch size (self._batch_size)
-                # by the number of batches processed by the engine during
-                # a single inference call
-                value=len(batch_outputs) * self._batch_size,
-                category=MetricCategories.SYSTEM,
-            )
-            self.log(
-                identifier="engine_outputs",
-                value=engine_outputs,
-                category=MetricCategories.DATA,
-            )
-
-            # ------ POSTPROCESSING ------
-            timer.start(InferenceStages.POST_PROCESS)
-            pipeline_outputs = self.process_engine_outputs(engine_outputs, **context)
-            if not isinstance(pipeline_outputs, (self.output_schema, Generator)):
-                raise ValueError(
-                    f"Outputs of {self.__class__} must be instances of "
-                    f"{self.output_schema} found output of type "
-                    f"{type(pipeline_outputs)}"
+                outputs = self._run_next(
+                    inp=operator_output,
+                    next_step=next_step,
+                    inference_state=inference_state,
+                    loop=loop,
                 )
-            timer.stop(InferenceStages.POST_PROCESS)
-            self.log(
-                identifier="pipeline_outputs",
-                value=pipeline_outputs,
-                category=MetricCategories.DATA,
+                await outputs
+                operator_output = outputs.result()
+
+            if isinstance(operator_output, tuple):
+                operator_output, state_update = operator_output[0], operator_output[-1]
+                inference_state.update_state(state_update)
+
+            next_step = self.router.next(next_step, self.ops, operator_output)
+
+        return operator_output
+
+    async def _apply_split(
+        self,
+        inp: Any,
+        inference_state: InferenceState,
+        loop: Optional[asyncio.AbstractEventLoop] = None,
+    ):
+        batches, orig_batch_size = self.expand_inputs(inp, 1)
+
+        # Create a list of SplitRoutes, per batch size 1
+        # Each SplitRoute object holds information about the particular path it
+        # follows. All start at the same step defined by SPLIT_ROUTE and start
+        # with the same inference_state.
+        split_graphs = [
+            SubGraph(
+                inf=copy.deepcopy(inference_state),
+                step=self.router.route[self.router.SPLIT_ROUTE],
+                end=[self.router.JOIN_ROUTE],
             )
+            for i in range(len(batches))
+        ]
 
-        self.log_inference_times(timer)
+        outputs = await self._run_sub_graphs(
+            sub_graph_inputs=batches, sub_graphs=split_graphs, loop=loop
+        )
+        return self.condense_inputs(outputs)
 
-        return pipeline_outputs
+    @classmethod
+    def create(cls, task: str, **kwargs) -> "Pipeline":
+        """
+        :param task: Pipeline task
+        :param kwargs: extra task specific kwargs to be passed to the Pipeline
+        :return: pipeline object initialized for the given task
+        """
+        new_kwargs = {}
+        for k in kwargs:
+            if k in V2_NOT_SUPPORTED:
+                _LOGGER.warning(f"{k} is not yet supported in the v2 pipeline.")
+            else:
+                new_kwargs[k] = kwargs.get(k)
+
+        try:
+            pipeline = Operator.create(task=task, **new_kwargs)
+            if not isinstance(pipeline, cls):
+                raise RuntimeError(
+                    "Pipeline was not created for the given task. The "
+                    "provided task should be registered using the OperatorRegistry"
+                )
+        except Exception:
+            from deepsparse.legacy import Pipeline
+
+            pipeline = Pipeline.create(task=task, **kwargs)
+        return pipeline
 
     @classmethod
     def from_config(
-        cls,
-        config: Union["PipelineConfig", str, Path],
-        context: Optional[Context] = None,
-        logger: Optional[BaseLogger] = None,
+        cls, config: Union["PipelineConfig", str, Path], **kwargs
     ) -> "Pipeline":
         """
         :param config: PipelineConfig object, filepath to a json serialized
-            PipelineConfig, or raw string of a json serialized PipelineConfig
-        :param context: Optional Context object to use for creating instances of
-            MultiModelEngine. The Context contains a shared scheduler along with
-            other runtime information that will be used across instances of the
-            MultiModelEngine to provide optimal performance when running
-            multiple models concurrently
-        :param logger: An optional DeepSparse Logger object for inference
-            logging. Default is None
-        :return: loaded Pipeline object from the config
+            PipelineConfig, or raw string of a json serialized PipelineConfig.
+            Optionally, pipeline arguments not defined in the PipelineConfig may be
+            passed as key-word arguments to this function.
         """
         if isinstance(config, Path) or (
             isinstance(config, str) and os.path.exists(config)
@@ -330,6 +303,7 @@ class Pipeline(BasePipeline):
         if isinstance(config, str):
             config = PipelineConfig.parse_raw(config)
 
+        kwargs.update(config.kwargs)
         return cls.create(
             task=config.task,
             model_path=config.model_path,
@@ -339,514 +313,158 @@ class Pipeline(BasePipeline):
             scheduler=config.scheduler,
             input_shapes=config.input_shapes,
             alias=config.alias,
-            context=context,
-            logger=logger,
-            **config.kwargs,
+            **kwargs,
         )
 
-    @abstractmethod
-    def setup_onnx_file_path(self) -> str:
-        """
-        Performs any setup to unwrap and process the given `model_path` and other
-        class properties into an inference ready onnx file to be compiled by the
-        engine of the pipeline
-
-        :return: file path to the ONNX file for the engine to compile
-        """
-        raise NotImplementedError()
-
-    @abstractmethod
-    def process_inputs(
+    def run(
         self,
-        inputs: BaseModel,
-    ) -> Union[List[numpy.ndarray], Tuple[List[numpy.ndarray], Dict[str, Any]]]:
-        """
-        :param inputs: inputs to the pipeline. Must be the type of the `input_schema`
-            of this pipeline
-        :return: inputs of this model processed into a list of numpy arrays that
-            can be directly passed into the forward pass of the pipeline engine. Can
-            also include a tuple with engine inputs and special key word arguments
-            to pass to process_engine_outputs to facilitate information from the raw
-            inputs to postprocessing that may not be included in the engine inputs
-        """
-        raise NotImplementedError()
-
-    @abstractmethod
-    def process_engine_outputs(
-        self,
-        engine_outputs: List[numpy.ndarray],
+        *args,
+        inference_state: InferenceState,
         **kwargs,
-    ) -> BaseModel:
+    ):
         """
-        :param engine_outputs: list of numpy arrays that are the output of the engine
-            forward pass
-        :return: outputs of engine post-processed into an object in the `output_schema`
-            format of this pipeline
+        Run through the operators using the provided router and scheduler.
+        The input to a given operator is the output of the previous operator.
+
+        :param inference_state: inference_state for the pipeline.
+        :param pipeline_state: pipeline_state for the pipeline. The values in the state
+            are created during pipeline creation and are read-only during inference.
         """
-        raise NotImplementedError()
+        next_step = self.router.START_ROUTE
+        operator_output = None
+        while next_step != self.router.END_ROUTE:
 
-    @property
-    def model_path_orig(self) -> str:
-        """
-        :return: value originally passed to the `model_path` argument to initialize
-            this Pipeline
-        """
-        return self._model_path_orig
+            # Split Grap Execution (i.e multiple subgraphs)
+            # NOTE: split_route should only appear after the start route node
+            if next_step == self.router.SPLIT_ROUTE:
+                if operator_output is None:
+                    raise ValueError(
+                        f"{self.router.SPLIT_ROUTE} should appear after "
+                        f"{self.router.START_ROUTE}"
+                    )
 
-    @property
-    def model_path(self) -> str:
-        """
-        :return: path on local system to the onnx file of this model or directory
-            containing a model.onnx file along with supporting files
-        """
-        return self._model_path
+                operator_output = asyncio.run(
+                    self._apply_split(operator_output, inference_state)
+                )
+                next_step = self.router.route[self.router.JOIN_ROUTE]
+                if next_step == self.router.END_ROUTE:
+                    return operator_output
 
-    @property
-    def engine_args(self) -> Dict[str, Any]:
-        """
-        :return: arguments besides onnx filepath used to instantiate engine
-        """
-        return self._engine_args
+            if next_step == self.router.START_ROUTE:
+                operator_output = run_func(
+                    *args,
+                    func=self._scheduler_group.submit,
+                    operator=self.ops[next_step],
+                    inference_state=inference_state,
+                    pipeline_state=self.pipeline_state,
+                    **kwargs,
+                ).result()
 
-    @property
-    def engine_type(self) -> str:
-        """
-        :return: type of inference engine used for model forward pass
-        """
-        return self._engine_type
+                if isinstance(operator_output, tuple):
+                    operator_output, state_update = (
+                        operator_output[0],
+                        operator_output[-1],
+                    )
+                    inference_state.update_state(state_update)
 
-    @property
-    def timer_manager(self) -> TimerManager:
-        return self._timer_manager
+                next_step = self.router.next(next_step, self.ops, operator_output)
 
-    @property
-    def current_timer(self) -> Optional[StagedTimer]:
-        """
-        :return: current timer for the pipeline, if any
-        """
-        timer = self.timer_manager.current
+            else:
+                # Single graph execution
+                graph = SubGraph(
+                    inf=copy.deepcopy(inference_state),
+                    step=next_step,
+                    end=[self.router.SPLIT_ROUTE, self.router.END_ROUTE],
+                )
 
-        if timer is None:
-            timer = self.timer_manager.latest
+                operator_output = asyncio.run(
+                    self._run_sub_graphs(
+                        sub_graph_inputs=[operator_output], sub_graphs=[graph]
+                    )
+                )[0]
 
-        return timer
+                inference_state = graph.inf
+                next_step = graph.step
 
-    @property
-    def benchmark(self) -> bool:
-        return self._benchmark
-
-    @benchmark.setter
-    def benchmark(self, value: bool):
-        self._benchmark = value
-        self.timer_manager.multi = value
-
-    def to_config(self) -> "PipelineConfig":
-        """
-        :return: PipelineConfig that can be used to reload this object
-        """
-
-        if not hasattr(self, "task"):
-            raise RuntimeError(
-                f"{self.__class__} instance has no attribute task. Pipeline objects "
-                "must have a task to be serialized to a config. Pipeline objects "
-                "must be declared with the Pipeline.register object to be assigned a "
-                "task"
-            )
-
-        # parse any additional properties as kwargs
-        kwargs = {}
-        for attr_name, attr in self.__class__.__dict__.items():
-            if isinstance(attr, property) and attr_name not in dir(PipelineConfig):
-                kwargs[attr_name] = getattr(self, attr_name)
-
-        return PipelineConfig(
-            task=self.task,
-            model_path=self.model_path_orig,
-            engine_type=self.engine_type,
-            batch_size=self._batch_size,
-            num_cores=self._engine_args.get("num_cores"),
-            scheduler=self._engine_args.get("scheduler"),
-            input_shapes=self._engine_args.get("input_shapes"),
-            alias=self.alias,
-            kwargs=kwargs,
-        )
-
-    def join_engine_outputs(
-        self, batch_outputs: List[List[numpy.ndarray]], orig_batch_size: int, **kwargs
-    ) -> List[numpy.ndarray]:
-        """
-        Joins list of engine outputs together into one list.
-        This is the opposite of `split_engine_inputs` and is meant to be used in tandem.
-
-        :param batch_outputs: list of engine outputs
-        :param orig_batch_size: original batch size of the inputs
-        :return: list of engine outputs joined together
-        """
-        return join_engine_outputs(batch_outputs, orig_batch_size)
-
-    def split_engine_inputs(
-        self, items: List[numpy.ndarray], batch_size: int
-    ) -> List[List[numpy.ndarray]]:
-        """
-        Splits each item into numpy arrays with the first dimension == `batch_size`.
-        This is the opposite of `join_engine_outputs` and is meant to be used in tandem.
-
-        :param items: size of each batch to split into
-        :param batch_size: size of each batch to enforce
-
-        :return: list of batches, where each batch is a list of numpy arrays
-        """
-        return split_engine_inputs(items, batch_size)
-
-    def engine_forward(
-        self,
-        engine_inputs: List[numpy.ndarray],
-        context: Dict = {},
-    ) -> List[numpy.ndarray]:
-        """
-        :param engine_inputs: list of numpy inputs to Pipeline engine forward
-            pass
-        :param context: optional dictionary to be used during engine execution
-        :return: result of forward pass to Pipeline engine
-        """
-        return self.engine(engine_inputs)
-
-    def log_inference_times(self, timer: StagedTimer):
-        """
-        logs stage times in the given timer
-
-        :param timer: timer to log
-        """
-        for stage, time in timer.times.items():
-            self.log(
-                identifier=f"{SystemGroups.PREDICTION_LATENCY}/{stage}_seconds",
-                value=time,
-                category=MetricCategories.SYSTEM,
-            )
-
-    def _initialize_engine(
-        self,
-    ) -> Union[Engine, MultiModelEngine, ORTEngine, TorchScriptEngine]:
-        return create_engine(
-            self.onnx_file_path, self.engine_type, self._engine_args, self.context
-        )
-
-    def _properties_dict(self) -> Dict:
-        return {
-            "config": self.to_config(),
-            "engine": self.engine,
-        }
-
-    def __repr__(self):
-        """
-        :return: Unambiguous representation of the current pipeline
-        """
-        return "{}({})".format(self.__class__, self._properties_dict())
-
-    def __str__(self):
-        """
-        :return: Human readable form of the current pipeline
-        """
-        formatted_props = [
-            "\t{}: {}".format(key, val) for key, val in self._properties_dict().items()
-        ]
-
-        return "{}.{}:\n{}".format(
-            self.__class__.__module__,
-            self.__class__.__qualname__,
-            "\n".join(formatted_props),
-        )
-
-
-class PipelineConfig(BaseModel):
-    """
-    Configuration for creating a Pipeline object
-
-    Can be used to create a Pipeline from a config object or file with
-    Pipeline.from_config(), or used as a building block for other configs
-    such as for deepsparse.server
-    """
-
-    task: str = Field(
-        description="name of task to create a pipeline for",
-    )
-    model_path: str = Field(
-        default=None,
-        description="path on local system or SparseZoo stub to load the model from",
-    )
-    engine_type: str = Field(
-        default=DEEPSPARSE_ENGINE,
-        description=(
-            "inference engine to use. Currently supported values include "
-            "'deepsparse' and 'onnxruntime'. Default is 'deepsparse'"
-        ),
-    )
-    batch_size: Optional[int] = Field(
-        default=1,
-        description=("static batch size to use for inference. Default is 1"),
-    )
-    num_cores: int = Field(
-        default=None,
-        description=(
-            "number of CPU cores to allocate for inference engine. None"
-            "specifies all available cores. Default is None"
-        ),
-    )
-    scheduler: Optional[str] = Field(
-        default="async",
-        description=(
-            "(deepsparse only) kind of scheduler to execute with. Defaults to async"
-        ),
-    )
-    input_shapes: List[List[int]] = Field(
-        default=None,
-        description=(
-            "list of shapes to set ONNX the inputs to. Pass None to use model as-is. "
-            "Default is None"
-        ),
-    )
-    alias: str = Field(
-        default=None,
-        description=(
-            "optional name to give this pipeline instance, useful when inferencing "
-            "with multiple models. Default is None"
-        ),
-    )
-    kwargs: Dict[str, Any] = Field(
-        default={},
-        description=(
-            "Additional arguments for inference with the model that will be passed "
-            "into the pipeline as kwargs"
-        ),
-    )
-
-
-class BucketingPipeline(object):
-    """
-    A Proxy class that adds Bucketing functionality to Pipelines
-
-    :param pipelines: A list of Pipeline objects/buckets that implement
-        `Bucketable` contract
-    """
-
-    def __init__(self, pipelines: List[Pipeline]):
-        if not (pipelines and isinstance(pipelines, list)):
-            raise ValueError(
-                "Expected a non empty List of pipeline objects but got " f"{pipelines}"
-            )
-        self._pipelines = pipelines
-        self._pipeline_class = pipelines[0].__class__
-        self._validate_pipeline_class()
+        return operator_output
 
     def __call__(self, *args, **kwargs):
-        bucket, parsed_inputs = self._choose_bucket(*args, **kwargs)
-        return bucket(parsed_inputs)
-
-    def _choose_bucket(self, *args, **kwargs):
-        parsed_inputs = self._pipelines[-1].parse_inputs(*args, **kwargs)
-        bucket = self._pipeline_class.route_input_to_bucket(
-            input_schema=parsed_inputs,
-            pipelines=self._pipelines,
-        )
-        return bucket, parsed_inputs
-
-    def __getattr__(self, item):
-        value = getattr(self._pipelines[0].__class__, item)
-
-        if isinstance(value, property):
-            return getattr(self._pipelines[0], item)
-
-        raise AttributeError(
-            f"{item} not found in {self.__class__.__name__}, "
-            f"and is not a property of {self._pipeline_class.__name__}"
-        )
-
-    @property
-    def input_schema(self) -> Type[BaseModel]:
         """
-        :return: pydantic model class that inputs to this pipeline must comply to
+        Consolidate any provided inference_state or pipeline_state objects and pass
+        any other operator inputs to run().
+
+        :return: output of the pipeline operators ran with the router for the given
+            input
         """
-        return self._pipelines[0].input_schema
+        if kwargs.get("inference_state"):
+            inference_state = kwargs.pop("inference_state")
+        else:
+            inference_state = InferenceState()
+            inference_state.create_state({})
 
-    @property
-    def output_schema(self) -> Type[BaseModel]:
+        kwargs["inference_state"] = inference_state
+
+        return self.run(*args, **kwargs)
+
+    def expand_inputs(self, *args, **kwargs):
         """
-        :return: pydantic model class that outputs of this pipeline must comply to
+        Generic function to handle expanding values.
         """
-        return self._pipelines[0].output_schema
-
-    def _validate_pipeline_class(self):
-        # validate all pipelines belong to the same class
-
-        if not issubclass(self._pipeline_class, Bucketable):
-            raise ValueError(f"{self._pipeline_class} is not Bucketable")
-
-        is_valid = all(
-            isinstance(pipeline, self._pipeline_class) for pipeline in self._pipelines
+        raise NotImplementedError(
+            "This function should be implemented for any router with split or join"
+            "nodes. expand_inputs will be called prior to the split node (stored in "
+            "the router's SPLIT_ROUTE attribute), expanding outputs for each output "
+            "such that there is a batch size of one per thread."
         )
 
-        if not is_valid:
-            raise ValueError(
-                "All Pipeline Buckets must belong to the same Pipeline Class"
-            )
-
-
-class Bucketable(ABC):
-    """
-    A contract, that ensures implementing Pipeline class can create multiple Pipeline
-    instances and route each input sample to correct instance based off of specific
-    implementations of abstract methods defined in this contract
-    """
-
-    @staticmethod
-    @abstractmethod
-    def should_bucket(*args, **kwargs) -> bool:
+    def condense_inputs(self, *args, **kwargs):
         """
-        :returns: True if buckets should be created else False
+        Generic function to handle condensing values.
         """
-        pass
-
-    @staticmethod
-    @abstractmethod
-    def create_pipeline_buckets(*args, **kwargs) -> List[Pipeline]:
-        """
-        :return: Create and return a list of Pipeline objects
-            representing different buckets
-        """
-        pass
-
-    @staticmethod
-    @abstractmethod
-    def route_input_to_bucket(
-        *args, input_schema: BaseModel, pipelines: List[Pipeline], **kwargs
-    ) -> Pipeline:
-        """
-        :param input_schema: The schema representing an input to the pipeline
-        :param pipelines: Different buckets to be used
-        :return: The correct Pipeline object (or Bucket) to route input to
-        """
-        pass
-
-
-def create_engine(
-    onnx_file_path: str,
-    engine_type: str,
-    engine_args: Dict,
-    context: Optional[Context] = None,
-) -> Union[Engine, MultiModelEngine, ORTEngine]:
-    """
-    Create an inference engine for a given ONNX model
-
-    :param onnx_file_path: path to ONNX model file
-    :param engine_type: type of engine to create.
-    :param engine_args: arguments to pass to engine constructor
-    :param context: context to use for engine
-    :return: inference engine
-    """
-    engine_type = engine_type.lower()
-
-    if engine_type == DEEPSPARSE_ENGINE:
-        if context is not None and isinstance(context, Context):
-            engine_args.pop("num_cores", None)
-            engine_args.pop("scheduler", None)
-            engine_args.pop("num_streams", None)
-            engine_args["context"] = context
-            return MultiModelEngine(
-                model=onnx_file_path,
-                **engine_args,
-            )
-        engine_args.pop("cache_output_bools", None)
-        return Engine(onnx_file_path, **engine_args)
-
-    if engine_type == ORT_ENGINE:
-        return ORTEngine(onnx_file_path, **engine_args)
-
-    if engine_type == TORCHSCRIPT_ENGINE:
-        return TorchScriptEngine(onnx_file_path, **engine_args)
-
-    raise ValueError(
-        f"Unknown engine_type {engine_type}. Supported values include: "
-        f"{SUPPORTED_PIPELINE_ENGINES}"
-    )
-
-
-def _initialize_executor_and_workers(
-    batch_size: Optional[int],
-    workers_or_executor: Optional[Union[int, ThreadPoolExecutor]],
-) -> Tuple[Optional[ThreadPoolExecutor], int]:
-    if isinstance(workers_or_executor, ThreadPoolExecutor):
-        num_async_workers = workers_or_executor._max_workers  # noqa
-        executor = workers_or_executor
-    elif isinstance(workers_or_executor, int):
-        num_async_workers = max(1, workers_or_executor)
-        executor = ThreadPoolExecutor(max_workers=num_async_workers)
-    elif batch_size is None and workers_or_executor is None:
-        # default num workers to num available cores / 2
-        num_cpu_cores_avaailable = cpu_details()[0]
-        num_async_workers = max(1, num_cpu_cores_avaailable // 2)
-        executor = ThreadPoolExecutor(max_workers=num_async_workers)
-    elif workers_or_executor is not None:
-        raise ValueError(
-            "Expected an int or ThreadPoolExecutor to run in async mode"
-            f" but got {workers_or_executor} of type {type(workers_or_executor)}"
-        )
-    else:
-        executor = ThreadPoolExecutor(max_workers=1)
-        num_async_workers = 1
-
-    if batch_size is None and executor is None:
-        raise ValueError(
-            "Must have an ThreadPoolExecutor for running in dynamic batch mode "
-            f"but got {None}"
+        raise NotImplementedError(
+            "This function should be implemented for any router with split or join "
+            "nodes. condense_inputs will be called after the join node (stored in the "
+            "router's JOIN_ROUTE attribute), condensing outputs from multiple threads."
         )
 
-    return executor, num_async_workers
+    def validate(self):
+        """
+        Validate that compatability of the router and operators provided.
+        """
+        router_validation = self.router.validate(self.ops)
+
+        if router_validation is False:
+            # default error message
+            op_types = [type(op) for op in self.ops]
+            raise ValueError(f"Invalid Router: {type(self.router)} for ops: {op_types}")
+        elif isinstance(router_validation, str):
+            raise ValueError(f"Invalid Router for operators: {router_validation}")
 
 
-def text_generation_pipeline(
-    *args, model: Optional[str] = None, **kwargs
-) -> "Pipeline":
+def text_generation_pipeline(*args, **kwargs) -> "Pipeline":
     """
     :return: text generation pipeline with the given args and
         kwargs passed to Pipeline.create
     """
-    kwargs = _parse_model_arg(model, **kwargs)
     return Pipeline.create("text_generation", *args, **kwargs)
 
 
-def code_generation_pipeline(
-    *args, model: Optional[str] = None, **kwargs
-) -> "Pipeline":
+def code_generation_pipeline(*args, **kwargs) -> "Pipeline":
     """
     :return: text generation pipeline with the given args and
         kwargs passed to Pipeline.create
     """
-    kwargs = _parse_model_arg(model, **kwargs)
     return Pipeline.create("code_generation", *args, **kwargs)
 
 
-def chat_pipeline(*args, model: Optional[str] = None, **kwargs) -> "Pipeline":
+def chat_pipeline(*args, **kwargs) -> "Pipeline":
     """
     :return: text generation pipeline with the given args and
         kwargs passed to Pipeline.create
     """
-    kwargs = _parse_model_arg(model, **kwargs)
     return Pipeline.create("chat", *args, **kwargs)
 
 
-def _parse_model_arg(model: Optional[str], **kwargs) -> dict:
-    if model is not None:
-        model_path = kwargs.get("model_path")
-        if model_path is not None:
-            raise ValueError(
-                f"Only one of model and model_path may be supplied, found {model} "
-                f"and {model_path} respectively"
-            )
-        kwargs["model_path"] = model
-    return kwargs
-
-
-# aliases for top level import
 TextGeneration = text_generation_pipeline
 CodeGeneration = code_generation_pipeline
 Chat = chat_pipeline
@@ -855,96 +473,16 @@ Chat = chat_pipeline
 def question_answering_pipeline(*args, **kwargs) -> "Pipeline":
     """
     transformers question_answering pipeline
-
-    example instantiation:
-    ```python
-    question_answering = Pipeline.create(
-        task="question_answering",
-        model_path="question_answering_model_dir/",
-    )
-    ```
-
-    :param model_path: sparsezoo stub to a transformers model or (preferred) a
-        directory containing a model.onnx, tokenizer config, and model config
-    :param engine_type: inference engine to use. Currently supported values include
-        'deepsparse' and 'onnxruntime'. Default is 'deepsparse'
-    :param batch_size: static batch size to use for inference. Default is 1
-    :param num_cores: number of CPU cores to allocate for inference engine. None
-        specifies all available cores. Default is None
-    :param scheduler: (deepsparse only) kind of scheduler to execute with.
-        Pass None for the default
-    :param input_shapes: list of shapes to set ONNX the inputs to. Pass None
-        to use model as-is. Default is None
-    :param alias: optional name to give this pipeline instance, useful when
-        inferencing with multiple models. Default is None
-    :param sequence_length: sequence length to compile model and tokenizer for.
-        If a list of lengths is provided, then for each length, a model and
-        tokenizer will be compiled capable of handling that sequence length
-        (also known as a bucket). Default is 128
-    :param doc_stride: if the context is too long to fit with the question for the
-        model, it will be split in several chunks with some overlap. This argument
-        controls the size of that overlap. Currently, only reading the first span
-        is supported (everything after doc_stride will be truncated). Default
-        is 128
-    :param max_question_len: maximum length of the question after tokenization.
-        It will be truncated if needed. Default is 64
-    :param max_answer_len: maximum length of answer after decoding. Default is 15
     """
+
     return Pipeline.create("question_answering", *args, **kwargs)
 
 
 def text_classification_pipeline(*args, **kwargs) -> "Pipeline":
     """
     transformers text classification pipeline
-
-    example instantiation:
-    ```python
-    text_classifier = Pipeline.create(
-        task="text_classification",
-        model_path="text_classification_model_dir/",
-        batch_size=BATCH_SIZE,
-    )
-    ```
-
-    example batch size 1, single text inputs (ie sentiment analysis):
-    ```python
-    sentiment = text_classifier("the food tastes great")
-    sentiment = text_classifier(["the food tastes great"])
-    sentiment = text_classifier([["the food tastes great"]])
-    ```
-
-    example batch size 1, multi text input (ie QQP like tasks):
-    ```python
-    prediction = text_classifier([["how is the food?", "what is the food?"]])
-    ```
-
-    example batch size n, single text inputs:
-    ```python
-    sentiments = text_classifier(["the food tastes great", "the food tastes bad"])
-    sentiments = text_classifier([["the food tastes great"], ["the food tastes bad"]])
-    ```
-
-    :param model_path: sparsezoo stub to a transformers model or (preferred) a
-        directory containing a model.onnx, tokenizer config, and model config
-    :param engine_type: inference engine to use. Currently supported values include
-        'deepsparse' and 'onnxruntime'. Default is 'deepsparse'
-    :param batch_size: static batch size to use for inference. Default is 1
-    :param num_cores: number of CPU cores to allocate for inference engine. None
-        specifies all available cores. Default is None
-    :param scheduler: (deepsparse only) kind of scheduler to execute with.
-        Pass None for the default
-    :param input_shapes: list of shapes to set ONNX the inputs to. Pass None
-        to use model as-is. Default is None
-    :param alias: optional name to give this pipeline instance, useful when
-        inferencing with multiple models. Default is None
-    :param sequence_length: sequence length to compile model and tokenizer for.
-        If a list of lengths is provided, then for each length, a model and
-        tokenizer will be compiled capable of handling that sequence length
-        (also known as a bucket). Default is 128
-    :param return_all_scores: if True, instead of returning the prediction as the
-        argmax of model class predictions, will return all scores and labels as
-        a list for each result in the batch. Default is False
     """
+
     return Pipeline.create("text_classification", *args, **kwargs)
 
 
@@ -952,53 +490,6 @@ def sentiment_analysis_pipeline(*args, **kwargs) -> "Pipeline":
     """
     transformers text classification pipeline
 
-    example instantiation:
-    ```python
-    text_classifier = Pipeline.create(
-        task="text_classification",
-        model_path="text_classification_model_dir/",
-        batch_size=BATCH_SIZE,
-    )
-    ```
-
-    example batch size 1, single text inputs (ie sentiment analysis):
-    ```python
-    sentiment = text_classifier("the food tastes great")
-    sentiment = text_classifier(["the food tastes great"])
-    sentiment = text_classifier([["the food tastes great"]])
-    ```
-
-    example batch size 1, multi text input (ie QQP like tasks):
-    ```python
-    prediction = text_classifier([["how is the food?", "what is the food?"]])
-    ```
-
-    example batch size n, single text inputs:
-    ```python
-    sentiments = text_classifier(["the food tastes great", "the food tastes bad"])
-    sentiments = text_classifier([["the food tastes great"], ["the food tastes bad"]])
-    ```
-
-    :param model_path: sparsezoo stub to a transformers model or (preferred) a
-        directory containing a model.onnx, tokenizer config, and model config
-    :param engine_type: inference engine to use. Currently supported values include
-        'deepsparse' and 'onnxruntime'. Default is 'deepsparse'
-    :param batch_size: static batch size to use for inference. Default is 1
-    :param num_cores: number of CPU cores to allocate for inference engine. None
-        specifies all available cores. Default is None
-    :param scheduler: (deepsparse only) kind of scheduler to execute with.
-        Pass None for the default
-    :param input_shapes: list of shapes to set ONNX the inputs to. Pass None
-        to use model as-is. Default is None
-    :param alias: optional name to give this pipeline instance, useful when
-        inferencing with multiple models. Default is None
-    :param sequence_length: sequence length to compile model and tokenizer for.
-        If a list of lengths is provided, then for each length, a model and
-        tokenizer will be compiled capable of handling that sequence length
-        (also known as a bucket). Default is 128
-    :param return_all_scores: if True, instead of returning the prediction as the
-        argmax of model class predictions, will return all scores and labels as
-        a list for each result in the batch. Default is False
     """
     return Pipeline.create("text_classification", *args, **kwargs)
 
@@ -1006,60 +497,16 @@ def sentiment_analysis_pipeline(*args, **kwargs) -> "Pipeline":
 def token_classification_pipeline(*args, **kwargs) -> "Pipeline":
     """
     transformers token classification pipeline
-
-    example instantiation:
-    ```python
-    token_classifier = Pipeline.create(
-        task="token_classification",
-        model_path="token_classification_model_dir/",
-        batch_size=BATCH_SIZE,
-    )
-    ```
-
-    :param model_path: sparsezoo stub to a transformers model or (preferred) a
-        directory containing a model.onnx, tokenizer config, and model config
-    :param engine_type: inference engine to use. Currently supported values include
-        'deepsparse' and 'onnxruntime'. Default is 'deepsparse'
-    :param batch_size: static batch size to use for inference. Default is 1
-    :param num_cores: number of CPU cores to allocate for inference engine. None
-        specifies all available cores. Default is None
-    :param scheduler: (deepsparse only) kind of scheduler to execute with.
-        Pass None for the default
-    :param input_shapes: list of shapes to set ONNX the inputs to. Pass None
-        to use model as-is. Default is None
-    :param alias: optional name to give this pipeline instance, useful when
-        inferencing with multiple models. Default is None
-    :param sequence_length: sequence length to compile model and tokenizer for.
-        If a list of lengths is provided, then for each length, a model and
-        tokenizer will be compiled capable of handling that sequence length
-        (also known as a bucket). Default is 128
-    :param aggregation_strategy: how to aggregate tokens in postprocessing. Options
-        include 'none', 'simple', 'first', 'average', and 'max'. Default is None
-    :param ignore_labels: list of label names to ignore in output. Default is
-        ['0'] which ignores the default known class label
     """
+
     return Pipeline.create("token_classification", *args, **kwargs)
 
 
 def image_classification_pipeline(*args, **kwargs) -> "Pipeline":
     """
     Image classification pipeline for DeepSparse
-
-    :param model_path: path on local system or SparseZoo stub to load the model from
-    :param engine_type: inference engine to use. Currently supported values include
-        'deepsparse' and 'onnxruntime'. Default is 'deepsparse'
-    :param batch_size: static batch size to use for inference. Default is 1
-    :param num_cores: number of CPU cores to allocate for inference engine. None
-        specifies all available cores. Default is None
-    :param scheduler: (deepsparse only) kind of scheduler to execute with.
-        Pass None for the default
-    :param input_shapes: list of shapes to set ONNX the inputs to. Pass None
-        to use model as-is. Default is None
-    :param alias: optional name to give this pipeline instance, useful when
-        inferencing with multiple models. Default is None
-    :param class_names: Optional dict, or json file of class names to use for
-        mapping class ids to class labels. Default is None
     """
+
     return Pipeline.create("image_classification", *args, **kwargs)
 
 
@@ -1067,21 +514,6 @@ def yolo_pipeline(*args, **kwargs) -> "Pipeline":
     """
     Image Segmentation YOLO pipeline for DeepSparse
 
-    :param model_path: path on local system or SparseZoo stub to load the model from
-    :param engine_type: inference engine to use. Currently supported values
-        include 'deepsparse' and 'onnxruntime'. Default is 'deepsparse'
-    :param batch_size: static batch size to use for inference. Default is 1
-    :param num_cores: number of CPU cores to allocate for inference engine. None
-        specifies all available cores. Default is None
-    :param scheduler: (deepsparse only) kind of scheduler to execute with.
-        Pass None for the default
-    :param input_shapes: list of shapes to set ONNX the inputs to. Pass None
-        to use model as-is. Default is None
-    :param alias: optional name to give this pipeline instance, useful when
-        inferencing with multiple models. Default is None
-    :param class_names: Optional string identifier, dict, or json file of
-        class names to use for mapping class ids to class labels. Default is
-        `coco`
     """
     return Pipeline.create("yolo", *args, **kwargs)
 
@@ -1091,115 +523,6 @@ def haystack_pipeline(*args, **kwargs) -> "Pipeline":
     Neural Magic pipeline for running Haystack DocumentSearchPipeline.
     Supports selected Haystack Nodes as well as Haystack nodes integrated
     with the Neural Magic DeepSparse Engine
-
-    example embedding model instantiation:
-    ```python
-    haystack_pipeline = Pipeline.create(
-        task="information_retrieval_haystack",
-        model_path="masked_language_modeling_model_dir/",
-        config={
-            "document_store": "InMemoryDocumentStore",
-            "document_store_args": {
-                "similarity": "cosine",
-                "use_gpu": False,
-            },
-            "retriever": "DeepSparseEmbeddingRetriever",
-            "retriever_args": {
-                "extraction_strategy": "reduce_mean"
-            }
-        },
-    )
-    ```
-
-    example deepsparse biencoder instantiation
-    ```python
-    haystack_pipeline = Pipeline.create(
-        task="information_retrieval_haystack",
-        config={
-            "document_store": "InMemoryDocumentStore",
-            "document_store_args": {
-                "similarity": "cosine",
-                "use_gpu": False,
-            },
-            "retriever": "DeepSparseDensePassageRetriever",
-            "retriever_args": {
-                "query_model_path": "./query_model",
-                "passage_model_path": "./passage_model"
-            }
-        },
-    )
-    ```
-
-    writing documents:
-    ```python
-    haystack_pipeline.write_documents([
-        {
-            "title": "Claude Shannon",
-            "content": "Claude Elwood Shannon was an American mathematician, "
-            "electrical engineer, and cryptographer known as a father of "
-            "information theory. He was a 21-year-old master's degree student at "
-            "the Massachusetts Institute of Technology (MIT)."
-        },
-        {
-            "title": "Vincent van Gogh",
-            "content": "Van Gogh was born into an upper-middle-class family. "
-            "As a child he was serious, quiet and thoughtful. He began drawing "
-            "at an early age and as a young man worked as an art dealer."
-        },
-        {
-            "title": "Stevie Wonder",
-            "content": "Stevland Hardaway Morris, known professionally as "
-            "Stevie Wonder, is an American singer and musician, who is "
-            "credited as a pioneer and influence by musicians across a range "
-            "of genres."
-        }
-    ])
-    ```
-
-    example queries:
-    ```python
-    from deepsparse.transformers.haystack import print_pipeline_documents
-    pipeline_outputs = haystack_pipeline(
-        queries="who invented information theory",
-        params={"Retriever": {"top_k": 4}}
-    )
-    print_pipeline_documents(pipeline_outputs)
-
-    pipeline_outputs = haystack_pipeline(
-        queries=[
-            "famous artists",
-            "What is Stevie Wonder's real name?"
-        ],
-        params={"Retriever": {"top_k": 4}}
-    )
-    print_pipeline_documents(pipeline_outputs)
-    ```
-
-    :param model_path: sparsezoo stub to a transformers model or (preferred) a
-        directory containing a model.onnx, tokenizer config, and model config
-    :param engine_type: inference engine to use. Currently supported values include
-        'deepsparse' and 'onnxruntime'. Default is 'deepsparse'
-    :param batch_size: static batch size to use for inference. Default is 1
-    :param num_cores: number of CPU cores to allocate for inference engine. None
-        specifies all available cores. Default is None
-    :param scheduler: (deepsparse only) kind of scheduler to execute with.
-        Pass None for the default
-    :param input_shapes: list of shapes to set ONNX the inputs to. Pass None
-        to use model as-is. Default is None
-    :param alias: optional name to give this pipeline instance, useful when
-        inferencing with multiple models. Default is None
-    :param sequence_length: sequence length to compile model and tokenizer for.
-        If a list of lengths is provided, then for each length, a model and
-        tokenizer will be compiled capable of handling that sequence length
-        (also known as a bucket). Default is 128
-    :param docs: list of documents to be written to document_store. Can also
-        be written after instantiation with write_documents method.
-        Default is None
-    :param config: dictionary or instance of HaystackPipelineConfig. Used to
-        specify Haystack node arguments
-    :param retriever_kwargs: keyword arguments to be passed to retriever. If
-        the retriever is a deepsparse retriever, then these arguments will also
-        be passed to the TransformersEmbeddingExtractionPipeline of the retriever
     """
     return Pipeline.create("information_retrieval_haystack", *args, **kwargs)
 
@@ -1208,53 +531,6 @@ def embedding_extraction_pipeline(*args, **kwargs) -> "Pipeline":
     """
     embedding extraction pipeline for extracting intermediate layer embeddings
     from transformer models
-
-    example instantiation:
-    ```python
-    embedding_extraction_pipeline = Pipeline.create(
-        task="embedding_extraction",
-        model_path="masked_language_modeling_model_dir/",
-    )
-    results = embedding_extraction_pipeline(
-        [
-            "the warriors have won the nba finals"
-            "the warriors are the greatest basketball team ever"
-        ]
-    )
-    emb_1, emb_2 = results.embeddings
-    # (expect emb_1 and emb_2 to have high cosine similiarity)
-    ```
-
-    :param model_path: sparsezoo stub to a transformers model or (preferred) a
-        directory containing a model.onnx, tokenizer config, and model config
-    :param engine_type: inference engine to use. Currently supported values include
-        'deepsparse' and 'onnxruntime'. Default is 'deepsparse'
-    :param batch_size: static batch size to use for inference. Default is 1
-    :param num_cores: number of CPU cores to allocate for inference engine. None
-        specifies all available cores. Default is None
-    :param scheduler: (deepsparse only) kind of scheduler to execute with.
-        Pass None for the default
-    :param input_shapes: list of shapes to set ONNX the inputs to. Pass None
-        to use model as-is. Default is None
-    :param alias: optional name to give this pipeline instance, useful when
-        inferencing with multiple models. Default is None
-    :param sequence_length: sequence length to compile model and tokenizer for.
-        If a list of lengths is provided, then for each length, a model and
-        tokenizer will be compiled capable of handling that sequence length
-        (also known as a bucket). Default is 128
-    :param emb_extraction_layer: if an int, the transformer layer number from
-        which the embeddings will be extracted. If a string, the name of last
-        ONNX node in model to draw embeddings from. If None, leave the model
-        unchanged. Default is -1 (last transformer layer before prediction head)
-    :param model_size: size of transformer model (size of hidden layer per token
-        if the model is cut). Default is 768
-    :param extraction_strategy: method of pooling embedding values. Currently
-        supported values are 'per_token', 'reduce_mean', 'reduce_max' and 'cls_token'.
-        Default is 'per_token'
-    :param return_numpy: return embeddings a list of numpy arrays, list of lists
-        of floats otherwise. Default is True
-    :param context: context for engine. If None, then the engine will be initialized
-        with 2 streams to make use of parallel inference of labels. Default is None
     """
     return Pipeline.create("embedding_extraction", *args, **kwargs)
 
@@ -1268,77 +544,5 @@ def zero_shot_text_classification_pipeline(*args, **kwargs) -> "Pipeline":
     This class upon construction returns an instance of a child Pipeline which
     inherits from ZeroShotTextClassificationPipelineBase. Which type of Pipeline
     is returned depends on the value of the passed model_scheme argument.
-
-    example dynamic labels:
-    ```python
-    zero_shot_text_classifier = Pipeline.create(
-        task="zero_shot_text_classification",
-        model_scheme="mnli",
-        model_config={"hypothesis_template": "This text is related to {}"},
-        model_path="mnli_model_dir/",
-    )
-
-    sequence_to_classify = "Who are you voting for in 2020?"
-    candidate_labels = ["Europe", "public health", "politics"]
-    zero_shot_text_classifier(sequences=sequence_to_classify, labels=candidate_labels)
-    >>> ZeroShotTextClassificationOutput(
-        sequences='Who are you voting for in 2020?',
-        labels=['politics', 'public health', 'Europe'],
-        scores=[0.9073666334152222, 0.046810582280159, 0.04582275450229645])
-    ```
-
-    example static labels:
-    ```python
-    zero_shot_text_classifier = Pipeline.create(
-        task="zero_shot_text_classification",
-        model_scheme="mnli",
-        model_config={"hypothesis_template": "This text is related to {}"},
-        model_path="mnli_model_dir/",
-        labels=["politics", "Europe", "public health"]
-    )
-
-    sequence_to_classify = "Who are you voting for in 2020?"
-    zero_shot_text_classifier(sequences=sequence_to_classify)
-    >>> ZeroShotTextClassificationOutput(
-        sequences='Who are you voting for in 2020?',
-        labels=['politics', 'public health', 'Europe'],
-        scores=[0.9073666334152222, 0.046810582280159, 0.04582275450229645])
-    ```
-
-    Note that labels must either be provided during pipeline instantiation via
-    the constructor, at inference time, but not both.
-
-    Note that if a hypothesis_template is provided at inference time, then it
-    will override the value provided during model instantiation
-
-    :param model_path: sparsezoo stub to a transformers model or (preferred) a
-        directory containing a model.onnx, tokenizer config, and model config
-    :param engine_type: inference engine to use. Currently supported values include
-        'deepsparse' and 'onnxruntime'. Default is 'deepsparse'
-    :param batch_size: batch size must divide sequences * labels, regardless of
-        whether using dynamic or static labels. Default is 1
-    :param num_cores: number of CPU cores to allocate for inference engine. None
-        specifies all available cores. Default is None
-    :param scheduler: (deepsparse only) kind of scheduler to execute with.
-        Pass None for the default
-    :param input_shapes: list of shapes to set ONNX the inputs to. Pass None
-        to use model as-is. Default is None
-    :param alias: optional name to give this pipeline instance, useful when
-        inferencing with multiple models. Default is None
-    :param sequence_length: sequence length to compile model and tokenizer for.
-        If a list of lengths is provided, then for each length, a model and
-        tokenizer will be compiled capable of handling that sequence length
-        (also known as a bucket). Default is 128
-    :param default_model_name: huggingface transformers model name to use to
-        load a tokenizer and model config when none are provided in the `model_path`.
-        Default is "bert-base-uncased"
-    :param model_scheme: training scheme used to train the model used for zero shot.
-        Default is "mnli"
-    :param model_config: config object specific to the model_scheme of this model
-        or a dict of config keyword arguments
-    :param labels: static list of labels to perform text classification with. Can
-        also be provided at inference time
-    :param context: context for engine. If None, then the engine will be initialized
-        with 2 streams to make use of parallel inference of labels
     """
     return Pipeline.create("zero_shot_text_classification", *args, **kwargs)

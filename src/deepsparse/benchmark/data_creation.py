@@ -45,6 +45,7 @@ class SchemaType:
     IMAGE: str = "images"
     TEXT_SEQ: str = "sequences"
     TEXT_INPUT: str = "inputs"
+    TEXT_PROMPT: str = "prompt"
     QUESTION: str = "question"
 
 
@@ -55,6 +56,8 @@ def get_input_schema_type(pipeline: Pipeline) -> str:
     if SchemaType.IMAGE in input_schema_requirements:
         return SchemaType.IMAGE
     if SchemaType.TEXT_SEQ in input_schema_requirements:
+        if input_schema_fields.get(SchemaType.TEXT_SEQ).alias == SchemaType.TEXT_PROMPT:
+            return SchemaType.TEXT_PROMPT
         sequence_types = [
             f.outer_type_ for f in input_schema_fields[SchemaType.TEXT_SEQ].sub_fields
         ]

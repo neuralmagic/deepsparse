@@ -51,15 +51,15 @@ _PACKAGE_NAME = (
 )
 
 if is_enterprise:
-    license = "Apache"
+    license = "Neural Magic Master Software License and Service Agreement"
 else:
-    license = "Neural Magic DeepSparse Community License, Apache"
+    license = "Neural Magic DeepSparse Community License"
 
 if is_enterprise:
-    # do not include the LICENSE-NEURALMAGIC file
+    # do not include the LICENSE file
     # in the deepsparse-ent installation folder
     license_nm_path = os.path.join(
-        os.path.dirname(os.path.realpath(__file__)), "LICENSE-NEURALMAGIC"
+        os.path.dirname(os.path.realpath(__file__)), "LICENSE"
     )
     os.remove(license_nm_path)
 
@@ -147,6 +147,8 @@ _transformers_integration_deps = [
     "transformers<4.35",
     "datasets<=2.14.6",
     "scikit-learn",
+    "fschat==0.2.33",
+    "accelerate==0.24.1",
     "seqeval",
 ]
 _sentence_transformers_integration_deps = ["optimum-deepsparse"] + _torch_deps
@@ -357,7 +359,6 @@ setup(
         "Intended Audience :: Information Technology",
         "Intended Audience :: Science/Research",
         "License :: Other/Proprietary License",
-        "License :: OSI Approved :: Apache Software License",
         "Operating System :: POSIX :: Linux",
         "Topic :: Scientific/Engineering",
         "Topic :: Scientific/Engineering :: Artificial Intelligence",
