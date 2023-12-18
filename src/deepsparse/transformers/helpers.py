@@ -63,7 +63,7 @@ def setup_transformers_pipeline(
     :param tokenizer_padding_side: The side to pad on for the tokenizer,
         either "left" or "right"
     :param onnx_model_name: The name of the onnx model to be loaded.
-        If not specified, defaults are used (see setup_onnx_file_path)
+        If not specified, defaults are used (see fetch_onnx_file_path)
     :param engine_kwargs: The kwargs to pass to the engine
     :return The model path, config, tokenizer, and engine kwargs
     """
