@@ -297,6 +297,9 @@ class Pipeline(Operator):
         :param inference_state: inference_state for the pipeline.
         :param next_step: string indicating the next step to run
         """
+        if not self.generator_router:
+            raise ValueError("For streaming mode, a generator_router must be provided.")
+
         while next_step != self.generator_router.END_ROUTE:
             start_step = next_step
 
@@ -339,6 +342,8 @@ class Pipeline(Operator):
         :param inference_state: inference_state for the pipeline.
         :param next_step: string indicating the next step to run
         """
+        if not self.generator_router:
+            raise ValueError("For streaming mode, a generator_router must be provided.")
 
         while next_step != self.generator_router.END_ROUTE:
             start_step = next_step
