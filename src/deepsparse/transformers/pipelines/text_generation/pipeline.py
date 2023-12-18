@@ -15,7 +15,7 @@
 import logging
 from typing import List, Optional
 
-from deepsparse.operators import EngineOperator
+from deepsparse.operators import EngineOperator, Operator
 from deepsparse.operators.registry import OperatorRegistry
 from deepsparse.pipeline import Pipeline
 from deepsparse.routers import GraphRouter
@@ -36,6 +36,7 @@ from deepsparse.transformers.pipelines.text_generation import (
     PrepareGeneration,
     ProcessInputsTextGeneration,
     ProcessOutputs,
+    ProcessStreamingOperator,
     TokenGeneratorOperator,
 )
 from deepsparse.transformers.utils.helpers import (
@@ -187,6 +188,7 @@ class TextGenerationPipeline(Pipeline):
         compile_generations = CompileGenerations()
         compile_generated_tokens = CompileGeneratedTokens()
         join_output = JoinOutput(tokenizer=self.tokenizer)
+        process_streaming_output = ProcessStreamingOperator(tokenizer=self.tokenizer)
 
         # TODO: do we want to support lists for different engines?
         continuous_batching_scheduler = None
@@ -217,9 +219,10 @@ class TextGenerationPipeline(Pipeline):
             "compile_generations": compile_generations,
             "compile_generated_tokens": compile_generated_tokens,
             "join_output": join_output,
+            "streaming_outputs": process_streaming_output,
         }
 
-        routes = {
+        base_routes = {
             "parse_inputs": "process_input",
             "process_input": "SPLIT",
             "SPLIT": "prepare_prefill",
@@ -238,6 +241,9 @@ class TextGenerationPipeline(Pipeline):
             ],
             "prep_for_generation": "autoregressive_preprocess",
             "generate_new_token": "compile_generated_tokens",
+        }
+
+        routes = {
             "compile_generated_tokens": [
                 "autoregressive_preprocess",
                 "compile_generations",
@@ -248,11 +254,29 @@ class TextGenerationPipeline(Pipeline):
             "process_outputs": "STOP",
         }
 
-        router = GraphRouter(end_route="STOP", start_route="parse_inputs", route=routes)
+        streaming_route = {
+            "streaming_outputs": ["autoregressive_preprocess", "JOIN"],
+            "compile_generated_tokens": "streaming_outputs",
+            "JOIN": "STOP",
+        }
+
+        routes.update(base_routes)
+        streaming_route.update(base_routes)
+
+        router = GraphRouter(
+            end_route="STOP",
+            start_route="parse_inputs",
+            route=routes,
+        )
+
+        generator_router = GraphRouter(
+            end_route="STOP", start_route="parse_inputs", route=streaming_route
+        )
         scheduler = [OperatorScheduler()]
         super().__init__(
             ops=ops,
             router=router,
+            generator_router=generator_router,
             schedulers=scheduler,
             pipeline_state=pipeline_state,
             continuous_batching_scheduler=continuous_batching_scheduler,
