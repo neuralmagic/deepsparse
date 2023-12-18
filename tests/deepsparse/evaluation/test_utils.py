@@ -95,18 +95,18 @@ def torch_target():
 
 
 def test_initialize_model_from_target_pipeline_onnx(pipeline_target):
-    model = text_generation_model_from_target(pipeline_target, "onnxruntime")
+    model = create_model_from_target(pipeline_target, "onnxruntime")
     assert model.ops.get("single_engine")._engine_type == "onnxruntime"
 
 
 def test_initialize_model_from_target_pipeline_deepsparse(pipeline_target):
-    model = text_generation_model_from_target(pipeline_target, "deepsparse")
+    model = create_model_from_target(pipeline_target, "deepsparse")
     assert model.ops.get("single_engine")._engine_type == "deepsparse"
 
 
 def test_initialize_model_from_target_pipeline_with_kwargs(pipeline_target):
     model = create_model_from_target(pipeline_target, "deepsparse", sequence_length=64)
-    assert model.sequence_length == 64
+    assert model.ops.get("process_input").sequence_length == 64
 
 
 def test_initialize_model_from_target_torch(torch_target):

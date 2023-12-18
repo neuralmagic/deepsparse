@@ -153,7 +153,6 @@ def create_model_from_target(
             task="text-generation",
             model_path=target,
             sequence_length=kwargs.pop("sequence_length", 2048),
-            trust_remote_code=kwargs.pop("trust_remote_code", False),
             engine_type=engine_type,
             batch_size=kwargs.pop("batch_size", 1),
             **kwargs,
