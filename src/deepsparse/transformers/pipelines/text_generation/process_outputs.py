@@ -88,7 +88,7 @@ class ProcessOutputs(Operator):
             )
 
         num_preds = generation_config.num_return_sequences
-        if num_preds > 1:
+        if num_preds > 1 and not inference_state.current_state.get("streaming"):
             grouped_generations = [
                 generations[n : n + num_preds]
                 for n in range(0, len(generations), num_preds)
