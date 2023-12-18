@@ -143,10 +143,10 @@ def model_to_path(model: Union[str, Model, File]) -> str:
         from huggingface_hub import snapshot_download
 
         deployment_path = snapshot_download(repo_id=model.replace("hf:", "", 1))
-        onnx_path = os.path.join(deployment_path, _MODEL_DIR_ONNX_NAME)
+        onnx_path = os.path.join(deployment_path, MODEL_ONNX_NAME)
         if not os.path.isfile(onnx_path):
             raise ValueError(
-                f"Could not find the ONNX model file '{_MODEL_DIR_ONNX_NAME}' in the "
+                f"Could not find the ONNX model file '{MODEL_ONNX_NAME}' in the "
                 f"Hugging Face Hub repository located at {deployment_path}. Please "
                 f"ensure the model has been correctly exported to ONNX format and "
                 f"exists in the repository."
