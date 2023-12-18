@@ -15,14 +15,11 @@
 import logging
 from typing import Dict, Optional
 
+from deepsparse.pipeline import Pipeline
+from deepsparse.routers import GraphRouter
+from deepsparse.schedulers import OperatorScheduler
 from deepsparse.transformers.helpers import setup_transformers_pipeline
-from deepsparse.transformers.utils.helpers import process_generation_config
-from deepsparse.utils import split_engine_inputs
-from deepsparse.utils.onnx import default_cached_outputs
-from deepsparse.v2.pipeline import Pipeline
-from deepsparse.v2.routers import GraphRouter
-from deepsparse.v2.schedulers import OperatorScheduler
-from deepsparse.v2.text_generation import (
+from deepsparse.transformers.pipelines.text_generation import (
     CompileGenerations,
     GenerateNewTokenOperator,
     JoinOutput,
@@ -32,6 +29,9 @@ from deepsparse.v2.text_generation import (
     ProcessOutputs,
     TokenGeneratorOperator,
 )
+from deepsparse.transformers.utils.helpers import process_generation_config
+from deepsparse.utils import split_engine_inputs
+from deepsparse.utils.onnx import default_cached_outputs
 
 
 _LOGGER = logging.getLogger(__name__)

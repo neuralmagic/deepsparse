@@ -49,8 +49,9 @@ class GenerateNewTokenOperator(Operator):
         callback = inference_state.current_state.get("callback")
         stop = inference_state.current_state.get("stop")
 
-        if kv_cache.total_num_processed_tokens >= kv_cache.capacity:
-            finish_reason = FinishReason.CAPACITY
+        if kv_cache:
+            if kv_cache.total_num_processed_tokens >= kv_cache.capacity:
+                finish_reason = FinishReason.CAPACITY
 
         if token == self.tokenizer.eos_token_id and not self.force_max_tokens:
             finish_reason = FinishReason.STOP

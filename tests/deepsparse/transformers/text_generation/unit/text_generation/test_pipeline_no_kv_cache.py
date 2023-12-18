@@ -15,7 +15,9 @@
 import os
 
 import pytest
-from deepsparse.v2.text_generation import TextGenerationPipelineNoCache
+from deepsparse.transformers.pipelines.text_generation.pipeline_no_kv_cache import (
+    TextGenerationPipelineNoCache,
+)
 
 
 @pytest.mark.parametrize(

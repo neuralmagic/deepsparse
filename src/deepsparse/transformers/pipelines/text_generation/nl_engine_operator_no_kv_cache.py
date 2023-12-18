@@ -17,8 +17,8 @@ from typing import Any
 import numpy
 from pydantic import BaseModel
 
+from deepsparse.operators.engine_operator import EngineOperator, EngineOperatorInputs
 from deepsparse.transformers.helpers import overwrite_transformer_onnx_model_inputs
-from deepsparse.v2.operators.engine_operator import EngineOperator, EngineOperatorInputs
 
 
 __all__ = [

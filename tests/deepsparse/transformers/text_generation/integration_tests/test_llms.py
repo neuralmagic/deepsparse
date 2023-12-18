@@ -40,20 +40,22 @@ from typing import List, Tuple
 import numpy
 
 import pytest
-from deepsparse.transformers.pipelines.text_generation import TextGenerationOutput
-from deepsparse.v2.pipeline import Pipeline
-from deepsparse.v2.text_generation import (
+from deepsparse.pipeline import Pipeline
+from deepsparse.transformers.pipelines.text_generation import (
+    TextGenerationOutput,
     TextGenerationPipeline,
     TextGenerationPipelineNoCache,
 )
-from tests.deepsparse.transformers.pipelines.integration_tests.helpers import (
+from tests.deepsparse.transformers.text_generation.integration_tests.helpers import (
     TorchGroundTruthSource,
     parse_params,
     validate_internal_kv_cache,
 )
 
 
-CONFIGS_DIRECTORY = "tests/deepsparse/v2/integration_tests/configs"
+CONFIGS_DIRECTORY = (
+    "tests/deepsparse/transformers/text_generation/integration_tests/configs"
+)
 
 
 @pytest.fixture()
@@ -146,7 +148,7 @@ class TestsIntegrationLLMsPipelines:
 
         pipeline = self.get_pipeline(
             prompt_sequence_length=1,
-            engine_kwargs=dict(engine_type="onnxruntime"),
+            engine_type="onnxruntime",
         )
         output = pipeline(
             prompt=self.prompt,
@@ -173,9 +175,7 @@ class TestsIntegrationLLMsPipelines:
             pytest.skip(
                 "Cannot run ORT pipeline with the internal deepsparse cache enabled."
             )
-        pipeline = self.get_pipeline(
-            engine_kwargs=dict(engine_type="onnxruntime"),
-        )
+        pipeline = self.get_pipeline(engine_type="onnxruntime")
         output = pipeline(
             prompt=self.prompt,
             include_prompt_logits=True,
@@ -248,7 +248,7 @@ class TestsIntegrationLLMsPipelines:
         pipeline = self.get_pipeline(
             onnx_model_name=self.model_name_no_kv_cache,
             kv_cache_support=False,
-            engine_kwargs=dict(engine_type=engine_type),
+            engine_type=engine_type,
         )
 
         output = pipeline(

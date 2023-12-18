@@ -18,12 +18,11 @@ import numpy
 
 from deepsparse.operators import Operator
 from deepsparse.transformers.pipelines.text_generation import TokenGeneratorOperator
+from deepsparse.transformers.pipelines.text_generation.nl_engine_operator import (
+    NLEngineOutputs,
+)
 from deepsparse.transformers.schemas.text_generation_schemas import FinishReason
 from deepsparse.transformers.utils.helpers import set_generated_length
-from deepsparse.v2.operators import Operator
-from deepsparse.v2.text_generation import TokenGeneratorOperator
-from deepsparse.v2.text_generation.nl_engine_operator import NLEngineOutputs
-from deepsparse.v2.utils import InferenceState
 from deepsparse.utils import InferenceState
 
 

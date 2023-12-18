@@ -167,7 +167,9 @@ def get_deployment_path(
 
     elif model_path.startswith("zoo:") or model_path.startswith("hf:"):
         onnx_model_path = model_to_path(model_path)
-        return os.path.dirname(onnx_model_path), onnx_model_path
+        return os.path.dirname(onnx_model_path), onnx_model_path.replace(
+            MODEL_ONNX_NAME, onnx_model_name
+        )
     else:
         raise ValueError(
             f"model_path {model_path} is not a valid file, directory, or zoo stub"
