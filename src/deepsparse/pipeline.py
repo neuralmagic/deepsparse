@@ -89,7 +89,7 @@ class Pipeline(Operator):
         self.validate()
 
         self._scheduler_group = SchedulerGroup(self.schedulers)
-        self.subgraph_executor = SubGraphExecutor(ops=self.ops)
+        self.subgraph_executor = SubGraphExecutor()
 
     @classmethod
     def create(cls, task: str, **kwargs) -> "Pipeline":
@@ -104,8 +104,7 @@ class Pipeline(Operator):
                 _LOGGER.warning(f"{k} is not yet supported in the v2 pipeline.")
             else:
                 new_kwargs[k] = kwargs.get(k)
-        pipeline = Operator.create(task=task, **new_kwargs)
-        """
+
         try:
             pipeline = Operator.create(task=task, **new_kwargs)
             if not isinstance(pipeline, cls):
@@ -117,7 +116,6 @@ class Pipeline(Operator):
             from deepsparse.legacy import Pipeline
 
             pipeline = Pipeline.create(task=task, **kwargs)
-        """
         return pipeline
 
     @classmethod
@@ -434,8 +432,8 @@ class Pipeline(Operator):
 
         step = self.router.route[self.router.SPLIT_ROUTE]
         end = [self.router.JOIN_ROUTE]
-        split_graphs = self.create_and_start_subgraph(
-            inferece_state=inference_state, data=batches, step=step, end=end
+        split_graphs = self._create_and_start_subgraph(
+            inference_state=inference_state, data=batches, step=step, end=end
         )
         outputs = self.subgraph_executor.run_sub_graphs(
             router=self.router,
@@ -464,7 +462,7 @@ class Pipeline(Operator):
         step = self.router.route[self.router.SPLIT_ROUTE]
         end = [self.router.JOIN_ROUTE]
         split_graphs = self._create_and_start_subgraph(
-            inferece_state=inference_state, data=batches, step=step, end=end
+            inference_state=inference_state, data=batches, step=step, end=end
         )
         outputs = await self.subgraph_executor.run_sub_graphs_async(
             router=self.router,
@@ -485,7 +483,7 @@ class Pipeline(Operator):
 
         for i in range(len(batches)):
             split_graphs = self._create_and_start_subgraph(
-                inferece_state=inference_state, data=[batches[i]], step=step, end=end
+                inference_state=inference_state, data=[batches[i]], step=step, end=end
             )
             async for output in self.subgraph_executor.run_sub_graphs_async_generator(
                 router=self.generator_router,
@@ -504,8 +502,8 @@ class Pipeline(Operator):
         batches, orig_batch_size = self.expand_inputs(inp, 1)
 
         for i in range(len(batches)):
-            split_graphs = self.create_and_start_subgraph(
-                inferece_state=inference_state, data=[batches[i]], step=step, end=end
+            split_graphs = self._create_and_start_subgraph(
+                inference_state=inference_state, data=[batches[i]], step=step, end=end
             )
             for output in self.subgraph_executor.run_sub_graphs_generator(
                 router=self.generator_router,
@@ -515,7 +513,7 @@ class Pipeline(Operator):
             ):
                 yield output
 
-    def _create_subgraph_and_start_subgraph(
+    def _create_and_start_subgraph(
         self,
         inference_state: InferenceState,
         data: List[Any],

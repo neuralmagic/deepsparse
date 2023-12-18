@@ -17,7 +17,7 @@ from typing import Any, AsyncGenerator, Callable, Dict, Generator, List, Optiona
 
 from pydantic import BaseModel, Field
 
-from deepsparse.operator import Operator
+from deepsparse.operators import Operator
 from deepsparse.routers import Router
 from deepsparse.utils import SubGraph
 
