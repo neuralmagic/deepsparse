@@ -31,9 +31,9 @@ from .cpu import (
     cpu_vnni_compatible,
 )
 from .engine import *
+from .pipeline_config import *
 from .tasks import *
 from .pipeline import *
-from .base_pipeline import *
 from .loggers import *
 from .version import __version__, is_release
 from .analytics import deepsparse_analytics as _analytics

@@ -72,9 +72,13 @@ from typing import List, Union
 import click
 
 from src.deepsparse.evaluation.evaluator import evaluate
-from src.deepsparse.evaluation.results import Result, save_evaluations
+from src.deepsparse.evaluation.results import Result, save_result
 from src.deepsparse.evaluation.utils import args_to_dict, get_save_path
-from src.deepsparse.pipeline import DEEPSPARSE_ENGINE, ORT_ENGINE, TORCHSCRIPT_ENGINE
+from src.deepsparse.operators.engine_operator import (
+    DEEPSPARSE_ENGINE,
+    ORT_ENGINE,
+    TORCHSCRIPT_ENGINE,
+)
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -216,11 +220,7 @@ def main(
     )
     if save_path:
         _LOGGER.info(f"Saving the evaluation results to {save_path}")
-        save_evaluations(
-            evaluations=result.formatted,
-            save_path=save_path,
-            save_format=type_serialization,
-        )
+        save_result(result=result, save_path=save_path, save_format=type_serialization)
 
 
 if __name__ == "__main__":

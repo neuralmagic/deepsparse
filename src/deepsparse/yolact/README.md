@@ -81,7 +81,7 @@ wget -O thailand.jpg https://raw.githubusercontent.com/neuralmagic/deepsparse/ma
 ```
 
 ```python
-from deepsparse.pipeline import Pipeline
+from deepsparse import Pipeline
 
 model_stub = "zoo:cv/segmentation/yolact-darknet53/pytorch/dbolya/coco/pruned82_quant-none"
 images = ["thailand.jpg"]

@@ -58,7 +58,7 @@ from typing import TYPE_CHECKING, Dict, List, Optional, Type, Union
 
 from pydantic import BaseModel, Field
 
-from deepsparse import Pipeline
+from deepsparse.legacy import Pipeline
 from deepsparse.transformers.pipelines import TransformersPipeline
 
 

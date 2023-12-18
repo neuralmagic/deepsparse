@@ -69,7 +69,7 @@ from typing import Optional, Tuple
 import click
 
 import cv2
-from deepsparse.pipeline import Pipeline
+from deepsparse.legacy.pipeline import Pipeline
 from deepsparse.utils.annotate import (
     annotate,
     get_annotations_save_dir,

@@ -17,7 +17,7 @@ from typing import Any, List, Type
 import numpy as np
 from pydantic import BaseModel, Field
 
-from deepsparse import Pipeline
+from deepsparse.legacy import Pipeline
 from deepsparse.utils import model_to_path
 
 

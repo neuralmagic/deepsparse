@@ -17,7 +17,8 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 
 from transformers import AutoModelForCausalLM, PreTrainedModel
 
-from deepsparse import DEEPSPARSE_ENGINE, ORT_ENGINE, Pipeline
+from deepsparse import Pipeline
+from deepsparse.operators.engine_operator import DEEPSPARSE_ENGINE, ORT_ENGINE
 
 
 __all__ = [
@@ -152,7 +153,6 @@ def create_model_from_target(
             task="text-generation",
             model_path=target,
             sequence_length=kwargs.pop("sequence_length", 2048),
-            trust_remote_code=kwargs.pop("trust_remote_code", False),
             engine_type=engine_type,
             batch_size=kwargs.pop("batch_size", 1),
             **kwargs,

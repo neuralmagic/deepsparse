@@ -18,6 +18,7 @@ from functools import partial
 from deepsparse import Pipeline
 from deepsparse.server.config import EndpointConfig
 from deepsparse.server.server import CheckReady, ModelMetaData, ProxyPipeline, Server
+from deepsparse.tasks import SupportedTasks
 from fastapi import FastAPI
 
 
@@ -76,7 +77,7 @@ class DeepsparseServer(Server):
 
         _LOGGER.info(f"Initializing pipeline for '{endpoint_config.name}'")
         pipeline = Pipeline.from_config(
-            pipeline_config, self.context, self.server_logger
+            pipeline_config, context=self.context, logger=self.server_logger
         )
 
         _LOGGER.info(f"Adding endpoints for '{endpoint_config.name}'")
@@ -147,7 +148,16 @@ class DeepsparseServer(Server):
                 ),
             )
         )
-        if hasattr(pipeline.input_schema, "from_files"):
+
+        legacy_pipeline = not isinstance(pipeline, Pipeline) and hasattr(
+            pipeline.input_schema, "from_files"
+        )
+        # New pipelines do not have to have an input_schema. Just checking task
+        # names for now but can keep a list of supported from_files tasks in
+        # SupportedTasks as more pipelines are migrated as well as output schemas.
+        new_pipeline = SupportedTasks.is_image_classification(endpoint_config.task)
+
+        if legacy_pipeline or new_pipeline:
             routes_and_fns.append(
                 (
                     route + "/from_files",
@@ -158,11 +168,15 @@ class DeepsparseServer(Server):
                     ),
                 )
             )
+        if isinstance(pipeline, Pipeline):
+            response_model = None
+        else:
+            response_model = pipeline.output_schema
 
         self._update_routes(
             app=app,
             routes_and_fns=routes_and_fns,
-            response_model=pipeline.output_schema,
+            response_model=response_model,
             methods=["POST"],
             tags=["model", "inference"],
         )
