@@ -50,7 +50,7 @@ Let's run an example to clasify the images. We'll provide the images in a list w
 ```python
 import numpy as np
 
-from deepsparse import BasePipeline
+from deepsparse.legacy import BasePipeline
 from deepsparse.clip import (
     CLIPTextInput,
     CLIPVisualInput,
@@ -94,7 +94,7 @@ Image thailand.jpg is a picture of an elephant
 Let's try a caption generation example. We'll leverage the `thailand.jpg` file that was pulled down earlier. We'll also provide the 3 exported CoCa ONNX models under the `caption_models` folder.
 
 ```python
-from deepsparse import BasePipeline
+from deepsparse.legacy import BasePipeline
 from deepsparse.clip import CLIPCaptionInput, CLIPVisualInput
 
 root = "caption_models"

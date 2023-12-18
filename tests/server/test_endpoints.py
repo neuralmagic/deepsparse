@@ -18,7 +18,6 @@ from unittest.mock import AsyncMock, Mock
 from pydantic import BaseModel
 
 import pytest
-from deepsparse.loggers import MultiLogger
 from deepsparse.server.config import EndpointConfig, ServerConfig, SystemLoggingConfig
 from deepsparse.server.deepsparse_server import DeepsparseServer
 from deepsparse.server.sagemaker import SagemakerServer
@@ -100,13 +99,11 @@ class TestMockEndpoints:
     def test_add_model_endpoint(
         self, server: DeepsparseServer, app: FastAPI, client: TestClient
     ):
-        mock_pipeline = AsyncMock(
-            input_schema=str, output_schema=int, logger=MultiLogger([])
-        )
+        mock_pipeline = AsyncMock(input_schema=str, output_schema=int)
 
         server._add_inference_endpoints(
             app=app,
-            endpoint_config=Mock(route="/predict/parse_int"),
+            endpoint_config=Mock(route="/predict/parse_int", task="some_task"),
             pipeline=mock_pipeline,
         )
 
@@ -125,17 +122,16 @@ class TestMockEndpoints:
             )
             assert response.status_code == 200
 
+    # TODO: udpate test to include check for input_schema, once v2 pipelines
+    # have a way to store/fetch compatible from_file pipelines
     def test_add_model_endpoint_with_from_files(self, server, app):
-        mock_pipeline = Mock(input_schema=FromFilesSchema, output_schema=int)
-        # new pipeline does not yet support /from_files (which we identify through
-        # the run_async function being present in the pipeline). By default, Mock
-        # hasattr() returns True for having `run_async` which is deleted so that we can
-        # run this test until the new pipeline can support from files
-        del mock_pipeline.run_async
+        mock_pipeline = AsyncMock(output_schema=int)
 
         server._add_inference_endpoints(
             app,
-            endpoint_config=Mock(route="/predict/parse_int"),
+            endpoint_config=Mock(
+                route="/predict/parse_int", task="image_classification"
+            ),
             pipeline=mock_pipeline,
         )
 

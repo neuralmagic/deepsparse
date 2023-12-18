@@ -18,7 +18,8 @@ from abc import abstractmethod
 from collections import Counter
 from concurrent.futures import ThreadPoolExecutor
 from copy import deepcopy
-from typing import AsyncGenerator, List, Union
+from typing import AsyncGenerator, List, Optional, Union
+
 
 import yaml
 from pydantic import BaseModel
@@ -210,9 +211,9 @@ class Server:
         self,
         app: FastAPI,
         routes_and_fns: List,
-        response_model: BaseModel,
         methods: List[str],
         tags: List[str],
+        response_model: Optional[BaseModel] = None,
     ):
         existing = [route.path for route in app.routes]
         for route, endpoint_fn in routes_and_fns:
@@ -246,7 +247,6 @@ class Server:
         system_logging_config: SystemLoggingConfig,
         raw_request: Request,
     ):
-
         if hasattr(proxy_pipeline.pipeline, "run_async"):
             inference_state = InferenceState()
             inference_state.create_state({})
@@ -283,19 +283,37 @@ class Server:
         return prep_for_serialization(pipeline_outputs)
 
     @staticmethod
-    def predict_from_files(
+    async def predict_from_files(
         proxy_pipeline: ProxyPipeline,
         system_logging_config: SystemLoggingConfig,
         request: List[UploadFile],
     ):
-        # NOTE: /from_files is not yet supported in the new pipeline
-        request = proxy_pipeline.pipeline.input_schema.from_files(
-            (file.file for file in request), from_server=True
-        )
-        pipeline_outputs = proxy_pipeline.pipeline(request)
-        server_logger = proxy_pipeline.pipeline.logger
-        if server_logger:
-            log_system_information(
-                server_logger=server_logger, system_logging_config=system_logging_config
+        # TODO: New pipelines do not have to have an input_schema.
+        # enable from_files for image_classification for now; leverage SupportedTasks
+        # or additional pipeline attributes to do this in the future
+        if hasattr(proxy_pipeline.pipeline, "run_async"):
+            inference_state = InferenceState()
+            inference_state.create_state({})
+
+            request = proxy_pipeline.pipeline.ops[0].input_schema.from_files(
+                (file.file for file in request), from_server=True
             )
+            pipeline_outputs = await proxy_pipeline.pipeline.run_async(
+                request, inference_state=InferenceState
+            )
+        else:
+            request = proxy_pipeline.pipeline.input_schema.from_files(
+                (file.file for file in request), from_server=True
+            )
+            pipeline_outputs = proxy_pipeline.pipeline(request)
+
+        try:
+            server_logger = proxy_pipeline.pipeline.logger
+            if server_logger:
+                log_system_information(
+                    server_logger=server_logger,
+                    system_logging_config=system_logging_config,
+                )
+        except Exception as e:
+            _LOGGER.debug(f"Logging failed, {e}")
         return prep_for_serialization(pipeline_outputs)
