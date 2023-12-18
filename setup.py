@@ -147,6 +147,8 @@ _transformers_integration_deps = [
     "transformers<4.35",
     "datasets<=2.14.6",
     "scikit-learn",
+    "fschat==0.2.33",
+    "accelerate==0.24.1",
     "seqeval",
 ]
 _sentence_transformers_integration_deps = ["optimum-deepsparse"] + _torch_deps

@@ -18,8 +18,10 @@ from unittest import mock
 
 import flaky
 import pytest
-from deepsparse.base_pipeline import BasePipeline
-from deepsparse.pipeline import (
+from deepsparse.legacy.base_pipeline import BasePipeline
+
+# TODO: update to test the new pipeline
+from deepsparse.legacy.pipeline import (
     Pipeline,
     PipelineConfig,
     _initialize_executor_and_workers,

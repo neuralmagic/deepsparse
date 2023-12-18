@@ -17,7 +17,8 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 
 from transformers import AutoModelForCausalLM, PreTrainedModel
 
-from deepsparse import DEEPSPARSE_ENGINE, ORT_ENGINE, Pipeline
+from deepsparse import Pipeline
+from deepsparse.operators.engine_operator import DEEPSPARSE_ENGINE, ORT_ENGINE
 
 
 __all__ = [

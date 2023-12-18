@@ -17,7 +17,11 @@ from typing import Any, List, Optional, Union
 from src.deepsparse.evaluation.registry import EvaluationRegistry
 from src.deepsparse.evaluation.results import Result
 from src.deepsparse.evaluation.utils import create_model_from_target
-from src.deepsparse.pipeline import DEEPSPARSE_ENGINE, ORT_ENGINE, TORCHSCRIPT_ENGINE
+from src.deepsparse.operators.engine_operator import (
+    DEEPSPARSE_ENGINE,
+    ORT_ENGINE,
+    TORCHSCRIPT_ENGINE,
+)
 
 
 __all__ = ["evaluate"]

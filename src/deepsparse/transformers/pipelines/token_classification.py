@@ -40,7 +40,7 @@ from pydantic import BaseModel, Field
 from transformers.file_utils import ExplicitEnum
 from transformers.tokenization_utils_base import PaddingStrategy, TruncationStrategy
 
-from deepsparse import Pipeline
+from deepsparse.legacy import Pipeline
 from deepsparse.transformers.pipelines import TransformersPipeline
 
 
