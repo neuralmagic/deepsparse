@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import datetime
-from typing import Any, Optional
+from typing import Optional
 
 import numpy
 
@@ -70,7 +70,7 @@ class ProcessOutputs(Operator):
 
         try:
             finished_reason = [f[-1] for f in finished_reason]
-        except:
+        except Exception:
             pass
 
         if generated_logits is not None:

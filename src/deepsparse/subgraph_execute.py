@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import asyncio
-from typing import Any, AsyncGenerator, Callable, Generator, List, Optional
+from typing import Any, AsyncGenerator, Callable, Dict, Generator, List, Optional
 
 from pydantic import BaseModel, Field
 
@@ -158,7 +158,7 @@ class SubGraphExecutor:
                     )
                     self._run_next_step(router, ops, func, sub_graph, operator_output)
                     if output_to_yield:
-                        yield output_to_yield, sub_graph.step, operator_output, sub_graph.inf
+                        yield output_to_yield, sub_graph.step, operator_output, sub_graph.inf  # noqa: E501
 
     async def run_sub_graphs_async_generator(
         self,
@@ -183,7 +183,7 @@ class SubGraphExecutor:
                     )
                     self._run_next_step(router, ops, func, sub_graph, operator_output)
                     if output_to_yield:
-                        yield output_to_yield, sub_graph.step, operator_output, sub_graph.inf
+                        yield output_to_yield, sub_graph.step, operator_output, sub_graph.inf  # noqa: E501
 
     def _run_next_step(
         self,

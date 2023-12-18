@@ -15,7 +15,7 @@
 import logging
 from typing import List, Optional
 
-from deepsparse.operators import EngineOperator, Operator
+from deepsparse.operators import EngineOperator
 from deepsparse.operators.registry import OperatorRegistry
 from deepsparse.pipeline import Pipeline
 from deepsparse.routers import GraphRouter

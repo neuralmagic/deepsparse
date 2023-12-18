@@ -16,7 +16,7 @@ import copy
 import logging
 import os
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, AsyncGenerator, Dict, Generator, List, Optional, Union
 
 from deepsparse.operators import EngineOperator, Operator
 from deepsparse.pipeline_config import PipelineConfig
@@ -158,8 +158,6 @@ class Pipeline(Operator):
         The input to a given operator is the output of the previous operator.
 
         :param inference_state: inference_state for the pipeline.
-        :param pipeline_state: pipeline_state for the pipeline. The values in the state
-            are created during pipeline creation and are read-only during inference.
         """
         loop = asyncio.get_running_loop()
 
@@ -234,15 +232,13 @@ class Pipeline(Operator):
         The input to a given operator is the output of the previous operator.
 
         :param inference_state: inference_state for the pipeline.
-        :param pipeline_state: pipeline_state for the pipeline. The values in the state
-            are created during pipeline creation and are read-only during inference.
         """
         next_step = self.router.START_ROUTE
         operator_output = None
         while next_step != self.router.END_ROUTE:
             # Check if running streaming; if that is the case, will return
             # a Generator. This requires the pipeline to support
-            # streaming with a generator_router set
+            # streaming with a generator_router set.
             if inference_state.current_state.get("streaming"):
                 return self._run_generate(
                     operator_output=operator_output,
@@ -287,39 +283,22 @@ class Pipeline(Operator):
             next_step = self.router.next(next_step, self.ops, operator_output)
         return operator_output
 
-    async def _run_generate_async(
-        self, *args, operator_output, inference_state, next_step, **kwargs
-    ):
-        while next_step != self.generator_router.END_ROUTE:
-            start_step = next_step
-
-            if next_step == self.router.SPLIT_ROUTE:
-                end = [self.generator_router.JOIN_ROUTE]
-                step = self.generator_router.route[self.generator_router.SPLIT_ROUTE]
-                initial_inference_state = inference_state
-            else:
-                step = next_step
-                end = [
-                    self.generator_router.SPLIT_ROUTE,
-                    self.generator_router.END_ROUTE,
-                ]
-
-            async for output in self._apply_split_generation_async(
-                operator_output, inference_state, step, end
-            ):
-                output_to_yield, next_step, operator_output, inference_state = output
-                yield output_to_yield
-
-            if start_step == self.generator_router.SPLIT_ROUTE:
-                inferece_state = initial_inference_state
-
-            ## next_step yielded will be transition, figure out where we're going
-            ## TODO: might need additional processing on operator_output
-            next_step = self.generator_router.next(next_step, self.ops, operator_output)
-
     def _run_generate(
-        self, *args, operator_output, inference_state, next_step, **kwargs
-    ):
+        self,
+        operator_output: Any,
+        inference_state: InferenceState,
+        next_step: str,
+    ) -> Generator:
+
+        """
+        Run pipeline execution in streaming/generator mode. _run_generate will run
+        the same loop with stop conditions as run() but will return a Generator.
+
+        :param operator_output: previous operator output, used as input for the next
+            operator.
+        :param inference_state: inference_state for the pipeline.
+        :param next_step: string indicating the next step to run
+        """
         while next_step != self.generator_router.END_ROUTE:
             start_step = next_step
 
@@ -343,6 +322,51 @@ class Pipeline(Operator):
             if start_step == self.generator_router.SPLIT_ROUTE:
                 inference_state = initial_inference_state
 
+            next_step = self.generator_router.next(next_step, self.ops, operator_output)
+
+    async def _run_generate_async(
+        self,
+        operator_output: Any,
+        inference_state: InferenceState,
+        next_step: str,
+    ) -> AsyncGenerator:
+
+        """
+        Run pipeline execution in streaming/generator mode. _run_generate_async will run
+        the same loop with stop conditions as run_async() but will return an
+        AsyncGenerator.
+
+        :param operator_output: previous operator output, used as input for the next
+            operator.
+        :param inference_state: inference_state for the pipeline.
+        :param next_step: string indicating the next step to run
+        """
+
+        while next_step != self.generator_router.END_ROUTE:
+            start_step = next_step
+
+            if next_step == self.router.SPLIT_ROUTE:
+                end = [self.generator_router.JOIN_ROUTE]
+                step = self.generator_router.route[self.generator_router.SPLIT_ROUTE]
+                initial_inference_state = inference_state
+            else:
+                step = next_step
+                end = [
+                    self.generator_router.SPLIT_ROUTE,
+                    self.generator_router.END_ROUTE,
+                ]
+
+            async for output in self._apply_split_generation_async(
+                operator_output, inference_state, step, end
+            ):
+                output_to_yield, next_step, operator_output, inference_state = output
+                yield output_to_yield
+
+            if start_step == self.generator_router.SPLIT_ROUTE:
+                inference_state = initial_inference_state
+
+            # TODO: might need additional processing on operator_output with more
+            # complex grapghs
             next_step = self.generator_router.next(next_step, self.ops, operator_output)
 
     def __call__(self, *args, **kwargs):
@@ -452,7 +476,7 @@ class Pipeline(Operator):
         return self.condense_inputs(outputs)
 
     async def _apply_split_generation_async(
-        self, inp: Any, inference_state: InferenceState, step: str, end: str
+        self, inp: Any, inference_state: InferenceState, step: str, end: List[str]
     ) -> AsyncGenerator:
         """
         Applies the same logic as _apply_split_async but returns an AsycnGenerator.
@@ -472,7 +496,7 @@ class Pipeline(Operator):
                 yield output
 
     def _apply_split_generation(
-        self, inp: Any, inference_state: InferenceState, step: str, end: str
+        self, inp: Any, inference_state: InferenceState, step: str, end: List[str]
     ) -> Generator:
         """
         Applies the same logic as _apply_split but returns a Generator.
@@ -492,7 +516,11 @@ class Pipeline(Operator):
                 yield output
 
     def _create_subgraph_and_start_subgraph(
-        inference_state: InferenceState, data: List[Any], step: str, end: List[str]
+        self,
+        inference_state: InferenceState,
+        data: List[Any],
+        step: str,
+        end: List[str],
     ) -> List[SubGraph]:
         """
         Create SubGraphs given a list of data and an InferenceState objects. A SubGraph
