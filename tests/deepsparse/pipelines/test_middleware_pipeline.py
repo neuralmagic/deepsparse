@@ -48,15 +48,15 @@ class AddTwoOperator(Operator):
         return {"value": inp.value + 2}
 
 
-middlewares = [
-    MiddlewareSpec(PrintingMiddleware),
-    MiddlewareSpec(SendStateMiddleware),
-]
-
-middleware_manager = MiddlewareManager(middlewares)
-
-
 def test_middleware_execution_in_pipeline_and_operator():
+    """Test Pipeline using middlewares"""
+
+    middlewares = [
+        MiddlewareSpec(PrintingMiddleware),
+        MiddlewareSpec(SendStateMiddleware),
+    ]
+
+    middleware_manager = MiddlewareManager(middlewares)
 
     AddThreePipeline = Pipeline(
         ops=[AddOneOperator(), AddTwoOperator()],
