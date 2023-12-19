@@ -28,8 +28,6 @@ from deepsparse.schedulers import (
     SchedulerGroup,
 )
 from deepsparse.utils import InferenceState, PipelineState
-
-# from deepsparse.utils.helpers import run_func
 from deepsparse.utils.subgraph import SubGraph
 
 

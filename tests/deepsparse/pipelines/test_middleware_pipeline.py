@@ -55,15 +55,16 @@ middlewares = [
 
 middleware_manager = MiddlewareManager(middlewares)
 
-AddThreePipeline = Pipeline(
-    ops=[AddOneOperator(), AddTwoOperator()],
-    router=LinearRouter(end_route=2),
-    schedulers=[OperatorScheduler()],
-    middleware_manager=middleware_manager,
-)
-
 
 def test_middleware_execution_in_pipeline_and_operator():
+
+    AddThreePipeline = Pipeline(
+        ops=[AddOneOperator(), AddTwoOperator()],
+        router=LinearRouter(end_route=2),
+        schedulers=[OperatorScheduler()],
+        middleware_manager=middleware_manager,
+    )
+
     pipeline_input = IntSchema(value=5)
     pipeline_output = AddThreePipeline(pipeline_input)
 
