@@ -40,7 +40,7 @@ class TimerManager:
         self.lock = threading.RLock()
         self.measurements = []
 
-    def get_new_timer(self):
+    def get_shared_timer(self):
         return Timer()
 
     def update(self, measurements: Dict[str, float]):

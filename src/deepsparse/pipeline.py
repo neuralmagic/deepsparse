@@ -183,7 +183,7 @@ class Pipeline(Operator):
             are created during pipeline creation and are read-only during inference.
         """
 
-        timer = self.timer_manager.get_new_timer()
+        timer = self.timer_manager.get_shared_timer()
         inference_state.set_timer(timer)
 
         loop = asyncio.get_running_loop()
@@ -413,7 +413,7 @@ class Pipeline(Operator):
             inference_state = InferenceState()
             inference_state.create_state({})
 
-            timer = self.timer_manager.get_new_timer()
+            timer = self.timer_manager.get_shared_timer()
             inference_state.set_timer(timer)
 
         next_call = self.run
