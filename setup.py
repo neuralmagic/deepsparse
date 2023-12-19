@@ -107,7 +107,7 @@ _dev_deps = [
     "flask>=1.0.0",
     "flask-cors>=3.0.0",
     "Pillow>=8.3.2",
-    # "pytest-asyncio==0.23.2",
+    "pytest-asyncio==0.23.2",
 ]
 _docs_deps = [
     "m2r2~=0.2.7",
