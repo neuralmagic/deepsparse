@@ -355,8 +355,8 @@ class Pipeline(Operator):
             if next_step == self.router.START_ROUTE:
                 operator_output = self.run_func(
                     *args,
-                    func=self._scheduler_group.submit,
                     operator=self.ops[next_step],
+                    func=self._scheduler_group.submit,
                     inference_state=inference_state,
                     pipeline_state=self.pipeline_state,
                     **kwargs,
@@ -468,15 +468,28 @@ class Pipeline(Operator):
         if self.middleware_manager is not None:
             wrapped_operator = self.middleware_manager.wrap(operator)
 
+        kwargs["operator"] = wrapped_operator
         if inp:
             output = (
-                func(operator=wrapped_operator, *args, **kwargs)
+                func(*args, **kwargs, **inp)
                 if isinstance(inp, dict)
-                else func(inp, operator=wrapped_operator, *args, **kwargs)
+                else func(inp, *args, **kwargs)
             )
         else:
-            output = func(operator=wrapped_operator, *args, **kwargs)
+            output = func(*args, **kwargs)
+
         return output
+
+    # def run_func_with_middleware(
+    #     self,
+    #     *args,
+    #     operator: Operator,
+    #     **kwargs,
+    # ):
+    #     wrapped_operator = operator
+    #     if self.middleware_manager is not None:
+    #         wrapped_operator = self.middleware_manager.wrap(operator)
+    #     return run_func(*args, operator=wrapped_operator, **kwargs)
 
 
 def text_generation_pipeline(*args, **kwargs) -> "Pipeline":
