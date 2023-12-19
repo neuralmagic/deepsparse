@@ -199,6 +199,7 @@ class NLEngineOperator(EngineOperator):
             engine_input = [engine_input]
 
         inputs = list(map(self._add_kv_cache_to_input, engine_input, kv_cache))
+        inputs = join_engine_outputs(inputs, len(inputs))
 
         if bool(kv_cache[0].engine_internal_cache):
             # conventionally, before dispatching
@@ -208,14 +209,15 @@ class NLEngineOperator(EngineOperator):
             # (batch_size=0) to the engine. Therefore,
             # we skip the validation
 
-            # Internal kv_cache works for batch_size of 1 atm
-            out = self.engine._eng_net.execute_list_out(
-                inputs[0], kv_cache[0].engine_internal_cache
-            )
+            internal_kv_cache = [x.engine_internal_cache for x in kv_cache]
+            if inp.engine:
+                out = inp.engine._eng_net.execute_list_out(inputs, internal_kv_cache)
+            else:
+                out = self.engine._eng_net.execute_list_out(inputs, internal_kv_cache)
+
         else:
             # run the engine without the LIB.kv_cache object
             # stack multiple batch inputs along the batch dimension
-            inputs = join_engine_outputs(inputs, len(inputs))
             out = (
                 super()
                 .run(

@@ -17,7 +17,7 @@ from concurrent.futures import Future
 from threading import Lock
 from typing import List
 
-from deepsparse.operators import EngineOperator, Operator
+from deepsparse.operators import DEEPSPARSE_ENGINE, EngineOperator, Operator
 from deepsparse.schedulers.scheduler import OperatorScheduler
 from deepsparse.schedulers.utils import (
     ContinuousBatchingExecutorThread,
@@ -167,16 +167,30 @@ class ContinuousBatchingScheduler(OperatorScheduler):
                 continue  # already added
 
             override_model_path = None
-            # text generation/NLEngineOperator specific; could add generic method
-            # for all engine_operators, if desired
-            if hasattr(engine_operator, "override_model_inputs"):
-                override_model_path = engine_operator.override_model_inputs(
-                    model_path=engine_operator.model_path, batch_size=batch_size
+            kwargs = {}
+
+            if engine_operator.__class__.__name__ == "NLEngineOperator":
+                (
+                    override_model_path,
+                    additional_outputs,
+                ) = engine_operator.override_model_inputs(
+                    model_path=engine_operator.model_path,
+                    batch_size=batch_size,
+                    return_additional_outputs=True,
                 )
 
-            # will break for internal kv_cache; needs additional argument
+                if (
+                    engine_operator._engine_type == DEEPSPARSE_ENGINE
+                    and engine_operator.internal_kv_cache
+                ):
+                    output_indices_to_be_cached = additional_outputs.get(
+                        "output_indices_to_be_cached"
+                    )
+                    if any(output_indices_to_be_cached):
+                        kwargs["cached_outputs"] = output_indices_to_be_cached
+
             operator_engines[batch_size] = engine_operator.create_engine(
-                batch_size=batch_size, model_path=override_model_path
+                batch_size=batch_size, model_path=override_model_path, **kwargs
             )
 
         self._operators_to_engines[engine_operator] = operator_engines

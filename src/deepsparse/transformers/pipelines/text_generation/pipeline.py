@@ -191,15 +191,10 @@ class TextGenerationPipeline(Pipeline):
         # TODO: do we want to support lists for different engines?
         continuous_batching_scheduler = None
         if continuous_batch_sizes:
-            if internal_kv_cache:
-                _LOGGER.warning(
-                    "continuous_batching is not supported with internal_kv_cache"
-                )
-            else:
-                continuous_batching_scheduler = self._get_continuous_batching_scheduler(
-                    batch_sizes=continuous_batch_sizes,
-                    engines=[single_engine_operator, multi_engine_operator],
-                )
+            continuous_batching_scheduler = self._get_continuous_batching_scheduler(
+                batch_sizes=continuous_batch_sizes,
+                engines=[single_engine_operator, multi_engine_operator],
+            )
 
         ops = {
             "parse_inputs": parse_inputs,
