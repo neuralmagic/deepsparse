@@ -149,8 +149,8 @@ class TextGenerationOutput(BaseModel):
     generations: Union[List[GeneratedText], List[List[GeneratedText]]] = Field(
         description="For a single prompt, a single list of GeneratedText is returned. "
         "If multiple prompts are given, a list of GeneratedText is returned for each "
-        "prompt provided. If streaming is enabled, the next generated token is returned."
-        "Otherwise, the full generated sequence is returned."
+        "prompt provided. If streamng is enabled, the next generated token is "
+        "returned. Otherwise, the full generated sequence is returned."
     )
     input_tokens: Optional[
         Any
