@@ -58,3 +58,4 @@ def test_run_simple_pipeline():
     pipeline_output = AddThreePipeline(pipeline_input)
 
     assert pipeline_output.value == 8
+
