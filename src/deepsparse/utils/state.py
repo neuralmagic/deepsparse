@@ -93,7 +93,8 @@ class InferenceState(State, TimerState):
     def update_state(self, value: Any):
         self._current_state.update(value)
 
-    def get_state(self, key):
+    def get_state(self, key: str):
+        """Get value in current_state, if any"""
         if key in self.current_state:
             return self.current_state[key]
 
