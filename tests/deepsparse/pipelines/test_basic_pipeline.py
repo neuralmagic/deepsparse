@@ -27,6 +27,8 @@ from deepsparse.routers import LinearRouter
 from deepsparse.schedulers import OperatorScheduler
 from deepsparse.utils.state import InferenceState
 
+pytest_plugins = ('pytest_asyncio',)
+
 
 class IntSchema(BaseModel):
     value: int
