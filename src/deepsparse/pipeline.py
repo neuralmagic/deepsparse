@@ -16,7 +16,7 @@ import copy
 import logging
 import os
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Callable, Dict, List, Optional, Union
 
 from deepsparse.middlewares import MiddlewareManager
 from deepsparse.operators import EngineOperator, Operator
@@ -28,7 +28,8 @@ from deepsparse.schedulers import (
     SchedulerGroup,
 )
 from deepsparse.utils import InferenceState, PipelineState
-from deepsparse.utils.helpers import run_func
+
+# from deepsparse.utils.helpers import run_func
 from deepsparse.utils.subgraph import SubGraph
 
 
@@ -102,7 +103,7 @@ class Pipeline(Operator):
         else:
             func = self._scheduler_group.submit
 
-        return self.run_func_with_middleware(
+        return self.run_func(
             func=func,
             operator=self.ops[next_step],
             inp=inp,
@@ -204,7 +205,7 @@ class Pipeline(Operator):
                     return operator_output
 
             if next_step == self.router.START_ROUTE:
-                outputs = self.run_func_with_middleware(
+                outputs = self.run_func(
                     *args,
                     func=self._scheduler_group.submit,
                     operator=self.ops[next_step],
@@ -354,7 +355,7 @@ class Pipeline(Operator):
                     return operator_output
 
             if next_step == self.router.START_ROUTE:
-                operator_output = self.run_func_with_middleware(
+                operator_output = self.run_func(
                     *args,
                     func=self._scheduler_group.submit,
                     operator=self.ops[next_step],
@@ -447,16 +448,37 @@ class Pipeline(Operator):
         elif isinstance(router_validation, str):
             raise ValueError(f"Invalid Router for operators: {router_validation}")
 
-    def run_func_with_middleware(
+    def run_func(
         self,
         *args,
         operator: Operator,
+        func: Callable,
+        inp: Any = None,
         **kwargs,
     ):
+        """
+        Wrap the operator with middleware and execute the func callable.
+        InferenceState, PipelineState is inside kwargs
+
+        :param operator: Operator instance
+        :param func: Desired function to call. Ex. SchedulerGroup.submit
+        :param inp: Any input to the operator. Ex. IntSchema
+        """
+
+        # wrap the operator with the middleware, if any
         wrapped_operator = operator
         if self.middleware_manager is not None:
             wrapped_operator = self.middleware_manager.wrap(operator)
-        return run_func(*args, operator=wrapped_operator, **kwargs)
+
+        if inp:
+            output = (
+                func(operator=wrapped_operator, *args, **kwargs)
+                if isinstance(inp, dict)
+                else func(inp, operator=wrapped_operator, *args, **kwargs)
+            )
+        else:
+            output = func(operator=wrapped_operator, *args, **kwargs)
+        return output
 
 
 def text_generation_pipeline(*args, **kwargs) -> "Pipeline":
