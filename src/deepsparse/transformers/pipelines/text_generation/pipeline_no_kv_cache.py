@@ -24,6 +24,7 @@ from deepsparse.transformers.pipelines.text_generation import (
     GenerateNewTokenOperator,
     JoinOutput,
     NLEngineOperatorNoCache,
+    ParseTextGenerationInputs,
     PrepareGeneration,
     ProcessInputsTextGeneration,
     ProcessOutputs,
@@ -64,6 +65,8 @@ class TextGenerationPipelineNoCache(Pipeline):
 
         token_generator = TokenGeneratorOperator()
 
+        parse_inputs = ParseTextGenerationInputs()
+
         process_inputs = ProcessInputsTextGeneration(
             generation_config=process_generation_config(generation_config),
             sequence_length=sequence_length,
@@ -86,6 +89,7 @@ class TextGenerationPipelineNoCache(Pipeline):
         process_outputs = ProcessOutputs(tokenizer=self.tokenizer)
 
         ops = {
+            "parse_inputs": parse_inputs,
             "process_input": process_inputs,
             "engine_operator": engine_operator,
             "prepare_generation": prepare_generation,
