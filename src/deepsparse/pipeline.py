@@ -480,17 +480,6 @@ class Pipeline(Operator):
 
         return output
 
-    # def run_func_with_middleware(
-    #     self,
-    #     *args,
-    #     operator: Operator,
-    #     **kwargs,
-    # ):
-    #     wrapped_operator = operator
-    #     if self.middleware_manager is not None:
-    #         wrapped_operator = self.middleware_manager.wrap(operator)
-    #     return run_func(*args, operator=wrapped_operator, **kwargs)
-
 
 def text_generation_pipeline(*args, **kwargs) -> "Pipeline":
     """
