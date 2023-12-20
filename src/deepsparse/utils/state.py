@@ -15,7 +15,7 @@ import warnings
 from abc import ABC
 from contextlib import contextmanager
 from copy import deepcopy
-from typing import Any, Union
+from typing import Any, Optional, Union
 
 from deepsparse.utils.time import Timer
 
@@ -52,12 +52,12 @@ class PipelineState(State):
 class TimerState:
     """TimerState shared among all InferenceState"""
 
-    _timer = None
+    _timer: Optional[Timer] = None
 
     @contextmanager
-    def time(self, id: str):
+    def time(self, id: str, enabled: bool = True):
         if self._timer is not None:
-            with self.timer.time(id=id):
+            with self.timer.time(id=id, enabled=enabled):
                 yield
         else:
             yield  # null context

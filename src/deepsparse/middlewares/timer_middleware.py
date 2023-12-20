@@ -26,7 +26,9 @@ class TimerMiddleware(MiddlewareCallable):
 
     def __call__(self, *args, **kwargs) -> Any:
         name = kwargs.get("name")
+        is_nested = kwargs.get("is_nested") or False
+
         inference_state = kwargs.get("inference_state")
         timer = inference_state.timer
-        with timer.time(name):
+        with timer.time(id=name, enabled=not is_nested):
             return self.call_next(*args, **kwargs)

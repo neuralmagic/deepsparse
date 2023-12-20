@@ -28,11 +28,14 @@ class Timer:
         self.measurements = defaultdict(list)
 
     @contextmanager
-    def time(self, id: str):
-        start = time.time()
-        yield
-        with self._lock:
-            self.measurements[id].append(time.time() - start)
+    def time(self, id: str, enabled=True):
+        if enabled:
+            start = time.time()
+            yield
+            with self._lock:
+                self.measurements[id].append(time.time() - start)
+        else:
+            yield
 
 
 class TimerManager:

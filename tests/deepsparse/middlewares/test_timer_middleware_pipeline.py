@@ -130,15 +130,23 @@ async def test_timer_middleware_timings_saved_in_timer_manager_async():
     ] = AddThreePipeline.timer_manager.measurements
     measurements = pipeline_measurements[0]
 
-    # AddOneOperator, AddTwoOperator should have one measurement each
-    assert len(measurements) == len(ops)
+    # Pipeline, AddOneOperator, AddTwoOperator should have one measurement each
+    assert len(measurements) == len(ops) + 1
 
+    # assert pipeline time is more than the sum of two ops
+    pipeline_time: List[float] = measurements["total"]
+    add_one_operator_time, add_two_operator_time = (
+        measurements["AddOneOperator"],
+        measurements["AddTwoOperator"],
+    )
+
+    assert pipeline_time > add_one_operator_time + add_two_operator_time
     # check middleware triggered for Pipeline and Ops as expected
     state = AddThreePipeline.middleware_manager.state
     assert "SendStateMiddleware" in state
 
     # SendStateMiddleware, order of calls:
-    # Pipeline start, AddOneOperator start, AddOneOperator end
-    # AddTwoOperator start, AddTwoOperator end, Pipeline end
+    #  AddOneOperator start, AddOneOperator end
+    # AddTwoOperator start, AddTwoOperator end
     expected_order = [0, 1, 0, 1]
     assert state["SendStateMiddleware"] == expected_order
