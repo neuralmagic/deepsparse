@@ -12,13 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import logging
-from typing import List, Union
+from typing import Any, List, Optional, Union
 
-from src.deepsparse.evaluation.integrations import (  # noqa: F401
-    try_import_llm_evaluation_harness,
-)
 from src.deepsparse.evaluation.registry import EvaluationRegistry
 from src.deepsparse.evaluation.results import Result
+from src.deepsparse.evaluation.utils import create_model_from_target
 from src.deepsparse.operators.engine_operator import (
     DEEPSPARSE_ENGINE,
     ORT_ENGINE,
@@ -32,9 +30,9 @@ _LOGGER = logging.getLogger(__name__)
 
 
 def evaluate(
-    target: str,
+    target: Any,
     datasets: Union[str, List[str]],
-    integration: str,
+    integration: Optional[str] = None,
     engine_type: Union[
         DEEPSPARSE_ENGINE, ORT_ENGINE, TORCHSCRIPT_ENGINE, None
     ] = DEEPSPARSE_ENGINE,
@@ -44,9 +42,18 @@ def evaluate(
     **kwargs,
 ) -> Result:
 
-    eval_integration = EvaluationRegistry.load_from_registry(integration)
+    # if target is a string, turn it into an appropriate model/pipeline
+    # otherwise assume it is a model/pipeline
+    model = (
+        create_model_from_target(target, engine_type)
+        if isinstance(target, str)
+        else target
+    )
+
+    eval_integration = EvaluationRegistry.resolve(model, datasets, integration)
+
     return eval_integration(
-        target=target,
+        model=model,
         datasets=datasets,
         engine_type=engine_type,
         batch_size=batch_size,

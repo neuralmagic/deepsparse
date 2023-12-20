@@ -93,12 +93,6 @@ class OpenAIServer(Server):
             request = ChatCompletionRequest(**await raw_request.json())
             _LOGGER.debug("Received chat completion request %s" % request)
 
-            # disable streaming until enabled for v2.
-            if request.stream:
-                return create_error_response(
-                    HTTPStatus.BAD_REQUEST, "Streaming is unavilable"
-                )
-
             if isinstance(request.messages, str):
                 prompt = request.messages
             else:
@@ -221,12 +215,6 @@ class OpenAIServer(Server):
         async def create_completion(raw_request: Request):
             request = CompletionRequest(**await raw_request.json())
             _LOGGER.debug("Received completion request: %s" % request)
-
-            # disable streaming until enabled for v2.
-            if request.stream:
-                return create_error_response(
-                    HTTPStatus.BAD_REQUEST, "Streaming is unavilable"
-                )
 
             model = request.model
 
@@ -389,7 +377,7 @@ class OpenAIServer(Server):
         output = await pipeline.run_async(
             inference_state=inference_state,
             sequences=prompt,
-            generation_config=generation_kwargs,
+            generation_kwargs=generation_kwargs,
             streaming=stream,
             presence_penalty=presence_penalty,
             stop=stop,
@@ -419,7 +407,7 @@ class OpenAIServer(Server):
             )
         else:
             concat_token_ids = []
-            for generation in output:
+            async for generation in output:
                 output = generation.generations[0]
                 concat_token_ids.append(tokenize(output.text))
                 yield RequestOutput(
@@ -451,6 +439,7 @@ def map_generation_schema(generation_kwargs: Dict) -> Dict:
             )
         if k in OPENAI_TO_DEEPSPARSE_MAPPINGS:
             generation_kwargs[OPENAI_TO_DEEPSPARSE_MAPPINGS[k]] = generation_kwargs[k]
+            generation_kwargs.pop(k)
 
     if generation_kwargs["num_return_sequences"] > 1:
         generation_kwargs["do_sample"] = True

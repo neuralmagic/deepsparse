@@ -26,22 +26,22 @@ from pydantic import BaseModel, Field
 from tqdm import tqdm
 
 import torch
+from deepsparse import Pipeline
+from deepsparse.evaluation.results import Dataset, Evaluation, Metric, Result
 from lm_eval import base, evaluator, tasks, utils
-from src.deepsparse import DEEPSPARSE_ENGINE, ORT_ENGINE, Pipeline
 from src.deepsparse.evaluation.registry import EvaluationRegistry
-from src.deepsparse.evaluation.results import Dataset, Evaluation, Metric, Result
-from src.deepsparse.evaluation.utils import text_generation_model_from_target
 
 
 _LOGGER = logging.getLogger(__name__)
 
+__all__ = ["integration_eval"]
+
 
 @EvaluationRegistry.register(name=["llm_evaluation_harness", "llm-evaluation-harness"])
 def integration_eval(
-    target: str,
+    model: Any,
     datasets: Union[List[str], str],
     batch_size: int,
-    engine_type: Optional[str] = None,
     **kwargs,
 ) -> Result:
     """
@@ -49,22 +49,24 @@ def integration_eval(
     https://github.com/EleutherAI/lm-evaluation-harness/blob/master/main.py
     that is compatible with deepsparse.evaluator.py
 
-    :param target: the model name
+    :param model: the model/pipeline to evaluate
     :param datasets: the datasets to evaluate on
     :param batch_size: the batch size to use for evaluation
-    :param engine_type: the engine type to use for evaluation
     :param kwargs: additional arguments to alter the behavior of the evaluation
 
     :return the evaluation results
     """
     # [START]
     # The code that sets up the interface between deepsparse and llm_evaluation_harness
-    if engine_type in [DEEPSPARSE_ENGINE, ORT_ENGINE]:
+
+    if isinstance(model, Pipeline):
+        # If the model is a Pipeline, we need to wrap
+        # it in a DeepSparseLM object
         model = DeepSparseLM(
-            target=target, batch_size=batch_size, engine_type=engine_type
+            pipeline=model,
+            batch_size=batch_size,
+            max_gen_toks=kwargs.get("max_gen_toks"),
         )
-    else:
-        model = text_generation_model_from_target(target, engine_type)
 
     datasets = (",").join(datasets) if isinstance(datasets, list) else datasets
     # [END]
@@ -188,18 +190,12 @@ class EvaluatorInputSchema(BaseModel):
 
 
 class DeepSparseLM(base.BaseLM):
-    # Default max sequence length setting for when no `max_length` is provided
-    _DEFAULT_MAX_LENGTH = 2048
-
     def __init__(
         self,
-        target: str,
+        pipeline: Pipeline,
         tokenizer: Optional[str] = None,
-        engine_type: Union[ORT_ENGINE, DEEPSPARSE_ENGINE] = DEEPSPARSE_ENGINE,
-        batch_size: Optional[Union[int, str]] = 1,
-        max_gen_toks: Optional[int] = 256,
-        max_length: Optional[int] = None,
-        trust_remote_code: Optional[bool] = False,
+        batch_size: int = 1,
+        max_gen_toks: Optional[int] = None,
     ):
         """
         Wrapper around the DeepSparse pipeline to make it compatible with the
@@ -207,22 +203,13 @@ class DeepSparseLM(base.BaseLM):
         """
         super().__init__()
 
-        self._batch_size = int(batch_size)
-        self._max_length = max_length or self._DEFAULT_MAX_LENGTH
-        self._max_gen_toks = max_gen_toks
-
         # Initialize new model and tokenizer instances
-        self.model = Pipeline.create(
-            task="text-generation",
-            model_path=target,
-            sequence_length=self._max_length,
-            trust_remote_code=trust_remote_code,
-            engine_type=engine_type,
-            # should pass batch_size but the
-            # TextGeneration model does not support batch_size > 1
-            batch_size=1,
-        )
+        self.model = pipeline
         self.tokenizer = tokenizer if tokenizer else self.model.tokenizer
+
+        self._batch_size = batch_size
+        self._max_length = pipeline.sequence_length
+        self._max_gen_toks = max_gen_toks or 256
 
         self.vocab_size = self.tokenizer.vocab_size
 
