@@ -99,6 +99,7 @@ class TextGenerationPipelineNoCache(Pipeline):
             "process_outputs": process_outputs,
         }
         routes = {
+            "parse_inputs": "process_input",
             "process_input": "SPLIT",
             "SPLIT": "engine_operator",
             "engine_operator": "prepare_generation",
