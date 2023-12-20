@@ -78,8 +78,8 @@ def save_result(
     Saves a list of Evaluation objects to a file in the specified format.
 
     :param result: Result object to save
-    :param save_format: Format to save the evaluations in.
     :param save_path: Path to save the evaluations to.
+    :param save_format: Format to save the evaluations in.
     :return: The serialized evaluations
     """
     # prepare the Result object for serialization

@@ -22,11 +22,11 @@ Usage: deepsparse.eval [OPTIONS] [INTEGRATION_ARGS]...
 OPTIONS:
     --target TARGET     A path to a remote or local directory containing ONNX/torch model
                         (including all the auxiliary files) or a SparseZoo stub
-    -d DATASETS, --datasets DATASETS
-                        The datasets to evaluate on. Can be a string for a single dataset
-                        or a list of strings for multiple datasets
+    -d DATASET, --dataset DATASET
+                        The dataset to evaluate on. The user may pass multiple datasets
+                        by passing the option multiple times.
     -i INTEGRATION, --integration INTEGRATION
-                        The name of the evaluation integration to use. Must be a valid
+                        Optional name of the evaluation integration to use. Must be a valid
                         integration name that is registered in the evaluation registry
     -e ENGINE_TYPE, --engine_type ENGINE_TYPE
                         Inference engine to use for the evaluation. The default
@@ -72,9 +72,6 @@ from typing import List, Union
 import click
 
 from src.deepsparse.evaluation.evaluator import evaluate
-from src.deepsparse.evaluation.integrations import (  # noqa: F401
-    try_import_llm_evaluation_harness,
-)
 from src.deepsparse.evaluation.results import Result, save_result
 from src.deepsparse.evaluation.utils import args_to_dict, get_save_path
 from src.deepsparse.operators.engine_operator import (
@@ -111,8 +108,8 @@ _LOGGER = logging.getLogger(__name__)
     "-i",
     "--integration",
     type=str,
-    required=True,
-    help="The name of the evaluation integration to use. Must be a valid "
+    required=False,
+    help="Optional name of the evaluation integration to use. Must be a valid "
     "integration name that is registered in the evaluation registry",
 )
 @click.option(
@@ -214,7 +211,7 @@ def main(
         **integration_args,
     )
 
-    _LOGGER.info(f"Evaluation done. Result:\n{result.formatted}")
+    _LOGGER.info(f"Evaluation done. Results:\n{result}")
 
     save_path = get_save_path(
         save_path=save_path,
@@ -223,11 +220,7 @@ def main(
     )
     if save_path:
         _LOGGER.info(f"Saving the evaluation results to {save_path}")
-        save_result(
-            result=result,
-            save_path=save_path,
-            save_format=type_serialization,
-        )
+        save_result(result=result, save_path=save_path, save_format=type_serialization)
 
 
 if __name__ == "__main__":
