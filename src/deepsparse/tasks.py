@@ -79,11 +79,12 @@ class SupportedTasks:
     """
 
     text_generation = namedtuple(
-        "text_generation", ["text_generation", "opt", "bloom"]
+        "text_generation", ["text_generation", "opt", "mpt", "llama"]
     )(
         text_generation=AliasedTask("text_generation", []),
         opt=AliasedTask("opt", []),
-        bloom=AliasedTask("bloom", []),
+        mpt=AliasedTask("mpt", []),
+        llama=AliasedTask("llama", []),
     )
 
     code_generation = namedtuple(
