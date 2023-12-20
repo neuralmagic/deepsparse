@@ -94,6 +94,47 @@ def test_timer_middleware_timings_saved_in_timer_manager():
     assert state["SendStateMiddleware"] == expected_order
 
 
+def test_middleware_nested_pipeline():
+    middlewares = [
+        MiddlewareSpec(PrintingMiddleware),  # debugging
+        MiddlewareSpec(SendStateMiddleware),  # for callable entry and exit order
+        MiddlewareSpec(TimerMiddleware),  # for timer
+    ]
+
+    ops = [AddOneOperator(), AddTwoOperator()]
+
+    AddThreePipeline = Pipeline(
+        ops=ops,
+        router=LinearRouter(end_route=2),
+        schedulers=[OperatorScheduler()],
+        continuous_batching_scheduler=ContinuousBatchingScheduler,
+        middleware_manager=MiddlewareManager(middlewares),
+    )
+
+    pipeline_input = IntSchema(value=5)
+
+    inference_state = InferenceState()
+    inference_state.create_state({})
+    timer = AddThreePipeline.timer_manager.get_shared_timer()
+    inference_state.set_timer(timer)
+
+    pipeline_output = AddThreePipeline(pipeline_input, inference_state=inference_state)
+
+    assert pipeline_output.value == 8
+
+    pipeline_measurements: List[
+        defaultdict
+    ] = AddThreePipeline.timer_manager.measurements
+    measurements = pipeline_measurements[0]
+
+    # Nested Pipeline measumenets not recorded, just
+    # AddOneOperator, AddTwoOperator should have one measurement each
+    assert len(measurements) == len(ops)
+
+    assert "AddOneOperator" in measurements
+    assert "AddTwoOperator" in measurements
+
+
 @pytest.mark.asyncio
 async def test_timer_middleware_timings_saved_in_timer_manager_async():
     """Check middlewares in async_run"""
