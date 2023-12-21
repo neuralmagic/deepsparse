@@ -15,7 +15,7 @@ import asyncio
 import logging
 import os
 from pathlib import Path
-from typing import Any, AsyncGenerator, Dict, Generator, List, Optional, Union
+from typing import Any, AsyncGenerator, Callable, Dict, Generator, List, Optional, Union
 
 from deepsparse.middlewares import MiddlewareManager
 from deepsparse.operators import EngineOperator, Operator
@@ -447,19 +447,38 @@ class Pipeline(Operator):
         elif isinstance(router_validation, str):
             raise ValueError(f"Invalid Router for operators: {router_validation}")
 
-    def run_func_with_middleware(
+    def run_func(
         self,
         *args,
         operator: Operator,
+        func: Callable,
+        inp: Any = None,
         **kwargs,
     ):
+        """
+        Wrap the operator with middleware and execute the func callable.
+        InferenceState, PipelineState is inside kwargs
+        :param operator: Operator instance
+        :param func: Desired function to call. Ex. SchedulerGroup.submit
+        :param inp: Any input to the operator. Ex. IntSchema
+        """
+
+        # wrap the operator with the middleware, if any
         wrapped_operator = operator
         if self.middleware_manager is not None:
             wrapped_operator = self.middleware_manager.wrap(operator)
 
-        # add name for timer measurements key
-        kwargs["name"] = operator.__class__.__name__
-        return run_func(*args, operator=wrapped_operator, **kwargs)
+        kwargs["operator"] = wrapped_operator
+        if inp:
+            output = (
+                func(*args, **kwargs, **inp)
+                if isinstance(inp, dict)
+                else func(inp, *args, **kwargs)
+            )
+        else:
+            output = func(*args, **kwargs)
+
+        return output
 
     def _apply_split(self, inp: Any, inference_state: InferenceState):
         """
@@ -608,7 +627,7 @@ class Pipeline(Operator):
         else:
             func = self._scheduler_group.submit
 
-        return run_func(
+        return self.run_func(
             func=func,
             operator=self.ops[next_step],
             inp=inp,
