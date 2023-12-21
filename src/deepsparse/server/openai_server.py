@@ -102,8 +102,17 @@ class OpenAIServer(Server):
                 )
 
             try:
+                messages = request.messages
+                # For chat templating, the message needs to be formatted
+                # as a list of dictionaries of `{"role": "", "content": ""}`
+                # https://huggingface.co/docs/transformers/chat_templating
+                if isinstance(messages, str):
+                    messages = [{"role": "user", "content": messages}]
+                elif isinstance(messages, dict):
+                    messages = [messages]
+
                 prompt = pipeline.tokenizer.apply_chat_template(
-                    conversation=request.messages,
+                    conversation=messages,
                     add_generation_prompt=request.add_generation_prompt,
                     tokenize=False,
                 )
