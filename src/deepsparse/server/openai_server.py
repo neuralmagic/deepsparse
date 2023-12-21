@@ -108,19 +108,21 @@ class OpenAIServer(Server):
                     return create_error_response(HTTPStatus.FAILED_DEPENDENCY, str(e))
 
                 conv = get_conversation_template(request.model)
-                message = request.messages
-                # add the model to the Conversation template, based on the given role
-                msg_role = message["role"]
-                if msg_role == "system":
-                    conv.system_message = message["content"]
-                elif msg_role == "user":
-                    conv.append_message(conv.roles[0], message["content"])
-                elif msg_role == "assistant":
-                    conv.append_message(conv.roles[1], message["content"])
-                else:
-                    return create_error_response(
-                        HTTPStatus.BAD_REQUEST, "Message role not recognized"
-                    )
+                messages = request.messages
+                messages = messages if isinstance(messages, list) else [messages]
+                for message in messages:
+                    # add the model to the Conversation template, based on the given role
+                    msg_role = message["role"]
+                    if msg_role == "system":
+                        conv.system_message = message["content"]
+                    elif msg_role == "user":
+                        conv.append_message(conv.roles[0], message["content"])
+                    elif msg_role == "assistant":
+                        conv.append_message(conv.roles[1], message["content"])
+                    else:
+                        return create_error_response(
+                            HTTPStatus.BAD_REQUEST, "Message role not recognized"
+                        )
 
                 # blank message to start generation
                 conv.append_message(conv.roles[1], None)
