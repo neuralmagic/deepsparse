@@ -14,18 +14,36 @@
 
 """
 Description:
-Middlwares are used to as an intermediate step for a desired function to carry out any
- necessary logic. Ex. Logging, timing, authentication, ...
-Pipeline and Operator uses Middleware, but middlewares logic are not a core
- functionality of Op or Pipeline. That is, Pipeline and Op can run without middlewares,
- and their outputs should be the same using middlewares
-Lifecycle with Pipeline using Middleware:
-Pipeline -> Middleware -> Pipeline.__call__() -> Middleware
-Lifecycle with Pipeline and Ops using Middleware:
-Pipeline -> Middleware (from pipeline) -> Pipeline.__call__()
- -> Middleware (from op) -> Op -> Middleware (from op) -> Middleware (from pipeline)
+    Middlwares are used to as an intermediate step for a desired function to
+     carry out anynecessary logic. Ex. Logging, timing, authentication, ...
+    Pipeline and Operator use Middleware, but middlewares logic is not a core
+     functionality of Operator or Pipeline. That is, Pipeline(s) and Operator(s)
+     can run without middlewares, and their outputs should be the same
+     using middlewares
+
+Lifecycle:
+    Vanilla Pipeline:
+        Pipeline -> Pipeline.__call__() -> Pipeline.run() -> ...
+
+    Pipeline + Middleware:
+        Pipeline -> Pipeline.__call__()
+            -> Middleware
+                -> Pipeline.run()
+            -> Middleware
+        -> ...
+
+     Pipeline + Middleware, Operator + Middleware:
+        Pipeline -> Pipeline.__call__()
+            -> Middleware (for pipeline start)
+                -> Pipeline.run()
+                    -> Middleware (for operator start)
+                        -> Operator.run()
+                    -> Middleware (for operator end)
+            -> Middleware (for pipeline end)
+        -> ...
+
 Usage:
-Please check tests/deepsparse/v2/middleware
+    Please check tests/deepsparse/middlewares
 """
 
 
@@ -43,9 +61,8 @@ class MiddlewareCallable(Protocol):
     def __call__(self, *args, **kwargs):
         """
         Pipeline, Operator callable will be overwritten
-        and will eventually its callable
+        and wrapped with Middleware callable
         """
-        ...
 
     def send(self, reducer: Callable[[Dict], Dict]):
         """
@@ -55,17 +72,17 @@ class MiddlewareCallable(Protocol):
         :param reducer: A callable that contains logic to update
          the middleware state
         """
-        ...
 
 
 class MiddlewareSpec:
     """
     Used to feed the middlewares to the MiddlewareManager
+
     :param cls: the middleware
     :kwargs init_args: the args used to intialize the cls
     """
 
-    def __init__(self, cls: Type[MiddlewareCallable], **init_args: Any) -> None:
+    def __init__(self, cls: Type[MiddlewareCallable], **init_args: Dict) -> None:
         self.cls = cls
         self.init_args = init_args
 
@@ -89,6 +106,7 @@ class MiddlewareManager:
     middleware_manager = MiddlewareManager( [
         MiddlewareSpec(PrintingMiddleware, identifier="A"), ...]
     )
+
     :param middleware: List of MiddlewareSpecs
     :param state: state that is shared amongst all the middleware
     :param _lock: lock for the state
@@ -105,15 +123,48 @@ class MiddlewareManager:
         self._update_middleware_spec_send(middleware)
 
     def recieve(self, reducer: Callable[[Dict], Dict], *args, **kwargs):
+        """
+        Call the reducer with the given *args, **kwargs
+        Used to write to the state, and called from the middleware
+
+        :param reducer: a callable defined inside the middleware
+        """
         with self._lock:
             self.state = reducer(self.state, *args, **kwargs)
 
     def add_middleware(self, middleware: Sequence[MiddlewareSpec]):
         self._update_middleware_spec_send(middleware)
 
+    def build_middleware_stack(self, next_call: Callable) -> Callable:
+        """
+        Instantiate the middleware and the last call should be the
+        supplied next_call in the signature
+
+        :param next_call: Callable to wrap the middleware to
+        """
+        if self.middleware is not None:
+            for middleware, init_args in reversed(self.middleware):
+                next_call = middleware(next_call, **init_args)
+        return next_call
+
+    def wrap(self, operator: Operator) -> Callable:
+        """
+        Add middleware to the operator
+
+        :param operator: the desired operator to wrap middleware to
+        """
+        wrapped_operator = self.build_middleware_stack(operator)
+        return wrapped_operator
+
     def _update_middleware_spec_send(
         self, middleware: Optional[Sequence[MiddlewareSpec]]
     ):
+        """
+        Add the recieve function to middleware send function. Used as a way for the
+        middleware to write to the manager state
+
+        :param middleware: Optional middleware to add the logic to
+        """
         if middleware is not None:
             for next_middleware, init_args in middleware:
 
@@ -121,14 +172,3 @@ class MiddlewareManager:
                 next_middleware.send = self.recieve
 
                 self.middleware.append(MiddlewareSpec(next_middleware, **init_args))
-
-    def build_middleware_stack(self, next_call: Callable):
-        if self.middleware is not None:
-            for middleware, init_args in reversed(self.middleware):
-                next_call = middleware(next_call, **init_args)
-        return next_call
-
-    def wrap(self, operator: Operator) -> Callable:
-        """Add middleware to the operator"""
-        wrapped_operator = self.build_middleware_stack(operator)
-        return wrapped_operator
