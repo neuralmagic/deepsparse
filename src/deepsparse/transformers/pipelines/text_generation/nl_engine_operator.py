@@ -126,35 +126,43 @@ class NLEngineOperator(EngineOperator):
 
         self.sequence_length = sequence_length
         self.input_ids_length = input_ids_length
-        self.kv_cache_data_type = None
         self.internal_kv_cache = internal_kv_cache
-        self.model_path = kwargs.get("model_path")
+        self.kv_cache_data_type = None
+
+        super().__init__(**kwargs)
+
+    def create_engine(
+        self, batch_size: Optional[int] = None, engine_kwargs: Optional[dict] = None
+    ):
+
+        batch_size = batch_size if batch_size is not None else self._batch_size
         (onnx_file_path, additional_outputs) = self.override_model_inputs(
             self.model_path,
-            batch_size=kwargs.get("batch_size", 1),
+            batch_size=batch_size,
             return_additional_outputs=True,
         )
         output_indices_to_be_cached, kv_cache_data_type, = additional_outputs.get(
             "output_indices_to_be_cached"
         ), additional_outputs.get("kv_cache_data_type")
 
-        engine_kwargs = kwargs.get("engine_kwargs", {})
-        if kwargs.get("engine_type", DEEPSPARSE_ENGINE) == DEEPSPARSE_ENGINE:
+        engine_kwargs = engine_kwargs if engine_kwargs is not None else {}
+        if self._engine_type == DEEPSPARSE_ENGINE:
             if "WAND_OPT_FLAGS" not in os.environ:
                 os.environ["WAND_OPT_FLAGS"] = "default,~pyramids"
 
         if any(output_indices_to_be_cached):
             self.kv_cache_data_type = kv_cache_data_type
-            if (
-                internal_kv_cache
-                and kwargs.get("engine_type", DEEPSPARSE_ENGINE) == DEEPSPARSE_ENGINE
-            ):
+            if self.internal_kv_cache and self._engine_type == DEEPSPARSE_ENGINE:
                 engine_kwargs["cached_outputs"] = output_indices_to_be_cached
 
+        # Create the engine with an overwritten model/new batch size and any additional
+        # engine_kwargs
+        kwargs = {}
         kwargs["engine_kwargs"] = engine_kwargs
         kwargs["model_path"] = onnx_file_path
+        kwargs["batch_size"] = batch_size
 
-        super().__init__(**kwargs)
+        return super().create_engine(**kwargs)
 
     def override_model_inputs(
         self,
