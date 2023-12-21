@@ -93,40 +93,35 @@ class OpenAIServer(Server):
             request = ChatCompletionRequest(**await raw_request.json())
             _LOGGER.debug("Received chat completion request %s" % request)
 
-            # disable streaming until enabled for v2.
-            if request.stream:
-                return create_error_response(
-                    HTTPStatus.BAD_REQUEST, "Streaming is unavilable"
-                )
-
             if isinstance(request.messages, str):
                 prompt = request.messages
             else:
-                # else case assums a FastChat-compliant dictionary
+                # else case assumes a FastChat-compliant dictionary
                 # Fetch a model-specific template from FastChat
-                _LOGGER.warning(
-                    "A dictionary message was found. This dictionary must "
-                    "be fastchat compliant."
-                )
                 try:
                     from fastchat.model.model_adapter import get_conversation_template
                 except ImportError as e:
-                    return create_error_response(HTTPStatus.FAILED_DEPENDENCY, str(e))
+                    return create_error_response(
+                        HTTPStatus.FAILED_DEPENDENCY,
+                        f"{str(e)} - Please ensure `fastchat` is installed.",
+                    )
 
                 conv = get_conversation_template(request.model)
-                message = request.messages
+                messages = request.messages
+                messages = messages if isinstance(messages, list) else [messages]
                 # add the model to the Conversation template, based on the given role
-                msg_role = message["role"]
-                if msg_role == "system":
-                    conv.system_message = message["content"]
-                elif msg_role == "user":
-                    conv.append_message(conv.roles[0], message["content"])
-                elif msg_role == "assistant":
-                    conv.append_message(conv.roles[1], message["content"])
-                else:
-                    return create_error_response(
-                        HTTPStatus.BAD_REQUEST, "Message role not recognized"
-                    )
+                for message in messages:
+                    msg_role = message["role"]
+                    if msg_role == "system":
+                        conv.system_message = message["content"]
+                    elif msg_role == "user":
+                        conv.append_message(conv.roles[0], message["content"])
+                    elif msg_role == "assistant":
+                        conv.append_message(conv.roles[1], message["content"])
+                    else:
+                        return create_error_response(
+                            HTTPStatus.BAD_REQUEST, "Message role not recognized"
+                        )
 
                 # blank message to start generation
                 conv.append_message(conv.roles[1], None)
@@ -195,9 +190,9 @@ class OpenAIServer(Server):
                 )
                 choices.append(choice_data)
 
-            num_prompt_tokens = len(final_res.prompt_token_ids)
+            num_prompt_tokens = len(final_res.prompt_token_ids["input_ids"])
             num_generated_tokens = sum(
-                len(output.token_ids) for output in final_res.outputs
+                len(output.token_ids["input_ids"]) for output in final_res.outputs
             )
             usage = UsageInfo(
                 prompt_tokens=num_prompt_tokens,
@@ -221,12 +216,6 @@ class OpenAIServer(Server):
         async def create_completion(raw_request: Request):
             request = CompletionRequest(**await raw_request.json())
             _LOGGER.debug("Received completion request: %s" % request)
-
-            # disable streaming until enabled for v2.
-            if request.stream:
-                return create_error_response(
-                    HTTPStatus.BAD_REQUEST, "Streaming is unavilable"
-                )
 
             model = request.model
 
@@ -296,9 +285,9 @@ class OpenAIServer(Server):
                 )
                 choices.append(choice_data)
 
-            num_prompt_tokens = len(final_res.prompt_token_ids)
+            num_prompt_tokens = len(final_res.prompt_token_ids["input_ids"])
             num_generated_tokens = sum(
-                len(output.token_ids) for output in final_res.outputs
+                len(output.token_ids["input_ids"]) for output in final_res.outputs
             )
             usage = UsageInfo(
                 prompt_tokens=num_prompt_tokens,
@@ -389,7 +378,7 @@ class OpenAIServer(Server):
         output = await pipeline.run_async(
             inference_state=inference_state,
             sequences=prompt,
-            generation_config=generation_kwargs,
+            generation_kwargs=generation_kwargs,
             streaming=stream,
             presence_penalty=presence_penalty,
             stop=stop,
@@ -419,7 +408,7 @@ class OpenAIServer(Server):
             )
         else:
             concat_token_ids = []
-            for generation in output:
+            async for generation in output:
                 output = generation.generations[0]
                 concat_token_ids.append(tokenize(output.text))
                 yield RequestOutput(
@@ -451,6 +440,7 @@ def map_generation_schema(generation_kwargs: Dict) -> Dict:
             )
         if k in OPENAI_TO_DEEPSPARSE_MAPPINGS:
             generation_kwargs[OPENAI_TO_DEEPSPARSE_MAPPINGS[k]] = generation_kwargs[k]
+            generation_kwargs.pop(k)
 
     if generation_kwargs["num_return_sequences"] > 1:
         generation_kwargs["do_sample"] = True

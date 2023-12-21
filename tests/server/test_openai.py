@@ -107,6 +107,19 @@ def test_chat_completions_fastchat(client, model_card):
     assert response.status_code == 200
 
 
+def test_chat_completions_fastchat_list(client, model_card):
+    request = ChatCompletionRequest(
+        messages=[
+            {"role": "system", "content": "You are a helpful assistant."},
+            {"role": "user", "content": "Hello!"},
+        ],
+        max_tokens=50,
+        model=model_card.id,
+    )
+    response = client.post("/v1/chat/completions", json=request.dict())
+    assert response.status_code == 200
+
+
 def test_completions(client, model_card):
     request = CompletionRequest(
         prompt="The Boston Bruins are ...", max_tokens=50, model=model_card.id
