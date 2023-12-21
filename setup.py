@@ -144,10 +144,10 @@ _openpifpaf_integration_deps = [
 ]
 _yolov8_integration_deps = _computer_vision_deps + ["ultralytics==8.0.124"]
 _transformers_integration_deps = [
-    "transformers<4.35",
-    "datasets<2.15",
+    "transformers<4.37",
+    "datasets<2.16",
+    "accelerate<0.26",
     "scikit-learn",
-    "accelerate<0.25",
     "seqeval",
 ]
 _sentence_transformers_integration_deps = ["optimum-deepsparse"] + _torch_deps
