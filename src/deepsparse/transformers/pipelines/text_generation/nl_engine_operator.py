@@ -158,11 +158,10 @@ class NLEngineOperator(EngineOperator):
         # Create the engine with an overwritten model/new batch size and any additional
         # engine_kwargs
         kwargs = {}
-        kwargs["engine_kwargs"] = engine_kwargs
         kwargs["model_path"] = onnx_file_path
         kwargs["batch_size"] = batch_size
 
-        return super().create_engine(**kwargs)
+        return super().create_engine(**kwargs, **engine_kwargs)
 
     def override_model_inputs(
         self,
