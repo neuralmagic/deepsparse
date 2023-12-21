@@ -189,9 +189,9 @@ class OpenAIServer(Server):
                 )
                 choices.append(choice_data)
 
-            num_prompt_tokens = len(final_res.prompt_token_ids)
+            num_prompt_tokens = len(final_res.prompt_token_ids["input_ids"])
             num_generated_tokens = sum(
-                len(output.token_ids) for output in final_res.outputs
+                len(output.token_ids["input_ids"]) for output in final_res.outputs
             )
             usage = UsageInfo(
                 prompt_tokens=num_prompt_tokens,
@@ -284,9 +284,9 @@ class OpenAIServer(Server):
                 )
                 choices.append(choice_data)
 
-            num_prompt_tokens = len(final_res.prompt_token_ids)
+            num_prompt_tokens = len(final_res.prompt_token_ids["input_ids"])
             num_generated_tokens = sum(
-                len(output.token_ids) for output in final_res.outputs
+                len(output.token_ids["input_ids"]) for output in final_res.outputs
             )
             usage = UsageInfo(
                 prompt_tokens=num_prompt_tokens,
