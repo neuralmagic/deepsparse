@@ -2,5 +2,5 @@ cadence: "nightly"
 model_path: "zoo:nlg/text_generation/opt-1.3b/pytorch/huggingface/opt_pretrain/base-none"
 torch_model_name: "facebook/opt-1.3b"
 prompt: "Didn't know what time it was, the lights were low\n I leaned back on my radio"
-precision: 0.0001
+precision: 0.001
 internal_kv_cache: [True, False]
