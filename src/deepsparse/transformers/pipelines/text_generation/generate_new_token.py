@@ -19,7 +19,10 @@ from deepsparse.operators import Operator
 from deepsparse.transformers.pipelines.text_generation.nl_engine_operator import (
     NLEngineOutputs,
 )
-from deepsparse.transformers.schemas.text_generation_schemas import FinishReason
+from deepsparse.transformers.schemas.text_generation_schemas import (
+    FinishReason,
+    PromptLogitsNoKVCacheInference,
+)
 from deepsparse.utils import InferenceState
 
 
@@ -33,14 +36,23 @@ class GenerateNewTokenOperator(Operator):
         self.force_max_tokens = force_max_tokens
         self.tokenizer = tokenizer
 
-    def can_operate(self, inp: NLEngineOutputs):
+    def can_operate(self, inp: Union[PromptLogitsNoKVCacheInference, NLEngineOutputs]):
         if inp.in_generation:
             return True
         return False
 
-    def run(self, inp: NLEngineOutputs, inference_state: InferenceState, **kwargs):
-        logits = inp.engine_outputs
-        kv_cache = inp.kv_cache
+    def run(
+        self,
+        inp: Union[PromptLogitsNoKVCacheInference, NLEngineOutputs],
+        inference_state: InferenceState,
+        **kwargs,
+    ):
+        logits = (
+            inp.engine_outputs
+            if isinstance(inp, NLEngineOutputs)
+            else inp.prompt_logits
+        )
+        kv_cache = inp.kv_cache if isinstance(inp, NLEngineOutputs) else None
 
         token_generator = inference_state.current_state.get("token_generator")
         token = token_generator.generate(logits=logits[0, -1, :])

@@ -15,7 +15,7 @@
 This test suite consumes config files to test the text generation pipeline
 for various scenarios.
 
-A sample config file is a yaml that r_equires the following fields:
+A sample config file is a yaml that requires the following fields:
     cadence: The cadence of the tests. The available options are:
               "nightly", "weekly" and "commit". By default, only
               the tests that have cadence "commit" will be run
@@ -42,10 +42,10 @@ import numpy
 import pytest
 from deepsparse.pipeline import Pipeline
 from deepsparse.transformers.pipelines.text_generation import (
-    TextGenerationOutput,
     TextGenerationPipeline,
     TextGenerationPipelineNoCache,
 )
+from deepsparse.transformers.schemas.text_generation_schemas import TextGenerationOutput
 from tests.deepsparse.transformers.text_generation.integration_tests.helpers import (
     TorchGroundTruthSource,
     parse_params,

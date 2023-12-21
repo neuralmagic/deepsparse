@@ -18,10 +18,10 @@ import numpy
 
 from deepsparse.operators import Operator
 from deepsparse.transformers.pipelines.text_generation import TokenGeneratorOperator
-from deepsparse.transformers.pipelines.text_generation.nl_engine_operator import (
-    NLEngineOutputs,
+from deepsparse.transformers.schemas.text_generation_schemas import (
+    FinishReason,
+    PromptLogitsNoKVCacheInference,
 )
-from deepsparse.transformers.schemas.text_generation_schemas import FinishReason
 from deepsparse.transformers.utils.helpers import set_generated_length
 from deepsparse.utils import InferenceState
 
@@ -94,13 +94,12 @@ class PrepareGeneration(Operator):
             "finished_reason": [],
             "token_generator": token_generator,
         }
-
-        output = {
-            "tokens": token_generator.tokens,
-            "kv_cache": kv_cache,
-            "in_generation": True,
-        }
         if kv_cache is None:
-            output = NLEngineOutputs(**output, engine_outputs=prompt_logits)
-
+            output = PromptLogitsNoKVCacheInference(prompt_logits=prompt_logits)
+        else:
+            output = {
+                "tokens": token_generator.tokens,
+                "kv_cache": kv_cache,
+                "in_generation": True,
+            }
         return output, state_update
