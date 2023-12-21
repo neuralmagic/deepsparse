@@ -148,10 +148,17 @@ class GraphRouter(Router):
         if isinstance(self.route[node], str):
             return self.route[node]
         else:
+            transition_node = None
             for neighbour_node in self.route[node]:
-                neighbour_node_op = ops[neighbour_node]
-                if neighbour_node_op.can_operate(inp):
+                neighbour_node_op = ops.get(neighbour_node)
+                if neighbour_node_op is None:
+                    transition_node = neighbour_node
+
+                elif neighbour_node_op.can_operate(inp):
                     return neighbour_node
+
+            if transition_node:
+                return transition_node
             raise ValueError("Cannot operate on any of the nodes")
 
     @staticmethod

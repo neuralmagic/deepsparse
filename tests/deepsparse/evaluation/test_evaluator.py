@@ -94,7 +94,6 @@ def test_evaluation_llm_evaluation_harness_integration_name(
     target,
     datasets,
 ):
-
     assert evaluate(
         target=target,
         datasets=datasets,
