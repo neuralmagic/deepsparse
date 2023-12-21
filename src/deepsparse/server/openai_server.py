@@ -96,31 +96,32 @@ class OpenAIServer(Server):
             if isinstance(request.messages, str):
                 prompt = request.messages
             else:
-                # else case assums a FastChat-compliant dictionary
+                # else case assumes a FastChat-compliant dictionary
                 # Fetch a model-specific template from FastChat
-                _LOGGER.warning(
-                    "A dictionary message was found. This dictionary must "
-                    "be fastchat compliant."
-                )
                 try:
                     from fastchat.model.model_adapter import get_conversation_template
                 except ImportError as e:
-                    return create_error_response(HTTPStatus.FAILED_DEPENDENCY, str(e))
+                    return create_error_response(
+                        HTTPStatus.FAILED_DEPENDENCY,
+                        f"{str(e)} - Please ensure `fastchat` is installed.",
+                    )
 
                 conv = get_conversation_template(request.model)
-                message = request.messages
+                messages = request.messages
+                messages = messages if isinstance(messages, list) else [messages]
                 # add the model to the Conversation template, based on the given role
-                msg_role = message["role"]
-                if msg_role == "system":
-                    conv.system_message = message["content"]
-                elif msg_role == "user":
-                    conv.append_message(conv.roles[0], message["content"])
-                elif msg_role == "assistant":
-                    conv.append_message(conv.roles[1], message["content"])
-                else:
-                    return create_error_response(
-                        HTTPStatus.BAD_REQUEST, "Message role not recognized"
-                    )
+                for message in messages:
+                    msg_role = message["role"]
+                    if msg_role == "system":
+                        conv.system_message = message["content"]
+                    elif msg_role == "user":
+                        conv.append_message(conv.roles[0], message["content"])
+                    elif msg_role == "assistant":
+                        conv.append_message(conv.roles[1], message["content"])
+                    else:
+                        return create_error_response(
+                            HTTPStatus.BAD_REQUEST, "Message role not recognized"
+                        )
 
                 # blank message to start generation
                 conv.append_message(conv.roles[1], None)
