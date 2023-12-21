@@ -20,6 +20,7 @@ import pytest
 
 # TODO: skipping a few tests with missing features
 from deepsparse.pipeline import Pipeline
+from deepsparse.transformers.schemas.text_generation_schemas import TextGenerationOutput
 from deepsparse.transformers.utils.helpers import prepends_bos_token
 
 
@@ -235,7 +236,6 @@ def test_pipeline_for_ppl_eval(pipeline, prompt):
     assert "attention_mask" in predictions.input_tokens
 
 
-@pytest.mark.skip("streaming currently not enabled")
 def test_streaming_mode_returns_generator(pipeline, prompt):
     response_generator = pipeline(prompt, streaming=True)
     assert inspect.isgenerator(
@@ -243,12 +243,11 @@ def test_streaming_mode_returns_generator(pipeline, prompt):
     ), "Pipeline should return a generator in streaming mode"
 
     assert all(
-        isinstance(response, pipeline.output_schema) for response in response_generator
+        isinstance(response, TextGenerationOutput) for response in response_generator
     ), "Pipeline should return a generator of output_schema \
            objects in streaming mode"
 
 
-@pytest.mark.skip("streaming currently not enabled")
 def test_streaming_with_several_prompts(pipeline, prompt):
     additional_prompt = "Never gonna run around and desert you"
     prompts = [prompt, additional_prompt]

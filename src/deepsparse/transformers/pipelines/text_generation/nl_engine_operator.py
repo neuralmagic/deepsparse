@@ -126,35 +126,42 @@ class NLEngineOperator(EngineOperator):
 
         self.sequence_length = sequence_length
         self.input_ids_length = input_ids_length
-        self.kv_cache_data_type = None
         self.internal_kv_cache = internal_kv_cache
-        self.model_path = kwargs.get("model_path")
+        self.kv_cache_data_type = None
+
+        super().__init__(**kwargs)
+
+    def create_engine(
+        self, batch_size: Optional[int] = None, engine_kwargs: Optional[dict] = None
+    ):
+
+        batch_size = batch_size if batch_size is not None else self._batch_size
         (onnx_file_path, additional_outputs) = self.override_model_inputs(
             self.model_path,
-            batch_size=kwargs.get("batch_size", 1),
+            batch_size=batch_size,
             return_additional_outputs=True,
         )
         output_indices_to_be_cached, kv_cache_data_type, = additional_outputs.get(
             "output_indices_to_be_cached"
         ), additional_outputs.get("kv_cache_data_type")
 
-        engine_kwargs = kwargs.get("engine_kwargs", {})
-        if kwargs.get("engine_type", DEEPSPARSE_ENGINE) == DEEPSPARSE_ENGINE:
+        engine_kwargs = engine_kwargs if engine_kwargs is not None else {}
+        if self._engine_type == DEEPSPARSE_ENGINE:
             if "WAND_OPT_FLAGS" not in os.environ:
                 os.environ["WAND_OPT_FLAGS"] = "default,~pyramids"
 
         if any(output_indices_to_be_cached):
             self.kv_cache_data_type = kv_cache_data_type
-            if (
-                internal_kv_cache
-                and kwargs.get("engine_type", DEEPSPARSE_ENGINE) == DEEPSPARSE_ENGINE
-            ):
+            if self.internal_kv_cache and self._engine_type == DEEPSPARSE_ENGINE:
                 engine_kwargs["cached_outputs"] = output_indices_to_be_cached
 
-        kwargs["engine_kwargs"] = engine_kwargs
+        # Create the engine with an overwritten model/new batch size and any additional
+        # engine_kwargs
+        kwargs = {}
         kwargs["model_path"] = onnx_file_path
+        kwargs["batch_size"] = batch_size
 
-        super().__init__(**kwargs)
+        return super().create_engine(**kwargs, **engine_kwargs)
 
     def override_model_inputs(
         self,
@@ -199,6 +206,7 @@ class NLEngineOperator(EngineOperator):
             engine_input = [engine_input]
 
         inputs = list(map(self._add_kv_cache_to_input, engine_input, kv_cache))
+        inputs = join_engine_outputs(inputs, len(inputs))
 
         if bool(kv_cache[0].engine_internal_cache):
             # conventionally, before dispatching
@@ -208,14 +216,15 @@ class NLEngineOperator(EngineOperator):
             # (batch_size=0) to the engine. Therefore,
             # we skip the validation
 
-            # Internal kv_cache works for batch_size of 1 atm
-            out = self.engine._eng_net.execute_list_out(
-                inputs[0], kv_cache[0].engine_internal_cache
-            )
+            internal_kv_cache = [x.engine_internal_cache for x in kv_cache]
+            if inp.engine:
+                out = inp.engine._eng_net.execute_list_out(inputs, internal_kv_cache)
+            else:
+                out = self.engine._eng_net.execute_list_out(inputs, internal_kv_cache)
+
         else:
             # run the engine without the LIB.kv_cache object
             # stack multiple batch inputs along the batch dimension
-            inputs = join_engine_outputs(inputs, len(inputs))
             out = (
                 super()
                 .run(

@@ -18,7 +18,7 @@ from abc import abstractmethod
 from collections import Counter
 from concurrent.futures import ThreadPoolExecutor
 from copy import deepcopy
-from typing import List, Optional, Union
+from typing import AsyncGenerator, List, Optional, Union
 
 import yaml
 from pydantic import BaseModel
@@ -37,6 +37,7 @@ from deepsparse.utils import InferenceState
 from deepsparse.utils.data import prep_for_serialization
 from fastapi import FastAPI, Request, UploadFile
 from fastapi.exceptions import HTTPException
+from fastapi.responses import StreamingResponse
 from starlette.responses import RedirectResponse
 
 
@@ -252,6 +253,19 @@ class Server:
             pipeline_outputs = await proxy_pipeline.pipeline.run_async(
                 **await raw_request.json(), inference_state=inference_state
             )
+
+            if isinstance(pipeline_outputs, AsyncGenerator):
+
+                async def format_response():
+                    async for output in pipeline_outputs:
+                        # Note: If a pipeline does not return a BaseModel this will fail
+                        response = output.json(ensure_ascii=False)
+                        yield f"{response}\n\n"
+
+                return StreamingResponse(
+                    format_response(),
+                    media_type="text/event-stream",
+                )
         else:
             pipeline_outputs = proxy_pipeline.pipeline(**await raw_request.json())
 

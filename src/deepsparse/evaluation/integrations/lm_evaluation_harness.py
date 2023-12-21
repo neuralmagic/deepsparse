@@ -62,6 +62,11 @@ def integration_eval(
     if isinstance(model, Pipeline):
         # If the model is a Pipeline, we need to wrap
         # it in a DeepSparseLM object
+    # The code that sets up the interface between deepsparse and llm_evaluation_harness
+
+    if isinstance(model, Pipeline):
+        # If the model is a Pipeline, we need to wrap
+        # it in a DeepSparseLM object
         model = DeepSparseLM(
             pipeline=model,
             batch_size=batch_size,
