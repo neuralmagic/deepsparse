@@ -67,6 +67,7 @@ class Pipeline(Operator):
     :param router: A Router which dictates the next operator to call.
     :param schedulers: A list of schedulers to run operators.
     :param pipeline_state: pipeline_state created during pipeline initialization
+    :param timer_manager: instantiated TimerManger to track timings
 
     """
 
@@ -78,6 +79,7 @@ class Pipeline(Operator):
         generator_router: Optional[Router] = None,
         continuous_batching_scheduler: Optional[ContinuousBatchingScheduler] = None,
         pipeline_state: Optional[PipelineState] = None,
+        timer_manager: Optional[TimerManager] = None,
     ):
 
         self.ops = ops
@@ -86,7 +88,7 @@ class Pipeline(Operator):
         self.schedulers = schedulers
         self.pipeline_state = pipeline_state
         self._continuous_batching_scheduler = continuous_batching_scheduler
-        self.timer_manager = TimerManager()
+        self.timer_manager = timer_manager or TimerManager()
         self.validate()
 
         self._scheduler_group = SchedulerGroup(self.schedulers)

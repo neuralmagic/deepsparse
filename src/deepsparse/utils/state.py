@@ -30,6 +30,7 @@ class State(ABC):
     """
 
     def __init__(self):
+        super().__init__()
         self._current_state = None
 
     @property
@@ -52,7 +53,9 @@ class PipelineState(State):
 class TimerState:
     """TimerState shared among all InferenceState"""
 
-    _timer = None
+    def __init__(self):
+        super().__init__()
+        self._timer = None
 
     @contextmanager
     def time(self, id: str):
@@ -78,6 +81,9 @@ class InferenceState(State, TimerState):
     """
     Inference state, created during every inference run.
     """
+
+    def __init__(self):
+        super().__init__()
 
     def create_state(self, new_state: dict):
         if self._current_state:
