@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import pytest
-from src.deepsparse.evaluation.integrations import try_import_llm_evaluation_harness
+from src.deepsparse.evaluation.integrations import try_import_lm_evaluation_harness
 from src.deepsparse.evaluation.utils import create_model_from_target
 
 
@@ -41,15 +41,15 @@ from src.deepsparse.evaluation.utils import create_model_from_target
     "batch_size",
     [1, 3],
 )
-class TestLLMEvaluationHarness:
+class TestLMEvaluationHarness:
     @pytest.mark.skipif(
-        not try_import_llm_evaluation_harness(raise_error=False),
-        reason="llm_evaluation_harness not installed",
+        not try_import_lm_evaluation_harness(raise_error=False),
+        reason="lm_evaluation_harness not installed",
     )
     def test_integration_eval_onnx_matches_torch(
         self, pipeline, model_torch, datasets, batch_size
     ):
-        from src.deepsparse.evaluation.integrations.llm_evaluation_harness import (
+        from src.deepsparse.evaluation.integrations.lm_evaluation_harness import (
             integration_eval,
         )
 

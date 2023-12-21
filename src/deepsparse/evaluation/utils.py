@@ -28,7 +28,7 @@ __all__ = [
     "resolve_integration",
 ]
 
-LLM_EVALUATION_HARNESS_INTEGRATION_NAME = "llm-evaluation-harness"
+LM_EVALUATION_HARNESS = "lm-evaluation-harness"
 
 
 def potentially_check_dependency_import(integration_name: str) -> bool:
@@ -41,12 +41,12 @@ def potentially_check_dependency_import(integration_name: str) -> bool:
     :return: True if the dependency is installed, False otherwise
     """
 
-    if integration_name.replace("_", "-") == LLM_EVALUATION_HARNESS_INTEGRATION_NAME:
+    if integration_name.replace("_", "-") == LM_EVALUATION_HARNESS:
         from src.deepsparse.evaluation.integrations import (
-            try_import_llm_evaluation_harness,
+            try_import_lm_evaluation_harness,
         )
 
-        try_import_llm_evaluation_harness(raise_error=True)
+        try_import_lm_evaluation_harness(raise_error=True)
 
     return True
 
@@ -59,21 +59,21 @@ def resolve_integration(
     to use. If unable to infer a name, return None.
 
     Currently:
-        if the model is llm-type model, default to 'llm-evaluation-harness'
-        otherwise return None
+        if the model is a generative language model,
+        default to 'lm-evaluation-harness' otherwise return None
 
     :param model: The model to infer the integration for
     :param datasets: The datasets to infer the integration for
     :return: The name of the integration to use or None if unable to infer
     """
-    if is_model_llm(model):
-        return LLM_EVALUATION_HARNESS_INTEGRATION_NAME
+    if if_generative_language_model(model):
+        return LM_EVALUATION_HARNESS
     return None
 
 
-def is_model_llm(model: Any) -> bool:
+def if_generative_language_model(model: Any) -> bool:
     """
-    Checks if the model is a Large Language Model (LLM) type model.
+    Checks if the model is a generative language model.
     """
     if isinstance(model, Pipeline):
         return model.__class__.__name__ == "TextGenerationPipeline"
