@@ -13,15 +13,18 @@
 # limitations under the License.
 
 import pytest
-from src.deepsparse.evaluation.integrations import try_import_llm_evaluation_harness
+from src.deepsparse.evaluation.integrations import try_import_lm_evaluation_harness
+from src.deepsparse.evaluation.utils import create_model_from_target
 
 
 @pytest.mark.parametrize(
-    "target_onnx, target_torch",
+    "pipeline, model_torch",
     [
         (
-            "hf:mgoin/TinyStories-1M-deepsparse",
-            "roneneldan/TinyStories-1M",
+            create_model_from_target(
+                "hf:mgoin/TinyStories-1M-deepsparse", engine_type="onnxruntime"
+            ),
+            create_model_from_target("roneneldan/TinyStories-1M"),
         )
     ],
 )
@@ -38,31 +41,30 @@ from src.deepsparse.evaluation.integrations import try_import_llm_evaluation_har
     "batch_size",
     [1, 3],
 )
-class TestLLMEvaluationHarness:
+class TestLMEvaluationHarness:
     @pytest.mark.skipif(
-        not try_import_llm_evaluation_harness(raise_error=False),
-        reason="llm_evaluation_harness not installed",
+        not try_import_lm_evaluation_harness(raise_error=False),
+        reason="lm_evaluation_harness not installed",
     )
     def test_integration_eval_onnx_matches_torch(
-        self, target_onnx, target_torch, datasets, batch_size
+        self, pipeline, model_torch, datasets, batch_size
     ):
-        from src.deepsparse.evaluation.integrations.llm_evaluation_harness import (
+        from src.deepsparse.evaluation.integrations.lm_evaluation_harness import (
             integration_eval,
         )
 
         out_torch = integration_eval(
-            target=target_torch,
+            model=model_torch,
             datasets=datasets,
             batch_size=batch_size,
             limit=5,
             no_cache=True,  # avoid saving files when running tests
         )
         out_onnx = integration_eval(
-            target=target_onnx,
+            model=pipeline,
             datasets=datasets,
             batch_size=batch_size,
             limit=5,
-            engine_type="onnxruntime",
             no_cache=True,  # avoid saving files when running tests
         )
         out_onnx = out_onnx.raw["output"]

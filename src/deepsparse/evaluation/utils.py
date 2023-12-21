@@ -13,15 +13,74 @@
 # limitations under the License.
 
 import os
-from typing import Any, Dict, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
-from transformers import AutoModelForCausalLM
+from transformers import AutoModelForCausalLM, PreTrainedModel
 
 from deepsparse import Pipeline
 from deepsparse.operators.engine_operator import DEEPSPARSE_ENGINE, ORT_ENGINE
 
 
-__all__ = ["text_generation_model_from_target", "get_save_path", "args_to_dict"]
+__all__ = [
+    "create_model_from_target",
+    "get_save_path",
+    "args_to_dict",
+    "resolve_integration",
+]
+
+LM_EVALUATION_HARNESS = "lm-evaluation-harness"
+
+
+def potentially_check_dependency_import(integration_name: str) -> bool:
+    """
+    Check if the `integration_name` requires importing a dependency.
+    If so, check if the dependency is installed and return True if it is.
+    Otherwise, return False.
+
+    :param integration_name: The name of the integration to check
+    :return: True if the dependency is installed, False otherwise
+    """
+
+    if integration_name.replace("_", "-") == LM_EVALUATION_HARNESS:
+        from src.deepsparse.evaluation.integrations import (
+            try_import_lm_evaluation_harness,
+        )
+
+        try_import_lm_evaluation_harness(raise_error=True)
+
+    return True
+
+
+def resolve_integration(
+    model: Union[Pipeline, PreTrainedModel], datasets: Union[str, List[str]]
+) -> Union[str, None]:
+    """
+    Given a model and dataset, infer the name of the evaluation integration
+    to use. If unable to infer a name, return None.
+
+    Currently:
+        if the model is a generative language model,
+        default to 'lm-evaluation-harness' otherwise return None
+
+    :param model: The model to infer the integration for
+    :param datasets: The datasets to infer the integration for
+    :return: The name of the integration to use or None if unable to infer
+    """
+    if if_generative_language_model(model):
+        return LM_EVALUATION_HARNESS
+    return None
+
+
+def if_generative_language_model(model: Any) -> bool:
+    """
+    Checks if the model is a generative language model.
+    """
+    if isinstance(model, Pipeline):
+        return model.__class__.__name__ == "TextGenerationPipeline"
+    elif isinstance(model, PreTrainedModel):
+        return "CausalLM" in model.__class__.__name__
+    else:
+        return False
 
 
 def args_to_dict(args: Tuple[Any, ...]) -> Dict[str, Any]:
@@ -69,13 +128,20 @@ def get_save_path(
     return os.path.join(base_path, file_name)
 
 
-# TODO: Make it more generic to support sparsified models.
-# TODO: Ideally import this functionality from SparseZoo.
-def text_generation_model_from_target(
+def create_model_from_target(
     target: str,
-    engine_type: str,
+    engine_type: Optional[str] = None,
+    **kwargs,
 ) -> Union[Pipeline, AutoModelForCausalLM]:
     """
+    Create a model or a pipeline from a target path.
+
+    Note: This function is currently limited to:
+        - creating pipelines of type 'text-generation'
+        - creating dense huggingface models of type 'AutoModelForCausalLM'
+    This function will be expanded in the future to support more
+    model types and frameworks.
+
     :param target: The target path to initialize the
         text generation model from. This can be a local
         or remote path to the model or a sparsezoo stub
@@ -84,10 +150,12 @@ def text_generation_model_from_target(
     """
     if engine_type in [DEEPSPARSE_ENGINE, ORT_ENGINE]:
         return Pipeline.create(
-            task="text-generation", model_path=target, engine_type=engine_type
+            task="text-generation",
+            model_path=target,
+            sequence_length=kwargs.pop("sequence_length", 2048),
+            engine_type=engine_type,
+            batch_size=kwargs.pop("batch_size", 1),
+            **kwargs,
         )
-    try:
-        # for now assume that if it's not a pipeline, it's a huggingface model
-        return AutoModelForCausalLM.from_pretrained(target)
-    except NotImplementedError as e:  # noqa: F841
-        raise NotImplementedError(f"Unsupported engine type: {engine_type}")
+    else:
+        return AutoModelForCausalLM.from_pretrained(target, **kwargs)

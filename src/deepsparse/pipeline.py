@@ -16,7 +16,7 @@ import copy
 import logging
 import os
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import Any, AsyncGenerator, Callable, Dict, Generator, List, Optional, Union
 
 from deepsparse.middlewares import MiddlewareManager
 from deepsparse.operators import EngineOperator, Operator
@@ -27,6 +27,7 @@ from deepsparse.schedulers import (
     OperatorScheduler,
     SchedulerGroup,
 )
+from deepsparse.subgraph_execute import SubGraphExecutor
 from deepsparse.utils import InferenceState, PipelineState
 from deepsparse.utils.subgraph import SubGraph
 
@@ -74,6 +75,7 @@ class Pipeline(Operator):
         ops: Union[Dict[str, Operator], List[Operator]],
         router: Router,
         schedulers: List[OperatorScheduler],
+        generator_router: Optional[Router] = None,
         continuous_batching_scheduler: Optional[ContinuousBatchingScheduler] = None,
         pipeline_state: Optional[PipelineState] = None,
         middleware_manager: Optional[MiddlewareManager] = None,
@@ -81,6 +83,7 @@ class Pipeline(Operator):
 
         self.ops = ops
         self.router = router
+        self.generator_router = generator_router
         self.schedulers = schedulers
         self.pipeline_state = pipeline_state
         self._continuous_batching_scheduler = continuous_batching_scheduler
@@ -88,176 +91,7 @@ class Pipeline(Operator):
         self.validate()
 
         self._scheduler_group = SchedulerGroup(self.schedulers)
-
-    def _run_next(
-        self, inp: Any, inference_state: InferenceState, next_step: str, **kwargs
-    ):
-        if (
-            isinstance(self.ops[next_step], EngineOperator)
-            and self._continuous_batching_scheduler
-        ):
-            func = self._continuous_batching_scheduler.submit
-            inp = self.ops[next_step].input_schema(**inp)
-        else:
-            func = self._scheduler_group.submit
-
-        return self.run_func(
-            func=func,
-            operator=self.ops[next_step],
-            inp=inp,
-            pipeline_state=self.pipeline_state,
-            inference_state=inference_state,
-            **kwargs,
-        )
-
-    async def _run_sub_graphs(
-        self,
-        sub_graph_inputs: List[Any],
-        sub_graphs: List[SubGraph],
-        loop: Optional[asyncio.AbstractEventLoop] = None,
-    ) -> List[Any]:
-        """
-        Run a list of sub_graphs asynchronously. Polls to identify the sub graph that is
-        still running but has completed its current step. Schedules the next step
-        subgraph step. This is repeated until all subgraphs have finished running and
-        have reached their end step (stored in the Subgraph.end attribute).
-
-        :param sub_graph_inputs: A list of inputs that should be passed to each
-        subgraph. Each subgraph is given an element of the list as input to its
-        first node.
-        :param sub_graphs: A list of Subgraph objects. Each stores the relevant
-        execution information for the particular subgraph, such as its current step
-        in the sub graph, inference state, output, and end step.
-
-        :returns: a list of outputs for all the completed Subgraph objects. Returned
-        in the same order that the subgraphs were passed to the function.
-        """
-        for i in range(len(sub_graphs)):
-            sub_graphs[i].output = self._run_next(
-                sub_graph_inputs[i], sub_graphs[i].inf, sub_graphs[i].step, loop=loop
-            )
-
-        # Execute all sub graphs until all graphs have been completed.
-        while any(not x.completed for x in sub_graphs):
-            for sub_graph in sub_graphs:
-                if not sub_graph.completed:
-                    # get the result for the completed operator; resolve its output
-                    if isinstance(sub_graph.output, asyncio.Future):
-                        await sub_graph.output
-                    operator_output = sub_graph.output.result()
-                    operator_output = sub_graph.parse_output(operator_output)
-
-                    # determine the next step for the particular operator, using
-                    # its previous output and previously stored step
-                    next_step = self.router.next(
-                        sub_graph.step, self.ops, operator_output
-                    )
-                    # update the step
-                    sub_graph.step = next_step
-
-                    # store the output for the next step. If the next step is
-                    # end step, this particular route has completed. Simply
-                    # update the output value
-                    if next_step in sub_graph.end:
-                        sub_graph.output = operator_output
-                        sub_graph.completed = True
-                    else:
-                        sub_graph.output = self._run_next(
-                            inp=operator_output,
-                            inference_state=sub_graph.inf,
-                            next_step=next_step,
-                            loop=loop,
-                        )
-
-        return [x.output for x in sub_graphs]
-
-    async def run_async(self, *args, inference_state: InferenceState, **kwargs):
-        """
-        Run through the operators using the provided router and scheduler.
-        The input to a given operator is the output of the previous operator.
-
-        :param inference_state: inference_state for the pipeline.
-        :param pipeline_state: pipeline_state for the pipeline. The values in the state
-            are created during pipeline creation and are read-only during inference.
-        """
-        loop = asyncio.get_running_loop()
-
-        next_step = self.router.START_ROUTE
-        operator_output = None
-
-        while next_step != self.router.END_ROUTE:
-            # Either a dictionary key or valid index
-
-            if next_step == self.router.SPLIT_ROUTE:
-                if operator_output is None:
-                    raise ValueError(
-                        f"{self.router.SPLIT_ROUTE} should appear after "
-                        f"{self.ROUTER.START_ROUTE}"
-                    )
-
-                operator_output = await self._apply_split(
-                    operator_output, inference_state, loop=loop
-                )
-                next_step = self.router.route[self.router.JOIN_ROUTE]
-                if next_step == self.router.END_ROUTE:
-                    return operator_output
-
-            if next_step == self.router.START_ROUTE:
-                outputs = self.run_func(
-                    *args,
-                    func=self._scheduler_group.submit,
-                    operator=self.ops[next_step],
-                    inference_state=inference_state,
-                    pipeline_state=self.pipeline_state,
-                    loop=loop,
-                    **kwargs,
-                )
-                await outputs
-                operator_output = outputs.result()
-
-            else:
-                outputs = self._run_next(
-                    inp=operator_output,
-                    next_step=next_step,
-                    inference_state=inference_state,
-                    loop=loop,
-                )
-                await outputs
-                operator_output = outputs.result()
-
-            if isinstance(operator_output, tuple):
-                operator_output, state_update = operator_output[0], operator_output[-1]
-                inference_state.update_state(state_update)
-
-            next_step = self.router.next(next_step, self.ops, operator_output)
-
-        return operator_output
-
-    async def _apply_split(
-        self,
-        inp: Any,
-        inference_state: InferenceState,
-        loop: Optional[asyncio.AbstractEventLoop] = None,
-    ):
-        batches, orig_batch_size = self.expand_inputs(inp, 1)
-
-        # Create a list of SplitRoutes, per batch size 1
-        # Each SplitRoute object holds information about the particular path it
-        # follows. All start at the same step defined by SPLIT_ROUTE and start
-        # with the same inference_state.
-        split_graphs = [
-            SubGraph(
-                inf=copy.deepcopy(inference_state),
-                step=self.router.route[self.router.SPLIT_ROUTE],
-                end=[self.router.JOIN_ROUTE],
-            )
-            for i in range(len(batches))
-        ]
-
-        outputs = await self._run_sub_graphs(
-            sub_graph_inputs=batches, sub_graphs=split_graphs, loop=loop
-        )
-        return self.condense_inputs(outputs)
+        self.subgraph_executor = SubGraphExecutor()
 
     @classmethod
     def create(cls, task: str, **kwargs) -> "Pipeline":
@@ -318,6 +152,75 @@ class Pipeline(Operator):
             **kwargs,
         )
 
+    async def run_async(self, *args, inference_state: InferenceState, **kwargs):
+        """
+        Run through the operators using the provided router and scheduler.
+        The input to a given operator is the output of the previous operator.
+
+        :param inference_state: inference_state for the pipeline.
+        """
+        loop = asyncio.get_running_loop()
+
+        next_step = self.router.START_ROUTE
+        operator_output = None
+
+        while next_step != self.router.END_ROUTE:
+            # Check if running streaming; if that is the case, will return
+            # an AsyncGenerator. This requires the pipeline to support
+            # streaming with a generator_router set
+            if inference_state.current_state.get("streaming"):
+                return self._run_generate_async(
+                    operator_output=operator_output,
+                    inference_state=inference_state,
+                    next_step=next_step,
+                )
+
+            # Non Streaming/Generator pathway
+            if next_step == self.router.SPLIT_ROUTE:
+                if operator_output is None:
+                    raise ValueError(
+                        f"{self.router.SPLIT_ROUTE} should appear after "
+                        f"{self.ROUTER.START_ROUTE}"
+                    )
+
+                operator_output = await self._apply_split_async(
+                    operator_output, inference_state, loop=loop
+                )
+                next_step = self.router.JOIN_ROUTE
+
+            else:
+                if next_step == self.router.START_ROUTE:
+                    outputs = self.run_func(
+                        *args,
+                        func=self._scheduler_group.submit,
+                        operator=self.ops[next_step],
+                        inference_state=inference_state,
+                        pipeline_state=self.pipeline_state,
+                        loop=loop,
+                        **kwargs,
+                    )
+                else:
+                    outputs = self._run_next(
+                        inp=operator_output,
+                        next_step=next_step,
+                        inference_state=inference_state,
+                        loop=loop,
+                    )
+
+                await outputs
+                operator_output = outputs.result()
+
+                if isinstance(operator_output, tuple):
+                    operator_output, state_update = (
+                        operator_output[0],
+                        operator_output[-1],
+                    )
+                    inference_state.update_state(state_update)
+
+            next_step = self.router.next(next_step, self.ops, operator_output)
+
+        return operator_output
+
     def run(
         self,
         *args,
@@ -329,38 +232,46 @@ class Pipeline(Operator):
         The input to a given operator is the output of the previous operator.
 
         :param inference_state: inference_state for the pipeline.
-        :param pipeline_state: pipeline_state for the pipeline. The values in the state
-            are created during pipeline creation and are read-only during inference.
         """
         next_step = self.router.START_ROUTE
         operator_output = None
         while next_step != self.router.END_ROUTE:
+            # Check if running streaming; if that is the case, will return
+            # a Generator. This requires the pipeline to support
+            # streaming with a generator_router set.
+            if inference_state.current_state.get("streaming"):
+                return self._run_generate(
+                    operator_output=operator_output,
+                    inference_state=inference_state,
+                    next_step=next_step,
+                )
 
-            # Split Grap Execution (i.e multiple subgraphs)
-            # NOTE: split_route should only appear after the start route node
+            # Non Streaming/Generator pathway
             if next_step == self.router.SPLIT_ROUTE:
                 if operator_output is None:
                     raise ValueError(
                         f"{self.router.SPLIT_ROUTE} should appear after "
                         f"{self.router.START_ROUTE}"
                     )
+                operator_output = self._apply_split(operator_output, inference_state)
+                next_step = self.router.JOIN_ROUTE
 
-                operator_output = asyncio.run(
-                    self._apply_split(operator_output, inference_state)
-                )
-                next_step = self.router.route[self.router.JOIN_ROUTE]
-                if next_step == self.router.END_ROUTE:
-                    return operator_output
-
-            if next_step == self.router.START_ROUTE:
-                operator_output = self.run_func(
-                    *args,
-                    operator=self.ops[next_step],
-                    func=self._scheduler_group.submit,
-                    inference_state=inference_state,
-                    pipeline_state=self.pipeline_state,
-                    **kwargs,
-                ).result()
+            else:
+                if next_step == self.router.START_ROUTE:
+                    operator_output = self.run_func(
+                        *args,
+                        func=self._scheduler_group.submit,
+                        operator=self.ops[next_step],
+                        inference_state=inference_state,
+                        pipeline_state=self.pipeline_state,
+                        **kwargs,
+                    ).result()
+                else:
+                    operator_output = self._run_next(
+                        inp=operator_output,
+                        next_step=next_step,
+                        inference_state=inference_state,
+                    ).result()
 
                 if isinstance(operator_output, tuple):
                     operator_output, state_update = (
@@ -369,26 +280,99 @@ class Pipeline(Operator):
                     )
                     inference_state.update_state(state_update)
 
-                next_step = self.router.next(next_step, self.ops, operator_output)
-
-            else:
-                # Single graph execution
-                graph = SubGraph(
-                    inf=copy.deepcopy(inference_state),
-                    step=next_step,
-                    end=[self.router.SPLIT_ROUTE, self.router.END_ROUTE],
-                )
-
-                operator_output = asyncio.run(
-                    self._run_sub_graphs(
-                        sub_graph_inputs=[operator_output], sub_graphs=[graph]
-                    )
-                )[0]
-
-                inference_state = graph.inf
-                next_step = graph.step
-
+            next_step = self.router.next(next_step, self.ops, operator_output)
         return operator_output
+
+    def _run_generate(
+        self,
+        operator_output: Any,
+        inference_state: InferenceState,
+        next_step: str,
+    ) -> Generator:
+
+        """
+        Run pipeline execution in streaming/generator mode. _run_generate will run
+        the same loop with stop conditions as run() but will return a Generator.
+
+        :param operator_output: previous operator output, used as input for the next
+            operator.
+        :param inference_state: inference_state for the pipeline.
+        :param next_step: string indicating the next step to run
+        """
+        if not self.generator_router:
+            raise ValueError("For streaming mode, a generator_router must be provided.")
+
+        while next_step != self.generator_router.END_ROUTE:
+            start_step = next_step
+
+            if next_step == self.router.SPLIT_ROUTE:
+                end = [self.generator_router.JOIN_ROUTE]
+                step = self.generator_router.route[self.generator_router.SPLIT_ROUTE]
+                initial_inference_state = inference_state
+            else:
+                step = next_step
+                end = [
+                    self.generator_router.SPLIT_ROUTE,
+                    self.generator_router.END_ROUTE,
+                ]
+
+            for output in self._apply_split_generation(
+                operator_output, inference_state, step, end
+            ):
+                output_to_yield, next_step, operator_output, inference_state = output
+                yield output_to_yield
+
+            if start_step == self.generator_router.SPLIT_ROUTE:
+                inference_state = initial_inference_state
+
+            next_step = self.generator_router.next(next_step, self.ops, operator_output)
+
+    async def _run_generate_async(
+        self,
+        operator_output: Any,
+        inference_state: InferenceState,
+        next_step: str,
+    ) -> AsyncGenerator:
+
+        """
+        Run pipeline execution in streaming/generator mode. _run_generate_async will run
+        the same loop with stop conditions as run_async() but will return an
+        AsyncGenerator.
+
+        :param operator_output: previous operator output, used as input for the next
+            operator.
+        :param inference_state: inference_state for the pipeline.
+        :param next_step: string indicating the next step to run
+        """
+        if not self.generator_router:
+            raise ValueError("For streaming mode, a generator_router must be provided.")
+
+        while next_step != self.generator_router.END_ROUTE:
+            start_step = next_step
+
+            if next_step == self.router.SPLIT_ROUTE:
+                end = [self.generator_router.JOIN_ROUTE]
+                step = self.generator_router.route[self.generator_router.SPLIT_ROUTE]
+                initial_inference_state = inference_state
+            else:
+                step = next_step
+                end = [
+                    self.generator_router.SPLIT_ROUTE,
+                    self.generator_router.END_ROUTE,
+                ]
+
+            async for output in self._apply_split_generation_async(
+                operator_output, inference_state, step, end
+            ):
+                output_to_yield, next_step, operator_output, inference_state = output
+                yield output_to_yield
+
+            if start_step == self.generator_router.SPLIT_ROUTE:
+                inference_state = initial_inference_state
+
+            # TODO: might need additional processing on operator_output with more
+            # complex grapghs
+            next_step = self.generator_router.next(next_step, self.ops, operator_output)
 
     def __call__(self, *args, **kwargs):
         """
@@ -479,6 +463,162 @@ class Pipeline(Operator):
             output = func(*args, **kwargs)
 
         return output
+
+    def _apply_split(self, inp: Any, inference_state: InferenceState):
+        """
+        Split the data provided into batch sizes of 1. Create subgraphs with each batch
+        and execute the subgraph. Condense the outputs together when all subgraphs have
+        finished running and return.
+
+        :param inp: input to the operators
+        :param inference_state: InferenceState for the operators
+        """
+        batches, orig_batch_size = self.expand_inputs(inp, 1)
+
+        step = self.router.route[self.router.SPLIT_ROUTE]
+        end = [self.router.JOIN_ROUTE]
+        split_graphs = self._create_and_start_subgraph(
+            inference_state=inference_state, data=batches, step=step, end=end
+        )
+        outputs = self.subgraph_executor.run_sub_graphs(
+            router=self.router,
+            ops=self.ops,
+            func=self._run_next,
+            sub_graphs=split_graphs,
+        )
+        return self.condense_inputs(outputs)
+
+    async def _apply_split_async(
+        self,
+        inp: Any,
+        inference_state: InferenceState,
+        loop: Optional[asyncio.AbstractEventLoop] = None,
+    ):
+        """
+        Split the data provided into batch sizes of 1. Create subgraphs with each batch
+        and execute the subgraph. Condense the outputs together when all subgraphs have
+        finished running and return.
+
+        :param inp: input to the operators
+        :param inference_state: InferenceState for the operators
+        """
+        batches, orig_batch_size = self.expand_inputs(inp, 1)
+
+        step = self.router.route[self.router.SPLIT_ROUTE]
+        end = [self.router.JOIN_ROUTE]
+        split_graphs = self._create_and_start_subgraph(
+            inference_state=inference_state, data=batches, step=step, end=end
+        )
+        outputs = await self.subgraph_executor.run_sub_graphs_async(
+            router=self.router,
+            ops=self.ops,
+            func=self._run_next,
+            sub_graphs=split_graphs,
+            loop=loop,
+        )
+        return self.condense_inputs(outputs)
+
+    async def _apply_split_generation_async(
+        self, inp: Any, inference_state: InferenceState, step: str, end: List[str]
+    ) -> AsyncGenerator:
+        """
+        Applies the same logic as _apply_split_async but returns an AsycnGenerator.
+        """
+        batches, orig_batch_size = self.expand_inputs(inp, 1)
+
+        for i in range(len(batches)):
+            split_graphs = self._create_and_start_subgraph(
+                inference_state=inference_state, data=[batches[i]], step=step, end=end
+            )
+            async for output in self.subgraph_executor.run_sub_graphs_async_generator(
+                router=self.generator_router,
+                ops=self.ops,
+                func=self._run_next,
+                sub_graphs=split_graphs,
+            ):
+                yield output
+
+    def _apply_split_generation(
+        self, inp: Any, inference_state: InferenceState, step: str, end: List[str]
+    ) -> Generator:
+        """
+        Applies the same logic as _apply_split but returns a Generator.
+        """
+        batches, orig_batch_size = self.expand_inputs(inp, 1)
+
+        for i in range(len(batches)):
+            split_graphs = self._create_and_start_subgraph(
+                inference_state=inference_state, data=[batches[i]], step=step, end=end
+            )
+            for output in self.subgraph_executor.run_sub_graphs_generator(
+                router=self.generator_router,
+                ops=self.ops,
+                func=self._run_next,
+                sub_graphs=split_graphs,
+            ):
+                yield output
+
+    def _create_and_start_subgraph(
+        self,
+        inference_state: InferenceState,
+        data: List[Any],
+        step: str,
+        end: List[str],
+    ) -> List[SubGraph]:
+        """
+        Create SubGraphs given a list of data and an InferenceState objects. A SubGraph
+        will be created for each each item in the data list and a copy of the
+        InferenceState. Once created, the the first Operator of the SubGraph will be
+        scheduled and a list of the SubGraphs will be returned.
+
+        :param inference_state: InferenceState Object
+        :param data: list of data to execute the operators with
+        :param step: the starting operator step
+        :parm end: list of steps indicating when the SubGraph has finished running
+        """
+        graphs = [
+            SubGraph(
+                inf=copy.deepcopy(inference_state),
+                step=step,
+                end=end,
+            )
+            for i in range(len(data))
+        ]
+        split_graphs = self.subgraph_executor.start_subgraphs(
+            func=self._run_next, sub_graph_inputs=data, sub_graphs=graphs
+        )
+        return split_graphs
+
+    def _run_next(
+        self, inp: Any, inference_state: InferenceState, next_step: str, **kwargs
+    ):
+        """
+        Function to schedule the operator. If a continuous_batching_scheduler is
+        provided, all operators deriving from the EngineOperator will be scheduled
+        using this scheduler. All other operators will be scheduled using the
+        default scheduler.
+
+        :param inp: input to the operator
+        :param inference_state: inference state for the operator
+        :param next_step: dictionary key to fetch the operator from the pipeline ops.
+        """
+        if (
+            isinstance(self.ops[next_step], EngineOperator)
+            and self._continuous_batching_scheduler
+        ):
+            func = self._continuous_batching_scheduler.submit
+            inp = self.ops[next_step].input_schema(**inp)
+        else:
+            func = self._scheduler_group.submit
+
+        return self.run_func(
+            func=func,
+            operator=self.ops[next_step],
+            inp=inp,
+            pipeline_state=self.pipeline_state,
+            inference_state=inference_state,
+            **kwargs,
+        )
 
 
 def text_generation_pipeline(*args, **kwargs) -> "Pipeline":

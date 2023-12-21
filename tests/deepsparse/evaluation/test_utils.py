@@ -14,13 +14,62 @@
 
 import os
 
-from transformers import GPTNeoForCausalLM
+from transformers import (
+    AutoModelForCausalLM,
+    AutoModelForSequenceClassification,
+    GPTNeoForCausalLM,
+)
 
 import pytest
+from deepsparse import Pipeline
 from src.deepsparse.evaluation.utils import (
+    create_model_from_target,
     get_save_path,
-    text_generation_model_from_target,
+    if_generative_language_model,
+    resolve_integration,
 )
+
+
+@pytest.fixture
+def llm_type_hf_model():
+    return AutoModelForCausalLM.from_pretrained("roneneldan/TinyStories-1M")
+
+
+@pytest.fixture
+def not_llm_type_hf_model():
+    return AutoModelForSequenceClassification.from_pretrained("distilbert-base-uncased")
+
+
+@pytest.fixture
+def llm_type_pipeline():
+    return Pipeline.create(
+        task="text-generation",
+        model_path="hf:mgoin/TinyStories-1M-deepsparse",
+        engine_type="onnxruntime",
+    )
+
+
+def test_resolve_known_llm_model(llm_type_hf_model):
+    assert (
+        resolve_integration(model=llm_type_hf_model, datasets="")
+        == "lm-evaluation-harness"
+    )
+
+
+def test_resolve_unknown_model(not_llm_type_hf_model):
+    assert resolve_integration(model=not_llm_type_hf_model, datasets="") is None
+
+
+def test_if_generative_language_model_true(llm_type_hf_model):
+    assert if_generative_language_model(llm_type_hf_model)
+
+
+def test_if_generative_language_model_false(not_llm_type_hf_model):
+    assert not if_generative_language_model(not_llm_type_hf_model)
+
+
+def test_if_generative_language_pipeline_true(llm_type_pipeline):
+    assert if_generative_language_model(llm_type_pipeline)
 
 
 def test_get_save_path_path_provided(tmpdir):
@@ -46,15 +95,20 @@ def torch_target():
 
 
 def test_initialize_model_from_target_pipeline_onnx(pipeline_target):
-    model = text_generation_model_from_target(pipeline_target, "onnxruntime")
+    model = create_model_from_target(pipeline_target, "onnxruntime")
     assert model.ops.get("single_engine")._engine_type == "onnxruntime"
 
 
 def test_initialize_model_from_target_pipeline_deepsparse(pipeline_target):
-    model = text_generation_model_from_target(pipeline_target, "deepsparse")
+    model = create_model_from_target(pipeline_target, "deepsparse")
     assert model.ops.get("single_engine")._engine_type == "deepsparse"
 
 
+def test_initialize_model_from_target_pipeline_with_kwargs(pipeline_target):
+    model = create_model_from_target(pipeline_target, "deepsparse", sequence_length=64)
+    assert model.ops.get("process_input").sequence_length == 64
+
+
 def test_initialize_model_from_target_torch(torch_target):
-    model = text_generation_model_from_target(torch_target, "torch")
+    model = create_model_from_target(torch_target, "torch")
     assert isinstance(model, GPTNeoForCausalLM)
