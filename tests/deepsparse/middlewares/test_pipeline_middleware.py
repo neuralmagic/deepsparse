@@ -12,67 +12,47 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""
-Simple example and testing middlewares in Ops and Pipeline
-"""
 
-from typing import Dict
-
-from pydantic import BaseModel
-
-from deepsparse import Pipeline
 from deepsparse.middlewares import MiddlewareManager, MiddlewareSpec
-from deepsparse.operators import Operator
+from deepsparse.pipeline import Pipeline
 from deepsparse.routers import LinearRouter
-from deepsparse.schedulers import OperatorScheduler
+from deepsparse.schedulers import ContinuousBatchingScheduler, OperatorScheduler
 from tests.deepsparse.middlewares import PrintingMiddleware, SendStateMiddleware
+from tests.deepsparse.pipelines.test_basic_pipeline import (
+    AddOneOperator,
+    AddTwoOperator,
+    IntSchema,
+)
 
 
-class IntSchema(BaseModel):
-    value: int
-
-
-class AddOneOperator(Operator):
-    input_schema = IntSchema
-    output_schema = IntSchema
-
-    def run(self, inp: IntSchema, **kwargs) -> Dict:
-        return {"value": inp.value + 1}
-
-
-class AddTwoOperator(Operator):
-    input_schema = IntSchema
-    output_schema = IntSchema
-
-    def run(self, inp: IntSchema, **kwargs) -> Dict:
-        return {"value": inp.value + 2}
-
-
-def test_middleware_execution_in_pipeline_and_operator():
-    """Test Pipeline using middlewares"""
+def test_pipeline_with_middleware():
+    """Check runtimes from timer manager saved into timer_manager"""
 
     middlewares = [
-        MiddlewareSpec(PrintingMiddleware),
-        MiddlewareSpec(SendStateMiddleware),
+        MiddlewareSpec(PrintingMiddleware),  # debugging
+        MiddlewareSpec(SendStateMiddleware),  # for callable entry and exit order
     ]
 
-    middleware_manager = MiddlewareManager(middlewares)
+    ops = [AddOneOperator(), AddTwoOperator()]
 
     AddThreePipeline = Pipeline(
-        ops=[AddOneOperator(), AddTwoOperator()],
+        ops=ops,
         router=LinearRouter(end_route=2),
         schedulers=[OperatorScheduler()],
-        middleware_manager=middleware_manager,
+        continuous_batching_scheduler=ContinuousBatchingScheduler,
+        middleware_manager=MiddlewareManager(middlewares),
     )
 
     pipeline_input = IntSchema(value=5)
     pipeline_output = AddThreePipeline(pipeline_input)
-
     assert pipeline_output.value == 8
+
+    # check middleware triggered for Pipeline and Ops as expected
+    state = AddThreePipeline.middleware_manager.state
+    assert "SendStateMiddleware" in state
 
     # SendStateMiddleware, order of calls:
     # Pipeline start, AddOneOperator start, AddOneOperator end
-    # AddTwoOperator start, AddTwoOperator end, Pipeline_ end
+    # AddTwoOperator start, AddTwoOperator end, Pipeline end
     expected_order = [0, 0, 1, 0, 1, 1]
-    state = AddThreePipeline.middleware_manager.state
     assert state["SendStateMiddleware"] == expected_order

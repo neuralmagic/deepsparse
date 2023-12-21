@@ -21,7 +21,6 @@ from deepsparse.middlewares import MiddlewareCallable
 class DummyMiddleware(MiddlewareCallable):
     def __init__(self, **kwargs):
         self.kwargs = kwargs
-        ...
 
     def __call__(self, *args, **kwargs) -> Any:
         ...
