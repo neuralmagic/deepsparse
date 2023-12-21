@@ -1,4 +1,4 @@
 deepsparse[onnxruntime]
-gradio==3.19.1
+gradio==4.11.0
 python-digitalocean>=1.17.0
 psutil>=5.9.4
