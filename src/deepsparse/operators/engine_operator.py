@@ -152,10 +152,10 @@ class EngineOperator(Operator):
             constructor/compilation
         :return: inference engine
         """
-
         onnx_file_path = kwargs.pop("model_path", self.model_path)
         engine_args = deepcopy(self._engine_args)
         engine_args.update(kwargs)
+
         engine_type = self._engine_type.lower()
 
         if engine_type == DEEPSPARSE_ENGINE:

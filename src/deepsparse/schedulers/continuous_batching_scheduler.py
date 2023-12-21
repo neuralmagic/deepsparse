@@ -166,17 +166,8 @@ class ContinuousBatchingScheduler(OperatorScheduler):
             if batch_size == 1:
                 continue  # already added
 
-            override_model_path = None
-            # text generation/NLEngineOperator specific; could add generic method
-            # for all engine_operators, if desired
-            if hasattr(engine_operator, "override_model_inputs"):
-                override_model_path = engine_operator.override_model_inputs(
-                    model_path=engine_operator.model_path, batch_size=batch_size
-                )
-
-            # will break for internal kv_cache; needs additional argument
             operator_engines[batch_size] = engine_operator.create_engine(
-                batch_size=batch_size, model_path=override_model_path
+                batch_size=batch_size
             )
 
         self._operators_to_engines[engine_operator] = operator_engines
