@@ -115,7 +115,7 @@ def test_middleware_nested_pipeline():
 
     inference_state = InferenceState()
     inference_state.create_state({})
-    timer = AddThreePipeline.timer_manager.get_shared_timer()
+    timer = AddThreePipeline.timer_manager.get_new_timer()
     inference_state.set_timer(timer)
 
     pipeline_output = AddThreePipeline(pipeline_input, inference_state=inference_state)

@@ -391,7 +391,7 @@ class Pipeline(Operator):
             inference_state = InferenceState()
             inference_state.create_state({})
 
-            timer = self.timer_manager.get_shared_timer()
+            timer = self.timer_manager.get_new_timer()
             inference_state.set_timer(timer)
             is_nested = False
 
