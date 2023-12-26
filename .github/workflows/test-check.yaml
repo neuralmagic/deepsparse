@@ -40,6 +40,8 @@ jobs:
           repository: "neuralmagic/sparsezoo"
           path: "sparsezoo"
           ref: ${{needs.test-setup.outputs.branch}}
+      - name: "Update pip"
+        run: pip install -U pip
       - name: "⚙️ Install sparsezoo dependencies"
         run: pip install sparsezoo/
       - name: "Clean sparsezoo directory"
