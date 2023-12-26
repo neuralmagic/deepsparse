@@ -13,7 +13,11 @@
 # limitations under the License.
 import warnings
 from abc import ABC
+from contextlib import contextmanager
+from copy import deepcopy
 from typing import Any, Union
+
+from deepsparse.utils.time import Timer
 
 
 __all__ = ["State", "PipelineState", "InferenceState"]
@@ -26,6 +30,7 @@ class State(ABC):
     """
 
     def __init__(self):
+        super().__init__()
         self._current_state = None
 
     @property
@@ -45,14 +50,45 @@ class PipelineState(State):
         self._current_state = new_state
 
 
-class InferenceState(State):
+class TimerState:
+    """TimerState shared among all InferenceState"""
+
+    def __init__(self):
+        super().__init__()
+        self._timer = None
+
+    @contextmanager
+    def time(self, id: str):
+        if self._timer is not None:
+            with self.timer.time(id=id):
+                yield
+        else:
+            yield  # null context
+
+    def set_timer(self, timer: Timer):
+        self._timer = timer
+
+    @property
+    def timer(self):
+        return self._timer
+
+    @timer.setter
+    def timer(self, timer: Timer):
+        self._timer = timer
+
+
+class InferenceState(State, TimerState):
     """
     Inference state, created during every inference run.
     """
 
+    def __init__(self):
+        super().__init__()
+
     def create_state(self, new_state: dict):
         if self._current_state:
             warnings.warn("Current state already exists, overriding.")
+
         self._current_state = new_state
 
     def update_value(self, attribute: str, value: Union[str, int, list]):
@@ -62,3 +98,25 @@ class InferenceState(State):
 
     def update_state(self, value: Any):
         self._current_state.update(value)
+
+    def get_state(self, key: str):
+        """Get value in current_state, if any"""
+        if key in self.current_state:
+            return self.current_state[key]
+
+    def copy_state(self, props=["timer"]):
+        """copy everything except the attrs in props"""
+
+        original_values = {
+            prop: getattr(self, prop) for prop in props if hasattr(self, prop)
+        }
+        for prop in props:
+            setattr(self, prop, None)
+
+        copied_state = deepcopy(self)
+
+        for prop, value in original_values.items():
+            setattr(copied_state, prop, value)
+            setattr(self, prop, value)
+
+        return copied_state
