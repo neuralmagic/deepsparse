@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import asyncio
-import copy
 import logging
 import os
 from pathlib import Path
@@ -30,6 +29,7 @@ from deepsparse.schedulers import (
 from deepsparse.subgraph_execute import SubGraphExecutor
 from deepsparse.utils import InferenceState, PipelineState
 from deepsparse.utils.subgraph import SubGraph
+from deepsparse.utils.time import TimerManager
 
 
 __all__ = [
@@ -68,6 +68,8 @@ class Pipeline(Operator):
     :param schedulers: A list of schedulers to run operators.
     :param pipeline_state: pipeline_state created during pipeline initialization
     :param middleware_manager: middlewares to be used in Pipeline and Operator
+    :param timer_manager: instantiated TimerManger to track timings
+
     """
 
     def __init__(
@@ -79,6 +81,7 @@ class Pipeline(Operator):
         continuous_batching_scheduler: Optional[ContinuousBatchingScheduler] = None,
         pipeline_state: Optional[PipelineState] = None,
         middleware_manager: Optional[MiddlewareManager] = None,
+        timer_manager: Optional[TimerManager] = None,
     ):
 
         self.ops = ops
@@ -88,6 +91,7 @@ class Pipeline(Operator):
         self.pipeline_state = pipeline_state
         self._continuous_batching_scheduler = continuous_batching_scheduler
         self.middleware_manager = middleware_manager
+        self.timer_manager = timer_manager or TimerManager()
         self.validate()
 
         self._scheduler_group = SchedulerGroup(self.schedulers)
@@ -386,7 +390,10 @@ class Pipeline(Operator):
             inference_state = kwargs.pop("inference_state")
         else:
             inference_state = InferenceState()
+            if self.timer_manager is not None:
+                timer = self.timer_manager.get_new_timer()
             inference_state.create_state({})
+            inference_state.set_timer(timer)
 
         kwargs["inference_state"] = inference_state
 
@@ -578,7 +585,7 @@ class Pipeline(Operator):
         """
         graphs = [
             SubGraph(
-                inf=copy.deepcopy(inference_state),
+                inf=inference_state.copy_state(),
                 step=step,
                 end=end,
             )
