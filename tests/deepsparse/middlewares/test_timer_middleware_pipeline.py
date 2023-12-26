@@ -26,10 +26,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
 from collections import defaultdict
 from typing import List
 
-import pytest
 from deepsparse.middlewares import MiddlewareManager, MiddlewareSpec, TimerMiddleware
 from deepsparse.pipeline import Pipeline
 from deepsparse.routers import LinearRouter
@@ -41,6 +41,7 @@ from tests.deepsparse.pipelines.test_basic_pipeline import (
     AddTwoOperator,
     IntSchema,
 )
+from tests.deepsparse.utils.wrappers import asyncio_run
 
 
 def test_timer_middleware_timings_saved_in_timer_manager():
@@ -135,7 +136,7 @@ def test_middleware_nested_pipeline():
     assert "AddTwoOperator" in measurements
 
 
-@pytest.mark.asyncio
+@asyncio_run
 async def test_timer_middleware_timings_saved_in_timer_manager_async():
     """Check middlewares in async_run"""
 

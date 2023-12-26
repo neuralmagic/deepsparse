@@ -164,63 +164,73 @@ class Pipeline(Operator):
 
         next_step = self.router.START_ROUTE
         operator_output = None
+        if (
+            not hasattr(inference_state, "timer")
+            or getattr(inference_state, "timer") is None
+        ):
+            timer = self.timer_manager.get_new_timer()
+            inference_state.set_timer(timer)
 
-        while next_step != self.router.END_ROUTE:
-            # Check if running streaming; if that is the case, will return
-            # an AsyncGenerator. This requires the pipeline to support
-            # streaming with a generator_router set
-            if inference_state.current_state.get("streaming"):
-                return self._run_generate_async(
-                    operator_output=operator_output,
-                    inference_state=inference_state,
-                    next_step=next_step,
-                )
-
-            # Non Streaming/Generator pathway
-            if next_step == self.router.SPLIT_ROUTE:
-                if operator_output is None:
-                    raise ValueError(
-                        f"{self.router.SPLIT_ROUTE} should appear after "
-                        f"{self.ROUTER.START_ROUTE}"
-                    )
-
-                operator_output = await self._apply_split_async(
-                    operator_output, inference_state, loop=loop
-                )
-                next_step = self.router.JOIN_ROUTE
-
-            else:
-                if next_step == self.router.START_ROUTE:
-                    outputs = self.run_func(
-                        *args,
-                        func=self._scheduler_group.submit,
-                        operator=self.ops[next_step],
+        with inference_state.time(id="total"):
+            while next_step != self.router.END_ROUTE:
+                # Check if running streaming; if that is the case, will return
+                # an AsyncGenerator. This requires the pipeline to support
+                # streaming with a generator_router set
+                if inference_state.current_state.get("streaming"):
+                    return self._run_generate_async(
+                        operator_output=operator_output,
                         inference_state=inference_state,
-                        pipeline_state=self.pipeline_state,
-                        loop=loop,
-                        **kwargs,
-                    )
-                else:
-                    outputs = self._run_next(
-                        inp=operator_output,
                         next_step=next_step,
-                        inference_state=inference_state,
-                        loop=loop,
                     )
 
-                await outputs
-                operator_output = outputs.result()
+                # Non Streaming/Generator pathway
+                if next_step == self.router.SPLIT_ROUTE:
+                    if operator_output is None:
+                        raise ValueError(
+                            f"{self.router.SPLIT_ROUTE} should appear after "
+                            f"{self.ROUTER.START_ROUTE}"
+                        )
 
-                if isinstance(operator_output, tuple):
-                    operator_output, state_update = (
-                        operator_output[0],
-                        operator_output[-1],
+                    operator_output = await self._apply_split_async(
+                        operator_output, inference_state, loop=loop
                     )
-                    inference_state.update_state(state_update)
+                    next_step = self.router.JOIN_ROUTE
 
-            next_step = self.router.next(next_step, self.ops, operator_output)
+                else:
+                    if next_step == self.router.START_ROUTE:
+                        outputs = self.run_func(
+                            *args,
+                            func=self._scheduler_group.submit,
+                            operator=self.ops[next_step],
+                            inference_state=inference_state,
+                            pipeline_state=self.pipeline_state,
+                            loop=loop,
+                            **kwargs,
+                        )
+                    else:
+                        outputs = self._run_next(
+                            inp=operator_output,
+                            next_step=next_step,
+                            inference_state=inference_state,
+                            loop=loop,
+                        )
 
-        return operator_output
+                    await outputs
+                    operator_output = outputs.result()
+
+                    if isinstance(operator_output, tuple):
+                        operator_output, state_update = (
+                            operator_output[0],
+                            operator_output[-1],
+                        )
+                        inference_state.update_state(state_update)
+
+                next_step = self.router.next(next_step, self.ops, operator_output)
+
+            rtn = operator_output
+
+        self.timer_manager.update(inference_state.timer.measurements)
+        return rtn
 
     def run(
         self,
@@ -469,6 +479,7 @@ class Pipeline(Operator):
             wrapped_operator = self.middleware_manager.wrap(operator)
 
         kwargs["operator"] = wrapped_operator
+        kwargs["name"] = operator.__class__.__name__
         if inp:
             output = (
                 func(*args, **kwargs, **inp)
