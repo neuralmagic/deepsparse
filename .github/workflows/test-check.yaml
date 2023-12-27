@@ -45,7 +45,7 @@ jobs:
       - name: "Clean sparsezoo directory"
         run: rm -r sparsezoo/
       - name: ⚙️ Install dependencies
-        run: pip install .[dev,server,image_classification,transformers]
+        run: pip install .[dev,server,image_classification,transformers,clip]
       - name: Run base tests
         run: make test
   cli-smoke-tests:
