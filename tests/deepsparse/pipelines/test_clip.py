@@ -44,7 +44,7 @@ def custom_process_inputs(self, inputs):
 
 
 # This overrides the process_inputs function globally for all CLIPTextPipeline classes.
-# This is needed for CLIP-ViT-B-32-256x256-DataComp-s34B-b86K since it has a second input
+# This is needed for CLIP-ViT-B-32-256x256-DataComp-s34B-b86K as it has a second input
 # that specifies how many tokens are present.
 CLIPTextPipeline.process_inputs = custom_process_inputs
 
