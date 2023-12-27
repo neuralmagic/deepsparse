@@ -135,10 +135,17 @@ class _FakeDeepsparseLibEngine:
 
 def _to_descriptor(node: ort.NodeArg) -> "_NumpyDescriptor":
     to_numpy_dtype = {
-        "tensor(float)": numpy.float32,
         "tensor(double)": numpy.float64,
-        "tensor(uint8)": numpy.uint8,
+        "tensor(float)": numpy.float32,
+        "tensor(float16)": numpy.float16,
         "tensor(int64)": numpy.int64,
+        "tensor(int32)": numpy.int32,
+        "tensor(int16)": numpy.int16,
+        "tensor(int8)": numpy.int8,
+        "tensor(uint64)": numpy.uint64,
+        "tensor(uint32)": numpy.uint32,
+        "tensor(uint16)": numpy.uint16,
+        "tensor(uint8)": numpy.uint8,
     }
     return _NumpyDescriptor(shape=node.shape, dtype=to_numpy_dtype[node.type])
 
