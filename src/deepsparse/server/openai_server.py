@@ -57,6 +57,15 @@ OPENAI_TO_DEEPSPARSE_MAPPINGS = {
 }
 
 
+def apply_chatml_chat_template(messages: List[Dict[str, str]]) -> str:
+    # When there is no chat template available, use ChatML as the default
+    # https://github.com/openai/openai-python/blob/release-v0.28.1/chatml.md
+    prompt = ""
+    for message in messages:
+        prompt += f"<|im_start|>{message['role']}\n{message['content']}<|im_end|>\n"
+    return prompt
+
+
 class OpenAIServer(Server):
     def __init__(self, **kwargs):
         self.model_list = ModelList()
@@ -101,21 +110,30 @@ class OpenAIServer(Server):
                     f"The model `{model}` does not exist.",
                 )
 
-            try:
-                messages = request.messages
-                # For chat templating, the message needs to be formatted
-                # as a list of dictionaries of `{"role": "", "content": ""}`
-                # https://huggingface.co/docs/transformers/chat_templating
-                if isinstance(messages, str):
-                    messages = [{"role": "user", "content": messages}]
-                elif isinstance(messages, dict):
-                    messages = [messages]
+            messages = request.messages
+            # For chat templating, the message needs to be formatted
+            # as a list of dictionaries of `{"role": "", "content": ""}`
+            # https://huggingface.co/docs/transformers/chat_templating
+            if isinstance(messages, str):
+                messages = [{"role": "user", "content": messages}]
+            elif isinstance(messages, dict):
+                messages = [messages]
 
-                prompt = pipeline.tokenizer.apply_chat_template(
-                    conversation=messages,
-                    add_generation_prompt=request.add_generation_prompt,
-                    tokenize=False,
-                )
+            try:
+                if hasattr(pipeline.tokenizer, "apply_chat_template"):
+                    prompt = pipeline.tokenizer.apply_chat_template(
+                        conversation=messages,
+                        add_generation_prompt=request.add_generation_prompt,
+                        tokenize=False,
+                    )
+                else:
+                    # tokenizer.apply_chat_template requires Transformers>=4.34, so
+                    # if it is not available, default to standard chatml
+                    _LOGGER.warning(
+                        "Cannot use tokenizer.apply_chat_template, please update to "
+                        "transformers>=4.34 for best chat results. Defaulting to ChatML"
+                    )
+                    prompt = apply_chatml_chat_template(messages=messages)
             except Exception as e:
                 _LOGGER.error(f"Error in applying chat template from request: {str(e)}")
                 return create_error_response(HTTPStatus.BAD_REQUEST, str(e))
