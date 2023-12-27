@@ -40,14 +40,12 @@ jobs:
           repository: "neuralmagic/sparsezoo"
           path: "sparsezoo"
           ref: ${{needs.test-setup.outputs.branch}}
-      - name: "Update pip"
-        run: pip install -U pip
       - name: "⚙️ Install sparsezoo dependencies"
         run: pip install sparsezoo/
       - name: "Clean sparsezoo directory"
         run: rm -r sparsezoo/
       - name: ⚙️ Install dependencies
-        run: pip install .[dev,server,image_classification,transformers,clip] opencv-python
+        run: pip install .[dev,server,image_classification,transformers]
       - name: Run base tests
         run: make test
   cli-smoke-tests:
