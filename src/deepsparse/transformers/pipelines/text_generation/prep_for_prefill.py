@@ -36,7 +36,7 @@ class PrepareforPrefill(Operator):
         # instead of at the pipeline level.
         self.kv_cache_creator = kv_cache_creator
 
-        _LOGGER.warn(
+        _LOGGER.info(
             "This operator requires the PipelineState to be set-up with the "
             "cache_shape, output_names, kv_cache_data_type attributes to be set "
             "from the NLEngineOperator"

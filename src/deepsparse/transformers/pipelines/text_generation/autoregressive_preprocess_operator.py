@@ -35,7 +35,7 @@ class AutoRegressiveOperatorPreprocess(Operator):
         self.sequence_length = sequence_length
         self.prompt_sequence_length = prompt_sequence_length
 
-        _LOGGER.warn(
+        _LOGGER.info(
             "This operator requires the PipelineState to be set-up with the "
             "onnx_input_names_no_cache attribute set from the NLEngineOperator."
         )
