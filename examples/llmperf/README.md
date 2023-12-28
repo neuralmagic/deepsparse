@@ -18,7 +18,7 @@ limitations under the License.
 
 ![inter_token_vs_throughput](https://github.com/neuralmagic/deepsparse/assets/3195154/52f3a581-adaa-4853-a442-4f1a1a8d7324)
 
-(LLMPerf)[https://github.com/ray-project/llmperf] is a tool for evaulation the performance of LLM APIs. In this example, we will use this project to benchmark the DeepSparse LLM Server using the OpenAI interface.
+[LLMPerf](https://github.com/ray-project/llmperf) is a tool for evaulation the performance of LLM APIs. In this example, we will use this project to benchmark the DeepSparse LLM Server using the OpenAI interface.
 
 ## Load test
 
@@ -146,7 +146,7 @@ Completed Requests Per Minute: 194.43022532161083
 
 ## Advanced Usage
 
-For a more realistic server benchmark, we will use a more useful LLM called (MiniChat-1.5-3B)[https://huggingface.co/neuralmagic/MiniChat-1.5-3B-pruned50-quant-ds] and enable continuous batching to do parallel decode steps.
+For a more realistic server benchmark, we will use a more useful LLM called [MiniChat-1.5-3B](https://huggingface.co/neuralmagic/MiniChat-1.5-3B-pruned50-quant-ds) and enable continuous batching to do parallel decode steps.
 
 First, we must make a config file to use continuous batching. Let's call it `config.yaml`:
 ```yaml
@@ -220,6 +220,7 @@ p = valid_df.plot.scatter(x="inter_token_latency_s", y="request_output_throughpu
 p.figure.savefig("inter_token_vs_throughput.png")
 p.figure.clf()
 ```
+
 ![e2e_latencies](https://github.com/neuralmagic/deepsparse/assets/3195154/34767a6b-dd4b-4101-bd77-b9f058dcaa43)
 ![inter_token_latencies](https://github.com/neuralmagic/deepsparse/assets/3195154/4e0ee366-9d9c-4a42-b2a0-e5f7676daad7)
 ![inter_token_vs_throughput](https://github.com/neuralmagic/deepsparse/assets/3195154/52f3a581-adaa-4853-a442-4f1a1a8d7324)
