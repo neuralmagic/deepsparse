@@ -1,5 +1,7 @@
 # DeepSparse LLM Benchmarking with LLMPerf
 
+![inter_token_vs_throughput](https://github.com/neuralmagic/deepsparse/assets/3195154/52f3a581-adaa-4853-a442-4f1a1a8d7324)
+
 (LLMPerf)[https://github.com/ray-project/llmperf] is a tool for evaulation the performance of LLM APIs. In this example, we will use this project to benchmark the DeepSparse LLM Server using the OpenAI interface.
 
 ## Load test
@@ -202,3 +204,9 @@ p = valid_df.plot.scatter(x="inter_token_latency_s", y="request_output_throughpu
 p.figure.savefig("inter_token_vs_throughput.png")
 p.figure.clf()
 ```
+![e2e_latencies](https://github.com/neuralmagic/deepsparse/assets/3195154/34767a6b-dd4b-4101-bd77-b9f058dcaa43)
+![inter_token_latencies](https://github.com/neuralmagic/deepsparse/assets/3195154/4e0ee366-9d9c-4a42-b2a0-e5f7676daad7)
+![inter_token_vs_throughput](https://github.com/neuralmagic/deepsparse/assets/3195154/52f3a581-adaa-4853-a442-4f1a1a8d7324)
+![time_to_first_token](https://github.com/neuralmagic/deepsparse/assets/3195154/f8956ad5-0c0f-440b-8a83-18ff4ed07453)
+
+
