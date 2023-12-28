@@ -43,7 +43,7 @@ python token_benchmark_ray.py \
 --mean-output-tokens 100 \
 --stddev-output-tokens 50 \
 --max-num-completed-requests 50 \
---num-concurrent-requests 4 \
+--num-concurrent-requests 1 \
 --llm-api openai
 ```
 
@@ -124,4 +124,81 @@ Number Of Errored Requests: 0
 Overall Output Throughput: 343.3687633083576
 Number Of Completed Requests: 52
 Completed Requests Per Minute: 194.43022532161083
+```
+
+## Advanced Usage
+
+For a more realistic server benchmark, we will use a more useful LLM called (MiniChat-1.5-3B)[https://huggingface.co/neuralmagic/MiniChat-1.5-3B-pruned50-quant-ds] and enable continuous batching to do parallel decode steps.
+
+First, we must make a config file to use continuous batching. Let's call it `config.yaml`:
+```yaml
+integration: openai
+endpoints:
+  - task: text_generation
+    model: hf:neuralmagic/MiniChat-1.5-3B-pruned50-quant-ds
+    kwargs:
+      {"continuous_batch_sizes": [4]}
+```
+
+Then we can start up the server:
+```
+deepsparse.server --integration openai --config_file config.yaml
+```
+
+Finally let's make a more complex benchmark with 4 concurrent requests:
+```
+export OPENAI_API_KEY=dummy
+export OPENAI_API_BASE="http://localhost:5543/v1"
+python token_benchmark_ray.py \
+--model "hf:neuralmagic/MiniChat-1.5-3B-pruned50-quant-ds" \
+--mean-input-tokens 100 \
+--stddev-input-tokens 50 \
+--mean-output-tokens 200 \
+--stddev-output-tokens 50 \
+--max-num-completed-requests 50 \
+--num-concurrent-requests 4 \
+--timeout 600 \
+--results-dir "result_outputs" \
+--llm-api openai
+```
+
+Truncated output:
+```
+Number Of Errored Requests: 0
+Overall Output Throughput: 50.65074661504567
+Number Of Completed Requests: 50
+Completed Requests Per Minute: 14.992820902332216
+```
+
+Since we saved the output to `result_outputs/`, we can also analyze it! See the code below and resulting image made from the above run:
+
+```python
+import pandas as pd
+
+# path to the individual responses json file
+df = pd.read_json('result_outputs/hf-neuralmagic-MiniChat-1-5-3B-pruned50-quant-ds_100_200_individual_responses.json')
+valid_df = df[(df["error_code"] != "")]
+print(valid_df.columns)
+
+# End to end latency
+all_token_latencies = valid_df['end_to_end_latency_s'].apply(pd.Series).stack()
+p = all_token_latencies.plot.hist(title="End-to-end Latencies (s)", bins=30)
+p.figure.savefig("e2e_latencies.png")
+p.figure.clf()
+
+# Inter-token latency
+inter_token_latencies = valid_df['inter_token_latency_s'].apply(pd.Series).stack() * 1000
+p = inter_token_latencies.plot.hist(title="Inter-token Latencies (ms)", bins=30)
+p.figure.savefig("inter_token_latencies.png")
+p.figure.clf()
+
+# Time to first token
+p = valid_df.plot.scatter(x="number_input_tokens", y="ttft_s", title="Number of Input Tokens vs. TTFT")
+p.figure.savefig("time_to_first_token.png")
+p.figure.clf()
+
+# Time to first token
+p = valid_df.plot.scatter(x="inter_token_latency_s", y="request_output_throughput_token_per_s", title="Inter-token Latency vs. Output Throughput")
+p.figure.savefig("inter_token_vs_throughput.png")
+p.figure.clf()
 ```
