@@ -57,6 +57,15 @@ OPENAI_TO_DEEPSPARSE_MAPPINGS = {
 }
 
 
+def apply_chatml_chat_template(messages: List[Dict[str, str]]) -> str:
+    # When there is no chat template available, use ChatML as the default
+    # https://github.com/openai/openai-python/blob/release-v0.28.1/chatml.md
+    prompt = ""
+    for message in messages:
+        prompt += f"<|im_start|>{message['role']}\n{message['content']}<|im_end|>\n"
+    return prompt
+
+
 class OpenAIServer(Server):
     def __init__(self, **kwargs):
         self.model_list = ModelList()
@@ -93,48 +102,44 @@ class OpenAIServer(Server):
             request = ChatCompletionRequest(**await raw_request.json())
             _LOGGER.debug("Received chat completion request %s" % request)
 
-            if isinstance(request.messages, str):
-                prompt = request.messages
-            else:
-                # else case assums a FastChat-compliant dictionary
-                # Fetch a model-specific template from FastChat
-                _LOGGER.warning(
-                    "A dictionary message was found. This dictionary must "
-                    "be fastchat compliant."
-                )
-                try:
-                    from fastchat.model.model_adapter import get_conversation_template
-                except ImportError as e:
-                    return create_error_response(HTTPStatus.FAILED_DEPENDENCY, str(e))
-
-                conv = get_conversation_template(request.model)
-                message = request.messages
-                # add the model to the Conversation template, based on the given role
-                msg_role = message["role"]
-                if msg_role == "system":
-                    conv.system_message = message["content"]
-                elif msg_role == "user":
-                    conv.append_message(conv.roles[0], message["content"])
-                elif msg_role == "assistant":
-                    conv.append_message(conv.roles[1], message["content"])
-                else:
-                    return create_error_response(
-                        HTTPStatus.BAD_REQUEST, "Message role not recognized"
-                    )
-
-                # blank message to start generation
-                conv.append_message(conv.roles[1], None)
-                prompt = conv.get_prompt()
-
-            request_id = f"cmpl-{random_uuid()}"
-            created_time = int(time.time())
             model = request.model
-
             pipeline = app.model_to_pipeline.get(model)
             if not pipeline:
                 return create_error_response(
-                    HTTPStatus.BAD_REQUEST, f"{model} is not available"
+                    HTTPStatus.BAD_REQUEST,
+                    f"The model `{model}` does not exist.",
                 )
+
+            messages = request.messages
+            # For chat templating, the message needs to be formatted
+            # as a list of dictionaries of `{"role": "", "content": ""}`
+            # https://huggingface.co/docs/transformers/chat_templating
+            if isinstance(messages, str):
+                messages = [{"role": "user", "content": messages}]
+            elif isinstance(messages, dict):
+                messages = [messages]
+
+            try:
+                if hasattr(pipeline.tokenizer, "apply_chat_template"):
+                    prompt = pipeline.tokenizer.apply_chat_template(
+                        conversation=messages,
+                        add_generation_prompt=request.add_generation_prompt,
+                        tokenize=False,
+                    )
+                else:
+                    # tokenizer.apply_chat_template requires Transformers>=4.34, so
+                    # if it is not available, default to standard chatml
+                    _LOGGER.warning(
+                        "Cannot use tokenizer.apply_chat_template, please update to "
+                        "transformers>=4.34 for best chat results. Defaulting to ChatML"
+                    )
+                    prompt = apply_chatml_chat_template(messages=messages)
+            except Exception as e:
+                _LOGGER.error(f"Error in applying chat template from request: {str(e)}")
+                return create_error_response(HTTPStatus.BAD_REQUEST, str(e))
+
+            request_id = f"cmpl-{random_uuid()}"
+            created_time = int(time.time())
 
             try:
                 sampling_params = dict(
@@ -189,9 +194,9 @@ class OpenAIServer(Server):
                 )
                 choices.append(choice_data)
 
-            num_prompt_tokens = len(final_res.prompt_token_ids)
+            num_prompt_tokens = len(final_res.prompt_token_ids["input_ids"])
             num_generated_tokens = sum(
-                len(output.token_ids) for output in final_res.outputs
+                len(output.token_ids["input_ids"]) for output in final_res.outputs
             )
             usage = UsageInfo(
                 prompt_tokens=num_prompt_tokens,
@@ -221,7 +226,8 @@ class OpenAIServer(Server):
             pipeline = app.model_to_pipeline.get(model)
             if not pipeline:
                 return create_error_response(
-                    HTTPStatus.BAD_REQUEST, f"{model} is not available"
+                    HTTPStatus.BAD_REQUEST,
+                    f"The model `{model}` does not exist.",
                 )
 
             request_id = f"cmpl-{random_uuid()}"
@@ -284,9 +290,9 @@ class OpenAIServer(Server):
                 )
                 choices.append(choice_data)
 
-            num_prompt_tokens = len(final_res.prompt_token_ids)
+            num_prompt_tokens = len(final_res.prompt_token_ids["input_ids"])
             num_generated_tokens = sum(
-                len(output.token_ids) for output in final_res.outputs
+                len(output.token_ids["input_ids"]) for output in final_res.outputs
             )
             usage = UsageInfo(
                 prompt_tokens=num_prompt_tokens,

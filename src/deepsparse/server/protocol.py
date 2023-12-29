@@ -107,7 +107,7 @@ class ChatCompletionRequest(BaseModel):
     """
 
     model: Optional[str] = None
-    messages: Union[str, Dict[str, str]]
+    messages: Union[str, List[Dict[str, str]], Dict[str, str]]
     temperature: Optional[float] = 0.7
     top_p: Optional[float] = 1.0
     n: Optional[int] = 1
@@ -123,6 +123,7 @@ class ChatCompletionRequest(BaseModel):
     top_k: Optional[int] = -1
     ignore_eos: Optional[bool] = False
     use_beam_search: Optional[bool] = False
+    add_generation_prompt: Optional[bool] = True
 
 
 class CompletionRequest(BaseModel):
