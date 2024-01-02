@@ -15,7 +15,7 @@
 This test suite consumes config files to test the text generation pipeline
 for various scenarios.
 
-A sample config file is a yaml that r_equires the following fields:
+A sample config file is a yaml that requires the following fields:
     cadence: The cadence of the tests. The available options are:
               "nightly", "weekly" and "commit". By default, only
               the tests that have cadence "commit" will be run
@@ -23,6 +23,8 @@ A sample config file is a yaml that r_equires the following fields:
               list of strings.
     model_path: The path to the model to be tested
                 (sparsezoo stub/hf model path/local_path)
+    model_name_no_kv_cache: The name of the onnx model without
+                            the KV cache support
     torch_model_name: The name of the torch model
                 (to generate ground truth info)
     prompt: The prompt to use for testing
@@ -33,17 +35,18 @@ A sample config file is a yaml that r_equires the following fields:
         values: [True], [False] or [True, False] (to test both
         external and internal KV cache management)
 """
-import os
 from typing import List, Tuple
 
 import numpy
 
 import pytest
-from deepsparse import Pipeline
-from deepsparse.transformers.pipelines.text_generation import TextGenerationPipeline
+from deepsparse.pipeline import Pipeline
+from deepsparse.transformers.pipelines.text_generation import (
+    TextGenerationPipeline,
+    TextGenerationPipelineNoCache,
+)
 from deepsparse.transformers.schemas.text_generation_schemas import TextGenerationOutput
-from sparsezoo import Model
-from tests.deepsparse.transformers.pipelines.legacy.integration_tests.helpers import (
+from tests.deepsparse.transformers.text_generation.integration_tests.helpers import (
     TorchGroundTruthSource,
     parse_params,
     validate_internal_kv_cache,
@@ -71,7 +74,7 @@ class TestsIntegrationLLMsPipelines:
     the text generation pipeline.
     """
 
-    def get_pipeline(self, **kwargs) -> Pipeline:
+    def get_pipeline(self, kv_cache_support=True, **kwargs) -> Pipeline:
         """
         If no kwargs provided, returns the cached "default"
         pipeline that is used for most of the tests.
@@ -84,9 +87,17 @@ class TestsIntegrationLLMsPipelines:
             "default" pipeline is returned)
         :return: the appropriate pipeline
         """
+        # TODO: This if statement should disappear once
+        # the TextGenerationPipeline contains the
+        # non-kv-cache version of the pipeline
+        text_generation_pipeline_class = (
+            TextGenerationPipeline
+            if kv_cache_support
+            else TextGenerationPipelineNoCache
+        )
         if not kwargs:
             if self.default_pipeline is None:
-                self.default_pipeline = TextGenerationPipeline(
+                self.default_pipeline = text_generation_pipeline_class(
                     **self.default_pipeline_kwargs
                 )
             return self.default_pipeline
@@ -94,7 +105,7 @@ class TestsIntegrationLLMsPipelines:
         # return a pipeline with the updated default kwargs
         updated_kwargs = self.default_pipeline_kwargs.copy()
         updated_kwargs.update(kwargs)
-        return TextGenerationPipeline(**updated_kwargs)
+        return text_generation_pipeline_class(**updated_kwargs)
 
     @pytest.fixture
     def setup(self, params_dict, max_new_tokens, internal_kv_cache):
@@ -164,9 +175,7 @@ class TestsIntegrationLLMsPipelines:
             pytest.skip(
                 "Cannot run ORT pipeline with the internal deepsparse cache enabled."
             )
-        pipeline = self.get_pipeline(
-            engine_type="onnxruntime",
-        )
+        pipeline = self.get_pipeline(engine_type="onnxruntime")
         output = pipeline(
             prompt=self.prompt,
             include_prompt_logits=True,
@@ -229,42 +238,32 @@ class TestsIntegrationLLMsPipelines:
             run_kv_cache_validation=not self.internal_kv_cache,
         )
 
-    @pytest.mark.skip(
-        "This test is skipped because we do "
-        "not have support for non-kv-cache models yet"
-    )
     def test_inference_no_kv_cache_deepsparse(self, setup):
         self._test_inference_no_kv_cache(engine_type="deepsparse")
 
-    @pytest.mark.skip(
-        "This test is skipped because we do "
-        "not have support for non-kv-cache models yet"
-    )
     def test_inference_no_kv_cache_ort(self, setup):
         self._test_inference_no_kv_cache(engine_type="onnxruntime")
 
     def _test_inference_no_kv_cache(self, engine_type):
-        model_path_no_cache = self._get_model_path_no_cache()
         pipeline = self.get_pipeline(
-            model_path=model_path_no_cache, engine_type=engine_type
-        )
-        assert not pipeline.cache_support_enabled, (
-            "This pipeline test inference using non-kv cache "
-            "model and thus should not support kv cache"
+            onnx_model_name=self.model_name_no_kv_cache,
+            kv_cache_support=False,
+            engine_type=engine_type,
         )
 
         output = pipeline(
-            self.prompt, max_length=1, output_scores=True, include_prompt_logits=True
+            prompt=[self.prompt, self.prompt],
+            include_prompt_logits=True,
+            generation_kwargs=dict(output_scores=True),
         )
-        prompt_length = self.torch_ground_truth[1].shape[1]
-        # prompt logits + one logit for the new generated token
-        logits = output.generations[0].score[-(prompt_length + 1) :, :]
-        # compute ground truth logits analogously
+
+        # logits -> prompt logits + one logit for the new generated token
         generated_logits, prompt_logits, *_ = self.torch_ground_truth
         logits_gt = numpy.concatenate(
             [prompt_logits[0], generated_logits[0, :1, :]], axis=0
         )
-        assert numpy.allclose(logits, logits_gt, atol=self.precision)
+        for gen in output.generations:
+            assert numpy.allclose(gen.score, logits_gt, atol=self.precision)
 
     def _test_output(
         self,
@@ -320,51 +319,3 @@ class TestsIntegrationLLMsPipelines:
             assert numpy.allclose(
                 x[:, :, -start_index:-end_index, :], y, atol=self.precision
             )
-
-    def _get_model_path_no_cache(self):
-        if not self.model_path.startswith("zoo:"):
-            pytest.skip("For this test, for now only the zoo model is supported")
-        model = Model(self.model_path)
-        # fetch the necessary file names for pipeline creation
-        required_file_names = [
-            os.path.basename(file.name) for file in model.deployment.files
-        ]
-        training_directory = model.training
-        onnx_model_name_no_cache = [
-            os.path.basename(file.name)
-            for file in model.training.files
-            if file.name.endswith(".onnx")
-        ][0]
-
-        # check if 'training' exists,
-        # if not, download the files
-        if "training" not in os.listdir(model._path):
-            for filename in required_file_names:
-                # download the files to a training directory
-                if filename.endswith(".data"):
-                    # data files are typically stored in a deployment directory
-                    # download them to training
-                    file = model.deployment.get_file(filename)
-                    assert (
-                        file is not None
-                    ), f"Unable to find file {filename} in model {model}"
-                    file.name = file.name.replace("deployment", "training")
-                    file.download()
-                    continue
-
-                if filename.endswith(".onnx"):
-                    # instead of `model.onnx` the onnx_model_name_no_cache
-                    # should be downloaded
-                    filename = filename.replace("model.onnx", onnx_model_name_no_cache)
-
-                file = training_directory.get_file(filename)
-                assert (
-                    file is not None
-                ), f"Unable to find file {filename} in model {model}"
-                file.download()
-            # rename the model file to `model.onnx`
-            os.rename(
-                os.path.join(training_directory.path, onnx_model_name_no_cache),
-                os.path.join(training_directory.path, "model.onnx"),
-            )
-        return training_directory._path

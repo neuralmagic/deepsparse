@@ -165,3 +165,11 @@ class TextGenerationOutput(BaseModel):
     class Config:
         arbitrary_types_allowed = True
         extra = "allow"
+
+
+class PromptLogitsNoKVCacheInference(BaseModel):
+    prompt_logits: Any = Field(
+        description="A set of prompt logits generated "
+        "during the inference pass with a "
+        "non-kv cache model"
+    )
