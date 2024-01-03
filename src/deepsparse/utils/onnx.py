@@ -56,12 +56,12 @@ __all__ = [
     "has_model_kv_cache",
     "CACHE_INPUT_PREFIX",
     "CACHE_OUTPUT_PREFIX",
-    "_MODEL_DIR_ONNX_NAME",
+    "MODEL_ONNX_NAME",
 ]
 
 _LOGGER = logging.getLogger(__name__)
 
-_MODEL_DIR_ONNX_NAME = "model.onnx"
+MODEL_ONNX_NAME = "model.onnx"
 CACHE_INPUT_PREFIX = "past_key_values"
 CACHE_OUTPUT_PREFIX = "present"
 
@@ -132,7 +132,7 @@ def model_to_path(model: Union[str, Model, File]) -> str:
         model.deployment.path
 
         # default to the main onnx file for the model
-        model = model.deployment.get_file(_MODEL_DIR_ONNX_NAME).path
+        model = model.deployment.get_file(MODEL_ONNX_NAME).path
 
     elif File is not object and isinstance(model, File):
         # get the downloaded_path -- will auto download if not on local system
@@ -143,10 +143,10 @@ def model_to_path(model: Union[str, Model, File]) -> str:
         from huggingface_hub import snapshot_download
 
         deployment_path = snapshot_download(repo_id=model.replace("hf:", "", 1))
-        onnx_path = os.path.join(deployment_path, _MODEL_DIR_ONNX_NAME)
+        onnx_path = os.path.join(deployment_path, MODEL_ONNX_NAME)
         if not os.path.isfile(onnx_path):
             raise ValueError(
-                f"Could not find the ONNX model file '{_MODEL_DIR_ONNX_NAME}' in the "
+                f"Could not find the ONNX model file '{MODEL_ONNX_NAME}' in the "
                 f"Hugging Face Hub repository located at {deployment_path}. Please "
                 f"ensure the model has been correctly exported to ONNX format and "
                 f"exists in the repository."
@@ -161,7 +161,7 @@ def model_to_path(model: Union[str, Model, File]) -> str:
 
     model_path = Path(model)
     if model_path.is_dir():
-        return str(model_path / _MODEL_DIR_ONNX_NAME)
+        return str(model_path / MODEL_ONNX_NAME)
 
     return model
 
