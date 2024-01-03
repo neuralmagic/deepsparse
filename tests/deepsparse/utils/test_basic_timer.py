@@ -86,12 +86,6 @@ def test_pipelines_with_shared_timer_manager():
     )
     pipeline_input = IntSchema(value=5)
     pipeline_output = AddThreePipeline(pipeline_input)
-    AddThreePipeline = Pipeline(
-        ops=[AddOneOperator(), AddTwoOperator()],
-        router=LinearRouter(end_route=2),
-        schedulers=[OperatorScheduler()],
-    )
-    pipeline_output = AddThreePipeline(pipeline_input)
 
     assert pipeline_output.value == 8
     assert len(AddThreePipeline.timer_manager.measurements) == 1
@@ -107,15 +101,16 @@ def test_pipelines_with_shared_timer_manager():
 
     assert pipeline_output2.value == 8
 
-    assert len(AddThreePipeline.timer_manager.measurements) == 2
+    measurements = AddThreePipeline.timer_manager.measurements
+    assert len(measurements) == 2
 
     assert (
         AddThreePipeline.timer_manager.measurements
         == AddThreePipeline2.timer_manager.measurements
     )
 
-    pipeline1_measuremnts = AddThreePipeline2.timer_manager.measurements[0]
-    pipeline2_measuremnts = AddThreePipeline2.timer_manager.measurements[1]
+    pipeline1_measuremnts = measurements[0]
+    pipeline2_measuremnts = measurements[1]
 
     # Check that the keys are the same, and running two identical pipeline runtimes
     # are reproducible within delta

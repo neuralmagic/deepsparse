@@ -230,6 +230,7 @@ class Pipeline(Operator):
                         inference_state.update_state(state_update)
 
                 next_step = self.router.next(next_step, self.ops, operator_output)
+
             rtn = operator_output
 
         self.timer_manager.update(inference_state.timer.measurements)
@@ -492,7 +493,12 @@ class Pipeline(Operator):
             wrapped_operator = self.middleware_manager.wrap(operator)
 
         kwargs["operator"] = wrapped_operator
-        kwargs["name"] = operator.__class__.__name__
+
+        if isinstance(inp, Dict):
+            if "name" not in inp:
+                kwargs["name"] = operator.__class__.__name__
+        else:
+            kwargs["name"] = operator.__class__.__name__
 
         if inp:
             output = (
