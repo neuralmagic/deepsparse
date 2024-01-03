@@ -39,6 +39,12 @@ class Timer:
 
 
 class TimerManager:
+    """
+    Timer to keep track of run times
+    Multiple pipeline can use the same TimerManager instance
+    Lock used for sharing measurements in all Operator per Pipeline
+    """
+
     def __init__(self):
         self.lock = threading.RLock()
         self.measurements: List[Dict] = []
@@ -49,3 +55,18 @@ class TimerManager:
     def update(self, measurements: Dict[str, float]):
         with self.lock:
             self.measurements.append(measurements)
+
+    def average(self):
+        """Get the average time for each key in every element inside measurements"""
+
+        summary = {"time": defaultdict(float), "execution": defaultdict(int)}
+
+        for measurement in self.measurements:
+            for key, values in measurement.items():
+                summary["time"][key] += sum(values)
+                summary["execution"][key] += len(values)
+
+        for key in summary["time"]:
+            summary["time"][key] /= summary["execution"][key]
+
+        return {metric: dict(values) for metric, values in summary.items()}

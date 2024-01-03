@@ -195,6 +195,15 @@ def test_timer_middleware_shared_timer():
             pipeline1_measuremnts[key][0] - pipeline2_measuremnts[key][0]
         )
 
+    # Check that the avaerages exist and have correct values
+    averages = AddThreePipeline.timer_manager.average()
+
+    keys = ["AddOneOperator", "AddTwoOperator", "total"]
+    for key in keys:
+        time_combined = pipeline1_measuremnts[key] + pipeline2_measuremnts[key]
+        assert averages["execution"][key] == len(time_combined)
+        assert averages["time"][key] == sum(time_combined) / len(time_combined)
+
 
 @asyncio_run
 async def test_timer_middleware_timings_saved_in_timer_manager_async():
