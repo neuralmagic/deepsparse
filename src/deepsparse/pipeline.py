@@ -156,8 +156,8 @@ class Pipeline(Operator):
             alias=config.alias,
             **kwargs,
         )
-
-    async def run_async(self, *args, inference_state: InferenceState, **kwargs):
+      
+      async def run_async(self, *args, inference_state: InferenceState, **kwargs):
         """
         Run through the operators using the provided router and scheduler.
         The input to a given operator is the output of the previous operator.
@@ -207,31 +207,54 @@ class Pipeline(Operator):
                             func=self._scheduler_group.submit,
                             operator=self.ops[next_step],
                             inference_state=inference_state,
-                            pipeline_state=self.pipeline_state,
-                            loop=loop,
-                            **kwargs,
-                        )
-                    else:
-                        outputs = self._run_next(
-                            inp=operator_output,
                             next_step=next_step,
-                            inference_state=inference_state,
-                            loop=loop,
                         )
 
-                    await outputs
-                    operator_output = outputs.result()
+                    # Non Streaming/Generator pathway
+                    if next_step == self.router.SPLIT_ROUTE:
+                        if operator_output is None:
+                            raise ValueError(
+                                f"{self.router.SPLIT_ROUTE} should appear after "
+                                f"{self.ROUTER.START_ROUTE}"
+                            )
 
-                    if isinstance(operator_output, tuple):
-                        operator_output, state_update = (
-                            operator_output[0],
-                            operator_output[-1],
+                        operator_output = await self._apply_split_async(
+                            operator_output, inference_state, loop=loop
                         )
-                        inference_state.update_state(state_update)
+                        next_step = self.router.JOIN_ROUTE
 
-                next_step = self.router.next(next_step, self.ops, operator_output)
+                    else:
+                        if next_step == self.router.START_ROUTE:
+                            outputs = self.run_func(
+                                *args,
+                                func=self._scheduler_group.submit,
+                                operator=self.ops[next_step],
+                                inference_state=inference_state,
+                                pipeline_state=self.pipeline_state,
+                                loop=loop,
+                                **kwargs,
+                            )
+                        else:
+                            outputs = self._run_next(
+                                inp=operator_output,
+                                next_step=next_step,
+                                inference_state=inference_state,
+                                loop=loop,
+                            )
 
-            rtn = operator_output
+                        await outputs
+                        operator_output = outputs.result()
+
+                        if isinstance(operator_output, tuple):
+                            operator_output, state_update = (
+                                operator_output[0],
+                                operator_output[-1],
+                            )
+                            inference_state.update_state(state_update)
+
+                    next_step = self.router.next(next_step, self.ops, operator_output)
+
+                rtn = operator_output
 
         self.timer_manager.update(inference_state.timer.measurements)
         return rtn
@@ -421,10 +444,15 @@ class Pipeline(Operator):
         # add name for timer measurements key
         kwargs["name"] = "total"
         kwargs["is_nested"] = is_nested
-        rtn = next_call(*args, **kwargs)
 
         # timer shared across all operators, has all measurements
         timer = inference_state.timer
+
+        next_call = self.run
+        if self.middleware_manager is not None:
+            next_call = self.middleware_manager.build_middleware_stack(next_call)
+
+        rtn = next_call(*args, **kwargs)
 
         # update all the measurments
         self.timer_manager.update(timer.measurements)
@@ -476,6 +504,7 @@ class Pipeline(Operator):
         """
         Wrap the operator with middleware and execute the func callable.
         InferenceState, PipelineState is inside kwargs
+
         :param operator: Operator instance
         :param func: Desired function to call. Ex. SchedulerGroup.submit
         :param inp: Any input to the operator. Ex. IntSchema
@@ -488,6 +517,7 @@ class Pipeline(Operator):
 
         kwargs["operator"] = wrapped_operator
         kwargs["name"] = operator.__class__.__name__
+
         if inp:
             output = (
                 func(*args, **kwargs, **inp)

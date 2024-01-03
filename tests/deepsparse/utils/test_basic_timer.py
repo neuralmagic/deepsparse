@@ -67,7 +67,6 @@ def test_pipeline_fine_grained_timer_record_operator_run_times():
 
     measurements: defaultdict[list] = AddThreePipeline.timer_manager.measurements[0]
 
-
     assert len(measurements) == 2
     expected_keys = {"AddTwoOperator", "AddOneOperator"}
     for key in measurements.keys():
