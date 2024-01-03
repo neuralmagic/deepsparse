@@ -401,7 +401,13 @@ class Pipeline(Operator):
         if self.middleware_manager is not None:
             next_call = self.middleware_manager.build_middleware_stack(next_call)
 
-        return next_call(*args, **kwargs)
+        rtn = next_call(*args, **kwargs)
+
+        # register fined grained timer if any before return
+        timer = inference_state.timer
+        self.timer_manager.update(timer.measurements)
+
+        return rtn
 
     def expand_inputs(self, *args, **kwargs):
         """
