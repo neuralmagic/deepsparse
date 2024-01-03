@@ -32,7 +32,7 @@ from deepsparse.utils.onnx import (
 )
 
 
-__all__ = ["NLEngineOperator", "NLEngineInputs"]
+__all__ = ["NLEngineOperator", "NLEngineInputs", "NLEngineOutputs"]
 
 
 class NLEngineInputs(BaseModel):

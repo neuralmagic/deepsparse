@@ -30,11 +30,7 @@ import transformers
 from onnx import ModelProto
 
 from deepsparse.log import get_main_logger
-from deepsparse.utils.onnx import (
-    _MODEL_DIR_ONNX_NAME,
-    model_to_path,
-    truncate_onnx_model,
-)
+from deepsparse.utils.onnx import MODEL_ONNX_NAME, model_to_path, truncate_onnx_model
 from sparsezoo.utils import save_onnx
 
 
@@ -55,6 +51,7 @@ def setup_transformers_pipeline(
     sequence_length: int,
     tokenizer_padding_side: str = "left",
     engine_kwargs: Optional[Dict] = None,
+    onnx_model_name: Optional[str] = None,
 ) -> Tuple[
     str, transformers.PretrainedConfig, transformers.PreTrainedTokenizer, Dict[str, Any]
 ]:
@@ -65,10 +62,14 @@ def setup_transformers_pipeline(
     :param sequence_length: The sequence length to use for the model
     :param tokenizer_padding_side: The side to pad on for the tokenizer,
         either "left" or "right"
+    :param onnx_model_name: The name of the onnx model to be loaded.
+        If not specified, defaults are used (see fetch_onnx_file_path)
     :param engine_kwargs: The kwargs to pass to the engine
     :return The model path, config, tokenizer, and engine kwargs
     """
-    model_path, config, tokenizer = fetch_onnx_file_path(model_path, sequence_length)
+    model_path, config, tokenizer = fetch_onnx_file_path(
+        model_path, sequence_length, onnx_model_name
+    )
 
     tokenizer.padding_side = tokenizer_padding_side
     if not tokenizer.pad_token:
@@ -89,6 +90,7 @@ def setup_transformers_pipeline(
 def fetch_onnx_file_path(
     model_path: str,
     sequence_length: int,
+    onnx_model_name: Optional[str] = None,
     task: Optional[str] = None,
 ) -> Tuple[str, transformers.PretrainedConfig, transformers.PreTrainedTokenizer]:
     """
@@ -97,9 +99,13 @@ def fetch_onnx_file_path(
     derived from the `model_path` provided.
     :param model_path: path to the model to be parsed
     :param sequence_length: maximum sequence length of the model
+    :param onnx_model_name: optionally, the precise name of the ONNX model
+        of interest may be specified. If not specified, the default ONNX model
+        name will be used (refer to `get_deployment_path` for details)
+    :param task: task to use for the config. Defaults to None
     :return: file path to the processed ONNX file for the engine to compile
     """
-    deployment_path, onnx_path = get_deployment_path(model_path)
+    deployment_path, onnx_path = get_deployment_path(model_path, onnx_model_name)
 
     hf_logger = logging.getLogger("transformers")
     hf_logger_level = hf_logger.level
@@ -126,7 +132,9 @@ def fetch_onnx_file_path(
     return onnx_path, config, tokenizer
 
 
-def get_deployment_path(model_path: str) -> Tuple[str, str]:
+def get_deployment_path(
+    model_path: str, onnx_model_name: Optional[str] = None
+) -> Tuple[str, str]:
     """
     Returns the path to the deployment directory
     for the given model path and the path to the mandatory
@@ -135,9 +143,13 @@ def get_deployment_path(model_path: str) -> Tuple[str, str]:
     for running the transformers model in the deepsparse pipeline
 
     :param model_path: path to model directory, sparsezoo stub, or ONNX file
+    :param onnx_model_name: name of the ONNX file to look for in the deployment
+        directory. Defaults to MODEL_ONNX_NAME
     :return: path to the deployment directory and path to the ONNX file inside
         the deployment directory
     """
+    onnx_model_name = onnx_model_name or MODEL_ONNX_NAME
+
     if os.path.isfile(model_path):
         # return the parent directory of the ONNX file
         return os.path.dirname(model_path), model_path
@@ -145,17 +157,19 @@ def get_deployment_path(model_path: str) -> Tuple[str, str]:
     if os.path.isdir(model_path):
         model_files = os.listdir(model_path)
 
-        if _MODEL_DIR_ONNX_NAME not in model_files:
+        if onnx_model_name not in model_files:
             raise ValueError(
-                f"{_MODEL_DIR_ONNX_NAME} not found in transformers model directory "
+                f"{onnx_model_name} not found in transformers model directory "
                 f"{model_path}. Be sure that an export of the model is written to "
-                f"{os.path.join(model_path, _MODEL_DIR_ONNX_NAME)}"
+                f"{os.path.join(model_path, onnx_model_name)}"
             )
-        return model_path, os.path.join(model_path, _MODEL_DIR_ONNX_NAME)
+        return model_path, os.path.join(model_path, onnx_model_name)
 
     elif model_path.startswith("zoo:") or model_path.startswith("hf:"):
         onnx_model_path = model_to_path(model_path)
-        return os.path.dirname(onnx_model_path), onnx_model_path
+        return os.path.dirname(onnx_model_path), onnx_model_path.replace(
+            MODEL_ONNX_NAME, onnx_model_name
+        )
     else:
         raise ValueError(
             f"model_path {model_path} is not a valid file, directory, or zoo stub"

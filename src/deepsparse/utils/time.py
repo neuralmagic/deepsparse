@@ -17,7 +17,7 @@ import threading
 import time
 from collections import defaultdict
 from contextlib import contextmanager
-from typing import Dict
+from typing import Dict, List
 
 
 class Timer:
@@ -38,10 +38,11 @@ class Timer:
             yield
 
 
+
 class TimerManager:
     def __init__(self):
         self.lock = threading.RLock()
-        self.measurements = []
+        self.measurements: List[Dict] = []
 
     def get_new_timer(self):
         return Timer()

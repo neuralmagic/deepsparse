@@ -123,6 +123,7 @@ class ChatCompletionRequest(BaseModel):
     top_k: Optional[int] = -1
     ignore_eos: Optional[bool] = False
     use_beam_search: Optional[bool] = False
+    add_generation_prompt: Optional[bool] = True
 
 
 class CompletionRequest(BaseModel):

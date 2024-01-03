@@ -89,40 +89,86 @@ def test_get_models(client, model_card):
     assert response.json().get("data")[0][-1] == model_card.id
 
 
-def test_chat_completions(client, model_card):
+def test_chat_completions_string(client, model_card):
+    max_tokens = 15
     request = ChatCompletionRequest(
-        messages="How is the weather in Boston?", max_tokens=50, model=model_card.id
-    )
-    response = client.post("/v1/chat/completions", json=request.dict())
-    assert response.status_code == 200
-
-
-def test_chat_completions_fastchat(client, model_card):
-    request = ChatCompletionRequest(
-        messages={"role": "user", "content": "Give me banana bread recipe."},
-        max_tokens=50,
+        messages="How is the weather in Boston?",
+        max_tokens=max_tokens,
         model=model_card.id,
     )
     response = client.post("/v1/chat/completions", json=request.dict())
     assert response.status_code == 200
 
+    usage = response.json()["usage"]
+    assert usage["completion_tokens"] == max_tokens
+    assert usage["total_tokens"] == usage["prompt_tokens"] + usage["completion_tokens"]
 
-def test_chat_completions_fastchat_list(client, model_card):
+
+def test_chat_completions_dict(client, model_card):
+    max_tokens = 15
+    request = ChatCompletionRequest(
+        messages={"role": "user", "content": "How is the weather in Boston?"},
+        max_tokens=max_tokens,
+        model=model_card.id,
+    )
+    response = client.post("/v1/chat/completions", json=request.dict())
+    assert response.status_code == 200
+
+    usage = response.json()["usage"]
+    assert usage["completion_tokens"] == max_tokens
+    assert usage["total_tokens"] == usage["prompt_tokens"] + usage["completion_tokens"]
+
+
+def test_chat_completions_list(client, model_card):
+    max_tokens = 15
+    request = ChatCompletionRequest(
+        messages=[{"role": "user", "content": "How is the weather in Boston?"}],
+        max_tokens=max_tokens,
+        model=model_card.id,
+    )
+    response = client.post("/v1/chat/completions", json=request.dict())
+    assert response.status_code == 200
+
+    usage = response.json()["usage"]
+    assert usage["completion_tokens"] == max_tokens
+    assert usage["total_tokens"] == usage["prompt_tokens"] + usage["completion_tokens"]
+
+
+def test_chat_completions_multiturn(client, model_card):
+    max_tokens = 20
     request = ChatCompletionRequest(
         messages=[
             {"role": "system", "content": "You are a helpful assistant."},
             {"role": "user", "content": "Hello!"},
+            {"role": "assistant", "content": "Hi back!"},
+            {"role": "user", "content": "I like talking with you."},
         ],
-        max_tokens=50,
+        max_tokens=max_tokens,
         model=model_card.id,
     )
     response = client.post("/v1/chat/completions", json=request.dict())
     assert response.status_code == 200
 
+    usage = response.json()["usage"]
+    assert usage["completion_tokens"] == max_tokens
+    assert usage["total_tokens"] == usage["prompt_tokens"] + usage["completion_tokens"]
+
 
 def test_completions(client, model_card):
+    max_tokens = 30
     request = CompletionRequest(
-        prompt="The Boston Bruins are ...", max_tokens=50, model=model_card.id
+        prompt="The Boston Bruins are ", max_tokens=max_tokens, model=model_card.id
     )
     response = client.post("/v1/completions", json=request.dict())
     assert response.status_code == 200
+
+    usage = response.json()["usage"]
+    assert usage["prompt_tokens"] == 5
+    assert usage["completion_tokens"] == max_tokens
+    assert usage["total_tokens"] == usage["prompt_tokens"] + usage["completion_tokens"]
+
+    assert (
+        response.json()["choices"][0]["text"]
+        == 'a was very happy and thanked the man. He said, "Thank you, Sara. You are a '
+        + 'good friend."\n\nSara smiled and'
+    )

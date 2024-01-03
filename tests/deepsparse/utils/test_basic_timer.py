@@ -54,14 +54,12 @@ class AddTwoOperator(Operator):
         return {"value": inp.value + 2}
 
 
-AddThreePipeline = Pipeline(
-    ops=[AddOneOperator(), AddTwoOperator()],
-    router=LinearRouter(end_route=2),
-    schedulers=[OperatorScheduler()],
-)
-
-
-def test_pipeline_record_pipeline_and_operator_run_times():
+def test_pipeline_fine_grained_timer_record_operator_run_times():
+    AddThreePipeline = Pipeline(
+        ops=[AddOneOperator(), AddTwoOperator()],
+        router=LinearRouter(end_route=2),
+        schedulers=[OperatorScheduler()],
+    )
     pipeline_input = IntSchema(value=5)
     pipeline_output = AddThreePipeline(pipeline_input)
 
@@ -69,13 +67,64 @@ def test_pipeline_record_pipeline_and_operator_run_times():
 
     measurements: defaultdict[list] = AddThreePipeline.timer_manager.measurements[0]
 
-    assert len(measurements) == 3
-    expected_keys = {"total", "AddTwoOperator", "AddOneOperator"}
+
+    assert len(measurements) == 2
+    expected_keys = {"AddTwoOperator", "AddOneOperator"}
     for key in measurements.keys():
         expected_keys.remove(key)
     assert len(expected_keys) == 0
 
-    assert (
-        measurements["total"][0]
-        > measurements["AddTwoOperator"][0] + measurements["AddOneOperator"][0]
+
+def test_pipelines_with_shared_timer_manager():
+    """
+    Share the timer_manager, check that entries are
+    in the expected format
+    """
+    AddThreePipeline = Pipeline(
+        ops=[AddOneOperator(), AddTwoOperator()],
+        router=LinearRouter(end_route=2),
+        schedulers=[OperatorScheduler()],
     )
+    pipeline_input = IntSchema(value=5)
+    pipeline_output = AddThreePipeline(pipeline_input)
+    AddThreePipeline = Pipeline(
+        ops=[AddOneOperator(), AddTwoOperator()],
+        router=LinearRouter(end_route=2),
+        schedulers=[OperatorScheduler()],
+    )
+    pipeline_output = AddThreePipeline(pipeline_input)
+
+    assert pipeline_output.value == 8
+    assert len(AddThreePipeline.timer_manager.measurements) == 1
+
+    shared_timer_manager = AddThreePipeline.timer_manager
+    AddThreePipeline2 = Pipeline(
+        ops=[AddOneOperator(), AddTwoOperator()],
+        router=LinearRouter(end_route=2),
+        schedulers=[OperatorScheduler()],
+        timer_manager=shared_timer_manager,
+    )
+    pipeline_output2 = AddThreePipeline2(pipeline_input)
+
+    assert pipeline_output2.value == 8
+
+    assert len(AddThreePipeline.timer_manager.measurements) == 2
+
+    assert (
+        AddThreePipeline.timer_manager.measurements
+        == AddThreePipeline2.timer_manager.measurements
+    )
+
+    pipeline1_measuremnts = AddThreePipeline2.timer_manager.measurements[0]
+    pipeline2_measuremnts = AddThreePipeline2.timer_manager.measurements[1]
+
+    # Check that the keys are the same, and running two identical pipeline runtimes
+    # are reproducible within delta
+    delta = 0.001
+    for key in pipeline1_measuremnts.keys():
+        assert key in pipeline2_measuremnts
+        print(abs(pipeline1_measuremnts[key][0] - pipeline2_measuremnts[key][0]))
+        assert delta > abs(
+            pipeline1_measuremnts[key][0] - pipeline2_measuremnts[key][0]
+        )
+

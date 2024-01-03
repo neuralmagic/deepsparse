@@ -15,7 +15,11 @@ import warnings
 from abc import ABC
 from contextlib import contextmanager
 from copy import deepcopy
-from typing import Any, Optional, Union
+
+from deepsparse.utils.time import Timer
+
+from typing import Any, Union
+
 
 from deepsparse.utils.time import Timer
 
@@ -30,6 +34,7 @@ class State(ABC):
     """
 
     def __init__(self):
+        super().__init__()
         self._current_state = None
 
     @property
@@ -52,12 +57,19 @@ class PipelineState(State):
 class TimerState:
     """TimerState shared among all InferenceState"""
 
-    _timer: Optional[Timer] = None
-
     @contextmanager
     def time(self, id: str, enabled: bool = True):
         if self._timer is not None:
             with self.timer.time(id=id, enabled=enabled):
+
+    def __init__(self):
+        super().__init__()
+        self._timer = None
+
+    @contextmanager
+    def time(self, id: str):
+        if self._timer is not None:
+            with self.timer.time(id=id):
                 yield
         else:
             yield  # null context
@@ -79,6 +91,9 @@ class InferenceState(State, TimerState):
     Inference state, created during every inference run.
     """
 
+    def __init__(self):
+        super().__init__()
+
     def create_state(self, new_state: dict):
         if self._current_state:
             warnings.warn("Current state already exists, overriding.")
@@ -93,7 +108,8 @@ class InferenceState(State, TimerState):
     def update_state(self, value: Any):
         self._current_state.update(value)
 
-    def get_state(self, key):
+    def get_state(self, key: str):
+        """Get value in current_state, if any"""
         if key in self.current_state:
             return self.current_state[key]
 

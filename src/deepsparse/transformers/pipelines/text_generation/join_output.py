@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import List
+from typing import Dict, List, Tuple
 
 import numpy
 
@@ -34,7 +34,8 @@ class JoinOutput(Operator):
     def __init__(self, tokenizer):
         self.tokenizer = tokenizer
 
-    def run(self, inp: List[CompileGenerationsOutput], **kwargs):
+    def run(self, inp: Tuple[List[CompileGenerationsOutput], Dict], **kwargs):
+
         batch_outputs = [x for x in inp[0]]
         generated_tokens = [x.generated_tokens for x in batch_outputs]
         generated_logits = [x.generated_logits for x in batch_outputs]

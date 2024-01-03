@@ -68,6 +68,8 @@ class Pipeline(Operator):
     :param schedulers: A list of schedulers to run operators.
     :param pipeline_state: pipeline_state created during pipeline initialization
     :param middleware_manager: middlewares to be used in Pipeline and Operator
+    :param timer_manager: instantiated TimerManger to track timings
+
     """
 
     def __init__(
@@ -79,6 +81,7 @@ class Pipeline(Operator):
         continuous_batching_scheduler: Optional[ContinuousBatchingScheduler] = None,
         pipeline_state: Optional[PipelineState] = None,
         middleware_manager: Optional[MiddlewareManager] = None,
+        timer_manager: Optional[TimerManager] = None,
     ):
 
         self.ops = ops
@@ -89,6 +92,7 @@ class Pipeline(Operator):
         self._continuous_batching_scheduler = continuous_batching_scheduler
         self.timer_manager = TimerManager()
         self.middleware_manager = middleware_manager
+        self.timer_manager = timer_manager or TimerManager()
         self.validate()
 
         self._scheduler_group = SchedulerGroup(self.schedulers)
@@ -399,7 +403,10 @@ class Pipeline(Operator):
             inference_state = kwargs.pop("inference_state")
         else:
             inference_state = InferenceState()
+            if self.timer_manager is not None:
+                timer = self.timer_manager.get_new_timer()
             inference_state.create_state({})
+            inference_state.set_timer(timer)
 
             timer = self.timer_manager.get_new_timer()
             inference_state.set_timer(timer)
@@ -421,6 +428,7 @@ class Pipeline(Operator):
 
         # update all the measurments
         self.timer_manager.update(timer.measurements)
+        
         return rtn
 
     def expand_inputs(self, *args, **kwargs):
