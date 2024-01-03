@@ -403,8 +403,10 @@ class Pipeline(Operator):
 
         rtn = next_call(*args, **kwargs)
 
-        # register fined grained timer if any before return
+        # timer shared across all operators, has all measurements
         timer = inference_state.timer
+
+        # update all the measurments
         self.timer_manager.update(timer.measurements)
 
         return rtn
