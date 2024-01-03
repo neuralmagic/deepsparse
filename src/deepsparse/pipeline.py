@@ -15,8 +15,9 @@ import asyncio
 import logging
 import os
 from pathlib import Path
-from typing import Any, AsyncGenerator, Dict, Generator, List, Optional, Union
+from typing import Any, AsyncGenerator, Callable, Dict, Generator, List, Optional, Union
 
+from deepsparse.middlewares import MiddlewareManager
 from deepsparse.operators import EngineOperator, Operator
 from deepsparse.pipeline_config import PipelineConfig
 from deepsparse.routers import Router
@@ -27,7 +28,6 @@ from deepsparse.schedulers import (
 )
 from deepsparse.subgraph_execute import SubGraphExecutor
 from deepsparse.utils import InferenceState, PipelineState
-from deepsparse.utils.helpers import run_func
 from deepsparse.utils.subgraph import SubGraph
 from deepsparse.utils.time import TimerManager
 
@@ -67,6 +67,7 @@ class Pipeline(Operator):
     :param router: A Router which dictates the next operator to call.
     :param schedulers: A list of schedulers to run operators.
     :param pipeline_state: pipeline_state created during pipeline initialization
+    :param middleware_manager: middlewares to be used in Pipeline and Operator
     :param timer_manager: instantiated TimerManger to track timings
 
     """
@@ -79,6 +80,7 @@ class Pipeline(Operator):
         generator_router: Optional[Router] = None,
         continuous_batching_scheduler: Optional[ContinuousBatchingScheduler] = None,
         pipeline_state: Optional[PipelineState] = None,
+        middleware_manager: Optional[MiddlewareManager] = None,
         timer_manager: Optional[TimerManager] = None,
     ):
 
@@ -88,6 +90,7 @@ class Pipeline(Operator):
         self.schedulers = schedulers
         self.pipeline_state = pipeline_state
         self._continuous_batching_scheduler = continuous_batching_scheduler
+        self.middleware_manager = middleware_manager
         self.timer_manager = timer_manager or TimerManager()
         self.validate()
 
@@ -191,7 +194,7 @@ class Pipeline(Operator):
 
             else:
                 if next_step == self.router.START_ROUTE:
-                    outputs = run_func(
+                    outputs = self.run_func(
                         *args,
                         func=self._scheduler_group.submit,
                         operator=self.ops[next_step],
@@ -259,7 +262,7 @@ class Pipeline(Operator):
 
             else:
                 if next_step == self.router.START_ROUTE:
-                    operator_output = run_func(
+                    operator_output = self.run_func(
                         *args,
                         func=self._scheduler_group.submit,
                         operator=self.ops[next_step],
@@ -394,9 +397,16 @@ class Pipeline(Operator):
 
         kwargs["inference_state"] = inference_state
 
+        next_call = self.run
+        if self.middleware_manager is not None:
+            next_call = self.middleware_manager.build_middleware_stack(next_call)
+
+        rtn = next_call(*args, **kwargs)
+
+        # timer shared across all operators, has all measurements
         timer = inference_state.timer
-        with timer.time("total"):
-            rtn = self.run(*args, **kwargs)
+
+        # update all the measurments
         self.timer_manager.update(timer.measurements)
 
         return rtn
@@ -434,6 +444,40 @@ class Pipeline(Operator):
             raise ValueError(f"Invalid Router: {type(self.router)} for ops: {op_types}")
         elif isinstance(router_validation, str):
             raise ValueError(f"Invalid Router for operators: {router_validation}")
+
+    def run_func(
+        self,
+        *args,
+        operator: Operator,
+        func: Callable,
+        inp: Any = None,
+        **kwargs,
+    ):
+        """
+        Wrap the operator with middleware and execute the func callable.
+        InferenceState, PipelineState is inside kwargs
+
+        :param operator: Operator instance
+        :param func: Desired function to call. Ex. SchedulerGroup.submit
+        :param inp: Any input to the operator. Ex. IntSchema
+        """
+
+        # wrap the operator with the middleware, if any
+        wrapped_operator = operator
+        if self.middleware_manager is not None:
+            wrapped_operator = self.middleware_manager.wrap(operator)
+
+        kwargs["operator"] = wrapped_operator
+        if inp:
+            output = (
+                func(*args, **kwargs, **inp)
+                if isinstance(inp, dict)
+                else func(inp, *args, **kwargs)
+            )
+        else:
+            output = func(*args, **kwargs)
+
+        return output
 
     def _apply_split(self, inp: Any, inference_state: InferenceState):
         """
@@ -582,7 +626,7 @@ class Pipeline(Operator):
         else:
             func = self._scheduler_group.submit
 
-        return run_func(
+        return self.run_func(
             func=func,
             operator=self.ops[next_step],
             inp=inp,
