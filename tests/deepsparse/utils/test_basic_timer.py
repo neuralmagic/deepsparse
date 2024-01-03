@@ -126,4 +126,3 @@ def test_pipelines_with_shared_timer_manager():
         assert delta > abs(
             pipeline1_measuremnts[key][0] - pipeline2_measuremnts[key][0]
         )
-

@@ -156,8 +156,8 @@ class Pipeline(Operator):
             alias=config.alias,
             **kwargs,
         )
-      
-      async def run_async(self, *args, inference_state: InferenceState, **kwargs):
+
+    async def run_async(self, *args, inference_state: InferenceState, **kwargs):
         """
         Run through the operators using the provided router and scheduler.
         The input to a given operator is the output of the previous operator.
@@ -456,7 +456,7 @@ class Pipeline(Operator):
 
         # update all the measurments
         self.timer_manager.update(timer.measurements)
-        
+
         return rtn
 
     def expand_inputs(self, *args, **kwargs):

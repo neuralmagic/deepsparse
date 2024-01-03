@@ -38,7 +38,6 @@ class Timer:
             yield
 
 
-
 class TimerManager:
     def __init__(self):
         self.lock = threading.RLock()
