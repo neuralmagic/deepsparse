@@ -166,7 +166,7 @@ class ServerConfig(BaseModel):
 
     integration: str = Field(
         default=None,
-        description="The kind of integration to use. local|sagemaker|openai",
+        description=f"The kind of integration to use. {INTEGRATIONS}",
     )
 
     engine_thread_pinning: str = Field(
