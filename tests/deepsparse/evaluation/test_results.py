@@ -18,7 +18,7 @@ import numpy as np
 import yaml
 
 import pytest
-from src.deepsparse.evaluation.results import (
+from deepsparse.evaluation.results import (
     Dataset,
     EvalSample,
     Evaluation,

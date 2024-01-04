@@ -27,9 +27,9 @@ from tqdm import tqdm
 
 import torch
 from deepsparse import Pipeline
+from deepsparse.evaluation.registry import EvaluationRegistry
 from deepsparse.evaluation.results import Dataset, Evaluation, Metric, Result
 from lm_eval import base, evaluator, tasks, utils
-from src.deepsparse.evaluation.registry import EvaluationRegistry
 
 
 _LOGGER = logging.getLogger(__name__)
