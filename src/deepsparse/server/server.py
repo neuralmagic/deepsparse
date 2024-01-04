@@ -241,42 +241,12 @@ class Server:
         return ModelMetaData(model_path=proxy_pipeline.pipeline.model_path)
 
     @staticmethod
-    async def run(raw_request, proxy_pipeline):
-        if hasattr(proxy_pipeline.pipeline, "run_async"):
-            inference_state = InferenceState()
-            inference_state.create_state({})
-
-            pipeline_outputs = await proxy_pipeline.pipeline.run_async(
-                **await raw_request.json(), inference_state=inference_state
-            )
-            if isinstance(pipeline_outputs, AsyncGenerator):
-                async def format_response():
-                    async for output in pipeline_outputs:
-                        # Note: If a pipeline does not return a BaseModel this will fail
-                        response = output.json(ensure_ascii=False)
-                        yield f"{response}\n\n"
-
-                return StreamingResponse(
-                    format_response(),
-                    media_type="text/event-stream",
-                )
-        else:
-            pipeline_outputs = proxy_pipeline.pipeline(**await raw_request.json())
-        return pipeline_outputs
-
-
-    @staticmethod
-    def predict(
+    async def predict(
         proxy_pipeline: ProxyPipeline,
         system_logging_config: SystemLoggingConfig,
         raw_request: Request,
     ):
-        import asyncio
-        pipeline_outputs = asyncio.run(Server.run(raw_request, proxy_pipeline))
-        if isinstance(pipeline_outputs, StreamingResponse):
-            return pipeline_outputs
-        
-        """
+
         if hasattr(proxy_pipeline.pipeline, "run_async"):
             inference_state = InferenceState()
             inference_state.create_state({})
@@ -286,6 +256,7 @@ class Server:
             )
 
             if isinstance(pipeline_outputs, AsyncGenerator):
+
                 async def format_response():
                     async for output in pipeline_outputs:
                         # Note: If a pipeline does not return a BaseModel this will fail
@@ -308,7 +279,7 @@ class Server:
                 )
         except Exception as e:
             _LOGGER.debug(f"Logging failed, {e}")
-        """
+
         return prep_for_serialization(pipeline_outputs)
 
     @staticmethod
