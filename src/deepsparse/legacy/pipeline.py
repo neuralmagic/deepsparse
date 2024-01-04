@@ -194,15 +194,15 @@ class Pipeline(BasePipeline):
                     f"instantiating Pipeline"
                 )
 
-        if self._batch_size == 0:
-            _LOGGER.warning("Overriding batch_size from 0 to 1")
-            self._batch_size = 1
-
         self._engine_args = dict(
-            batch_size=self._batch_size,  # bs=1 for dynamic batch
+            batch_size=self._batch_size,
             num_cores=num_cores,
             input_shapes=input_shapes,
         )
+        if self._engine_args["batch_size"] == 0:
+            _LOGGER.warning("Overriding batch_size from 0 to 1 for dynamic batch")
+            self._engine_args["batch_size"] = 1
+
         if engine_type.lower() == DEEPSPARSE_ENGINE:
             self._engine_args["scheduler"] = scheduler
             self._engine_args["num_streams"] = num_streams
@@ -213,6 +213,7 @@ class Pipeline(BasePipeline):
             self.engine = None
         else:
             self.engine = self._initialize_engine()
+        self._batch_size = self._batch_size or 1
 
         self.log(
             identifier=f"{SystemGroups.INFERENCE_DETAILS}/num_cores_total",
