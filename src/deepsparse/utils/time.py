@@ -49,6 +49,14 @@ class TimerManager:
         self.lock = threading.RLock()
         self.measurements: List[Dict] = []
 
+    def __repr__(self):
+        """
+        Provide a string representation of the TimerManager object.
+
+        :return: a string representing the timer manager object with its times.
+        """
+        return f"TimerManager({self.measurements})"
+
     def get_new_timer(self):
         return Timer()
 
