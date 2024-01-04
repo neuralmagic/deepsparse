@@ -40,7 +40,8 @@ __all__ = [
 # execution.
 INTEGRATION_LOCAL = "local"
 INTEGRATION_SAGEMAKER = "sagemaker"
-INTEGRATIONS = [INTEGRATION_LOCAL, INTEGRATION_SAGEMAKER]
+INTEGRATION_OPENAI = "openai"
+INTEGRATIONS = [INTEGRATION_LOCAL, INTEGRATION_SAGEMAKER, INTEGRATION_OPENAI]
 
 
 class SequenceLengthsConfig(BaseModel):
@@ -164,8 +165,8 @@ class ServerConfig(BaseModel):
     )
 
     integration: str = Field(
-        default=INTEGRATION_LOCAL,
-        description="The kind of integration to use. local|sagemaker",
+        default=None,
+        description="The kind of integration to use. local|sagemaker|openai",
     )
 
     engine_thread_pinning: str = Field(
