@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import pytest
-from src.deepsparse.evaluation.registry import EvaluationRegistry
+from deepsparse.evaluation.registry import EvaluationRegistry
 
 
 @pytest.fixture

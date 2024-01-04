@@ -22,7 +22,7 @@ from transformers import (
 
 import pytest
 from deepsparse import Pipeline
-from src.deepsparse.evaluation.utils import (
+from deepsparse.evaluation.utils import (
     create_model_from_target,
     get_save_path,
     if_generative_language_model,

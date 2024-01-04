@@ -42,9 +42,7 @@ def potentially_check_dependency_import(integration_name: str) -> bool:
     """
 
     if integration_name.replace("_", "-") == LM_EVALUATION_HARNESS:
-        from src.deepsparse.evaluation.integrations import (
-            try_import_lm_evaluation_harness,
-        )
+        from deepsparse.evaluation.integrations import try_import_lm_evaluation_harness
 
         try_import_lm_evaluation_harness(raise_error=True)
 
