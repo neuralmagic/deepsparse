@@ -112,6 +112,17 @@ class Pipeline(Operator):
                 new_kwargs[k] = kwargs.get(k)
 
         try:
+            model_path = new_kwargs.get("model_path")
+            model = new_kwargs.pop("model", None)
+
+            if model and model_path:
+                raise ValueError(
+                    f"Only one of model and model_path may be supplied, found {model} "
+                    f"and {model_path} respectively"
+                )
+            elif model:
+                new_kwargs["model_path"] = model
+
             pipeline = Operator.create(task=task, **new_kwargs)
             if not isinstance(pipeline, cls):
                 raise RuntimeError(
