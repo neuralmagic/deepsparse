@@ -37,6 +37,6 @@ def test_timer_manager_average():
 
     expected = {
         "time": {"foo": 2.4, "bar": 1.5, "baz": 3.5, "giz": 2.5},
-        "execution": {"foo": 5, "bar": 4, "baz": 2, "giz": 4},
+        "iteration": {"foo": 2.5, "bar": 2, "baz": 2, "giz": 4},
     }
     assert timer_manager.average() == expected

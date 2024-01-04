@@ -59,14 +59,19 @@ class TimerManager:
     def average(self):
         """Get the average time for each key in every element inside measurements"""
 
-        summary = {"time": defaultdict(float), "execution": defaultdict(int)}
+        averages = {"time": {}, "iteration": {}}
+        counts = {}
 
         for measurement in self.measurements:
             for key, values in measurement.items():
-                summary["time"][key] += sum(values)
-                summary["execution"][key] += len(values)
+                averages["time"][key] = averages["time"].get(key, 0) + sum(values)
+                averages["iteration"][key] = averages["iteration"].get(key, 0) + len(
+                    values
+                )
+                counts[key] = counts.get(key, 0) + 1
 
-        for key in summary["time"]:
-            summary["time"][key] /= summary["execution"][key]
+        for key in averages["time"]:
+            averages["time"][key] /= averages["iteration"][key]
+            averages["iteration"][key] /= counts[key]
 
-        return {metric: dict(values) for metric, values in summary.items()}
+        return averages
