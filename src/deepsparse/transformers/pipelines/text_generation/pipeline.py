@@ -89,7 +89,6 @@ class TextGenerationPipeline(Pipeline):
             the EngineOperator.
 
         """
-
         if (prompt_sequence_length % 4 != 0) and (prompt_sequence_length != 1):
             raise ValueError(
                 f"prompt_sequence_length must be 1 or multiple of 4. "
@@ -119,6 +118,9 @@ class TextGenerationPipeline(Pipeline):
 
         if internal_kv_cache and engine_kwargs.get("engine_type") == "onnxruntime":
             internal_kv_cache = False
+
+        # pop middleware_manager before going into NLEngineOperator
+        middleware_manager = engine_kwargs.pop("middleware_manager", None)
 
         single_engine_operator = NLEngineOperator(
             sequence_length=sequence_length,
@@ -275,7 +277,7 @@ class TextGenerationPipeline(Pipeline):
             schedulers=scheduler,
             pipeline_state=pipeline_state,
             continuous_batching_scheduler=continuous_batching_scheduler,
-            middleware_manager=engine_kwargs.pop("middleware_manager", None),
+            middleware_manager=middleware_manager,
         )
 
     def expand_inputs(self, items, batch_size):
