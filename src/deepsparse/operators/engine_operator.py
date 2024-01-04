@@ -102,6 +102,7 @@ class EngineOperator(Operator):
         input_shapes: List[List[int]] = None,
         context: Optional[EngineContext] = None,
         engine_kwargs: Dict = None,
+        **kwargs,
     ):
         self.model_path = model_to_path(model_path)
         self.context = context
