@@ -205,6 +205,47 @@ def test_timer_middleware_shared_timer():
         assert averages["time"][key] == sum(time_combined) / len(time_combined)
 
 
+def test_text_generation_creation_pipeline_has_timer_measurements():
+    """Check the text gen pipeline creation timings are saved"""
+    from deepsparse import TextGeneration
+
+    middlewares = [
+        MiddlewareSpec(TimerMiddleware),  # for timer
+    ]
+
+    model = TextGeneration(
+        model_path="hf:mgoin/TinyStories-1M-ds",
+        middleware_manager=MiddlewareManager(middlewares),
+    )
+
+    prompt = "How to make banana bread?"
+    generation_config = {"max_new_tokens": 100}
+
+    text = model(prompt, **generation_config).generations[0].text
+    assert text is not None
+    measurements = model.timer_manager.measurements
+
+    expected_keys = {
+        "ParseTextGenerationInputs",
+        "PrepareforPrefill",
+        "AutoRegressiveOperatorPreprocess",
+        "NLEngineOperator",
+        "CompilePromptLogits",
+        "PrepareGeneration",
+        "GenerateNewTokenOperator",
+        "CompileGeneratedTokens",
+        "CompileGenerations",
+        "JoinOutput",
+        "ProcessOutputs",
+        "total",
+    }
+    for key in measurements[0].keys():
+        expected_keys.remove(key)
+        assert len(measurements[0][key]) > 0
+
+    assert len(expected_keys) == 0
+
+
 @asyncio_run
 async def test_timer_middleware_timings_saved_in_timer_manager_async():
     """Check middlewares in async_run"""
