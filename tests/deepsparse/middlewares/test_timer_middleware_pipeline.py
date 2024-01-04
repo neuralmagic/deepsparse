@@ -201,7 +201,7 @@ def test_timer_middleware_shared_timer():
     keys = ["AddOneOperator", "AddTwoOperator", "total"]
     for key in keys:
         time_combined = pipeline1_measuremnts[key] + pipeline2_measuremnts[key]
-        assert averages["execution"][key] == len(time_combined)
+        assert averages["iteration"][key] == len(time_combined) / 2
         assert averages["time"][key] == sum(time_combined) / len(time_combined)
 
 
