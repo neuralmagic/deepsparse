@@ -82,6 +82,7 @@ class Pipeline(Operator):
         pipeline_state: Optional[PipelineState] = None,
         middleware_manager: Optional[MiddlewareManager] = None,
         timer_manager: Optional[TimerManager] = None,
+        benchmark: bool = False,
     ):
 
         self.ops = ops
@@ -96,6 +97,16 @@ class Pipeline(Operator):
 
         self._scheduler_group = SchedulerGroup(self.schedulers)
         self.subgraph_executor = SubGraphExecutor()
+        self.benchmark = benchmark
+
+    
+    @property 
+    def input_schema(self):
+        raise AttributeError("No input schema has been set for this pipeline.")
+
+    @property 
+    def output_schema(self):
+        raise AttributeError("No output schema has been set for this pipeline.")
 
     @classmethod
     def create(cls, task: str, **kwargs) -> "Pipeline":
@@ -111,6 +122,9 @@ class Pipeline(Operator):
             else:
                 new_kwargs[k] = kwargs.get(k)
 
+        
+        pipeline = Operator.create(task=task, **new_kwargs)
+        """
         try:
             model_path = new_kwargs.get("model_path")
             model = new_kwargs.pop("model", None)
@@ -133,6 +147,10 @@ class Pipeline(Operator):
             from deepsparse.legacy import Pipeline
 
             pipeline = Pipeline.create(task=task, **kwargs)
+        """
+        #from deepsparse.legacy import Pipeline
+
+        #pipeline = Pipeline.create(task=task, **kwargs)
         return pipeline
 
     @classmethod

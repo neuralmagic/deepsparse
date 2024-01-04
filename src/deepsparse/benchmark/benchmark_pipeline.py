@@ -302,7 +302,8 @@ def benchmark_pipeline(
 
     if scenario == "singlestream":
         singlestream_benchmark(pipeline, inputs, warmup_time)
-        pipeline.timer_manager.clear()
+        #pipeline.timer_manager.clear()
+        pipeline.timer_manager.measurements.clear()
         start_time = time.perf_counter()
         singlestream_benchmark(pipeline, inputs, seconds_to_run)
     elif scenario == "multistream":
@@ -320,7 +321,8 @@ def benchmark_pipeline(
 
     end_time = time.perf_counter()
     total_run_time = end_time - start_time
-    batch_times = pipeline.timer_manager.all_times
+    #batch_times = pipeline.timer_manager.all_times
+    batch_times = pipeline.timer_manager.measurements
     if len(batch_times) == 0:
         raise Exception(
             "Generated no batch timings, try extending benchmark time with '--time'"
@@ -355,13 +357,30 @@ def calculate_section_stats(
     total_run_time_ms = total_run_time * 1000
 
     sections = {}
+   
+    """
     for section_name in batch_times:
         times = [t * 1000 for t in batch_times[section_name]]
         sections[section_name] = calculate_statistics(
             times, total_run_time_ms, num_streams
         )
+    """
+    print(len(batch_times))
+    all_sections = {}
+    for batch in batch_times:
+        for k, v in batch.items():
+            if k in all_sections:
+                all_sections[k].extend(v)
+            else:
+                all_sections[k] = v
 
-    return sections
+    for section_name in all_sections:
+        times = [t * 1000 for t in all_sections[section_name]]
+        sections[k] = calculate_statistics(
+            times, total_run_time_ms, num_streams
+        )
+    #"""
+    return sections, all_sections
 
 
 @click.command()
@@ -505,8 +524,9 @@ def main(
         quiet=quiet,
     )
 
-    section_stats = calculate_section_stats(batch_times, total_run_time, num_streams)
-    items_per_sec = (len(batch_times["total_inference"]) * batch_size) / total_run_time
+    section_stats, all_sections = calculate_section_stats(batch_times, total_run_time, num_streams)
+    #items_per_sec = (len(batch_times["total_inference"]) * batch_size) / total_run_time
+    items_per_sec = (len(all_sections["total"]) * batch_size) / total_run_time
 
     benchmark_results = {
         "items_per_sec": items_per_sec,
