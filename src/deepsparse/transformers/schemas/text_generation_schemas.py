@@ -17,7 +17,7 @@ import pathlib
 from enum import Enum
 from typing import Any, Callable, Dict, List, Optional, Sequence, Union
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, validator
 from transformers import GenerationConfig
 
 
@@ -138,6 +138,22 @@ class GeneratedText(BaseModel):
         "Defined by FinishReason. One of stop, length, or time.",
     )
 
+class ChatInput(TextGenerationInput):
+    session_ids: Union[None, List[str], str] = Field(
+        default=None,
+        description="String identifier(s) "
+        "for the kv cache session(s). If None, "
+        "and the model is using kv cache, session_id "
+        "will be set to a random uuid.",
+    )
+
+    @validator("session_ids")
+    def validate_session_ids(cls, value, values) -> Union[None, List[str]]:
+        # make sure that the that format session_ids confirms with the
+        # rest of the inputs
+        session_ids = validate_session_ids(session_ids=value, other_attributes=values)
+        return session_ids
+
 
 # TODO: Pydantic aliases allow assignment but not reference. Still need to update.
 class TextGenerationOutput(BaseModel):
@@ -166,7 +182,11 @@ class TextGenerationOutput(BaseModel):
         arbitrary_types_allowed = True
         extra = "allow"
 
-
+class ChatOutput(TextGenerationOutput):
+    session_ids: Union[None, str, List[str]] = Field(
+        default=None, description="A string identifier(s) for the kv cache session."
+    )
+    
 class PromptLogitsNoKVCacheInference(BaseModel):
     prompt_logits: Any = Field(
         description="A set of prompt logits generated "
