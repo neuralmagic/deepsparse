@@ -275,7 +275,7 @@ class TextGenerationPipeline(Pipeline):
             schedulers=scheduler,
             pipeline_state=pipeline_state,
             continuous_batching_scheduler=continuous_batching_scheduler,
-            middleware_manager=engine_kwargs.get("middleware_manager"),
+            middleware_manager=engine_kwargs.pop("middleware_manager", None),
         )
 
     def expand_inputs(self, items, batch_size):
