@@ -17,7 +17,7 @@ from typing import Any, List, Optional
 import yaml
 from pydantic import BaseModel, Field
 
-from src.deepsparse.utils.data import prep_for_serialization
+from deepsparse.utils.data import prep_for_serialization
 
 
 __all__ = [
