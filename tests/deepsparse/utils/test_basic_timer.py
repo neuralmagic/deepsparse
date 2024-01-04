@@ -54,7 +54,7 @@ class AddTwoOperator(Operator):
         return {"value": inp.value + 2}
 
 
-def test_pipeline_record_pipeline_and_operator_run_times():
+def test_pipeline_fine_grained_timer_record_operator_run_times():
     AddThreePipeline = Pipeline(
         ops=[AddOneOperator(), AddTwoOperator()],
         router=LinearRouter(end_route=2),
@@ -67,16 +67,11 @@ def test_pipeline_record_pipeline_and_operator_run_times():
 
     measurements: defaultdict[list] = AddThreePipeline.timer_manager.measurements[0]
 
-    assert len(measurements) == 3
-    expected_keys = {"total", "AddTwoOperator", "AddOneOperator"}
+    assert len(measurements) == 2
+    expected_keys = {"AddTwoOperator", "AddOneOperator"}
     for key in measurements.keys():
         expected_keys.remove(key)
     assert len(expected_keys) == 0
-
-    assert (
-        measurements["total"][0]
-        > measurements["AddTwoOperator"][0] + measurements["AddOneOperator"][0]
-    )
 
 
 def test_pipelines_with_shared_timer_manager():
@@ -123,7 +118,7 @@ def test_pipelines_with_shared_timer_manager():
     pipeline2_measuremnts = AddThreePipeline2.timer_manager.measurements[1]
 
     # Check that the keys are the same, and running two identical pipeline runtimes
-    # are reproducible
+    # are reproducible within delta
     delta = 0.001
     for key in pipeline1_measuremnts.keys():
         assert key in pipeline2_measuremnts

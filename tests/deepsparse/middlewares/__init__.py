@@ -1,3 +1,5 @@
+# flake8: noqa
+
 # Copyright (c) 2021 - present / Neuralmagic, Inc. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,27 +14,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Any, Callable
-
-
-__all__ = ["run_func"]
-
-
-def run_func(
-    *args,
-    func: Callable,
-    inp: Any = None,
-    **kwargs,
-):
-    """
-    Generic function to run a given Callable.
-    """
-    if inp:
-        output = (
-            func(*args, **kwargs, **inp)
-            if isinstance(inp, dict)
-            else func(inp, *args, **kwargs)
-        )
-    else:
-        output = func(*args, **kwargs)
-    return output
+from tests.deepsparse.middlewares.utils import (
+    DummyMiddleware,
+    PrintingMiddleware,
+    ReducerMiddleware,
+    SendStateMiddleware,
+)
