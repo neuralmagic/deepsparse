@@ -219,10 +219,20 @@ class NLEngineOperator(EngineOperator):
             # we skip the validation
 
             internal_kv_cache = [x.engine_internal_cache for x in kv_cache]
+            # if inp.engine:
+            #     out = inp.engine._eng_net.execute_list_out(inputs, internal_kv_cache)
+            # else:
+            #     out = self.engine._eng_net.execute_list_out(inputs, internal_kv_cache)
             if inp.engine:
-                out = inp.engine._eng_net.execute_list_out(inputs, internal_kv_cache)
+                out, bench_info = inp.engine._eng_net.benchmark_execute(
+                    inputs, internal_kv_cache
+                )
             else:
-                out = self.engine._eng_net.execute_list_out(inputs, internal_kv_cache)
+                out, bench_info = self.engine._eng_net.benchmark_execute(
+                    inputs, internal_kv_cache
+                )
+            print(bench_info)
+            out = [v for v in out.values()]
 
         else:
             # run the engine without the LIB.kv_cache object
