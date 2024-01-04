@@ -13,8 +13,8 @@
 # limitations under the License.
 
 import pytest
-from src.deepsparse.evaluation.integrations import try_import_lm_evaluation_harness
-from src.deepsparse.evaluation.utils import create_model_from_target
+from deepsparse.evaluation.integrations import try_import_lm_evaluation_harness
+from deepsparse.evaluation.utils import create_model_from_target
 
 
 @pytest.mark.parametrize(
@@ -49,7 +49,7 @@ class TestLMEvaluationHarness:
     def test_integration_eval_onnx_matches_torch(
         self, pipeline, model_torch, datasets, batch_size
     ):
-        from src.deepsparse.evaluation.integrations.lm_evaluation_harness import (
+        from deepsparse.evaluation.integrations.lm_evaluation_harness import (
             integration_eval,
         )
 
