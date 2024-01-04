@@ -231,7 +231,8 @@ class NLEngineOperator(EngineOperator):
                 out, bench_info = self.engine._eng_net.benchmark_execute(
                     inputs, internal_kv_cache
                 )
-            print(bench_info)
+            from deepsparse.debug_analysis import construct_layer_statistics
+            print(construct_layer_statistics(bench_info))
             out = [v for v in out.values()]
 
         else:
