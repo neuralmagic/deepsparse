@@ -18,6 +18,7 @@ from re import escape
 from unittest.mock import patch
 
 import pytest
+from deepsparse.server.cli import _fetch_server
 from deepsparse.server.config import EndpointConfig, ServerConfig
 from deepsparse.server.server import Server
 
@@ -42,20 +43,18 @@ def test_invalid_integration():
     with pytest.raises(
         ValueError,
         match=escape(
-            "Unknown integration field asdf. "
-            "Expected one of ['local', 'sagemaker', 'openai']"
+            "asdf is not a supported integration. Must be "
+            "one of ['local', 'sagemaker', 'openai']"
         ),
     ):
-        server = Server(
-            ServerConfig(
-                num_cores=1,
-                num_workers=1,
-                integration="asdf",
-                endpoints=[],
-                loggers={},
-            )
+        server = ServerConfig(
+            num_cores=1,
+            num_workers=1,
+            integration="asdf",
+            endpoints=[],
+            loggers={},
         )
-        server._build_app()
+        _fetch_server("local", server)
 
 
 def test_pytorch_num_threads():

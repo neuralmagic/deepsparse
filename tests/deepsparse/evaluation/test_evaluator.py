@@ -19,10 +19,10 @@ import numpy as np
 from click.testing import CliRunner
 
 import pytest
-from src.deepsparse.evaluation.evaluator import evaluate
-from src.deepsparse.evaluation.integrations import try_import_lm_evaluation_harness
-from src.deepsparse.evaluation.registry import EvaluationRegistry
-from src.deepsparse.evaluation.results import (
+from deepsparse.evaluation.evaluator import evaluate
+from deepsparse.evaluation.integrations import try_import_lm_evaluation_harness
+from deepsparse.evaluation.registry import EvaluationRegistry
+from deepsparse.evaluation.results import (
     Dataset,
     EvalSample,
     Evaluation,
@@ -111,7 +111,7 @@ def test_evaluation_llm_evaluation_harness_integration_name(
     "click option where multiple=True",
 )
 def test_cli(tmp_path, target, datasets, dummy_integration_name, type_serialization):
-    from src.deepsparse.evaluation.cli import main
+    from deepsparse.evaluation.cli import main
 
     runner = CliRunner()
     runner.invoke(
