@@ -370,6 +370,9 @@ def calculate_section_stats(
             times, total_run_time_ms, num_streams
         )
     """
+    for b in batch_times:
+        print(b.get("total"))
+
     all_sections = {}
     for batch in batch_times:
         for k, v in batch.items():
@@ -384,6 +387,7 @@ def calculate_section_stats(
             times, total_run_time_ms, num_streams
         )
 
+    print(all_sections["total"])
     return sections, all_sections
 
 
@@ -536,7 +540,7 @@ def main(
     benchmark_results = {
         "items_per_sec": items_per_sec,
         "seconds_ran": total_run_time,
-        "iterations": len(all_sections["total"]),
+        "iterations": len(batch_times),
         "compute_sections": section_stats,
     }
 
