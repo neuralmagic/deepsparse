@@ -32,7 +32,6 @@ from deepsparse.transformers.pipelines.text_generation import (
 )
 from deepsparse.transformers.utils.helpers import process_generation_config
 from deepsparse.utils import split_engine_inputs
-from deepsparse.utils.onnx import default_cached_outputs
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -61,7 +60,6 @@ class TextGenerationPipelineNoCache(Pipeline):
             onnx_model_name=onnx_model_name,
             engine_kwargs=engine_kwargs,
         )
-        self.verify_no_kv_cache_present()
 
         token_generator = TokenGeneratorOperator()
 
@@ -137,17 +135,3 @@ class TextGenerationPipelineNoCache(Pipeline):
         out, orig_batch_size = split_engine_inputs(items, batch_size)
         combined_batches = [{"input_ids": b[0], "attention_mask": b[1]} for b in out]
         return combined_batches, orig_batch_size
-
-    def verify_no_kv_cache_present(self) -> bool:
-        """
-        Verifies that the ONNX model does not have
-        KV cache inputs/outputs present.
-        :return: True if compatible, False otherwise
-        """
-        is_kv_cache_present = any(default_cached_outputs(self.model_path))
-        if is_kv_cache_present:
-            raise ValueError(
-                f"The model: {self.model_path} has KV cache inputs/outputs present. "
-                "Please use the TextGenerationPipeline instead."
-            )
-        return not is_kv_cache_present

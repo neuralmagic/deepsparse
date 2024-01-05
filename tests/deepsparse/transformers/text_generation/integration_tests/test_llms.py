@@ -41,10 +41,7 @@ import numpy
 
 import pytest
 from deepsparse.pipeline import Pipeline
-from deepsparse.transformers.pipelines.text_generation import (
-    TextGenerationPipeline,
-    TextGenerationPipelineNoCache,
-)
+from deepsparse.transformers.pipelines.text_generation import TextGenerationPipeline
 from deepsparse.transformers.schemas.text_generation_schemas import TextGenerationOutput
 from tests.deepsparse.transformers.text_generation.integration_tests.helpers import (
     TorchGroundTruthSource,
@@ -74,7 +71,7 @@ class TestsIntegrationLLMsPipelines:
     the text generation pipeline.
     """
 
-    def get_pipeline(self, kv_cache_support=True, **kwargs) -> Pipeline:
+    def get_pipeline(self, **kwargs) -> Pipeline:
         """
         If no kwargs provided, returns the cached "default"
         pipeline that is used for most of the tests.
@@ -87,17 +84,10 @@ class TestsIntegrationLLMsPipelines:
             "default" pipeline is returned)
         :return: the appropriate pipeline
         """
-        # TODO: This if statement should disappear once
-        # the TextGenerationPipeline contains the
-        # non-kv-cache version of the pipeline
-        text_generation_pipeline_class = (
-            TextGenerationPipeline
-            if kv_cache_support
-            else TextGenerationPipelineNoCache
-        )
+
         if not kwargs:
             if self.default_pipeline is None:
-                self.default_pipeline = text_generation_pipeline_class(
+                self.default_pipeline = TextGenerationPipeline(
                     **self.default_pipeline_kwargs
                 )
             return self.default_pipeline
@@ -105,7 +95,7 @@ class TestsIntegrationLLMsPipelines:
         # return a pipeline with the updated default kwargs
         updated_kwargs = self.default_pipeline_kwargs.copy()
         updated_kwargs.update(kwargs)
-        return text_generation_pipeline_class(**updated_kwargs)
+        return TextGenerationPipeline(**updated_kwargs)
 
     @pytest.fixture
     def setup(self, params_dict, max_new_tokens, internal_kv_cache):
@@ -247,7 +237,6 @@ class TestsIntegrationLLMsPipelines:
     def _test_inference_no_kv_cache(self, engine_type):
         pipeline = self.get_pipeline(
             onnx_model_name=self.model_name_no_kv_cache,
-            kv_cache_support=False,
             engine_type=engine_type,
         )
 

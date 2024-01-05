@@ -39,9 +39,13 @@ from deepsparse.transformers.pipelines.text_generation import (
     ProcessStreamingOperator,
     TokenGeneratorOperator,
 )
+from deepsparse.transformers.pipelines.text_generation.pipeline_no_kv_cache import (
+    TextGenerationPipelineNoCache,
+)
 from deepsparse.transformers.utils.helpers import (
     causal_mask_input_present,
     process_generation_config,
+    verify_kv_cache_present,
 )
 from deepsparse.utils import PipelineState, split_engine_inputs
 
@@ -51,11 +55,39 @@ _LOGGER = logging.getLogger(__name__)
 
 @OperatorRegistry.register(name=["text_generation", "opt", "mpt", "llama"])
 class TextGenerationPipeline(Pipeline):
+    DEFAULT_SEQUENCE_LENGTH = 1024
+
+    def __new__(cls, *args, **kwargs):
+        # dynamically decide which pipeline (with KV Cache support or without)
+        # to initialize based on the model_path
+        # (if it has a KV Cache inputs/outputs or not)
+
+        model_path = kwargs.get("model_path")
+        sequence_length = kwargs.get("sequence_length", cls.DEFAULT_SEQUENCE_LENGTH)
+        onnx_model_name = kwargs.get("onnx_model_name")
+        if model_path is None:
+            raise ValueError(
+                "model_path must be provided to initialize TextGenerationPipeline"
+            )
+
+        model_path, *_ = setup_transformers_pipeline(
+            model_path,
+            sequence_length,
+            onnx_model_name=onnx_model_name,
+        )
+        if not verify_kv_cache_present(model_path):
+            _LOGGER.info(
+                "Initializing TextGenerationPipeline without KV Cache support. "
+                "Some of the input parameters will be ignored."
+            )
+            return TextGenerationPipelineNoCache(*args, **kwargs)
+        return super().__new__(cls)
+
     def __init__(
         self,
         model_path: str,
         prompt_sequence_length: int = 16,
-        sequence_length: int = 1024,
+        sequence_length: int = DEFAULT_SEQUENCE_LENGTH,
         internal_kv_cache: bool = True,
         force_max_tokens: bool = False,
         generation_config=None,
