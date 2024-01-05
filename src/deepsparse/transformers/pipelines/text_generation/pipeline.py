@@ -97,7 +97,6 @@ class TextGenerationPipeline(Pipeline):
             )
 
 
-        print("engine_kwargs", engine_kwargs)
         middleware_manager = engine_kwargs.pop("middleware_manager", None)
         # Note: this will add the model_path to the eninge_kwargs
         (
@@ -272,8 +271,6 @@ class TextGenerationPipeline(Pipeline):
         )
         scheduler = [OperatorScheduler()]
 
-        print(benchmark)
-        print(middleware_manager)
         super().__init__(
             ops=ops,
             router=router,
