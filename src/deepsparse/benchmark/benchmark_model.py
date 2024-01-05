@@ -343,7 +343,7 @@ def benchmark_model(
     input_ids_length: Optional[int] = 1,
     thread_pinning: str = "core",
     engine: str = DEEPSPARSE_ENGINE,
-    internal_kv_cache: bool = False,
+    internal_kv_cache: bool = True,
     quiet: bool = False,
     export_path: Optional[str] = None,
     disable_kv_cache_overrides: bool = False,
