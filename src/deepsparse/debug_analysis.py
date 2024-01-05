@@ -249,7 +249,7 @@ def parse_args():
         "--num-kv-cache-tokens",
         "--num_kv_cache_tokens",
         type=int,
-        default=1,
+        default=int(os.environ.get("NM_BENCHMARK_KV_TOKENS") or "1"),
         help=(
             "If using internal kv cache, sets the number of tokens to fill "
             "the cache with"
