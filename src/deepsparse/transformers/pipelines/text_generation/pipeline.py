@@ -60,6 +60,7 @@ class TextGenerationPipeline(Pipeline):
         force_max_tokens: bool = False,
         generation_config=None,
         continuous_batch_sizes: Optional[List[int]] = None,
+        benchmark: bool = False,
         **engine_kwargs,
     ):
         """
@@ -95,6 +96,9 @@ class TextGenerationPipeline(Pipeline):
                 f"prompt_sequence_length is {prompt_sequence_length}"
             )
 
+
+        print("engine_kwargs", engine_kwargs)
+        middleware_manager = engine_kwargs.pop("middleware_manager", None)
         # Note: this will add the model_path to the eninge_kwargs
         (
             self.model_path,
@@ -118,9 +122,6 @@ class TextGenerationPipeline(Pipeline):
 
         if internal_kv_cache and engine_kwargs.get("engine_type") == "onnxruntime":
             internal_kv_cache = False
-
-        # pop middleware_manager before going into NLEngineOperator
-        middleware_manager = engine_kwargs.pop("middleware_manager", None)
 
         single_engine_operator = NLEngineOperator(
             sequence_length=sequence_length,
@@ -270,6 +271,9 @@ class TextGenerationPipeline(Pipeline):
             end_route="STOP", start_route="parse_inputs", route=streaming_route
         )
         scheduler = [OperatorScheduler()]
+
+        print(benchmark)
+        print(middleware_manager)
         super().__init__(
             ops=ops,
             router=router,
@@ -278,7 +282,16 @@ class TextGenerationPipeline(Pipeline):
             pipeline_state=pipeline_state,
             continuous_batching_scheduler=continuous_batching_scheduler,
             middleware_manager=middleware_manager,
+            benchmark=benchmark
         )
+
+    @property
+    def input_schema(self):
+        return self.ops["process_input"].input_schema
+
+    @property
+    def output_schema(self):
+        return self.ops["process_outputs"].output_schema
 
     def expand_inputs(self, items, batch_size):
         items = [items.get(key) for key in items.keys()]
