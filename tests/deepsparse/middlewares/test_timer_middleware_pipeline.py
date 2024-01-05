@@ -219,7 +219,7 @@ def test_text_generation_creation_pipeline_has_timer_measurements():
     )
 
     prompt = "How to make banana bread?"
-    generation_config = {"max_new_tokens": 100}
+    generation_config = {"max_new_tokens": 10}
 
     text = model(prompt, **generation_config).generations[0].text
     assert text is not None
