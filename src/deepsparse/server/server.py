@@ -41,8 +41,6 @@ from fastapi.responses import StreamingResponse
 from starlette.responses import RedirectResponse
 
 
-SUPPORTED_INTEGRATIONS = ["local", "sagemaker", "openai"]
-
 _LOGGER = logging.getLogger(__name__)
 
 
@@ -82,12 +80,6 @@ class Server:
         self.context = None
         self.executor = None
         self.server_logger = server_logger_from_config(self.server_config)
-
-        if self.server_config.integration not in SUPPORTED_INTEGRATIONS:
-            raise ValueError(
-                f"Unknown integration field {self.server_config.integration}. "
-                f"Expected one of {SUPPORTED_INTEGRATIONS}"
-            )
 
     def start_server(
         self,
@@ -246,6 +238,7 @@ class Server:
         system_logging_config: SystemLoggingConfig,
         raw_request: Request,
     ):
+
         if hasattr(proxy_pipeline.pipeline, "run_async"):
             inference_state = InferenceState()
             inference_state.create_state({})

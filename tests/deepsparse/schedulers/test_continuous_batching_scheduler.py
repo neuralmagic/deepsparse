@@ -31,7 +31,7 @@ def test_continuous_batching_executor_thread():
         "zoo:mobilenet_v2-1.0-imagenet-base",
     )
 
-    scheduler.add_engine_operator(engine_operator, [1])
+    scheduler.add_engine_operator(engine_operator, [2])
 
     # submit job to scheduler and expect future to be returned
     engine_input = engine_operator.input_schema(
