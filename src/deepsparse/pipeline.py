@@ -104,6 +104,10 @@ class Pipeline(Operator):
         :param kwargs: extra task specific kwargs to be passed to the Pipeline
         :return: pipeline object initialized for the given task
         """
+
+
+
+        """
         new_kwargs = {}
         for k in kwargs:
             if k in V2_NOT_SUPPORTED:
@@ -130,9 +134,11 @@ class Pipeline(Operator):
                     "provided task should be registered using the OperatorRegistry"
                 )
         except Exception:
-            from deepsparse.legacy import Pipeline
 
-            pipeline = Pipeline.create(task=task, **kwargs)
+        """
+        from deepsparse.legacy import Pipeline
+
+        pipeline = Pipeline.create(task=task, **kwargs)
         return pipeline
 
     @classmethod
