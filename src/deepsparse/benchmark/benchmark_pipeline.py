@@ -124,6 +124,8 @@ _LOGGER = logging.getLogger(__name__)
 DEEPSPARSE_ENGINE = "deepsparse"
 ORT_ENGINE = "onnxruntime"
 
+from deepsparse.middlewares import MiddlewareManager, MiddlewareSpec, TimerMiddleware
+
 
 class PipelineExecutorThread(threading.Thread):
     """
@@ -289,6 +291,10 @@ def benchmark_pipeline(
     input_type = config.data_type
     kwargs = config.pipeline_kwargs
     kwargs["benchmark"] = True
+
+    middlewares = [
+        MiddlewareSpec(TimerMiddleware),  # for timer
+    ]
     pipeline = Pipeline.create(
         task=task,
         model_path=model_path,
@@ -296,6 +302,7 @@ def benchmark_pipeline(
         scheduler=scheduler,
         num_cores=num_cores,
         num_streams=num_streams,
+        middleware_manager=MiddlewareManager(middlewares),
         **kwargs,
     )
     inputs = create_input_schema(pipeline, input_type, batch_size, config)
