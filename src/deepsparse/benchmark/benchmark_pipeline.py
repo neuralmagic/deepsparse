@@ -536,7 +536,7 @@ def main(
     benchmark_results = {
         "items_per_sec": items_per_sec,
         "seconds_ran": total_run_time,
-        "iterations": len(batch_times),
+        "iterations": len(all_sections["total"]),
         "compute_sections": section_stats,
     }
 
