@@ -123,6 +123,8 @@ class Pipeline(Operator):
             else:
                 new_kwargs[k] = kwargs.get(k)
 
+        pipeline = Operator.create(task=task, **new_kwargs)
+        """
         try:
             model_path = new_kwargs.get("model_path")
             model = new_kwargs.pop("model", None)
@@ -145,6 +147,7 @@ class Pipeline(Operator):
             from deepsparse.legacy import Pipeline
 
             pipeline = Pipeline.create(task=task, **kwargs)
+        """
         return pipeline
 
     @classmethod
