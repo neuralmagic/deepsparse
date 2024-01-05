@@ -25,6 +25,7 @@ usage: deepsparse.benchmark [-h] [-b BATCH_SIZE] [-i INPUT_SHAPES]
                             [-pin {none,core,numa}] [-e ENGINE]
                             [--no-internal-kv-cache] [-q] [-x EXPORT_PATH]
                             [--disable-kv-cache-overrides]
+                            [--num-kv-cache-tokens NUM_KV_CACHE_TOKENS]
                             model_path
 
 Benchmark ONNX models in the DeepSparse Engine
@@ -92,6 +93,9 @@ optional arguments:
   --disable-kv-cache-overrides, --disable_kv_cache_overrides
                         If set, it will not alter the model
                         with kv cache overrides
+  --num-kv-cache-tokens NUM_KV_CACHE_TOKENS, --num_kv_cache_tokens NUM_KV_CACHE_TOKENS
+                        If using internal kv cache, sets the number of tokens to fill 
+                        the cache with
 
 ##########
 Example on a BERT from SparseZoo:
@@ -125,6 +129,7 @@ import argparse
 import importlib
 import json
 import logging
+import os
 from typing import Dict, Optional
 
 from deepsparse import Engine, __version__
@@ -310,6 +315,16 @@ def parse_args():
         action="store_true",
         default=False,
     )
+    parser.add_argument(
+        "--num-kv-cache-tokens",
+        "--num_kv_cache_tokens",
+        type=int,
+        default=1,
+        help=(
+            "If using internal kv cache, sets the number of tokens to fill "
+            "the cache with"
+        ),
+    )
 
     return parser.parse_args()
 
@@ -347,6 +362,7 @@ def benchmark_model(
     quiet: bool = False,
     export_path: Optional[str] = None,
     disable_kv_cache_overrides: bool = False,
+    num_kv_cache_tokens: int = 1,
 ) -> Dict:
     if quiet:
         set_logging_level(logging.WARN)
@@ -402,9 +418,14 @@ def benchmark_model(
                 f"set the flag: --no-internal-kv-cache"
             )
 
+        # This environment variable sets the KV cache to a fixed number of prefilled
+        # tokens for consistent benchmarking
+        os.environ["NM_BENCHMARK_KV_TOKENS"] = num_kv_cache_tokens
+
         _LOGGER.info(
             f"Benchmarking Engine: {engine} with "
-            f"{'internal' if internal_kv_cache else 'external'} KV cache management"
+            f"{'internal' if internal_kv_cache else 'external'} KV cache management "
+            f"and {num_kv_cache_tokens} tokens in the cache"
         )
     else:
         input_ids_length = None
