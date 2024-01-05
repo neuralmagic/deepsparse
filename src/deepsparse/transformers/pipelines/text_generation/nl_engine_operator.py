@@ -128,6 +128,7 @@ class NLEngineOperator(EngineOperator):
         self.input_ids_length = input_ids_length
         self.internal_kv_cache = internal_kv_cache
         self.kv_cache_data_type = None
+        self.inference_index = 0
 
         super().__init__(**kwargs)
 
@@ -231,8 +232,13 @@ class NLEngineOperator(EngineOperator):
                 out, bench_info = self.engine._eng_net.benchmark_execute(
                     inputs, internal_kv_cache
                 )
-            from deepsparse.debug_analysis import construct_layer_statistics
-            print(construct_layer_statistics(bench_info))
+
+            filename = f"analysis-{self.inference_index}.pickle"
+            print(f"Saving text generation inference analysis to {filename}")
+            import pickle
+            with open(filename, 'wb') as f:
+                pickle.dump(bench_info, f, pickle.HIGHEST_PROTOCOL)
+            self.inference_index += 1
             out = [v for v in out.values()]
 
         else:
