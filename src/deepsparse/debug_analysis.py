@@ -433,7 +433,7 @@ def main():
 
         # This environment variable sets the KV cache to a fixed number of prefilled
         # tokens for consistent benchmarking
-        os.environ["NM_BENCHMARK_KV_TOKENS"] = args.num_kv_cache_tokens
+        os.environ["NM_BENCHMARK_KV_TOKENS"] = str(args.num_kv_cache_tokens)
 
         print(
             f"Enable KVCache: prev_num_tokens = {kv_cache_params.prev_num_tokens}, "

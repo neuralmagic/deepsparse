@@ -420,7 +420,7 @@ def benchmark_model(
 
         # This environment variable sets the KV cache to a fixed number of prefilled
         # tokens for consistent benchmarking
-        os.environ["NM_BENCHMARK_KV_TOKENS"] = num_kv_cache_tokens
+        os.environ["NM_BENCHMARK_KV_TOKENS"] = str(num_kv_cache_tokens)
 
         _LOGGER.info(
             f"Benchmarking Engine: {engine} with "
@@ -535,6 +535,7 @@ def main():
         quiet=args.quiet,
         export_path=args.export_path,
         disable_kv_cache_overrides=args.disable_kv_cache_overrides,
+        num_kv_cache_tokens=args.num_kv_cache_tokens,
     )
 
     # Results summary
