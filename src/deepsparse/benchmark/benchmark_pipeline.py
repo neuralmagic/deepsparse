@@ -355,6 +355,7 @@ def calculate_section_stats(
     total_run_time_ms = total_run_time * 1000
 
     sections = {}
+    print(batch_times["total_inference"])
     for section_name in batch_times:
         times = [t * 1000 for t in batch_times[section_name]]
         sections[section_name] = calculate_statistics(
