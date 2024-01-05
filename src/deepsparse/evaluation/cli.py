@@ -115,7 +115,7 @@ _LOGGER = logging.getLogger(__name__)
 @click.option(
     "-e",
     "--engine_type",
-    type=click.Choice([DEEPSPARSE_ENGINE, ORT_ENGINE, TORCHSCRIPT_ENGINE, None]),
+    type=click.Choice([DEEPSPARSE_ENGINE, ORT_ENGINE, TORCHSCRIPT_ENGINE]),
     default=DEEPSPARSE_ENGINE,
     help="The engine to use for the evaluation. The default is the "
     "DeepSparse engine. If the evaluation should be run without "
