@@ -24,8 +24,8 @@ def try_import_lm_evaluation_harness(raise_error=False):
         if raise_error:
             raise ImportError(
                 "Unable to import lm_eval. "
-                "To install the dependency refer to the github repository: "
-                "https://github.com/EleutherAI/lm-evaluation-harness"
+                "To install run 'pip install "
+                "git+https://github.com/EleutherAI/lm-evaluation-harness@b018a7d51'"
             )
         return False
 
