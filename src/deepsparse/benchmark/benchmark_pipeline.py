@@ -371,7 +371,7 @@ def calculate_statistics(
 
 def calculate_section_stats(
     batch_times: Dict[str, List[float]], total_run_time: float, num_streams: int
-) -> Dict[str, Dict]:
+) -> Tuple[Dict[str, Dict], Optional[Dict[str, List]]]:
     total_run_time_ms = total_run_time * 1000
 
     sections = {}
