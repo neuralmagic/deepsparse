@@ -207,7 +207,12 @@ class DeepSparseLM(base.BaseLM):
         self.tokenizer = tokenizer if tokenizer else self.model.tokenizer
 
         self._batch_size = batch_size
-        self._max_length = pipeline.sequence_length
+        try:
+            self._max_length = pipeline.sequence_length
+        except:
+            # workaround until the DeepSparse pipeline exposes the sequence_length
+            self._max_length = pipeline.ops["single_engine"].sequence_length
+        
         self._max_gen_toks = max_gen_toks or 256
 
         self.vocab_size = self.tokenizer.vocab_size
