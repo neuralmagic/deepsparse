@@ -116,6 +116,7 @@ from deepsparse.cpu import cpu_architecture
 from deepsparse.log import set_logging_level
 from deepsparse.middlewares import MiddlewareManager, MiddlewareSpec, TimerMiddleware
 from deepsparse.tasks import SupportedTasks
+from deepsparse.utils.timer import InferenceStages
 
 
 __all__ = ["benchmark_pipeline"]
@@ -547,14 +548,14 @@ def main(
 
     if all_sections:
         items_per_sec = (
-            len(all_sections["total_inference"]) * batch_size
+            len(all_sections[InferenceStages.TOTAL_INFERENCE]) * batch_size
         ) / total_run_time
-        iterations = len(all_sections["total_inference"])
+        iterations = len(all_sections[InferenceStages.TOTAL_INFERENCE])
     else:
         items_per_sec = (
-            len(batch_times["total_inference"]) * batch_size
+            len(batch_times[InferenceStages.TOTAL_INFERENCE]) * batch_size
         ) / total_run_time
-        iterations = len(batch_times["total_inference"])
+        iterations = len(batch_times[InferenceStages.TOTAL_INFERENCE])
 
     benchmark_results = {
         "items_per_sec": items_per_sec,
