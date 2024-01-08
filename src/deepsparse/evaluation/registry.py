@@ -17,23 +17,19 @@ Implementation of a registry for evaluation functions
 import logging
 from typing import Any, Callable, List, Optional, Union
 
-from sparsezoo.utils.registry import RegistryMixin
+from sparsezoo.evaluation import EvaluationRegistry
 
 
-__all__ = ["EvaluationRegistry"]
+__all__ = ["DeepSparseEvaluationRegistry"]
 
 _LOGGER = logging.getLogger(__name__)
 
 
-class EvaluationRegistry(RegistryMixin):
+class DeepSparseEvaluationRegistry(EvaluationRegistry):
     """
     Extends the RegistryMixin to enable registering
     and loading of evaluation functions.
     """
-
-    @classmethod
-    def load_from_registry(cls, name: str) -> Callable[..., "Result"]:  # noqa: F821
-        return cls.get_value_from_registry(name=name)
 
     @classmethod
     def resolve(
@@ -70,7 +66,4 @@ class EvaluationRegistry(RegistryMixin):
 
         potentially_check_dependency_import(integration)
 
-        try:
-            return cls.load_from_registry(name=integration)
-        except KeyError as err:
-            raise KeyError(err)
+        return cls.load_from_registry(name=integration)

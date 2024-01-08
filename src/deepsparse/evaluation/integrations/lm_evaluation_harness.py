@@ -27,9 +27,9 @@ from tqdm import tqdm
 
 import torch
 from deepsparse import Pipeline
-from deepsparse.evaluation.registry import EvaluationRegistry
-from deepsparse.evaluation.results import Dataset, Evaluation, Metric, Result
+from deepsparse.evaluation.registry import DeepSparseEvaluationRegistry
 from lm_eval import base, evaluator, tasks, utils
+from sparsezoo.evaluation.results import Dataset, Evaluation, Metric, Result
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -37,7 +37,7 @@ _LOGGER = logging.getLogger(__name__)
 __all__ = ["integration_eval"]
 
 
-@EvaluationRegistry.register(name="lm-evaluation-harness")
+@DeepSparseEvaluationRegistry.register(name="lm-evaluation-harness")
 def integration_eval(
     model: Any,
     datasets: Union[List[str], str],

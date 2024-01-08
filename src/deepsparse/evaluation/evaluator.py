@@ -14,14 +14,14 @@
 import logging
 from typing import Any, List, Optional, Union
 
-from deepsparse.evaluation.registry import EvaluationRegistry
-from deepsparse.evaluation.results import Result
+from deepsparse.evaluation.registry import DeepSparseEvaluationRegistry
 from deepsparse.evaluation.utils import create_model_from_target
 from deepsparse.operators.engine_operator import (
     DEEPSPARSE_ENGINE,
     ORT_ENGINE,
     TORCHSCRIPT_ENGINE,
 )
+from sparsezoo.evaluation.results import Result
 
 
 __all__ = ["evaluate"]
@@ -50,7 +50,9 @@ def evaluate(
         else target
     )
 
-    eval_integration = EvaluationRegistry.resolve(model, datasets, integration)
+    eval_integration = DeepSparseEvaluationRegistry.resolve(
+        model, datasets, integration
+    )
 
     return eval_integration(
         model=model,

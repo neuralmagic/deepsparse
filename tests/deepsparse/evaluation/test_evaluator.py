@@ -21,7 +21,7 @@ from click.testing import CliRunner
 import pytest
 from deepsparse.evaluation.evaluator import evaluate
 from deepsparse.evaluation.integrations import try_import_lm_evaluation_harness
-from deepsparse.evaluation.registry import EvaluationRegistry
+from deepsparse.evaluation.registry import DeepSparseEvaluationRegistry
 from deepsparse.evaluation.results import (
     Dataset,
     EvalSample,
@@ -31,7 +31,7 @@ from deepsparse.evaluation.results import (
 )
 
 
-@EvaluationRegistry.register()
+@DeepSparseEvaluationRegistry.register()
 def dummy_integration(*args, **kwargs):
     result_formatted = [
         Evaluation(
