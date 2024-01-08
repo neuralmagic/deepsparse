@@ -17,7 +17,7 @@ import os
 from pathlib import Path
 from typing import Any, AsyncGenerator, Callable, Dict, Generator, List, Optional, Union
 
-from deepsparse.middlewares import MiddlewareManager
+from deepsparse.middlewares import IS_NESTED_KEY, NAME_KEY, MiddlewareManager
 from deepsparse.operators import EngineOperator, Operator
 from deepsparse.pipeline_config import PipelineConfig
 from deepsparse.routers import Router
@@ -29,7 +29,7 @@ from deepsparse.schedulers import (
 from deepsparse.subgraph_execute import SubGraphExecutor
 from deepsparse.utils import InferenceState, PipelineState
 from deepsparse.utils.subgraph import SubGraph
-from deepsparse.utils.time import TimerManager
+from deepsparse.utils.time import TIMER_KEY, InferenceStages, TimerManager
 
 
 __all__ = [
@@ -99,12 +99,11 @@ class Pipeline(Operator):
         self.subgraph_executor = SubGraphExecutor()
         self.benchmark = benchmark
 
-    
-    @property 
+    @property
     def input_schema(self):
         raise AttributeError("No input schema has been set for this pipeline.")
 
-    @property 
+    @property
     def output_schema(self):
         raise AttributeError("No output schema has been set for this pipeline.")
 
@@ -122,9 +121,6 @@ class Pipeline(Operator):
             else:
                 new_kwargs[k] = kwargs.get(k)
 
-        
-        pipeline = Operator.create(task=task, **new_kwargs)
-        """
         try:
             model_path = new_kwargs.get("model_path")
             model = new_kwargs.pop("model", None)
@@ -147,10 +143,6 @@ class Pipeline(Operator):
             from deepsparse.legacy import Pipeline
 
             pipeline = Pipeline.create(task=task, **kwargs)
-        """
-        #from deepsparse.legacy import Pipeline
-
-        #pipeline = Pipeline.create(task=task, **kwargs)
         return pipeline
 
     @classmethod
@@ -197,13 +189,13 @@ class Pipeline(Operator):
         next_step = self.router.START_ROUTE
         operator_output = None
         if (
-            not hasattr(inference_state, "timer")
-            or getattr(inference_state, "timer") is None
+            not hasattr(inference_state, TIMER_KEY)
+            or getattr(inference_state, TIMER_KEY) is None
         ):
             timer = self.timer_manager.get_new_timer()
             inference_state.set_timer(timer)
 
-        with inference_state.time(id="total_inference"):
+        with inference_state.time(id=InferenceStages.TOTAL_INFERENCE):
             while next_step != self.router.END_ROUTE:
                 # Check if running streaming; if that is the case, will return
                 # an AsyncGenerator. This requires the pipeline to support
@@ -441,9 +433,8 @@ class Pipeline(Operator):
             is_nested = False
 
         kwargs["inference_state"] = inference_state
-        # add name for timer measurements key
-        kwargs["name"] = "total_inference"
-        kwargs["is_nested"] = is_nested
+        kwargs[NAME_KEY] = InferenceStages.TOTAL_INFERENCE
+        kwargs[IS_NESTED_KEY] = is_nested
 
         # timer shared across all operators, has all measurements
         timer = inference_state.timer
@@ -518,11 +509,11 @@ class Pipeline(Operator):
 
         kwargs["operator"] = wrapped_operator
 
-        if isinstance(inp, Dict):
-            if "name" not in inp:
-                kwargs["name"] = operator.__class__.__name__
+        if isinstance(inp, dict):
+            if NAME_KEY not in inp:
+                kwargs[NAME_KEY] = operator.__class__.__name__
         else:
-            kwargs["name"] = operator.__class__.__name__
+            kwargs[NAME_KEY] = operator.__class__.__name__
 
         if inp:
             output = (

@@ -15,6 +15,7 @@
 import logging
 from typing import List, Optional
 
+from deepsparse.middlewares import MiddlewareManager
 from deepsparse.operators import EngineOperator
 from deepsparse.operators.registry import OperatorRegistry
 from deepsparse.pipeline import Pipeline
@@ -61,6 +62,7 @@ class TextGenerationPipeline(Pipeline):
         generation_config=None,
         continuous_batch_sizes: Optional[List[int]] = None,
         benchmark: bool = False,
+        middleware_manager: Optional[MiddlewareManager] = None,
         **engine_kwargs,
     ):
         """
@@ -119,9 +121,6 @@ class TextGenerationPipeline(Pipeline):
 
         if internal_kv_cache and engine_kwargs.get("engine_type") == "onnxruntime":
             internal_kv_cache = False
-
-        # pop middleware_manager before going into NLEngineOperator
-        middleware_manager = engine_kwargs.pop("middleware_manager", None)
 
         single_engine_operator = NLEngineOperator(
             sequence_length=sequence_length,
@@ -279,7 +278,7 @@ class TextGenerationPipeline(Pipeline):
             pipeline_state=pipeline_state,
             continuous_batching_scheduler=continuous_batching_scheduler,
             middleware_manager=middleware_manager,
-            benchmark=benchmark
+            benchmark=benchmark,
         )
 
     @property

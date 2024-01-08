@@ -114,6 +114,8 @@ from deepsparse.benchmark.helpers import (
 )
 from deepsparse.cpu import cpu_architecture
 from deepsparse.log import set_logging_level
+from deepsparse.middlewares import MiddlewareManager, MiddlewareSpec, TimerMiddleware
+from deepsparse.tasks import SupportedTasks
 
 
 __all__ = ["benchmark_pipeline"]
@@ -123,8 +125,6 @@ _LOGGER = logging.getLogger(__name__)
 
 DEEPSPARSE_ENGINE = "deepsparse"
 ORT_ENGINE = "onnxruntime"
-
-from deepsparse.middlewares import MiddlewareManager, MiddlewareSpec, TimerMiddleware
 
 
 class PipelineExecutorThread(threading.Thread):
@@ -292,9 +292,12 @@ def benchmark_pipeline(
     kwargs = config.pipeline_kwargs
     kwargs["benchmark"] = True
 
-    middlewares = [
-        MiddlewareSpec(TimerMiddleware),  # for timer
-    ]
+    if SupportedTasks.is_text_generation(task) or SupportedTasks.is_code_generation(
+        task
+    ):
+        middlewares = [MiddlewareSpec(TimerMiddleware)]
+        kwargs["middleware_manager"] = MiddlewareManager(middlewares)
+
     pipeline = Pipeline.create(
         task=task,
         model_path=model_path,
@@ -302,25 +305,30 @@ def benchmark_pipeline(
         scheduler=scheduler,
         num_cores=num_cores,
         num_streams=num_streams,
-        middleware_manager=MiddlewareManager(middlewares),
         **kwargs,
     )
     inputs = create_input_schema(pipeline, input_type, batch_size, config)
 
+    def _clear_measurements():
+        # Helper method to handle variations between v1 and v2 timers
+        if hasattr(pipeline.timer_manager, "clear"):
+            pipeline.timer_manager.clear()
+        else:
+            pipeline.timer_manager.measurements.clear()
+
     if scenario == "singlestream":
         singlestream_benchmark(pipeline, inputs, warmup_time)
-        #pipeline.timer_manager.clear()
-        pipeline.timer_manager.measurements.clear()
+        _clear_measurements()
         start_time = time.perf_counter()
         singlestream_benchmark(pipeline, inputs, seconds_to_run)
     elif scenario == "multistream":
         multistream_benchmark(pipeline, inputs, warmup_time, num_streams)
-        pipeline.timer_manager.clear()
+        _clear_measurements()
         start_time = time.perf_counter()
         multistream_benchmark(pipeline, inputs, seconds_to_run, num_streams)
     elif scenario == "elastic":
         multistream_benchmark(pipeline, inputs, warmup_time, num_streams)
-        pipeline.timer_manager.clear()
+        _clear_measurements()
         start_time = time.perf_counter()
         multistream_benchmark(pipeline, inputs, seconds_to_run, num_streams)
     else:
@@ -328,8 +336,10 @@ def benchmark_pipeline(
 
     end_time = time.perf_counter()
     total_run_time = end_time - start_time
-    #batch_times = pipeline.timer_manager.all_times
-    batch_times = pipeline.timer_manager.measurements
+    if hasattr(pipeline.timer_manager, "all_times"):
+        batch_times = pipeline.timer_manager.all_times
+    else:
+        batch_times = pipeline.timer_manager.measurements
     if len(batch_times) == 0:
         raise Exception(
             "Generated no batch timings, try extending benchmark time with '--time'"
@@ -364,29 +374,29 @@ def calculate_section_stats(
     total_run_time_ms = total_run_time * 1000
 
     sections = {}
-   
-    """
-    for section_name in batch_times:
-        times = [t * 1000 for t in batch_times[section_name]]
-        sections[section_name] = calculate_statistics(
-            times, total_run_time_ms, num_streams
-        )
-    """
-    print(len(batch_times))
-    all_sections = {}
-    for batch in batch_times:
-        for k, v in batch.items():
-            if k in all_sections:
-                all_sections[k].extend(v)
-            else:
-                all_sections[k] = v
+    all_sections = None
 
-    for section_name in all_sections:
-        times = [t * 1000 for t in all_sections[section_name]]
-        sections[k] = calculate_statistics(
-            times, total_run_time_ms, num_streams
-        )
-    #"""
+    def _get_statistics(batch_times):
+        for section_name in batch_times:
+            times = [t * 1000 for t in batch_times[section_name]]
+            sections[section_name] = calculate_statistics(
+                times, total_run_time_ms, num_streams
+            )
+        return sections
+
+    # Handle the slight differences in the way v1 and v2 store times
+    if isinstance(next(iter(batch_times)), dict):
+        all_sections = {}
+        for batch in batch_times:
+            for k, v in batch.items():
+                if k in all_sections:
+                    all_sections[k].extend(v)
+                else:
+                    all_sections[k] = v
+        sections = _get_statistics(all_sections)
+    else:
+        sections = _get_statistics(batch_times)
+
     return sections, all_sections
 
 
@@ -531,14 +541,25 @@ def main(
         quiet=quiet,
     )
 
-    section_stats, all_sections = calculate_section_stats(batch_times, total_run_time, num_streams)
-    #items_per_sec = (len(batch_times["total_inference"]) * batch_size) / total_run_time
-    items_per_sec = (len(all_sections["total"]) * batch_size) / total_run_time
+    section_stats, all_sections = calculate_section_stats(
+        batch_times, total_run_time, num_streams
+    )
+
+    if all_sections:
+        items_per_sec = (
+            len(all_sections["total_inference"]) * batch_size
+        ) / total_run_time
+        iterations = len(all_sections["total_inference"])
+    else:
+        items_per_sec = (
+            len(batch_times["total_inference"]) * batch_size
+        ) / total_run_time
+        iterations = len(batch_times["total_inference"])
 
     benchmark_results = {
         "items_per_sec": items_per_sec,
         "seconds_ran": total_run_time,
-        "iterations": len(batch_times["total_inference"]),
+        "iterations": iterations,
         "compute_sections": section_stats,
     }
 
