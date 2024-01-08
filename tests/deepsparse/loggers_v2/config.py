@@ -13,6 +13,8 @@
 # limitations under the License.
 
 
+import yaml
+
 import pytest
 from deepsparse.loggers_v2.config import LoggingConfig
 
@@ -42,3 +44,19 @@ def test_op_name_and_key_failure():
 
     with pytest.raises(ValueError):
         LoggingConfig(**config_data)
+
+
+def test_stringified_yaml():
+    config_data = {
+        "system": {"level": "info"},
+        "performance": {"frequency": 0.1, "timings": True, "cpu": True},
+        "metrics": {
+            "process_input.prompt": {"function": "identity", "frequency": 0.1},
+            "prep_for_generation.logits": {"function": "max", "frequency": 1.0},
+            "prep_for_generation.bar": {"function": "max", "frequency": 1.0},
+        },
+    }
+
+    yaml_string = f"""{yaml.dump(config_data)}"""
+    from_str = LoggingConfig.from_str(yaml_string)
+    assert from_str.dict() == config_data

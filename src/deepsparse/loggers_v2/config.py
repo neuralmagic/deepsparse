@@ -14,6 +14,7 @@
 
 from enum import Enum
 
+import yaml
 from pydantic import BaseModel, Extra, Field, validator
 
 
@@ -90,3 +91,16 @@ class LoggingConfig(BaseModel):
         description="Metrics configuration",
         extra=Extra.allow,
     )
+
+    @classmethod
+    def from_yaml(cls, yaml_path: str):
+        with open(yaml_path, "r") as file:
+            yaml_content = yaml.safe_load(file)
+        return cls(**yaml_content)
+
+    @classmethod
+    def from_str(cls, stringified_yaml: str):
+        yaml_content = yaml.safe_load(stringified_yaml)
+        return cls(**yaml_content)
+
+        # if yaml_path.endswith(".yaml") or yaml_path.endswith(".yml"):
