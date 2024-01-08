@@ -238,6 +238,7 @@ class Server:
         system_logging_config: SystemLoggingConfig,
         raw_request: Request,
     ):
+
         if hasattr(proxy_pipeline.pipeline, "run_async"):
             inference_state = InferenceState()
             inference_state.create_state({})

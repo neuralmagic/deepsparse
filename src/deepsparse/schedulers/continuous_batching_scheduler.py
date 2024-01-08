@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
+import asyncio
 from concurrent.futures import Future
 from threading import Lock
 from typing import List
@@ -113,7 +113,10 @@ class ContinuousBatchingScheduler(OperatorScheduler):
                 f"found {type(inputs)}"
             )
 
-        future = Future()
+        # asyncio.Future() is used when we run the pipeline using async/excecute
+        # operators using asyncio. Outside of the async pathway
+        # (i.e. outside of the server), we use concurrent.Future()
+        future = asyncio.Future() if kwargs.get("loop") else Future()
         self._queues.add_queue_item(key=operator, item=inputs, future=future)
 
         return future
