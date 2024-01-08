@@ -90,7 +90,6 @@ class Pipeline(Operator):
         self.schedulers = schedulers
         self.pipeline_state = pipeline_state
         self._continuous_batching_scheduler = continuous_batching_scheduler
-        self.timer_manager = TimerManager()
         self.middleware_manager = middleware_manager
         self.timer_manager = timer_manager or TimerManager()
         self.validate()
@@ -423,11 +422,6 @@ class Pipeline(Operator):
             inference_state.set_timer(timer)
             is_nested = False
 
-        next_call = self.run
-        if self.middleware_manager is not None:
-            # make next calls to be middlewares if any
-            next_call = self.middleware_manager.build_middleware_stack(next_call)
-
         kwargs["inference_state"] = inference_state
         # add name for timer measurements key
         kwargs["name"] = "total"
@@ -438,6 +432,7 @@ class Pipeline(Operator):
 
         next_call = self.run
         if self.middleware_manager is not None:
+            # make next calls to be middlewares if any
             next_call = self.middleware_manager.build_middleware_stack(next_call)
 
         rtn = next_call(*args, **kwargs)
