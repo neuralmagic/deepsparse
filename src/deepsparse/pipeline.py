@@ -185,7 +185,7 @@ class Pipeline(Operator):
             timer = self.timer_manager.get_new_timer()
             inference_state.set_timer(timer)
 
-        with inference_state.time(id="total"):
+        with inference_state.time(id="total_inference"):
             while next_step != self.router.END_ROUTE:
                 # Check if running streaming; if that is the case, will return
                 # an AsyncGenerator. This requires the pipeline to support
@@ -424,7 +424,7 @@ class Pipeline(Operator):
 
         kwargs["inference_state"] = inference_state
         # add name for timer measurements key
-        kwargs["name"] = "total"
+        kwargs["name"] = "total_inference"
         kwargs["is_nested"] = is_nested
 
         # timer shared across all operators, has all measurements

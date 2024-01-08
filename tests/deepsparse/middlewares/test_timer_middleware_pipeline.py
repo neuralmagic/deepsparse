@@ -76,7 +76,7 @@ def test_timer_middleware_timings_saved_in_timer_manager():
     assert len(measurements) == len(ops) + 1
 
     # assert pipeline time is more than the sum of two ops
-    pipeline_time: List[float] = measurements["total"]
+    pipeline_time: List[float] = measurements["total_inference"]
     add_one_operator_time, add_two_operator_time = (
         measurements["AddOneOperator"],
         measurements["AddTwoOperator"],
@@ -198,7 +198,7 @@ def test_timer_middleware_shared_timer():
     # Check that the avaerages exist and have correct values
     averages = AddThreePipeline.timer_manager.average()
 
-    keys = ["AddOneOperator", "AddTwoOperator", "total"]
+    keys = ["AddOneOperator", "AddTwoOperator", "total_inference"]
     for key in keys:
         time_combined = pipeline1_measuremnts[key] + pipeline2_measuremnts[key]
         assert averages["iteration"][key] == len(time_combined) / 2
@@ -237,7 +237,7 @@ def test_text_generation_creation_pipeline_has_timer_measurements():
         "CompileGenerations",
         "JoinOutput",
         "ProcessOutputs",
-        "total",
+        "total_inference",
     }
     for key in measurements[0].keys():
         expected_keys.remove(key)
@@ -286,7 +286,7 @@ async def test_timer_middleware_timings_saved_in_timer_manager_async():
     assert len(measurements) == len(ops) + 1
 
     # assert pipeline time is more than the sum of two ops
-    pipeline_time: List[float] = measurements["total"]
+    pipeline_time: List[float] = measurements["total_inference"]
     add_one_operator_time, add_two_operator_time = (
         measurements["AddOneOperator"],
         measurements["AddTwoOperator"],
