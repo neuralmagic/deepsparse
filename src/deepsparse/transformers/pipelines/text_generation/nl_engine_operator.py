@@ -196,70 +196,79 @@ class NLEngineOperator(EngineOperator):
         return onnx_file_path
 
     def run(self, inp: NLEngineInputs, **kwargs) -> NLEngineOutputs:
-        engine_input = inp.engine_inputs
-        kv_cache = inp.kv_cache
+        inference_state = kwargs.get("inference_state")
+        with inference_state.time(id="engine"):
+            engine_input = inp.engine_inputs
+            kv_cache = inp.kv_cache
 
-        split = True
-        if not isinstance(kv_cache, list):
-            split = False
-            kv_cache = [kv_cache]
-            engine_input = [engine_input]
+            split = True
+            if not isinstance(kv_cache, list):
+                split = False
+                kv_cache = [kv_cache]
+                engine_input = [engine_input]
 
-        inputs = list(map(self._add_kv_cache_to_input, engine_input, kv_cache))
-        inputs = join_engine_outputs(inputs, len(inputs))
+        
+            with inference_state.time(id="prep_data_forward_pass"):
+                inputs = list(map(self._add_kv_cache_to_input, engine_input, kv_cache))
+                inputs = join_engine_outputs(inputs, len(inputs))
 
-        internal_kv_cache_present = bool(kv_cache[0].engine_internal_cache)
+            internal_kv_cache_present = bool(kv_cache[0].engine_internal_cache)
+            
 
-        if internal_kv_cache_present:
-            # conventionally, before dispatching
-            # inputs to the engine, we validate them
-            # if val_inp=True. However, in this case
-            # we want to pass the empty kv cache inputs
-            # (batch_size=0) to the engine. Therefore,
-            # we skip the validation
+            if internal_kv_cache_present:
+                # conventionally, before dispatching
+                # inputs to the engine, we validate them
+                # if val_inp=True. However, in this case
+                # we want to pass the empty kv cache inputs
+                # (batch_size=0) to the engine. Therefore,
+                # we skip the validation
 
-            internal_kv_cache = [x.engine_internal_cache for x in kv_cache]
-            if inp.engine:
-                out = inp.engine._eng_net.execute_list_out(inputs, internal_kv_cache)
+                internal_kv_cache = [x.engine_internal_cache for x in kv_cache]
+                with inference_state.time(id="run_engine_forward"):
+                    if inp.engine:
+                        out = inp.engine._eng_net.execute_list_out(inputs, internal_kv_cache)
+                    else:
+                        out = self.engine._eng_net.execute_list_out(inputs, internal_kv_cache)
+
             else:
-                out = self.engine._eng_net.execute_list_out(inputs, internal_kv_cache)
-
-        else:
-            # run the engine without the LIB.kv_cache object
-            # stack multiple batch inputs along the batch dimension
-            out = (
-                super()
-                .run(
-                    EngineOperatorInputs(engine_inputs=inputs, engine=inp.engine),
-                    **kwargs,
+                # run the engine without the LIB.kv_cache object
+                # stack multiple batch inputs along the batch dimension
+                out = (
+                    super()
+                    .run(
+                        EngineOperatorInputs(engine_inputs=inputs, engine=inp.engine),
+                        **kwargs,
+                    )
+                    .get("engine_outputs")
                 )
-                .get("engine_outputs")
-            )
 
-        # logits should be stacked along batch dim
-        # kv_cache_state should be a list where each item has dim 0 as batch_size
-        logits, *kv_cache_state = out
+            # logits should be stacked along batch dim
+            # kv_cache_state should be a list where each item has dim 0 as batch_size
+            logits, *kv_cache_state = out
 
-        if not internal_kv_cache_present:
-            # split along batch sizes; will give a list of lists where number of lists
-            # is equal to batch_size
-            kv_cache_state, _ = split_engine_inputs(kv_cache_state, 1)
-            for i in range(len(kv_cache)):
-                # pass in a list and kv_cache object per _update_kv_cache call
-                self._update_kv_cache(
-                    kv_cache_state=kv_cache_state[i], kv_cache=kv_cache[i]
-                )
-        else:
-            for i in range(len(kv_cache)):
-                self._update_kv_cache(kv_cache=kv_cache[i])
+            if not internal_kv_cache_present:
+                # split along batch sizes; will give a list of lists where number of lists
+                # is equal to batch_size
+                with inference_state.time(id="update_external_kv_cache"):
+                    kv_cache_state, _ = split_engine_inputs(kv_cache_state, 1)
+                    for i in range(len(kv_cache)):
+                        # pass in a list and kv_cache object per _update_kv_cache call
+                        self._update_kv_cache(
+                            kv_cache_state=kv_cache_state[i], kv_cache=kv_cache[i]
+                        )
+            else:
+                
+                with inference_state.time(id="update_internal_kv_cache"):
+                    for i in range(len(kv_cache)):
+                        self._update_kv_cache(kv_cache=kv_cache[i])
 
-        output = {
-            "engine_outputs": logits,
-            "kv_cache": kv_cache if split else kv_cache[0],
-            "tokens": inp.tokens,
-            "in_generation": inp.in_generation,
-        }
-        return output
+            output = {
+                "engine_outputs": logits,
+                "kv_cache": kv_cache if split else kv_cache[0],
+                "tokens": inp.tokens,
+                "in_generation": inp.in_generation,
+            }
+            return output
 
     def _add_kv_cache_to_input(self, engine_input, kv_cache):
         kv_cache_state = copy.copy(kv_cache.cached_inputs)

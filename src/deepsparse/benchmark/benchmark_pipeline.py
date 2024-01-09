@@ -93,9 +93,7 @@ import click
 import numpy
 from pydantic import BaseModel
 
-from deepsparse import __version__
-#from deepsparse import Pipeline, __version__
-from deepsparse.legacy import Pipeline
+from deepsparse import Pipeline, __version__
 from deepsparse.benchmark.config import PipelineBenchmarkConfig, PipelineInputType
 from deepsparse.benchmark.data_creation import (
     SchemaType,
@@ -120,7 +118,7 @@ from deepsparse.middlewares import MiddlewareManager, MiddlewareSpec, TimerMiddl
 from deepsparse.tasks import SupportedTasks
 from deepsparse.utils.timer import InferenceStages
 
-not_legacy = False
+not_legacy = True
 __all__ = ["benchmark_pipeline"]
 
 
