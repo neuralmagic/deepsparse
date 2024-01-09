@@ -358,12 +358,38 @@ def benchmark_model(
     input_ids_length: Optional[int] = 1,
     thread_pinning: str = "core",
     engine: str = DEEPSPARSE_ENGINE,
-    internal_kv_cache: bool = False,
+    internal_kv_cache: bool = True,
     quiet: bool = False,
     export_path: Optional[str] = None,
     disable_kv_cache_overrides: bool = False,
     num_kv_cache_tokens: int = 1,
 ) -> Dict:
+    """
+    Benchmark a model on a given engine
+
+    :param model_path: Path or stub to the model
+    :param batch_size: Batch size, Defaults to 1.
+    :param input_shapes: Shape of the input. Defaults to "".
+    :param num_cores: Number of cores to use. Defaults to None.
+    :param scenario: The "type" of scenario to use. Defaults to "sync".
+    :param time: Total run-time to run the benchmark for. Defaults to 10.
+    :param warmup_time: Time to run the engine before running benchmarks. Defaults to 2.
+    :param num_streams: Number of streams. Defaults to None.
+    :param sequence_length: Sequence length for text-gen. Defaults to None.
+    :param input_ids_length: Length of the input ids. Defaults to 1.
+    :param thread_pinning: The hardware to pin for threading. Defaults to "core".
+    :param engine: The type of engine to use. Defaults to our proprietary
+        DEEPSPARSE_ENGINE.
+    :param internal_kv_cache: Runs the benchmark with or w/o the kv cache.
+        Defaults to True.
+    :param quiet: Verbose option if set to False. Defaults to False.
+    :param export_path: Path to save the results. Defaults to None.
+    :param disable_kv_cache_overrides: Option to override the kv cache.
+        Defaults to False.
+    :returns: Dictionary of benchmarked metrics
+
+    """
+
     if quiet:
         set_logging_level(logging.WARN)
 

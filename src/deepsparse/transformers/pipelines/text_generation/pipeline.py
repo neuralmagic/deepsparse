@@ -89,7 +89,6 @@ class TextGenerationPipeline(Pipeline):
             the EngineOperator.
 
         """
-
         if (prompt_sequence_length % 4 != 0) and (prompt_sequence_length != 1):
             raise ValueError(
                 f"prompt_sequence_length must be 1 or multiple of 4. "
@@ -119,6 +118,9 @@ class TextGenerationPipeline(Pipeline):
 
         if internal_kv_cache and engine_kwargs.get("engine_type") == "onnxruntime":
             internal_kv_cache = False
+
+        # pop middleware_manager before going into NLEngineOperator
+        middleware_manager = engine_kwargs.pop("middleware_manager", None)
 
         single_engine_operator = NLEngineOperator(
             sequence_length=sequence_length,
@@ -275,6 +277,7 @@ class TextGenerationPipeline(Pipeline):
             schedulers=scheduler,
             pipeline_state=pipeline_state,
             continuous_batching_scheduler=continuous_batching_scheduler,
+            middleware_manager=middleware_manager,
         )
 
     def expand_inputs(self, items, batch_size):
@@ -285,6 +288,16 @@ class TextGenerationPipeline(Pipeline):
 
     def condense_inputs(self, *args, **kwargs):
         return args[0], kwargs
+
+    @property
+    def sequence_length(self) -> int:
+        """
+        Property to return the sequence length for the pipeline.
+        (relies on the single engine operator)
+
+        :return: the sequence length for the pipeline
+        """
+        return self.ops["single_engine"].sequence_length
 
     def _get_continuous_batching_scheduler(
         self, batch_sizes: List[int], engines: List[EngineOperator]

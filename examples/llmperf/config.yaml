@@ -1,0 +1,6 @@
+integration: openai
+endpoints:
+  - task: text_generation
+    model: hf:neuralmagic/MiniChat-1.5-3B-pruned50-quant-ds
+    kwargs:
+      {"continuous_batch_sizes": [4]}

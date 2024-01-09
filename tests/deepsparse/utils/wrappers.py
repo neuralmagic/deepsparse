@@ -12,23 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# flake8: noqa: F401
+import asyncio
+import inspect
 
 
-def try_import_lm_evaluation_harness(raise_error=False):
-    try:
-        import lm_eval
+def asyncio_run(async_func):
+    def wrapper(*args, **kwargs):
+        return asyncio.run(async_func(*args, **kwargs))
 
-        return True
-    except ImportError:
-        if raise_error:
-            raise ImportError(
-                "Unable to import lm_eval. "
-                "To install run 'pip install "
-                "git+https://github.com/EleutherAI/lm-evaluation-harness@b018a7d51'"
-            )
-        return False
+    wrapper.__signature__ = inspect.signature(
+        async_func
+    )  # without this, fixtures are not injected
 
-
-if try_import_lm_evaluation_harness(raise_error=False):
-    from .lm_evaluation_harness import *
+    return wrapper
