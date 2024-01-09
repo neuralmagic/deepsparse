@@ -298,6 +298,16 @@ class TextGenerationPipeline(Pipeline):
     def condense_inputs(self, *args, **kwargs):
         return args[0], kwargs
 
+    @property
+    def sequence_length(self) -> int:
+        """
+        Property to return the sequence length for the pipeline.
+        (relies on the single engine operator)
+
+        :return: the sequence length for the pipeline
+        """
+        return self.ops["single_engine"].sequence_length
+
     def _get_continuous_batching_scheduler(
         self, batch_sizes: List[int], engines: List[EngineOperator]
     ) -> ContinuousBatchingScheduler:
