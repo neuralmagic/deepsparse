@@ -45,12 +45,42 @@ class SystemLoggingConfig(BaseModel):
 # class LoggerConfig(BaseModel):
 #     python: PythonConfig
 
-# class PerformanceLoggingConfig(BaseModel):
-#     frequency: float = Field(
-#         default=1.0, description="The rate to save the logs when they are passed in"
-#     )
-#     timings: bool = True
-#     cpu: bool = True
+
+class PerformanceConfig(BaseModel):
+    frequency: float = Field(
+        default=1.0, description="The rate to save the logs when they are passed in"
+    )
+    timings: bool = True
+    cpu: bool = True
+
+
+class PerformanceLoggingConfig(BaseModel):
+    __root__: Optional[Dict[str, PerformanceConfig]]
+
+    @validator("__root__")
+    def validate_metrics(cls, value):
+        if value is not None:
+            for path, fields in value.items():
+                cls.validate_metric_name(path)  # Validate metric_name format
+                PerformanceConfig.validate(
+                    fields
+                )  # Validate PerformanceConfig without creating an instance
+        return value
+
+    @classmethod
+    def validate_metric_name(cls, path):
+        parts = path.split(":")
+        if not parts[0].endswith(".py"):
+            raise ValueError(
+                f"Invalid metric name format: {path}."
+                "path needs to be a python file 'path.py:LoggerClass'."
+            )
+
+        if len(parts) != 2:
+            raise ValueError(
+                f"Invalid metric name format: {path}."
+                "Should be in the format 'path:LoggerClass'."
+            )
 
 
 # class MetricConfig(BaseModel):
@@ -87,6 +117,10 @@ class LoggingConfig(BaseModel):
         default=SystemLoggingConfig(),
         description="System level config",
     )
+    performance: PerformanceLoggingConfig = Field(
+        default=PerformanceLoggingConfig(),
+        description="System level config",
+    )
 
     # performance: PerformanceLoggingConfig = Field(
     #     default=PerformanceLoggingConfig(),
@@ -115,6 +149,10 @@ class LoggingConfig(BaseModel):
                 )
 
         return value
+
+    # @validator("performance", pre=True)
+    # def validate_performance_logging_config(cls, value):
+    #     return PerformanceLoggingConfig(**value)
 
     @classmethod
     def from_yaml(cls, yaml_path: str):

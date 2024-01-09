@@ -101,6 +101,7 @@ class PipelineLogger:
 
     def __init__(self, config: str):
         self.config = LoggingConfig.from_config(config).dict()
+        breakpoint()
         self.loggers = {
             LogType.SYSTEM: SystemLogger(self.config.get("system")),
             LogType.PERFORMANCE: PerformanceLogger(self.config.get("performance")),
