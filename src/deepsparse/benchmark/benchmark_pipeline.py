@@ -93,7 +93,9 @@ import click
 import numpy
 from pydantic import BaseModel
 
-from deepsparse import Pipeline, __version__
+from deepsparse import __version__
+#from deepsparse import Pipeline, __version__
+from deepsparse.legacy import Pipeline
 from deepsparse.benchmark.config import PipelineBenchmarkConfig, PipelineInputType
 from deepsparse.benchmark.data_creation import (
     SchemaType,
@@ -118,7 +120,7 @@ from deepsparse.middlewares import MiddlewareManager, MiddlewareSpec, TimerMiddl
 from deepsparse.tasks import SupportedTasks
 from deepsparse.utils.timer import InferenceStages
 
-
+not_legacy = False
 __all__ = ["benchmark_pipeline"]
 
 
@@ -293,11 +295,12 @@ def benchmark_pipeline(
     kwargs = config.pipeline_kwargs
     kwargs["benchmark"] = True
 
-    if SupportedTasks.is_text_generation(task) or SupportedTasks.is_code_generation(
-        task
-    ):
-        middlewares = [MiddlewareSpec(TimerMiddleware)]
-        kwargs["middleware_manager"] = MiddlewareManager(middlewares)
+    if not_legacy:
+        if SupportedTasks.is_text_generation(task) or SupportedTasks.is_code_generation(
+            task
+        ):
+            middlewares = [MiddlewareSpec(TimerMiddleware)]
+            kwargs["middleware_manager"] = MiddlewareManager(middlewares)
 
     pipeline = Pipeline.create(
         task=task,
