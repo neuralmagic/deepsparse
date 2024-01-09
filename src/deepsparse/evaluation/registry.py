@@ -28,7 +28,11 @@ _LOGGER = logging.getLogger(__name__)
 class DeepSparseEvaluationRegistry(EvaluationRegistry):
     """
     Extends the RegistryMixin to enable registering
-    and loading of evaluation functions.
+    and loading of evaluation functions for DeepSparse.
+
+    Adds a resolve method to automatically infer the integration
+    from the model and datasets if not specified, and returns
+    the appropriate evaluation function as a callable.
     """
 
     @classmethod
@@ -39,7 +43,7 @@ class DeepSparseEvaluationRegistry(EvaluationRegistry):
         integration: Optional[str] = None,
     ) -> Callable[..., "Result"]:  # noqa: F821
         """
-        Chooses an evaluation function from the registry based on the target,
+        Chooses an evaluation function from the registry based on the model,
         datasets and integration.
 
         If integration is specified, attempts to load the evaluation function
@@ -66,4 +70,4 @@ class DeepSparseEvaluationRegistry(EvaluationRegistry):
 
         potentially_check_dependency_import(integration)
 
-        return cls.load_from_registry(name=integration)
+        return cls.get_value_from_registry(name=integration)
