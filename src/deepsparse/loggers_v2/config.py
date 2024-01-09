@@ -28,22 +28,45 @@ class LogLevelEnum(str, Enum):
     CRITICAL = "CRITICAL"
 
 
-class LoggingModuleEnum(str, Enum):
-    STREAM = "STREAM"
-    FILE = "FILE"
-    ROTATING = "ROTATING"
+# class LoggingModuleEnum(str, Enum):
+#     STREAM = "STREAM"
+#     FILE = "FILE"
+#     ROTATING = "ROTATING"
+
+
+class StreamLoggingConfig(BaseModel):
+    level: str = Field(default="INFO", description="Logger level")
+    formatter: str = Field(
+        default="%(asctime)s - %(levelname)s - %(message)s",
+        description="Log display format",
+    )
+
+
+class FileLoggingConfig(StreamLoggingConfig):
+    filename: str = Field(
+        default="/tmp/pipeline.log", description="Path to save the logs"
+    )
+
+
+class RotatingLoggingConfig(StreamLoggingConfig):
+    filename: str = Field(
+        default="/tmp/pipeline_rotate.log", description="Path to save the logs"
+    )
+    max_bytes: int = Field(default=2048, description="Max size till rotation")
+    backup_count: int = Field(default=3, description="Number of backups")
 
 
 class SystemLoggingConfig(BaseModel):
-    __root__: Optional[Dict[str, Any]]
-
-
-# class PythonConfig(BaseModel):
-#     handler:
-
-
-# class LoggerConfig(BaseModel):
-#     python: PythonConfig
+    level: str = Field(default="INFO", description="Root logger level")
+    stream: StreamLoggingConfig = Field(
+        default=StreamLoggingConfig(), description="Stream logging config"
+    )
+    file: FileLoggingConfig = Field(
+        default=FileLoggingConfig(), description="File logging config"
+    )
+    rotating: RotatingLoggingConfig = Field(
+        default=RotatingLoggingConfig(), description="Rotating logging config"
+    )
 
 
 class PerformanceConfig(BaseModel):
@@ -138,17 +161,17 @@ class LoggingConfig(BaseModel):
         description="Pipeline logger version",
     )
 
-    @validator("system", pre=True)
-    def validate_logging_module_enum(cls, value):
-        for key in value.keys():
-            if key == "level":
-                continue
-            if key.upper() not in LoggingModuleEnum.__members__:
-                raise ValueError(
-                    f"Invalid logging module: {key}. Allowed values are {', '.join(LoggingModuleEnum.__members__)}."
-                )
+    # @validator("system", pre=True)
+    # def validate_logging_module_enum(cls, value):
+    #     for key in value.keys():
+    #         if key == "level":
+    #             continue
+    #         if key.upper() not in LoggingModuleEnum.__members__:
+    #             raise ValueError(
+    #                 f"Invalid logging module: {key}. Allowed values are {', '.join(LoggingModuleEnum.__members__)}."
+    #             )
 
-        return value
+    #     return value
 
     # @validator("performance", pre=True)
     # def validate_performance_logging_config(cls, value):
