@@ -89,7 +89,8 @@ optional arguments:
                         with kv cache overrides
   --num-kv-cache-tokens NUM_KV_CACHE_TOKENS, --num_kv_cache_tokens NUM_KV_CACHE_TOKENS
                         If using internal kv cache, sets the number of tokens to fill 
-                        the cache with
+                        the cache with. Must be between 0 and sequence_length -
+                        input_ids_length
 """  # noqa E501
 
 import argparse
@@ -251,8 +252,8 @@ def parse_args():
         type=int,
         default=int(os.environ.get("NM_BENCHMARK_KV_TOKENS") or "1"),
         help=(
-            "If using internal kv cache, sets the number of tokens to fill "
-            "the cache with"
+            "If using internal kv cache, sets the number of tokens to fill the cache "
+            "with. Must be between 0 and sequence_length - input_ids_length"
         ),
     )
 
