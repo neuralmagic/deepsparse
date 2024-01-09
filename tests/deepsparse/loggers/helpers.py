@@ -125,10 +125,12 @@ class ListLogger(BaseLogger):
     def __init__(self):
         self.calls = []
 
-    def log(self, identifier, value, category, **kwargs):
-        self.calls.append(
-            f"identifier:{identifier}, value:{value}, category:{category}"
-        )
+    # def log(self, identifier, value, category, **kwargs):
+    #     self.calls.append(
+    #         f"identifier:{identifier}, value:{value}, category:{category}"
+    #     )
+    def log(self, **kwargs):
+        self.calls.append(f"{kwargs}")
 
 
 class KwargsLogger(BaseLogger):

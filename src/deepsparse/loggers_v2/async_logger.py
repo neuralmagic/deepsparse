@@ -15,17 +15,16 @@
 
 import logging
 from concurrent.futures import Executor, ThreadPoolExecutor
-from typing import Any, Optional
+from typing import Any, Callable, Optional
 
 
 class AsyncLogger:
-    def __init__(self, log, max_workers=1, **config):
+    def __init__(self, max_workers=1, **config):
         self._job_pool: Executor = ThreadPoolExecutor(max_workers=max_workers)
-        self.log = log
         self.config = config
 
     # def log(self, identifier: str, value: Any, category: MetricCategories, **kwargs):
-    def log(self, value: Any, tag: Optional[str] = None, **kwargs):
+    def log(self, logger: Callable, value: Any, tag: Optional[str] = None, **kwargs):
 
         """
         Forward log calls to wrapped logger to run asynchronously
@@ -35,10 +34,11 @@ class AsyncLogger:
         :param category: The metric category that the log belongs to
         :param kwargs: Additional keyword arguments to pass to the logger
         """
+        breakpoint()
         job_future = self._job_pool.submit(
-            self.log,
+            logger.log,
             value=value,
-            tag=tag,
+            # tag=tag,
             **kwargs,
         )
         job_future.add_done_callback(self._log_async_job_exception)

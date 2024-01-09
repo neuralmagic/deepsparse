@@ -17,6 +17,8 @@ import os
 from enum import Enum
 from logging.handlers import RotatingFileHandler
 
+from .async_logger import AsyncLogger
+
 
 class LoggerType(Enum):
     STREAM = logging.StreamHandler
@@ -29,7 +31,7 @@ def create_file_if_not_exists(filename):
         open(filename, "a").close()
 
 
-class LoggingConfigFactory:
+class SystemLoggerFactory:
     def __init__(self, config):
 
         self.config = config
@@ -75,3 +77,59 @@ class LoggingConfigFactory:
         handler.setFormatter(formatter)
 
         return handler
+
+
+import importlib
+
+
+def get_logger_from_path(path: str):
+    path, class_name = path.split(":")
+    path = path.split(".py")[0]
+
+    _path = path
+    path = path.replace(r"/", ".")
+    try:
+        module = importlib.import_module(path)
+    except:
+        raise ValueError(f"Cannot find module with path {_path}")
+    try:
+        return getattr(module, class_name)
+    except:
+        raise ValueError(f"Cannot find Class with name {class_name} in {_path}")
+
+
+from typing import Any, Optional
+
+
+class PerformanceLoggerFactory(AsyncLogger):
+    """
+    Initialize all loggers from config. Log to all loggers using log
+
+    :param log: Callable that calls all the loggers
+    """
+
+    def __init__(self, config):
+        super().__init__(**config)
+        # self.config = config
+        self.logger = []
+
+    def create_logger(self):
+        for logger_path, config in self.config.items():
+            logger = get_logger_from_path(logger_path)
+            # breakpoint()
+            config = {}
+            self.logger.append(logger(**config))
+        # breakpoint()
+
+    def log(self, value: Any, tag: Optional[str] = None, *args, **kwargs):
+        for logger in self.logger:
+            super().log(
+                logger=logger,
+                value=value,
+                tag=tag,
+                identifier=1,
+                category=1,
+                *args,
+                **kwargs,
+            )
+            breakpoint()

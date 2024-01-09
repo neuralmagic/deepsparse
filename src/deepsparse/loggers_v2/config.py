@@ -28,12 +28,6 @@ class LogLevelEnum(str, Enum):
     CRITICAL = "CRITICAL"
 
 
-# class LoggingModuleEnum(str, Enum):
-#     STREAM = "STREAM"
-#     FILE = "FILE"
-#     ROTATING = "ROTATING"
-
-
 class StreamLoggingConfig(BaseModel):
     level: str = Field(default="INFO", description="Logger level")
     formatter: str = Field(
@@ -93,12 +87,6 @@ class PerformanceLoggingConfig(BaseModel):
     @classmethod
     def validate_metric_name(cls, path):
         parts = path.split(":")
-        if not parts[0].endswith(".py"):
-            raise ValueError(
-                f"Invalid metric name format: {path}."
-                "path needs to be a python file 'path.py:LoggerClass'."
-            )
-
         if len(parts) != 2:
             raise ValueError(
                 f"Invalid metric name format: {path}."
@@ -160,18 +148,6 @@ class LoggingConfig(BaseModel):
         deafult=2,
         description="Pipeline logger version",
     )
-
-    # @validator("system", pre=True)
-    # def validate_logging_module_enum(cls, value):
-    #     for key in value.keys():
-    #         if key == "level":
-    #             continue
-    #         if key.upper() not in LoggingModuleEnum.__members__:
-    #             raise ValueError(
-    #                 f"Invalid logging module: {key}. Allowed values are {', '.join(LoggingModuleEnum.__members__)}."
-    #             )
-
-    #     return value
 
     # @validator("performance", pre=True)
     # def validate_performance_logging_config(cls, value):

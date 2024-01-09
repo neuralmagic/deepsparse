@@ -14,11 +14,11 @@
 
 import logging
 from enum import Enum
-from typing import Any, Dict, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 
 from .async_logger import AsyncLogger
 from .config import LoggingConfig
-from .logging_factory import LoggingConfigFactory
+from .logging_factory import PerformanceLoggerFactory, SystemLoggerFactory
 
 
 class LogLevel(str, Enum):
@@ -32,16 +32,15 @@ class LogLevel(str, Enum):
 class LogType(Enum):
     SYSTEM = "SYSTEM"
     PERFORMANCE = "PERFORMANCE"
-    METRICS = "METRICS"
+    METRIC = "METRIC"
     PROMETHEUS = "PROMETHEUS"
 
 
 class SystemLogger:
     # Python logger
     def __init__(self, config: Dict[str, Any]):
-
         self.config = config
-        factory = LoggingConfigFactory(config)
+        factory = SystemLoggerFactory(config)
         self.logger = factory.create_logger()
 
     def log(
@@ -66,16 +65,20 @@ class SystemLogger:
         attr(msg)
 
 
-class PerformanceLogger(AsyncLogger):
+class PerformanceLogger:
     def __init__(self, config: Dict):
         self.config = config
-        self.logger = logging.Logger(__name__)  # temp
+        factory = PerformanceLoggerFactory(config)
+        factory.create_logger()
+        # self.logger: List = factory.logger
+        self.logger = factory
 
     def log(
         self,
-        message: str,
+        *args,
+        **kwargs,
     ):
-        self.log(message)
+        self.logger.log(*args, **kwargs)
 
 
 class MetricsLogger(AsyncLogger):
@@ -84,7 +87,7 @@ class MetricsLogger(AsyncLogger):
         self.logger = logging.Logger(__name__)  # temp
 
     def log(self, message: str):
-        self.log(message)
+        self.logger.log(message)
 
 
 class PrometheusLogger:
@@ -105,7 +108,7 @@ class PipelineLogger:
         self.loggers = {
             LogType.SYSTEM: SystemLogger(self.config.get("system")),
             LogType.PERFORMANCE: PerformanceLogger(self.config.get("performance")),
-            LogType.METRICS: MetricsLogger(self.config.get("metrics")),
+            LogType.METRIC: MetricsLogger(self.config.get("metrics")),
             LogType.PROMETHEUS: PrometheusLogger(self.config.get("prometheus")),
         }
 
