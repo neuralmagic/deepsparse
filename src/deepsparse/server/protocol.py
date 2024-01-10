@@ -28,9 +28,8 @@ def random_uuid() -> str:
 
 class LogProbs(BaseModel):
     text_offset: List[int] = Field(default_factory=list)
-    token_logprobs: List[Optional[float]] = Field(default_factory=list)
+    token_logprobs: List[Optional[str]] = Field(default_factory=list)
     tokens: List[str] = Field(default_factory=list)
-    top_logprobs: List[Optional[Dict[str, float]]] = Field(default_factory=list)
 
 
 class ErrorResponse(BaseModel):
@@ -119,10 +118,8 @@ class ChatCompletionRequest(BaseModel):
     logit_bias: Optional[Dict[str, float]] = None
     user: Optional[str] = None
     # Additional parameters
-    best_of: Optional[int] = None
     top_k: Optional[int] = -1
     ignore_eos: Optional[bool] = False
-    use_beam_search: Optional[bool] = False
     add_generation_prompt: Optional[bool] = True
 
 
@@ -142,17 +139,14 @@ class CompletionRequest(BaseModel):
     n: Optional[int] = 1
     stream: Optional[bool] = False
     logprobs: Optional[int] = None
-    echo: Optional[bool] = False
     stop: Optional[Union[str, List[str]]] = Field(default_factory=list)
     presence_penalty: Optional[float] = 0.0
     frequency_penalty: Optional[float] = 0.0
-    best_of: Optional[int] = None
     logit_bias: Optional[Dict[str, float]] = None
     user: Optional[str] = None
     # Additional parameters
     top_k: Optional[int] = -1
     ignore_eos: Optional[bool] = False
-    use_beam_search: Optional[bool] = False
 
 
 class ChatMessage(BaseModel):

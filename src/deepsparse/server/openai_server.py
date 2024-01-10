@@ -18,6 +18,8 @@ import time
 from http import HTTPStatus
 from typing import AsyncGenerator, Dict, List, Optional
 
+import numpy
+
 from deepsparse import Pipeline
 from deepsparse.server.config import EndpointConfig
 from deepsparse.server.helpers import create_error_response
@@ -35,6 +37,7 @@ from deepsparse.server.protocol import (
     CompletionResponseStreamChoice,
     CompletionStreamResponse,
     DeltaMessage,
+    LogProbs,
     ModelCard,
     ModelList,
     ModelPermission,
@@ -46,6 +49,7 @@ from deepsparse.tasks import SupportedTasks
 from deepsparse.utils import InferenceState
 from fastapi import BackgroundTasks, FastAPI, Request
 from fastapi.responses import StreamingResponse
+from scipy.special import softmax
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -237,6 +241,7 @@ class OpenAIServer(Server):
             try:
                 sampling_params = dict(
                     num_return_sequences=request.n,
+                    output_scores=request.logprobs,
                     presence_penalty=request.presence_penalty,
                     frequency_penalty=request.frequency_penalty,
                     temperature=request.temperature,
@@ -284,9 +289,19 @@ class OpenAIServer(Server):
             assert final_res is not None
             choices = []
             for output in final_res.outputs:
+                logprobs = (
+                    create_logprobs(
+                        output.token_ids["input_ids"],
+                        output.logprobs,
+                        pipeline=pipeline,
+                    )
+                    if request.logprobs
+                    else None
+                )
                 choice_data = CompletionResponseChoice(
                     text=output.text,
                     finish_reason=output.finish_reason,
+                    logprobs=logprobs,
                 )
                 choices.append(choice_data)
 
@@ -398,6 +413,7 @@ class OpenAIServer(Server):
             generated_outputs = []
             for prompt_generation in generations:
                 completion = CompletionOutput(
+                    logprobs=prompt_generation.score,
                     text=prompt_generation.text,
                     token_ids=tokenize(prompt_generation.text),
                     finish_reason=prompt_generation.finished_reason,
@@ -422,6 +438,7 @@ class OpenAIServer(Server):
                     prompt_token_ids=prompt_token_ids,
                     outputs=[
                         CompletionOutput(
+                            logprobs=output.score,
                             text=output.text,
                             token_ids=concat_token_ids,
                             finish_reason=output.finished_reason,
@@ -429,6 +446,25 @@ class OpenAIServer(Server):
                     ],
                     finished=output.finished,
                 )
+
+
+def create_logprobs(
+    token_ids: List[int],
+    log_probs: numpy.ndarray,
+    pipeline: Pipeline,
+    initial_text_offset: int = 0,
+) -> LogProbs:
+
+    logprobs = LogProbs()
+    tokens = pipeline.tokenizer.batch_decode(token_ids)
+
+    for i in range(len(tokens)):
+        log_prob = float(numpy.log(max(softmax(log_probs[i]))))
+
+        logprobs.tokens.append(tokens[i])
+        logprobs.token_logprobs.append(log_prob)
+
+    return logprobs
 
 
 def map_generation_schema(generation_kwargs: Dict) -> Dict:
@@ -484,12 +520,14 @@ def create_completion_stream_response_json(
     created_time: int,
     pipeline: Pipeline,
     finish_reason: Optional[str] = None,
+    logprobs: Optional[LogProbs] = None,
 ) -> str:
     """
     Create the response for /v1/completions endpoint when streaming is enabled.
     """
     choice_data = CompletionResponseStreamChoice(
         text=text,
+        logprobs=logprobs,
         finish_reason=finish_reason,
     )
     response = CompletionStreamResponse(
@@ -509,22 +547,23 @@ async def completion_stream_generator(
     async for res in result_generator:
         res: RequestOutput
         for output in res.outputs:
+            logprobs = (
+                create_logprobs(
+                    output.token_ids[-1]["input_ids"],
+                    output.logprobs[0],
+                    pipeline=pipeline,
+                )
+                if request.logprobs
+                else None
+            )
             response_json = create_completion_stream_response_json(
                 text=output.text,
                 request_id=request_id,
                 created_time=created_time,
                 pipeline=pipeline,
+                logprobs=logprobs,
             )
             yield f"data: {response_json}\n\n"
-            if output.finish_reason is not None:
-                response_json = create_completion_stream_response_json(
-                    text="",
-                    request_id=request_id,
-                    created_time=created_time,
-                    pipeline=pipeline,
-                    finish_reason=output.finish_reason,
-                )
-                yield f"data: {response_json}\n\n"
     yield "data: [DONE]\n\n"
 
 
@@ -553,13 +592,4 @@ async def chat_completion_stream_generator(
                 pipeline=pipeline,
             )
             yield f"data: {response_json}\n\n"
-            if output.finish_reason is not None:
-                response_json = create_stream_response_json(
-                    text="",
-                    finish_reason=output.finish_reason,
-                    request_id=request_id,
-                    created_time=created_time,
-                    pipeline=pipeline,
-                )
-                yield f"data: {response_json}\n\n"
     yield "data: [DONE]\n\n"

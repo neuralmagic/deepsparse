@@ -13,7 +13,9 @@
 # limitations under the License.
 
 from dataclasses import dataclass
-from typing import Dict, List, Optional
+from typing import List, Optional
+
+import numpy
 
 
 @dataclass
@@ -32,7 +34,7 @@ class CompletionOutput:
     text: str
     token_ids: List[int]
     cumulative_logprob: float = 0.0
-    logprobs: Optional[List[Dict[int, float]]] = None
+    logprobs: numpy.ndarray = None  # numpy array
     finish_reason: Optional[str] = None
 
     def finished(self) -> bool:
