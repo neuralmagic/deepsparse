@@ -70,7 +70,6 @@ class PerformanceLogger:
         self.config = config
         factory = PerformanceLoggerFactory(config)
         factory.create_logger()
-        # self.logger: List = factory.logger
         self.logger = factory
 
     def log(
@@ -104,12 +103,12 @@ class PipelineLogger:
 
     def __init__(self, config: str):
         self.config = LoggingConfig.from_config(config).dict()
+        sc = self.config
         breakpoint()
         self.loggers = {
             LogType.SYSTEM: SystemLogger(self.config.get("system")),
             LogType.PERFORMANCE: PerformanceLogger(self.config.get("performance")),
             LogType.METRIC: MetricsLogger(self.config.get("metrics")),
-            LogType.PROMETHEUS: PrometheusLogger(self.config.get("prometheus")),
         }
 
     def log(

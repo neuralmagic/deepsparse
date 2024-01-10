@@ -17,7 +17,7 @@ from enum import Enum
 from typing import Any, Dict, List, Optional, Union
 
 import yaml
-from pydantic import BaseModel, Extra, Field, validator
+from pydantic import BaseModel, Extra, Field, root_validator, validator
 
 
 class LogLevelEnum(str, Enum):
@@ -64,35 +64,7 @@ class PerformanceConfig(BaseModel):
     )
 
 
-class PerformanceLoggingConfig(BaseModel):
-    __root__: Optional[Dict[str, PerformanceConfig]]
-
-
-# class MetricConfig(PerformanceConfig):
-#     func: str = Field(
-#         default=None,
-#         description="Callable to use for logging value",
-#     )
-
-
-class MetricLoggingConfig(BaseModel):
-    # __root__: Optional[Dict[str, PerformanceConfig]]
-    __root__: Optional[Dict]
-
-
-class PythonLoggerConfig(BaseModel):
-    # level: str = Field(default="INFO", description="Root logger level")
-    stream: StreamLoggingConfig = Field(
-        default=StreamLoggingConfig(), description="Stream logging config"
-    )
-    file: FileLoggingConfig = Field(
-        default=FileLoggingConfig(), description="File logging config"
-    )
-    rotating: RotatingLoggingConfig = Field(
-        default=RotatingLoggingConfig(), description="Rotating logging config"
-    )
-    
-class LoggingHandlerConfig(BaseModel):
+class PythonLoggingConfig(BaseModel):
     level: str = Field(default="INFO", description="Root logger level")
     stream: StreamLoggingConfig = Field(
         default=StreamLoggingConfig(), description="Stream logging config"
@@ -103,8 +75,6 @@ class LoggingHandlerConfig(BaseModel):
     rotating: RotatingLoggingConfig = Field(
         default=RotatingLoggingConfig(), description="Rotating logging config"
     )
-    
-    
 
 
 class CustomLoggingConfig(BaseModel):
@@ -117,17 +87,13 @@ class CustomLoggingConfig(BaseModel):
             "path/to/file.py:ClassName",
         ),
     )
-    handler: Optional[LoggingHandlerConfig] = Field(
-        default=None,
-        description="Python logging handler config",
-    )
+
     class Config:
         extra = Extra.allow  # Allow extra kwargs
 
 
-
-class PrometheusLoggerConfig(BaseModel):
-    alias: Optional[str]
+class PrometheusLoggingConfig(BaseModel):
+    use: str = Field(default="path", description="Prometheus Logging path")
     port: int
     filename: str
 
@@ -154,7 +120,6 @@ class MetricTargetConfig(SystemTargetConfig):
     )
 
 
-
 class LoggingConfig(BaseModel):
 
     version: int = Field(
@@ -163,8 +128,25 @@ class LoggingConfig(BaseModel):
     )
 
     target: Dict[str, Union[SystemTargetConfig, MetricTargetConfig]]
-    
-    logger: Dict[str, Union{CustomLoggingConfig, PrometheusLoggingConfig, PythonLoggingConfig}]
+
+    logger: Dict[
+        str, Union[CustomLoggingConfig, PrometheusLoggingConfig, PythonLoggingConfig]
+    ]
+
+    system: str = Field(
+        default="python",
+        description="Default python logging module logger",
+    )
+
+    performance: Optional[Dict[str, List[str]]] = Field(
+        default=None,
+        description="Performance level config",
+    )
+
+    metric: Optional[Dict[str, List[str]]] = Field(
+        default=None,
+        description="Metric level config",
+    )
 
     @validator("target", pre=True, always=True)
     def validate_target(cls, value):
@@ -176,101 +158,100 @@ class LoggingConfig(BaseModel):
                 validated_target[key] = SystemTargetConfig(**config)
         return validated_target
 
+    @validator("system", pre=True, always=True)
+    def validate_system(cls, value: Dict, values: Dict):
+        """
+        Validate system loggers are a subset of
+            loggers defined in root level loggers in config
 
-    # system: str = Field(
-    #     default="python",
-    #     description="Default python logging module logger",
-    # )
+        :param value: system config
+        :param values: All values in LoggingConfig
+        """
+        cls.validate_loggers_subset([value], values)
+        return value
 
-    # performance: PerformanceLoggingConfig = Field(
-    #     default=PerformanceLoggingConfig(),
-    #     description="System level config",
-    # )
+    @validator("performance", pre=True, always=True)
+    def validate_performance(cls, value: Dict, values: Dict):
+        """
+        Validate performance loggers are a subset of
+            loggers defined in root level loggers in config
+        Validate that targets are a subset of
+            targets defined in the root level
+            and
 
-    # metric: MetricLoggingConfig = Field(
-    #     default=MetricLoggingConfig(),
-    #     description="Metrics configuration",
-    # )
+        :param value: performance config
+        :param values: All values in LoggingConfig
+        """
+        loggers = list(value.keys())
+        targets = list(set(target for sublist in value.values() for target in sublist))
 
-    # @validator("logger", pre=True, always=True)
-    # def validate_logger(cls, value):
-    #     validated_logger = {}
-    #     if "python" not in value:
-    #         value["python"] = {}
+        cls.validate_loggers_subset(loggers, values)
+        cls.validate_targets_subset(targets, values)
+        return value
 
-    #     for key, config in value.items():
-    #         if key == "prometheus":
-    #             validated_logger[key] = PrometheusLoggerConfig(
-    #                 **cls.set_alias(config, key)
-    #             )
-    #         elif key == "python":
-    #             validated_logger[key] = PythonLoggerConfig(**cls.set_alias(config, key))
-    #         else:
-    #             validated_logger[key] = CustomLoggerConfig(**cls.set_alias(config, key))
-    #     return validated_logger
+    @validator("metric", pre=True, always=True)
+    def validate_metric(cls, value: Dict, values: Dict):
+        """
+        Validate metric loggers are a subset of
+            loggers defined in root level loggers in config
+        Validate that targets are a subset of
+            targets defined in the root level
+            and
 
-    # @staticmethod
-    # def set_alias(config, key):
-    #     if "alias" not in config:
-    #         if key == "python":
-    #             config["config"] = "python"
-    #             return config
-    #         if key == "prometheus":
-    #             config["alias"] = "prometheus"
-    #             return config
-    #         if ":" in key:
-    #             alias = key.split(":")[-1]
-    #             config["alias"] = alias
-    #             return config
+        :param value: metric config
+        :param values: All values in LoggingConfig
+        """
+        loggers = list(value.keys())
+        targets = list(set(target for sublist in value.values() for target in sublist))
 
-    #         config["alias"] = key
-    #     return config
+        cls.validate_loggers_subset(loggers, values)
+        cls.validate_targets_subset(targets, values)
+        cls.validate_metric_target_fields(targets, values)
 
-    # @validator("performance", pre=True, always=True)
-    # def validate_performance(cls, value: Dict, values: Dict):
-    #     """
-    #     Validate performance loggers are a subset of
-    #         loggers defined in root level loggers in config
-    #         and validate perfoamnce fields
+        return value
 
-    #     :param value: Performance config
-    #     :param values: All values in LoggingConfig
+    @classmethod
+    def validate_metric_target_fields(cls, targets: List[str], values: Dict):
+        root_target = values["target"]
+        for target in targets:
+            if not isinstance(root_target.get(target), MetricTargetConfig):
+                raise ValueError(
+                    f"Defined target {target} must have name and output_key fields."
+                )
 
-    #     """
+    @classmethod
+    def validate_targets_subset(cls, targets: List[str], values: Dict):
+        """
+        Check that targets are a subset of the root level
+            target
 
-    #     cls.validate_loggers_subset(value, values)
+        :param value: Performance config
+        :param values: All values in LoggingConfig
 
-    #     validated_performance = {}
-    #     for key, config in value.items():
-    #         validated_performance[key] = PerformanceConfig(**config)
+        """
+        targets = {target_id for target_id in values["target"].keys()}
+        for target in targets:
+            if target not in targets:
+                raise ValueError(
+                    f"Defined target {target} must be a subset of {targets}."
+                )
 
-    #     return validated_performance
+    @classmethod
+    def validate_loggers_subset(cls, loggers: List[str], values: Dict):
+        """
+        Check that loggers are a subset of the root level
+            logger
 
-    # @classmethod
-    # def validate_loggers_subset(cls, value: Dict, values: Dict):
-    #     """
-    #     Check that performance loggers are set in root level
-    #     logger
+        :param value: Performance config
+        :param values: All values in LoggingConfig
 
-    #     :param value: Performance config
-    #     :param values: All values in LoggingConfig
-
-    #     """
-    #     performance_loggers = {
-    #         logger for config in value.values() for logger in config.get("loggers", [])
-    #     }
-
-    #     aliases = {
-    #         value["alias"]
-    #         for value in values["logger"].dict().get("__root__", {}).values()
-    #         if "alias" in value
-    #     }
-
-    #     for performance_logger in performance_loggers:
-    #         if performance_logger not in aliases:
-    #             raise ValueError(
-    #                 f"Performance loggers must be a subset of {aliases}. Got {performance_logger}"
-    #             )
+        """
+        loggers = {logger_id for logger_id in values["logger"].keys()}
+        for logger in loggers:
+            if logger not in loggers:
+                raise ValueError(
+                    f"Defined logger {logger} must be a subset of {loggers}."
+                )
 
     @classmethod
     def from_yaml(cls, yaml_path: str):
