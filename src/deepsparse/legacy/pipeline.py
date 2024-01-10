@@ -214,6 +214,28 @@ class Pipeline(BasePipeline):
             category=MetricCategories.SYSTEM,
         )
 
+        # self.log(
+        #     tag=f"cpu/{whatever}"
+        #     value=value,
+        # )
+
+        # self.log(
+        #     "performance",
+        #     tag=f"foo/{whatever}"
+        #     value=value,
+        # )
+
+        # self.log(
+        #     tag=f"bar/{whatever}"
+        #     value=value,
+        #     **kwargs,
+        # )
+
+        # self.log(
+        #     tag=f"what/{whatever}"
+        #     value=value,
+        # )
+
     def __call__(self, *args, **kwargs) -> BaseModel:
         with self.timer_manager.new_timer_context() as timer:
             if "engine_inputs" in kwargs:

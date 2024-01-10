@@ -83,6 +83,7 @@ import importlib
 
 
 def get_logger_from_path(path: str):
+    breakpoint()
     path, class_name = path.split(":")
     path = path.split(".py")[0]
 
@@ -110,16 +111,14 @@ class PerformanceLoggerFactory(AsyncLogger):
 
     def __init__(self, config):
         super().__init__(**config)
-        # self.config = config
         self.logger = []
 
     def create_logger(self):
         for logger_path, config in self.config.items():
             logger = get_logger_from_path(logger_path)
-            # breakpoint()
             config = {}
+            breakpoint()
             self.logger.append(logger(**config))
-        # breakpoint()
 
     def log(self, value: Any, tag: Optional[str] = None, *args, **kwargs):
         for logger in self.logger:

@@ -14,7 +14,7 @@
 
 
 from enum import Enum
-from typing import Any, Dict, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 
 import yaml
 from pydantic import BaseModel, Extra, Field, validator
@@ -50,7 +50,49 @@ class RotatingLoggingConfig(StreamLoggingConfig):
     backup_count: int = Field(default=3, description="Number of backups")
 
 
-class SystemLoggingConfig(BaseModel):
+class PerformanceConfig(BaseModel):
+    enabled: bool = Field(default=True, description="True to log, False to ignore")
+    frequency: int = Field(
+        default=1, description="The rate to log. Log every N occurances"
+    )
+    loggers: List[str] = Field(
+        default=["python"],
+        description=(
+            "List of loggers to use. Should be in the format",
+            "path/to/file.py:ClassName",
+        ),
+    )
+
+
+class PerformanceLoggingConfig(BaseModel):
+    __root__: Optional[Dict[str, PerformanceConfig]]
+
+
+# class MetricConfig(PerformanceConfig):
+#     func: str = Field(
+#         default=None,
+#         description="Callable to use for logging value",
+#     )
+
+
+class MetricLoggingConfig(BaseModel):
+    # __root__: Optional[Dict[str, PerformanceConfig]]
+    __root__: Optional[Dict]
+
+
+class PythonLoggerConfig(BaseModel):
+    # level: str = Field(default="INFO", description="Root logger level")
+    stream: StreamLoggingConfig = Field(
+        default=StreamLoggingConfig(), description="Stream logging config"
+    )
+    file: FileLoggingConfig = Field(
+        default=FileLoggingConfig(), description="File logging config"
+    )
+    rotating: RotatingLoggingConfig = Field(
+        default=RotatingLoggingConfig(), description="Rotating logging config"
+    )
+    
+class LoggingHandlerConfig(BaseModel):
     level: str = Field(default="INFO", description="Root logger level")
     stream: StreamLoggingConfig = Field(
         default=StreamLoggingConfig(), description="Stream logging config"
@@ -61,97 +103,174 @@ class SystemLoggingConfig(BaseModel):
     rotating: RotatingLoggingConfig = Field(
         default=RotatingLoggingConfig(), description="Rotating logging config"
     )
+    
+    
 
 
-class PerformanceConfig(BaseModel):
-    frequency: float = Field(
-        default=1.0, description="The rate to save the logs when they are passed in"
+class CustomLoggingConfig(BaseModel):
+    frequency: int = Field(
+        default=1, description="The rate to log. Log every N occurances"
     )
-    timings: bool = True
-    cpu: bool = True
+    use: str = Field(
+        description=(
+            "List of loggers to use. Should be in the format",
+            "path/to/file.py:ClassName",
+        ),
+    )
+    handler: Optional[LoggingHandlerConfig] = Field(
+        default=None,
+        description="Python logging handler config",
+    )
+    class Config:
+        extra = Extra.allow  # Allow extra kwargs
 
 
-class PerformanceLoggingConfig(BaseModel):
-    __root__: Optional[Dict[str, PerformanceConfig]]
 
-    @validator("__root__")
-    def validate_metrics(cls, value):
-        if value is not None:
-            for path, fields in value.items():
-                cls.validate_metric_name(path)  # Validate metric_name format
-                PerformanceConfig.validate(
-                    fields
-                )  # Validate PerformanceConfig without creating an instance
-        return value
-
-    @classmethod
-    def validate_metric_name(cls, path):
-        parts = path.split(":")
-        if len(parts) != 2:
-            raise ValueError(
-                f"Invalid metric name format: {path}."
-                "Should be in the format 'path:LoggerClass'."
-            )
+class PrometheusLoggerConfig(BaseModel):
+    alias: Optional[str]
+    port: int
+    filename: str
 
 
-# class MetricConfig(BaseModel):
-#     function: str
-#     frequency: float
+class LoggerConfig(BaseModel):
+    __root__: Optional[Dict]
 
 
-# class MetricsConfig(BaseModel):
-#     python: Optional[Dict]
-#     handler: Dict[str, MetricConfig]
-# use: LoggerConfig
+class SystemTargetConfig(BaseModel):
+    tag: Optional[List[str]] = Field(None, description="Tag id to register logging")
+    func: List[str] = Field(
+        "identity",
+        description="Callable to apply to 'value' for logging. Defaults to ",
+    )
 
-# @validator("__root__")
-# def validate_metrics(cls, value):
-#     for op_name_and_key, metric_config in value.items():
-#         cls.validate_metric_name(op_name_and_key)  # Validate metric_name format
-#         MetricConfig.validate(
-#             metric_config
-#         )  # Validate each MetricConfig without creating an instance
-#     return value
 
-# @classmethod
-# def validate_metric_name(cls, op_name_and_key):
-#     parts = op_name_and_key.split(".")
-#     if len(parts) != 2:
-#         raise ValueError(
-#             f"Invalid metric name format: {op_name_and_key}."
-#             "Should be in the format 'op_name.op_key'."
-#         )
+class MetricTargetConfig(SystemTargetConfig):
+    name: List[str] = Field(
+        None, description="Name of a desired ClassName.__class__.__name__ to log"
+    )
+    output_key: List[str] = Field(
+        None,
+        description="If the callable output of ClassName is a dict, then log the value from the key output_key.",
+    )
+
 
 
 class LoggingConfig(BaseModel):
-    system: SystemLoggingConfig = Field(
-        default=SystemLoggingConfig(),
-        description="System level config",
-    )
-    performance: PerformanceLoggingConfig = Field(
-        default=PerformanceLoggingConfig(),
-        description="System level config",
-    )
-
-    # performance: PerformanceLoggingConfig = Field(
-    #     default=PerformanceLoggingConfig(),
-    #     description="Performance level config",
-    # )
-
-    # metrics: MetricsConfig = Field(
-    #     default={},
-    #     description="Metrics configuration",
-    #     extra=Extra.allow,
-    # )
 
     version: int = Field(
         deafult=2,
         description="Pipeline logger version",
     )
 
-    # @validator("performance", pre=True)
-    # def validate_performance_logging_config(cls, value):
-    #     return PerformanceLoggingConfig(**value)
+    target: Dict[str, Union[SystemTargetConfig, MetricTargetConfig]]
+    
+    logger: Dict[str, Union{CustomLoggingConfig, PrometheusLoggingConfig, PythonLoggingConfig}]
+
+    @validator("target", pre=True, always=True)
+    def validate_target(cls, value):
+        validated_target = {}
+        for key, config in value.items():
+            if "name" in config and "output_key" in config:
+                validated_target[key] = MetricTargetConfig(**config)
+            else:
+                validated_target[key] = SystemTargetConfig(**config)
+        return validated_target
+
+
+    # system: str = Field(
+    #     default="python",
+    #     description="Default python logging module logger",
+    # )
+
+    # performance: PerformanceLoggingConfig = Field(
+    #     default=PerformanceLoggingConfig(),
+    #     description="System level config",
+    # )
+
+    # metric: MetricLoggingConfig = Field(
+    #     default=MetricLoggingConfig(),
+    #     description="Metrics configuration",
+    # )
+
+    # @validator("logger", pre=True, always=True)
+    # def validate_logger(cls, value):
+    #     validated_logger = {}
+    #     if "python" not in value:
+    #         value["python"] = {}
+
+    #     for key, config in value.items():
+    #         if key == "prometheus":
+    #             validated_logger[key] = PrometheusLoggerConfig(
+    #                 **cls.set_alias(config, key)
+    #             )
+    #         elif key == "python":
+    #             validated_logger[key] = PythonLoggerConfig(**cls.set_alias(config, key))
+    #         else:
+    #             validated_logger[key] = CustomLoggerConfig(**cls.set_alias(config, key))
+    #     return validated_logger
+
+    # @staticmethod
+    # def set_alias(config, key):
+    #     if "alias" not in config:
+    #         if key == "python":
+    #             config["config"] = "python"
+    #             return config
+    #         if key == "prometheus":
+    #             config["alias"] = "prometheus"
+    #             return config
+    #         if ":" in key:
+    #             alias = key.split(":")[-1]
+    #             config["alias"] = alias
+    #             return config
+
+    #         config["alias"] = key
+    #     return config
+
+    # @validator("performance", pre=True, always=True)
+    # def validate_performance(cls, value: Dict, values: Dict):
+    #     """
+    #     Validate performance loggers are a subset of
+    #         loggers defined in root level loggers in config
+    #         and validate perfoamnce fields
+
+    #     :param value: Performance config
+    #     :param values: All values in LoggingConfig
+
+    #     """
+
+    #     cls.validate_loggers_subset(value, values)
+
+    #     validated_performance = {}
+    #     for key, config in value.items():
+    #         validated_performance[key] = PerformanceConfig(**config)
+
+    #     return validated_performance
+
+    # @classmethod
+    # def validate_loggers_subset(cls, value: Dict, values: Dict):
+    #     """
+    #     Check that performance loggers are set in root level
+    #     logger
+
+    #     :param value: Performance config
+    #     :param values: All values in LoggingConfig
+
+    #     """
+    #     performance_loggers = {
+    #         logger for config in value.values() for logger in config.get("loggers", [])
+    #     }
+
+    #     aliases = {
+    #         value["alias"]
+    #         for value in values["logger"].dict().get("__root__", {}).values()
+    #         if "alias" in value
+    #     }
+
+    #     for performance_logger in performance_loggers:
+    #         if performance_logger not in aliases:
+    #             raise ValueError(
+    #                 f"Performance loggers must be a subset of {aliases}. Got {performance_logger}"
+    #             )
 
     @classmethod
     def from_yaml(cls, yaml_path: str):

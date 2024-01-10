@@ -35,6 +35,10 @@ def identity(x: Any):
     return x
 
 
+def max(x: Any):
+    return max(x)
+
+
 @register_metric_function(
     group=[
         "image_classification",
