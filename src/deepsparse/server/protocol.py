@@ -27,8 +27,8 @@ def random_uuid() -> str:
 
 
 class LogProbs(BaseModel):
-    text_offset: List[int] = Field(default_factory=list)
-    token_logprobs: List[Optional[str]] = Field(default_factory=list)
+    text_offset: List[Optional[int]] = Field(default_factory=list)
+    token_logprobs: List[int] = Field(default_factory=list)
     tokens: List[str] = Field(default_factory=list)
 
 
