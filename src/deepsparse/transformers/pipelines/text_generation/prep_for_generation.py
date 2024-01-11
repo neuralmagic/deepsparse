@@ -121,7 +121,7 @@ class PrepareGeneration(Operator):
                     )
                 data_to_yield = self.process_output_operator.run(
                     generated_tokens=state_update.get("generated_tokens"),
-                    finished_reason=finish_reason,
+                    finished_reason=finished_reason,
                     inference_state=inference_state,
                     generated_logits=prompt_logits[0, -1, :],
                 )
