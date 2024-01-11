@@ -382,12 +382,11 @@ class OpenAIServer(Server):
         :return: generator consisting of each of the generations
         """
 
-        def tokenize(text: str, return_tensors=None) -> List[int]:
+        def tokenize(text: str, return_tensors=None) -> Dict[str : List[int]]:
             if return_tensors:
                 return pipeline.tokenizer(text, return_tensors=return_tensors)
             return pipeline.tokenizer(text)
 
-        prompt_token_ids = tokenize(prompt)
         generation_kwargs = map_generation_schema(generation_kwargs)
 
         stream = generation_kwargs.pop("stream")
@@ -402,6 +401,7 @@ class OpenAIServer(Server):
             sequences=prompt,
             generation_kwargs=generation_kwargs,
             streaming=stream,
+            return_input_tokens=True,
             presence_penalty=presence_penalty,
             stop=stop,
         )
@@ -425,7 +425,7 @@ class OpenAIServer(Server):
             yield RequestOutput(
                 request_id=request_id,
                 prompt=prompt,
-                prompt_token_ids=prompt_token_ids,
+                prompt_token_ids=output.input_tokens,
                 outputs=generated_outputs,
                 finished=True,
             )
@@ -437,7 +437,7 @@ class OpenAIServer(Server):
                 yield RequestOutput(
                     request_id=request_id,
                     prompt=prompt,
-                    prompt_token_ids=prompt_token_ids,
+                    prompt_token_ids=generation.input_tokens,
                     outputs=[
                         CompletionOutput(
                             logprobs=output.score,
@@ -451,10 +451,7 @@ class OpenAIServer(Server):
 
 
 def create_logprobs(
-    token_ids: List[int],
-    log_probs: numpy.ndarray,
-    pipeline: Pipeline,
-    initial_text_offset: int = 0,
+    token_ids: List[int], log_probs: numpy.ndarray, pipeline: Pipeline
 ) -> LogProbs:
 
     logprobs = LogProbs()
