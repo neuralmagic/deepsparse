@@ -382,7 +382,9 @@ class OpenAIServer(Server):
         :return: generator consisting of each of the generations
         """
 
-        def tokenize(text: str) -> List[int]:
+        def tokenize(text: str, return_tensors=None) -> List[int]:
+            if return_tensors:
+                return pipeline.tokenizer(text, return_tensors=return_tensors)
             return pipeline.tokenizer(text)
 
         prompt_token_ids = tokenize(prompt)
@@ -431,7 +433,7 @@ class OpenAIServer(Server):
             concat_token_ids = []
             async for generation in output:
                 output = generation.generations[0]
-                concat_token_ids.append(tokenize(output.text))
+                concat_token_ids.append(tokenize(output.text, return_tensors="np"))
                 yield RequestOutput(
                     request_id=request_id,
                     prompt=prompt,
