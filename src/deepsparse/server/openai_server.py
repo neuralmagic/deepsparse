@@ -382,7 +382,7 @@ class OpenAIServer(Server):
         :return: generator consisting of each of the generations
         """
 
-        def tokenize(text: str, return_tensors=None) -> Dict[str : List[int]]:
+        def tokenize(text: str, return_tensors=None) -> Dict[str, List[int]]:
             if return_tensors:
                 return pipeline.tokenizer(text, return_tensors=return_tensors)
             return pipeline.tokenizer(text)
