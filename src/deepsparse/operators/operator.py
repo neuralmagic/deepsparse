@@ -105,8 +105,16 @@ class Operator(ABC):
                 inference_state=inference_state,
                 **kwargs,
             )
+
+        state_update = None
+        if isinstance(run_output, tuple):
+            run_output, state_update = run_output
+
         if self.has_output_schema():
-            return self.output_schema(**run_output)
+            run_output = self.output_schema(**run_output)
+
+        if state_update:
+            return run_output, state_update
         return run_output
 
     @classmethod
