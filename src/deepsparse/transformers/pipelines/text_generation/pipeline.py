@@ -191,7 +191,7 @@ class TextGenerationPipeline(Pipeline):
             sequence_length=sequence_length,
             prompt_sequence_length=prompt_sequence_length,
             token_generator=token_generator,
-            process_output=process_output,
+            process_output_operator=process_output,
         )
 
         # TODO: do we want to support lists for different engines?

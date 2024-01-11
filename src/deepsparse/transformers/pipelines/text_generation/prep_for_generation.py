@@ -36,12 +36,14 @@ class PrepareGeneration(Operator):
         token_generator: TokenGeneratorOperator,
         prompt_sequence_length: int,
         sequence_length: int,
-        process_output,
+        process_output: Operator,
     ):
         self.sequence_length = sequence_length
         self.token_generator_creator = token_generator
         self.prompt_sequence_length = prompt_sequence_length
-        self.process_output = process_output
+        # Needed for streaming as currently both setting up generation and generating
+        # Will split this up soon
+        self.process_output_operator = process_output
 
     def can_operate(self, inp: Any):
         kv_cache = inp.get("kv_cache")
@@ -94,7 +96,7 @@ class PrepareGeneration(Operator):
             "generated_logits": [prompt_logits]
             if include_prompt_logits
             else [numpy.expand_dims(prompt_logits[:, -1, :], 0)],
-            "finished_reason": [None],
+            "finished_reason": [],
             "token_generator": token_generator,
         }
         if kv_cache is None:
@@ -106,17 +108,20 @@ class PrepareGeneration(Operator):
                 "in_generation": True,
             }
             # TODO: maybe break this operator up since it is both generating and setting
-            # up values needed for generation
+            # up values needed for generation? Holding off on this as this will change
+            # routes slighty and want to confirm wont break anything for non-kv cache
             if inference_state.current_state.get("streaming"):
-                data_to_yield = self.process_output.run(
+                data_to_yield = self.process_output_operator.run(
                     generated_tokens=state_update.get("generated_tokens"),
                     finished_reason=state_update.get("finished_reason"),
                     inference_state=inference_state,
                     generated_logits=prompt_logits[0, -1, :],
                 )
-                data_to_yield = self.process_output.output_schema(**data_to_yield)
                 output = StreamingOutput(
-                    data_to_yield=data_to_yield, data_to_return=output
+                    data_to_yield=self.process_output_operator.output_schema(
+                        **data_to_yield
+                    ),
+                    data_to_return=output,
                 )
 
         return output, state_update
