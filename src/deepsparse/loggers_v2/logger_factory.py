@@ -12,211 +12,144 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
-import logging
-import os
-from enum import Enum
-from logging.handlers import RotatingFileHandler
+import importlib
 from typing import Any, Dict
 
 
-class LoggerType(Enum):
-    STREAM = logging.StreamHandler
-    FILE = logging.FileHandler
-    ROTATING = RotatingFileHandler
+# from deepsparse.loggers import custom_logger_from_identifier
+
+# def get_logger_from_path(path: str):
+#     breakpoint()
+#     path, class_name = path.split(":")
+#     path = path.split(".py")[0]
+
+#     _path = path
+#     path = path.replace(r"/", ".")
+#     try:
+#         module = importlib.import_module(path)
+#     except:
+#         raise ValueError(f"Cannot find module with path {_path}")
+#     try:
+#         return getattr(module, class_name)
+#     except:
+#         raise ValueError(f"Cannot find {class_name} in {_path}")
 
 
-def create_file_if_not_exists(filename):
-    if not os.path.exists(filename):
-        open(filename, "a").close()
+def import_from_registry(name: str):
+    registry = "src.deepsparse.loggers_v2.registry.__init__"
+    module = importlib.import_module(registry)
 
-from abc import ABC
-    
-class RootLogger(ABC):
-    # DEFAULT_LOGGER = {
-    #     "python": "import logging"
-    #     "promoetheus",
-    # }
-    
-    def __init__(self, log_type_args: Any, logger_config: Dict, target: Dict):
-        self.log_type_args = log_type_args
-        self.logger_config = logger_config
-        self.target = target
-        
+    try:
+        return getattr(module, name)
+    except:
+        raise ValueError(f"Cannot find Class with name {name} in {registry}")
+
+
+import re
+from collections import defaultdict
+from typing import Callable, Optional
+
+
+def should_allow_log_by_tag(
+    pattern: str,
+    tag: Optional[str] = None,
+):
+    if pattern == "*":
+        return True
+    if tag is not None and re.match(pattern, tag):
+        return True
+    return False
+
+
+class RootLogger:
+    DEFAULT_LOGGER_MAP = {
+        "default": "DefaultLogger",
+        "promoetheus": "PrometheusLogger",
+    }
+
+    def __init__(self, config: Dict):
+        self.config = config
+        self.logger = defaultdict(list)
+        self.func = set()
+        self.tag = set()
+
+        self.create()
+
     def create(self):
-        ...
-        
+        """
+        Instantiate the loggers as singleton and 
+            import the class/func from registry
+        """
+        for logger_name, init_args in self.config.items():
+            logger = import_from_registry(
+                self.DEFAULT_LOGGER_MAP.get(logger_name, logger_name)
+            )
+
+            logger_singleton = logger(
+                frequency=init_args.get("frequency"),
+                handler=init_args.get("handler"),
+            )
+
+            for func_name in init_args.get("func"):
+                fn = import_from_registry(func_name)
+                self.func.add(fn)
+
+            for tag in init_args["tag"]:
+                self.logger[tag].append(logger_singleton)
+                self.tag.add(tag)
+
+    def log(self, value: Any, tag: Optional[str] = None, *args, **kwargs):
+        """
+        Send args to its appropriate logger if the given tag is valid
+        """
+        for pattern, loggers in self.logger.items():
+            if should_allow_log_by_tag(pattern, tag):
+                for logger in loggers:
+                    for func in self.func:
+                        print(logger)
+                        logger.log(value=value, tag=tag, func=func, *args, **kwargs)
 
 
-    def log(self):
-        ...
-    
 class SystemLogger(RootLogger):
     """
     Create Python level logging with handles
     """
-    def __init__(self, log_type_args: str, logger_config: Dict, target: Dict):
-        super().__init__(
-            log_type_args=log_type_args, # for create compatibility with super
-            logger_config=logger_config,
-            target=target,
-        )
-        self.logger = logging.getLogger()  # Root loggger
-        self.create()
-        
-        
-    def create(self):
-        system_logger_config = self.logger_config.get(self.log_type_args)
-        self.logger.setLevel(system_logger_config.pop("level", "info"))
 
-        handler = system_logger_config.pop("handler")
-        if handler is not None:
-            for handler_type, handler_config in handler.items():
-                level = handler_config.pop("level", "INFO")
-                handler = self.create_handler(handler_type, handler_config)
-                handler.setLevel(level)
-                self.logger.addHandler(handler)
-        return self.logger
+    ...
 
-    def create_handler(self, handler_type, handler_config):
-        logger_class = LoggerType[handler_type.upper()].value
-
-        # Set handler level
-        handler_level = handler_config.pop("level", logging.INFO)
-
-        if handler_type == "stream":
-            handler = logger_class()
-        elif handler_type == "file":
-            filename = handler_config.get("filename", "")
-            create_file_if_not_exists(filename)
-            handler = logger_class(filename=filename)
-        elif handler_type == "rotating":
-            filename = handler_config.get("filename", "")
-            create_file_if_not_exists(filename)
-
-            handler = logger_class(
-                filename=filename,
-                maxBytes=handler_config.get("max_bytes", 0),
-                backupCount=handler_config.get("backup_count", 0),
-            )
-        else:
-            raise ValueError(f"Unsupported logger type: {handler_type}")
-
-        handler.setLevel(handler_level)
-
-        # Set handler formatter
-        formatter = logging.Formatter(handler_config.get("formatter", ""))
-        handler.setFormatter(formatter)
-
-        return handler
-    
-    def log(self, value, level: str = "info", **kwargs):
-        do_log = getattr(self.logger, level)
-        do_log(value, kwargs)
-        
-        
-        
-    # def create(self):
-        
-    #     loggers = {}
-    #     for logger_id, targets in self.log_type_args.items():
-    #         # find the logger from the logger id
-    #         logger= self.logger_config.get(logger_id)
-    #         logger_module = logger.get("use")
-            
-    #         if logger_module == "python":
-    #             # use python module, skip target look up
-    #             ...
-    #         elif uses == "prometheus":
-    #             # crate prometheus
-    #             ...
-    #         else:
-    #             # custom
-    #             ...
-            
-            
-    #         # iterate thru the targets and find the target_args
-            
-            
-            
-    #         # loggers[logger_id] = (self.logger_config.get(logger_id), targets)
-    #         # logger = self.logger_config.get(logger_id)
-            
-    #     for key, init_args in loggers:
-    #         uses = logger.get("uses")
-    #         if uses == "python":
-    #             # create python
-    #             ...
-    #         elif uses == "prometheus":
-    #             # crate prometheus
-    #             ...
-    #         else:
-    #             # custom logger
-    #             ...
-                
-                
-                
-            
-            
-            
-            
-        
-
-        
-            
-        
-            
-            
-            
-        
-        ...
-        
-    
-        
 
 class PerformanceLogger(RootLogger):
+    """
+    Create performance level (in-line pipeline)
+        logging with handles
+    """
+
     ...
+
+
 class MetricLogger(RootLogger):
+    """
+    Create metric level (logged in LoggerMiddleware)
+        logging with handles
+    """
+
     ...
-    
-    
+
 
 ROOT_LOGGERS = {
     "system": SystemLogger,
     "performance": PerformanceLogger,
     "metric": MetricLogger,
 }
- 
-def logger_factory(config: Dict) -> Dict[str, RootLogger]: 
-    logger_config, target =config.get("logger"), config.get("target")
-    
+
+
+def logger_factory(config: Dict) -> Dict[str, RootLogger]:
+
     loggers = {}
     for log_type, logger in ROOT_LOGGERS.items():
         log_type_args = config.get(log_type)
         if log_type_args is not None:
             loggers[log_type] = logger(
-                log_type_args=log_type_args, 
-                logger_config=logger_config,
-                target = target,
+                config=config[log_type],
             )
     return loggers
-    
-
-# class LoggerFactory:
-    
-   
-    
-#     def __init__(
-#         self,
-#         config: Dict,
-#     ):
-#         self.config = config
-#         self.loggers = self.create()
-
-#     def create(self):
-#         loggers = {}
-#         for log_type, logger in self.ROOT_LOGGERS.items():
-#             init_args = self.config.get(log_type)
-#             if init_args:
-#                 loggers[log_type] = logger(init_args)
-#         return loggers

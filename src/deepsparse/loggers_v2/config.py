@@ -268,7 +268,8 @@ class LoggingConfig(BaseModel):
 
     @classmethod
     def from_config(cls, config: str):
-        """Helper to load from file or string"""
-        if config.endswith(".yaml"):
-            return cls.from_yaml(config)
-        return cls.from_str(config)
+        # """Helper to load from file or string"""
+        # if config.endswith(".yaml"):
+        #     return cls.from_yaml(config)
+        # return cls.from_str(config)
+        return yaml.safe_load(config)

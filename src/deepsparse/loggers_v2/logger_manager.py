@@ -18,6 +18,7 @@ from typing import Any, Dict, List, Optional, Union
 
 # from .async_logger import AsyncLogger
 from .config import LoggingConfig
+
 # from .logging_factory import PerformanceLoggerFactory, SystemLoggerFactory
 from .logger_factory import logger_factory
 
@@ -89,8 +90,6 @@ class LogType(Enum):
 #         self.logger.log(message)
 
 
-
-
 class LoggerManager:
     """
     Initialize loggers for Pipeline
@@ -99,23 +98,37 @@ class LoggerManager:
     """
 
     def __init__(self, config: str):
-        self.config = LoggingConfig.from_config(config).dict()
-        
+        # self.config = LoggingConfig.from_config(config).dict()
+        self.config = LoggingConfig.from_config(config)
+
         factory = logger_factory(self.config)
-        
+
         self.loggers = {
             LogType.SYSTEM: factory.get("system"),
             LogType.PERFORMANCE: factory.get("performance"),
-            LogType.METRIC: factory.get("metric"), 
+            LogType.METRIC: factory.get("metric"),
         }
-
 
     def log(
         self, log_type: str, value: Any, tag: Optional[str] = None, *args, **kwargs
     ):
+        # TODO: RUn it async
         log_type = log_type.upper()
         if log_type in LogType.__members__:
             logger = self.loggers.get(LogType[log_type])
             if logger:
-                breakpoint()
                 logger.log(value=value, tag=tag, *args, **kwargs)
+
+
+    @property
+    def system(self):
+        return self.loggers[LogType.SYSTEM]
+    
+    @property
+    def performance(self):
+        return self.loggers[LogType.PERFORMANCE]
+    
+    @property
+    def metric(self):
+        return self.loggers[LogType.METRIC]
+    
