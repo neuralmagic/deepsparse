@@ -16,6 +16,7 @@ from concurrent.futures import Future
 
 import numpy
 
+import pytest
 from deepsparse.operators import EngineOperator
 from deepsparse.schedulers import ContinuousBatchingScheduler
 
