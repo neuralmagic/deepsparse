@@ -17,7 +17,18 @@ import threading
 import time
 from collections import defaultdict
 from contextlib import contextmanager
+from dataclasses import dataclass
 from typing import Dict, List
+
+
+__all__ = ["Timer", "InferenceStages", "TIMER_KEY"]
+
+TIMER_KEY = "timer"
+
+
+@dataclass(frozen=True)
+class InferenceStages:
+    TOTAL_INFERENCE: str = "total_inference"
 
 
 class Timer:

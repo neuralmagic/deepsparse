@@ -30,6 +30,7 @@ usage: deepsparse.debug_analysis [-h] [-wi NUM_WARMUP_ITERATIONS]
                                  [--kv-cache-num-frozen-tokens KV_CACHE_NUM_FROZEN_TOKENS]
                                  [-q] [-x EXPORT_PATH]
                                  [--disable-kv-cache-overrides]
+                                 [--num-kv-cache-tokens NUM_KV_CACHE_TOKENS]
                                  model_path
 
 Analyze ONNX models in the DeepSparse Engine
@@ -86,6 +87,10 @@ optional arguments:
   --disable-kv-cache-overrides, --disable_kv_cache_overrides
                         If set, it will not alter the model
                         with kv cache overrides
+  --num-kv-cache-tokens NUM_KV_CACHE_TOKENS, --num_kv_cache_tokens NUM_KV_CACHE_TOKENS
+                        If using internal kv cache, sets the number of tokens to fill 
+                        the cache with. Must be between 0 and sequence_length -
+                        input_ids_length
 """  # noqa E501
 
 import argparse
@@ -240,6 +245,16 @@ def parse_args():
         ),
         action="store_true",
         default=False,
+    )
+    parser.add_argument(
+        "--num-kv-cache-tokens",
+        "--num_kv_cache_tokens",
+        type=int,
+        default=int(os.environ.get("NM_BENCHMARK_KV_TOKENS") or "1"),
+        help=(
+            "If using internal kv cache, sets the number of tokens to fill the cache "
+            "with. Must be between 0 and sequence_length - input_ids_length"
+        ),
     )
 
     return parser.parse_args()
@@ -417,9 +432,14 @@ def main():
             args.kv_cache_num_frozen_tokens,
         )
 
+        # This environment variable sets the KV cache to a fixed number of prefilled
+        # tokens for consistent benchmarking
+        os.environ["NM_BENCHMARK_KV_TOKENS"] = str(args.num_kv_cache_tokens)
+
         print(
             f"Enable KVCache: prev_num_tokens = {kv_cache_params.prev_num_tokens}, "
-            f"num_frozen_tokens = {kv_cache_params.num_frozen_tokens}"
+            f"num_frozen_tokens = {kv_cache_params.num_frozen_tokens}, "
+            f"num_kv_cache_tokens = {args.num_kv_cache_tokens}"
         )
 
     result = model_debug_analysis(
