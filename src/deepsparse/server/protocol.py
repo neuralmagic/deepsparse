@@ -134,7 +134,7 @@ class CompletionRequest(BaseModel):
     """
 
     model: str
-    prompt: str
+    prompt: Union[List[int], List[List[int]], str, List[str]]
     suffix: Optional[str] = None
     max_tokens: Optional[int] = 16
     temperature: Optional[float] = 1.0

@@ -57,7 +57,7 @@ class TextGenerationInput(BaseModel):
     )
     return_input_tokens: bool = Field(
         default=False,
-        description="A flag that indicates whether to return " "the input_tokens. ",
+        description="A flag that indicates whether to return the input_tokens. ",
     )
     include_prompt_logits: bool = Field(
         default=False,
@@ -158,8 +158,7 @@ class TextGenerationOutput(BaseModel):
         default=None,
         description="The output of the tokenizer."
         "Dictionary containing token_ids and attention_mask, "
-        "both mapping to arrays of size "
-        "[batch_size, sequence_length]",
+        "both mapping to arrays of size [batch_size, sequence_length]",
     )
 
     class Config:
