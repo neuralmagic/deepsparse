@@ -46,6 +46,10 @@ jobs:
         run: rm -r sparsezoo/
       - name: ⚙️ Install dependencies
         run: pip install .[dev,server,image_classification,transformers,clip]
+      - name: DeepSparse build info
+        run: python -c "from deepsparse import generated_version; print(generated_version.splash)"
+      - name: List installed dependencies
+        run: pip freeze
       - name: Run base tests
         run: make test
   cli-smoke-tests:
