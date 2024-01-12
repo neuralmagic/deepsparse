@@ -96,7 +96,7 @@ class Pipeline(Operator):
         self._continuous_batching_scheduler = continuous_batching_scheduler
         self.middleware_manager = middleware_manager
         self.timer_manager = timer_manager or TimerManager()
-        self.logger_manager = logger_manager
+        self.logger_manager = logger_manager or LoggerManager()
         self.validate()
 
         self._scheduler_group = SchedulerGroup(self.schedulers)

@@ -98,10 +98,12 @@ class RootLogger:
         """
         Send args to its appropriate logger if the given tag is valid
         """
+        breakpoint()
         for pattern, loggers in self.logger.items():
             if should_allow_log_by_pattern(pattern, tag):
                 for logger in loggers:
                     for func in self.func:
+                        breakpoint()
                         logger.log(value=value, tag=tag, func=func, *args, **kwargs)
 
 
