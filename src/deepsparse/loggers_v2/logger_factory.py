@@ -93,10 +93,6 @@ def instantiate_logger(name: str, init_args: Dict[str, Any] = {}):
 
 
 class RootLogger(FrequncyExecutor):
-    # DEFAULT_LOGGER_MAP = {
-    #     "default": "DefaultLogger",
-    #     "promoetheus": "PrometheusLogger",
-    # }
 
     def __init__(self, config: Dict, leaf_logger):
         super().__init__()
@@ -207,7 +203,6 @@ def logger_factory(config: Dict, leaf_logger: Dict) -> Dict[str, RootLogger]:
     for log_type, logger in ROOT_LOGGER.items():
         log_type_args = config.get(log_type)
         if log_type_args is not None:
-            # breakpoint()
             loggers[log_type] = logger(
                 config=config[log_type],
                 leaf_logger=leaf_logger,
