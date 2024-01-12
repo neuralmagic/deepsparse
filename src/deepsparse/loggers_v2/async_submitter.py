@@ -12,7 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# flake8: noqa
 
-from .logger_middleware import LoggerMiddleware
-from .middleware import MiddlewareCallable, MiddlewareManager, MiddlewareSpec
+from concurrent.futures import Executor, ThreadPoolExecutor
+from typing import Callable, Optional
+
+
+class AsyncSubmitter:
+    def __init__(self, max_workers=1, **config):
+        self._job_pool: Executor = ThreadPoolExecutor(max_workers=max_workers)
+        self.config = config
+
+    def submit(
+        self, func: Callable, callback: Optional[Callable] = None, /, *args, **kwargs
+    ):
+        job_future = self._job_pool.submit(
+            func,
+            *args,
+            **kwargs,
+        )
+        if callback is not None:
+            job_future.add_done_callback(callback)

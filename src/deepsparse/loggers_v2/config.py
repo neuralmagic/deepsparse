@@ -120,138 +120,61 @@ class MetricTargetConfig(SystemTargetConfig):
     )
 
 
-class LoggingConfig(BaseModel):
+class RootLoggerConfig(BaseModel):
+    ...
+
+
+class LoggerField(BaseModel):
+    frequency: int = Field(
+        default=1,
+        description="The rate to log. Log every N occurances",
+    )
+    tag: List[str] = Field(
+        ["*"],  # Log every tag by default
+        description="Tag to register logging. The value can be a regex pattern",
+    )
+    func: List[str] = Field(
+        ["identity"],
+        description="Callable to apply to 'value' for logging. Defaults to ",
+    )
+
+
+class SystemLoggerField(LoggerField):
+    ...
+
+
+class PerformanceLoggerField(LoggerField):
+    ...
+
+
+class MetriceLoggerField(LoggerField):
+    capture: List[str] = Field(
+        ["*"],
+        description="Key of the output dict. Corresponding value will be logged. The value can be a regex pattern",
+    )
+
+
+class LoggerConfig(BaseModel):
 
     version: int = Field(
-        deafult=2,
+        default=2,
         description="Pipeline logger version",
     )
 
-    target: Dict[str, Union[SystemTargetConfig, MetricTargetConfig]]
-
-    logger: Dict[
-        str, Union[CustomLoggingConfig, PrometheusLoggingConfig, PythonLoggingConfig]
-    ]
-
-    system: str = Field(
-        default="python",
+    system: Dict[str, SystemLoggerField] = Field(
+        default=dict(default=SystemLoggerField()),
         description="Default python logging module logger",
     )
 
-    performance: Optional[Dict[str, List[str]]] = Field(
-        default=None,
-        description="Performance level config",
+    performance: Dict[str, PerformanceLoggerField] = Field(
+        dict(default=PerformanceLoggerField()),
+        description="Default python logging module logger",
     )
 
-    metric: Optional[Dict[str, List[str]]] = Field(
-        default=None,
+    metric: Dict[str, MetriceLoggerField] = Field(
+        default=dict(default=MetriceLoggerField()),
         description="Metric level config",
     )
-
-    @validator("target", pre=True, always=True)
-    def validate_target(cls, value):
-        validated_target = {}
-        for key, config in value.items():
-            if "name" in config and "output_key" in config:
-                validated_target[key] = MetricTargetConfig(**config)
-            else:
-                validated_target[key] = SystemTargetConfig(**config)
-        return validated_target
-
-    @validator("system", pre=True, always=True)
-    def validate_system(cls, value: Dict, values: Dict):
-        """
-        Validate system loggers are a subset of
-            loggers defined in root level loggers in config
-
-        :param value: system config
-        :param values: All values in LoggingConfig
-        """
-        cls.validate_loggers_subset([value], values)
-        return value
-
-    @validator("performance", pre=True, always=True)
-    def validate_performance(cls, value: Dict, values: Dict):
-        """
-        Validate performance loggers are a subset of
-            loggers defined in root level loggers in config
-        Validate that targets are a subset of
-            targets defined in the root level
-            and
-
-        :param value: performance config
-        :param values: All values in LoggingConfig
-        """
-        loggers = list(value.keys())
-        targets = list(set(target for sublist in value.values() for target in sublist))
-
-        cls.validate_loggers_subset(loggers, values)
-        cls.validate_targets_subset(targets, values)
-        return value
-
-    @validator("metric", pre=True, always=True)
-    def validate_metric(cls, value: Dict, values: Dict):
-        """
-        Validate metric loggers are a subset of
-            loggers defined in root level loggers in config
-        Validate that targets are a subset of
-            targets defined in the root level
-            and
-
-        :param value: metric config
-        :param values: All values in LoggingConfig
-        """
-        loggers = list(value.keys())
-        targets = list(set(target for sublist in value.values() for target in sublist))
-
-        cls.validate_loggers_subset(loggers, values)
-        cls.validate_targets_subset(targets, values)
-        cls.validate_metric_target_fields(targets, values)
-
-        return value
-
-    @classmethod
-    def validate_metric_target_fields(cls, targets: List[str], values: Dict):
-        root_target = values["target"]
-        for target in targets:
-            if not isinstance(root_target.get(target), MetricTargetConfig):
-                raise ValueError(
-                    f"Defined target {target} must have name and output_key fields."
-                )
-
-    @classmethod
-    def validate_targets_subset(cls, targets: List[str], values: Dict):
-        """
-        Check that targets are a subset of the root level
-            target
-
-        :param value: Performance config
-        :param values: All values in LoggingConfig
-
-        """
-        targets = {target_id for target_id in values["target"].keys()}
-        for target in targets:
-            if target not in targets:
-                raise ValueError(
-                    f"Defined target {target} must be a subset of {targets}."
-                )
-
-    @classmethod
-    def validate_loggers_subset(cls, loggers: List[str], values: Dict):
-        """
-        Check that loggers are a subset of the root level
-            logger
-
-        :param value: Performance config
-        :param values: All values in LoggingConfig
-
-        """
-        loggers = {logger_id for logger_id in values["logger"].keys()}
-        for logger in loggers:
-            if logger not in loggers:
-                raise ValueError(
-                    f"Defined logger {logger} must be a subset of {loggers}."
-                )
 
     @classmethod
     def from_yaml(cls, yaml_path: str):
@@ -267,9 +190,10 @@ class LoggingConfig(BaseModel):
         return cls(**yaml_content)
 
     @classmethod
-    def from_config(cls, config: str):
+    def from_config(cls, config: Optional[str] = None):
         # """Helper to load from file or string"""
-        # if config.endswith(".yaml"):
-        #     return cls.from_yaml(config)
-        # return cls.from_str(config)
-        return yaml.safe_load(config)
+        if config:
+            if config.endswith(".yaml"):
+                return cls.from_yaml(config)
+            return cls.from_str(config)
+        return LoggerConfig()

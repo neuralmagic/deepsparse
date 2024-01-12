@@ -34,7 +34,6 @@ class AsyncLogger:
         :param category: The metric category that the log belongs to
         :param kwargs: Additional keyword arguments to pass to the logger
         """
-        breakpoint()
         job_future = self._job_pool.submit(
             logger.log,
             value=value,

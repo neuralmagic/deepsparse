@@ -33,19 +33,18 @@ class FrequencyLogger:
         tag: str,
         func: Optional[Callable] = None,
     ):
-        if self.is_called_multiple_of_frequency(tag):
+        stub = f"{tag}.{func.__name__}"
+        if self.is_called_multiple_of_frequency(stub):
             if func is not None:
                 value = func(value)
             logger(f"{value}, {tag}")
 
     def is_called_multiple_of_frequency(self, tag: str) -> bool:
-        print(self.counter)
         with self._lock:
             if tag not in self.counter:
                 self.counter[tag] = 0
             self.counter[tag] += 1
             counter = self.counter.get(tag)
-        print(self.counter)
 
         if counter % self.frequency == 0:
             return True

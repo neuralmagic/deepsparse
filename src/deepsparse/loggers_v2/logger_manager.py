@@ -12,23 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import logging
+from concurrent.futures import Future
 from enum import Enum
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Optional
 
-# from .async_logger import AsyncLogger
-from .config import LoggingConfig
-
-# from .logging_factory import PerformanceLoggerFactory, SystemLoggerFactory
-from .logger_factory import logger_factory
-
-
-# class LogLevel(str, Enum):
-#     DEBUG = "DEBUG"
-#     INFO = "INFO"
-#     WARNING = "WARNING"
-#     ERROR = "ERROR"
-#     CRITICAL = "CRITICAL"
+from .async_submitter import AsyncSubmitter
+from .config import LoggerConfig
+from .logger_factory import (
+    MetricLogger,
+    PerformanceLogger,
+    SystemLogger,
+    logger_factory,
+)
 
 
 class LogType(Enum):
@@ -37,69 +32,16 @@ class LogType(Enum):
     METRIC = "METRIC"
 
 
-# class SystemLogger:
-#     # Python logger
-#     def __init__(self, config: Dict[str, Any]):
-#         self.config = config
-#         factory = SystemLoggerFactory(config)
-#         self.logger = factory.create_logger()
-
-#     def log(
-#         self,
-#         value: Any,
-#         tag: Optional[str] = None,
-#         level: str = "info",
-#         *args,
-#         **kwargs,
-#     ):
-
-#         level = level.lower()
-#         attr = getattr(self.logger, level)
-#         msg = f"value={value}"
-#         if tag is not None:
-#             msg += f" tag={tag}"
-#         if args:
-#             msg += f" args={args}"
-#         if kwargs:
-#             msg += f" kwargs={kwargs}"
-
-#         attr(msg)
-
-
-# class PerformanceLogger:
-#     def __init__(self, config: Dict):
-#         self.config = config
-#         factory = PerformanceLoggerFactory(config)
-#         factory.create_logger()
-#         self.logger = factory
-
-#     def log(
-#         self,
-#         *args,
-#         **kwargs,
-#     ):
-#         self.logger.log(*args, **kwargs)
-
-
-# class MetricsLogger(AsyncLogger):
-#     def __init__(self, config: Dict):
-#         self.config = config
-#         self.logger = logging.Logger(__name__)  # temp
-
-#     def log(self, message: str):
-#         self.logger.log(message)
-
-
-class LoggerManager:
+class LoggerManager(AsyncSubmitter):
     """
     Initialize loggers for Pipeline
 
     :param config: Path to yaml or stringified yaml
     """
 
-    def __init__(self, config: str):
-        # self.config = LoggingConfig.from_config(config).dict()
-        self.config = LoggingConfig.from_config(config)
+    def __init__(self, config: Optional[str] = None):
+        super().__init__()
+        self.config = LoggerConfig.from_config(config).dict()
 
         factory = logger_factory(self.config)
 
@@ -110,25 +52,42 @@ class LoggerManager:
         }
 
     def log(
+        self,
+        *args,
+        **kwargs,
+    ):
+        self.submit(
+            self.run,
+            self.callback,
+            *args,
+            **kwargs,
+        )
+
+    def run(
         self, log_type: str, value: Any, tag: Optional[str] = None, *args, **kwargs
     ):
-        # TODO: RUn it async
         log_type = log_type.upper()
         if log_type in LogType.__members__:
             logger = self.loggers.get(LogType[log_type])
             if logger:
                 logger.log(value=value, tag=tag, *args, **kwargs)
 
+    def callback(self, future: Future):
+        exception = future.exception()
+        if exception is not None:
+            self.system.log(
+                f"Exception occurred during async logging job: {repr(exception)}",
+                level="error",
+            )
 
     @property
-    def system(self):
+    def system(self) -> Optional[SystemLogger]:
         return self.loggers[LogType.SYSTEM]
-    
+
     @property
-    def performance(self):
+    def performance(self) -> Optional[PerformanceLogger]:
         return self.loggers[LogType.PERFORMANCE]
-    
+
     @property
-    def metric(self):
+    def metric(self) -> Optional[MetricLogger]:
         return self.loggers[LogType.METRIC]
-    

@@ -13,7 +13,9 @@
 # limitations under the License.
 
 import importlib
-from typing import Any, Dict
+import re
+from collections import defaultdict
+from typing import Any, Dict, Optional
 
 
 # from deepsparse.loggers import custom_logger_from_identifier
@@ -45,18 +47,13 @@ def import_from_registry(name: str):
         raise ValueError(f"Cannot find Class with name {name} in {registry}")
 
 
-import re
-from collections import defaultdict
-from typing import Callable, Optional
-
-
-def should_allow_log_by_tag(
+def should_allow_log_by_pattern(
     pattern: str,
-    tag: Optional[str] = None,
+    string: Optional[str] = None,
 ):
     if pattern == "*":
         return True
-    if tag is not None and re.match(pattern, tag):
+    if string is not None and re.match(pattern, string):
         return True
     return False
 
@@ -77,7 +74,7 @@ class RootLogger:
 
     def create(self):
         """
-        Instantiate the loggers as singleton and 
+        Instantiate the loggers as singleton and
             import the class/func from registry
         """
         for logger_name, init_args in self.config.items():
@@ -89,7 +86,6 @@ class RootLogger:
                 frequency=init_args.get("frequency"),
                 handler=init_args.get("handler"),
             )
-
             for func_name in init_args.get("func"):
                 fn = import_from_registry(func_name)
                 self.func.add(fn)
@@ -103,10 +99,9 @@ class RootLogger:
         Send args to its appropriate logger if the given tag is valid
         """
         for pattern, loggers in self.logger.items():
-            if should_allow_log_by_tag(pattern, tag):
+            if should_allow_log_by_pattern(pattern, tag):
                 for logger in loggers:
                     for func in self.func:
-                        print(logger)
                         logger.log(value=value, tag=tag, func=func, *args, **kwargs)
 
 
@@ -133,7 +128,22 @@ class MetricLogger(RootLogger):
         logging with handles
     """
 
-    ...
+    def __init__(self, config: Dict):
+        self.capture = set()
+        super().__init__(config)
+
+    def create(self):
+        super().create()
+        for init_args in self.config.values():
+            for capture in init_args["capture"]:
+                self.capture.add(capture)
+
+    def log(self, value: Any, tag: Optional[str] = None, *args, **kwargs):
+        if isinstance(value, Dict):
+            for key, val in value.items():
+                for pattern in self.capture:
+                    if should_allow_log_by_pattern(pattern, key):
+                        super().log(value=val, tag=tag, *args, **kwargs)
 
 
 ROOT_LOGGERS = {

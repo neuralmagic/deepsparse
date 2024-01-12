@@ -17,6 +17,7 @@ import os
 from pathlib import Path
 from typing import Any, AsyncGenerator, Callable, Dict, Generator, List, Optional, Union
 
+from deepsparse.loggers_v2.logger_manager import LoggerManager
 from deepsparse.middlewares import MiddlewareManager
 from deepsparse.operators import EngineOperator, Operator
 from deepsparse.pipeline_config import PipelineConfig
@@ -82,6 +83,7 @@ class Pipeline(Operator):
         pipeline_state: Optional[PipelineState] = None,
         middleware_manager: Optional[MiddlewareManager] = None,
         timer_manager: Optional[TimerManager] = None,
+        logger_manager: Optional[LoggerManager] = None,
     ):
 
         self.ops = ops
@@ -92,6 +94,7 @@ class Pipeline(Operator):
         self._continuous_batching_scheduler = continuous_batching_scheduler
         self.middleware_manager = middleware_manager
         self.timer_manager = timer_manager or TimerManager()
+        self.logger_manager = logger_manager
         self.validate()
 
         self._scheduler_group = SchedulerGroup(self.schedulers)
@@ -401,10 +404,13 @@ class Pipeline(Operator):
             inference_state = kwargs.pop("inference_state")
         else:
             inference_state = InferenceState()
-            if self.timer_manager is not None:
-                timer = self.timer_manager.get_new_timer()
             inference_state.create_state({})
+
+            timer = self.timer_manager.get_new_timer()
             inference_state.set_timer(timer)
+
+            if self.logger_manager.metric is not None:
+                inference_state.set_logger(self.logger_manager.metric)
 
         kwargs["inference_state"] = inference_state
 

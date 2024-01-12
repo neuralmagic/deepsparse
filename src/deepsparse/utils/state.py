@@ -17,6 +17,7 @@ from contextlib import contextmanager
 from copy import deepcopy
 from typing import Any, Union
 
+from deepsparse.loggers_v2.logger_factory import MetricLogger
 from deepsparse.utils.time import Timer
 
 
@@ -77,7 +78,24 @@ class TimerState:
         self._timer = timer
 
 
-class InferenceState(State, TimerState):
+class LoggerState:
+    def __init__(self):
+        super().__init__()
+        self._logger = None
+
+    def set_logger(self, logger: MetricLogger):
+        self._logger = logger
+
+    @property
+    def logger(self):
+        return self._logger
+
+    @logger.setter
+    def logger(self, logger: MetricLogger):
+        self._logger = logger
+
+
+class InferenceState(State, TimerState, LoggerState):
     """
     Inference state, created during every inference run.
     """

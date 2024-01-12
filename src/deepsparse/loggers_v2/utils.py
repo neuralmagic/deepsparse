@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# flake8: noqa
 
-from .logger_middleware import LoggerMiddleware
-from .middleware import MiddlewareCallable, MiddlewareManager, MiddlewareSpec
+def call_async():
+    ...
