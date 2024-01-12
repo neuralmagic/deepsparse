@@ -50,6 +50,8 @@ jobs:
         run: python -c "from deepsparse import generated_version; print(generated_version.splash)"
       - name: List installed dependencies
         run: pip freeze
+      - name: List installed dependencies
+        run: pip list
       - name: Run base tests
         run: make test
   cli-smoke-tests:
