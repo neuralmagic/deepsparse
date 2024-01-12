@@ -37,6 +37,6 @@ class TimerMiddleware(MiddlewareCallable):
         inference_state = kwargs.get("inference_state")
         timer = inference_state.timer
         with timer.time(id=name, enabled=not is_nested):
-            rtn  = self.call_next(*args, **kwargs)
+            rtn = self.call_next(*args, **kwargs)
             breakpoint()
             return rtn

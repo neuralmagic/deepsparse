@@ -14,14 +14,15 @@
 
 from concurrent.futures import Future
 from enum import Enum
-from typing import Any, Optional
+from typing import Any, Dict, Optional
 
 from .async_submitter import AsyncSubmitter
-from .config import LoggerConfig
+from .config import LoggingConfig
 from .logger_factory import (
     MetricLogger,
     PerformanceLogger,
     SystemLogger,
+    instantiate_logger,
     logger_factory,
 )
 
@@ -33,6 +34,8 @@ class LogType(Enum):
 
 
 class LoggerManager(AsyncSubmitter):
+    # class LoggerManager(AsyncSubmitter, FrequencyManager, LoggerFactory):
+
     """
     Initialize loggers for Pipeline
 
@@ -41,9 +44,15 @@ class LoggerManager(AsyncSubmitter):
 
     def __init__(self, config: Optional[str] = None):
         super().__init__()
-        self.config = LoggerConfig.from_config(config).dict()
+        self.config = LoggingConfig.from_config(config).dict()
+        self.leaf_logger: Dict = {}
+        self.instantiate_leaf_logger(self.config.get("logger"))
 
-        factory = logger_factory(self.config)
+        # send logggers the factory with the config
+        factory = logger_factory(
+            self.config,
+            self.leaf_logger,
+        )
 
         self.loggers = {
             LogType.SYSTEM: factory.get("system"),
@@ -78,6 +87,13 @@ class LoggerManager(AsyncSubmitter):
             self.system.log(
                 f"Exception occurred during async logging job: {repr(exception)}",
                 level="error",
+            )
+
+    def instantiate_leaf_logger(self, logger_config: Dict[str, Dict]):
+        for name, init_args in logger_config.items():
+            self.leaf_logger[name] = instantiate_logger(
+                name=init_args.pop("name"),
+                init_args=init_args,
             )
 
     @property

@@ -15,36 +15,60 @@
 import importlib
 import re
 from collections import defaultdict
-from typing import Any, Dict, Optional
-
 
 # from deepsparse.loggers import custom_logger_from_identifier
+from threading import Lock
+from typing import Any, Callable, Dict, Optional
 
-# def get_logger_from_path(path: str):
-#     breakpoint()
-#     path, class_name = path.split(":")
-#     path = path.split(".py")[0]
 
-#     _path = path
-#     path = path.replace(r"/", ".")
-#     try:
-#         module = importlib.import_module(path)
-#     except:
-#         raise ValueError(f"Cannot find module with path {_path}")
-#     try:
-#         return getattr(module, class_name)
-#     except:
-#         raise ValueError(f"Cannot find {class_name} in {_path}")
+class FrequncyExecutor:
+    def __init__(self):
+        self._lock = Lock()
+        self.frequency = {}
+        self.counter = {}
+
+    def should_execute_on_frequency(
+        self, value: Any, tag: str, log_type: str, func: Callable
+    ) -> bool:
+        # stub = f"{log_type}.{tag}.{func}.{value}"
+        stub = f"{log_type}.{tag}.{func}"
+
+        stub_frequency = f"{tag}.{func}"
+        with self._lock:
+            if stub not in self.counter:
+                self.counter[stub] = 0
+            frequency = self.frequency.get(stub_frequency)
+            self.counter[stub] = (self.counter[stub] + 1) % frequency
+            should_execute = self.counter[stub] == 0
+            print(self.counter[stub], stub)
+        if should_execute:
+            return True
+        return False
 
 
 def import_from_registry(name: str):
     registry = "src.deepsparse.loggers_v2.registry.__init__"
     module = importlib.import_module(registry)
-
     try:
         return getattr(module, name)
     except:
         raise ValueError(f"Cannot find Class with name {name} in {registry}")
+
+
+def import_from_path(path: str):
+    path, class_name = path.split(":")
+    path = path.split(".py")[0]
+
+    _path = path
+    path = path.replace(r"/", ".")
+    try:
+        module = importlib.import_module(path)
+    except:
+        raise ValueError(f"Cannot find module with path {_path}")
+    try:
+        return getattr(module, class_name)
+    except:
+        raise ValueError(f"Cannot find {class_name} in {_path}")
 
 
 def should_allow_log_by_pattern(
@@ -58,18 +82,29 @@ def should_allow_log_by_pattern(
     return False
 
 
-class RootLogger:
-    DEFAULT_LOGGER_MAP = {
-        "default": "DefaultLogger",
-        "promoetheus": "PrometheusLogger",
-    }
+def instantiate_logger(name: str, init_args: Dict[str, Any] = {}):
+    if ":" in name:
+        # path/to/file.py:class_or_func
+        logger = import_from_path(path=name)
+        return logger(**init_args)
 
-    def __init__(self, config: Dict):
+    logger = import_from_registry(name)
+    return logger(**init_args)
+
+
+class RootLogger(FrequncyExecutor):
+    # DEFAULT_LOGGER_MAP = {
+    #     "default": "DefaultLogger",
+    #     "promoetheus": "PrometheusLogger",
+    # }
+
+    def __init__(self, config: Dict, leaf_logger):
+        super().__init__()
         self.config = config
+        self.leaf_logger = leaf_logger
         self.logger = defaultdict(list)
         self.func = set()
         self.tag = set()
-
         self.create()
 
     def create(self):
@@ -77,34 +112,35 @@ class RootLogger:
         Instantiate the loggers as singleton and
             import the class/func from registry
         """
-        for logger_name, init_args in self.config.items():
-            logger = import_from_registry(
-                self.DEFAULT_LOGGER_MAP.get(logger_name, logger_name)
-            )
+        for tag, func_args in self.config.items():
+            for func_arg in func_args:
+                func = func_arg.get("func")
+                self.func.add(func)
+                self.frequency[f"{tag}.{func}"] = func_arg.get("freq", 1)
+                for logger_id in func_arg.get("uses", []):
+                    self.logger[tag].append(self.leaf_logger[logger_id])
 
-            logger_singleton = logger(
-                frequency=init_args.get("frequency"),
-                handler=init_args.get("handler"),
-            )
-            for func_name in init_args.get("func"):
-                fn = import_from_registry(func_name)
-                self.func.add(fn)
-
-            for tag in init_args["tag"]:
-                self.logger[tag].append(logger_singleton)
-                self.tag.add(tag)
-
-    def log(self, value: Any, tag: Optional[str] = None, *args, **kwargs):
+    def log(
+        self, value: Any, log_type: str, tag: Optional[str] = None, *args, **kwargs
+    ):
         """
         Send args to its appropriate logger if the given tag is valid
         """
-        breakpoint()
         for pattern, loggers in self.logger.items():
             if should_allow_log_by_pattern(pattern, tag):
-                for logger in loggers:
-                    for func in self.func:
-                        breakpoint()
-                        logger.log(value=value, tag=tag, func=func, *args, **kwargs)
+                for func in self.func:
+                    if super().should_execute_on_frequency(
+                        value=value, tag=tag, log_type=log_type, func=func
+                    ):
+                        for logger in loggers:
+                            logger.log(
+                                value=value,
+                                tag=tag,
+                                func=func,
+                                log_type=log_type,
+                                *args,
+                                **kwargs,
+                            )
 
 
 class SystemLogger(RootLogger):
@@ -112,7 +148,10 @@ class SystemLogger(RootLogger):
     Create Python level logging with handles
     """
 
-    ...
+    LOG_TYPE = "system"
+
+    def log(self, *args, **kwargs):
+        super().log(log_type=self.LOG_TYPE, *args, **kwargs)
 
 
 class PerformanceLogger(RootLogger):
@@ -121,7 +160,10 @@ class PerformanceLogger(RootLogger):
         logging with handles
     """
 
-    ...
+    LOG_TYPE = "performance"
+
+    def log(self, *args, **kwargs):
+        super().log(log_type=self.LOG_TYPE, *args, **kwargs)
 
 
 class MetricLogger(RootLogger):
@@ -130,38 +172,44 @@ class MetricLogger(RootLogger):
         logging with handles
     """
 
-    def __init__(self, config: Dict):
+    LOG_TYPE = "metric"
+
+    def __init__(self, config: Dict, leaf_logger):
         self.capture = set()
-        super().__init__(config)
+        super().__init__(config, leaf_logger)
 
     def create(self):
         super().create()
-        for init_args in self.config.values():
-            for capture in init_args["capture"]:
-                self.capture.add(capture)
+        for func_args in self.config.values():
+            for func_arg in func_args:
+                for capture in func_arg["capture"]:
+                    self.capture.add(capture)
 
-    def log(self, value: Any, tag: Optional[str] = None, *args, **kwargs):
-        if isinstance(value, Dict):
-            for key, val in value.items():
-                for pattern in self.capture:
-                    if should_allow_log_by_pattern(pattern, key):
-                        super().log(value=val, tag=tag, *args, **kwargs)
+    # def log(self, value: Any, tag: Optional[str] = None, *args, **kwargs):
+    #     if isinstance(value, Dict):
+    #         for key, val in value.items():
+    #             for pattern in self.capture:
+    #                 if should_allow_log_by_pattern(pattern, key):
+    #                     super().log(
+    #                         value=val, tag=tag, log_type=self.LOG_TYPE, *args, **kwargs
+    #                     )
 
 
-ROOT_LOGGERS = {
+ROOT_LOGGER = {
     "system": SystemLogger,
     "performance": PerformanceLogger,
     "metric": MetricLogger,
 }
 
 
-def logger_factory(config: Dict) -> Dict[str, RootLogger]:
-
+def logger_factory(config: Dict, leaf_logger: Dict) -> Dict[str, RootLogger]:
     loggers = {}
-    for log_type, logger in ROOT_LOGGERS.items():
+    for log_type, logger in ROOT_LOGGER.items():
         log_type_args = config.get(log_type)
         if log_type_args is not None:
+            # breakpoint()
             loggers[log_type] = logger(
                 config=config[log_type],
+                leaf_logger=leaf_logger,
             )
     return loggers

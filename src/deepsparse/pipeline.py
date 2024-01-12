@@ -18,7 +18,6 @@ from pathlib import Path
 from typing import Any, AsyncGenerator, Callable, Dict, Generator, List, Optional, Union
 
 from deepsparse.loggers_v2.logger_manager import LoggerManager
-from deepsparse.middlewares import MiddlewareManager
 from deepsparse.middlewares import IS_NESTED_KEY, NAME_KEY, MiddlewareManager
 from deepsparse.operators import EngineOperator, Operator
 from deepsparse.pipeline_config import PipelineConfig
@@ -434,7 +433,7 @@ class Pipeline(Operator):
 
             if self.logger_manager.metric is not None:
                 inference_state.set_logger(self.logger_manager.metric)
-                
+
             is_nested = False
 
         kwargs["inference_state"] = inference_state

@@ -20,159 +20,204 @@ import yaml
 from pydantic import BaseModel, Extra, Field, root_validator, validator
 
 
-class LogLevelEnum(str, Enum):
-    DEBUG = "DEBUG"
-    INFO = "INFO"
-    WARNING = "WARNING"
-    ERROR = "ERRPR"
-    CRITICAL = "CRITICAL"
+# class LogLevelEnum(str, Enum):
+#     DEBUG = "DEBUG"
+#     INFO = "INFO"
+#     WARNING = "WARNING"
+#     ERROR = "ERRPR"
+#     CRITICAL = "CRITICAL"
 
 
-class StreamLoggingConfig(BaseModel):
-    level: str = Field(default="INFO", description="Logger level")
-    formatter: str = Field(
-        default="%(asctime)s - %(levelname)s - %(message)s",
-        description="Log display format",
-    )
+# class StreamLoggingConfig(BaseModel):
+#     level: str = Field(default="INFO", description="Logger level")
+#     formatter: str = Field(
+#         default="%(asctime)s - %(levelname)s - %(message)s",
+#         description="Log display format",
+#     )
 
 
-class FileLoggingConfig(StreamLoggingConfig):
-    filename: str = Field(
-        default="/tmp/pipeline.log", description="Path to save the logs"
-    )
+# class FileLoggingConfig(StreamLoggingConfig):
+#     filename: str = Field(
+#         default="/tmp/pipeline.log", description="Path to save the logs"
+#     )
 
 
-class RotatingLoggingConfig(StreamLoggingConfig):
-    filename: str = Field(
-        default="/tmp/pipeline_rotate.log", description="Path to save the logs"
-    )
-    max_bytes: int = Field(default=2048, description="Max size till rotation")
-    backup_count: int = Field(default=3, description="Number of backups")
+# class RotatingLoggingConfig(StreamLoggingConfig):
+#     filename: str = Field(
+#         default="/tmp/pipeline_rotate.log", description="Path to save the logs"
+#     )
+#     max_bytes: int = Field(default=2048, description="Max size till rotation")
+#     backup_count: int = Field(default=3, description="Number of backups")
 
 
-class PerformanceConfig(BaseModel):
-    enabled: bool = Field(default=True, description="True to log, False to ignore")
-    frequency: int = Field(
-        default=1, description="The rate to log. Log every N occurances"
-    )
-    loggers: List[str] = Field(
-        default=["python"],
-        description=(
-            "List of loggers to use. Should be in the format",
-            "path/to/file.py:ClassName",
-        ),
-    )
+# class PerformanceConfig(BaseModel):
+#     enabled: bool = Field(default=True, description="True to log, False to ignore")
+#     frequency: int = Field(
+#         default=1, description="The rate to log. Log every N occurances"
+#     )
+#     loggers: List[str] = Field(
+#         default=["python"],
+#         description=(
+#             "List of loggers to use. Should be in the format",
+#             "path/to/file.py:ClassName",
+#         ),
+#     )
 
 
-class PythonLoggingConfig(BaseModel):
-    level: str = Field(default="INFO", description="Root logger level")
-    stream: StreamLoggingConfig = Field(
-        default=StreamLoggingConfig(), description="Stream logging config"
-    )
-    file: FileLoggingConfig = Field(
-        default=FileLoggingConfig(), description="File logging config"
-    )
-    rotating: RotatingLoggingConfig = Field(
-        default=RotatingLoggingConfig(), description="Rotating logging config"
-    )
+# class PythonLoggingConfig(BaseModel):
+#     level: str = Field(default="INFO", description="Root logger level")
+#     stream: StreamLoggingConfig = Field(
+#         default=StreamLoggingConfig(), description="Stream logging config"
+#     )
+#     file: FileLoggingConfig = Field(
+#         default=FileLoggingConfig(), description="File logging config"
+#     )
+#     rotating: RotatingLoggingConfig = Field(
+#         default=RotatingLoggingConfig(), description="Rotating logging config"
+#     )
 
 
-class CustomLoggingConfig(BaseModel):
-    frequency: int = Field(
-        default=1, description="The rate to log. Log every N occurances"
-    )
-    use: str = Field(
-        description=(
-            "List of loggers to use. Should be in the format",
-            "path/to/file.py:ClassName",
-        ),
-    )
+# class CustomLoggingConfig(BaseModel):
+#     frequency: int = Field(
+#         default=1, description="The rate to log. Log every N occurances"
+#     )
+#     use: str = Field(
+#         description=(
+#             "List of loggers to use. Should be in the format",
+#             "path/to/file.py:ClassName",
+#         ),
+#     )
 
-    class Config:
-        extra = Extra.allow  # Allow extra kwargs
+#     class Config:
+#         extra = Extra.allow  # Allow extra kwargs
 
 
-class PrometheusLoggingConfig(BaseModel):
-    use: str = Field(default="path", description="Prometheus Logging path")
-    port: int
-    filename: str
+# class PrometheusLoggingConfig(BaseModel):
+#     use: str = Field(default="path", description="Prometheus Logging path")
+#     port: int
+#     filename: str
+
+
+# class LoggerConfig(BaseModel):
+#     __root__: Optional[Dict]
+
+
+# class SystemTargetConfig(BaseModel):
+#     tag: Optional[List[str]] = Field(None, description="Tag id to register logging")
+#     func: List[str] = Field(
+#         "identity",
+#         description="Callable to apply to 'value' for logging. Defaults to ",
+#     )
+
+
+# class MetricTargetConfig(SystemTargetConfig):
+#     name: List[str] = Field(
+#         None, description="Name of a desired ClassName.__class__.__name__ to log"
+#     )
+#     output_key: List[str] = Field(
+#         None,
+#         description="If the callable output of ClassName is a dict, then log the value from the key output_key.",
+#     )
+
+
+# class RootLoggerConfig(BaseModel):
+#     ...
+
+
+# # class LoggerConfig(BaseModel):
+# #     frequency: int = Field(
+# #         default=1,
+# #         description="The rate to log. Log every N occurances",
+# #     )
+# #     tag: List[str] = Field(
+# #         ["*"],  # Log every tag by default
+# #         description="Tag to register logging. The value can be a regex pattern",
+# #     )
+# #     func: List[str] = Field(
+# #         ["identity"],
+# #         description="Callable to apply to 'value' for logging. Defaults to ",
+# #     )
+
+
+# # class SystemLoggerField(LoggerField):
+# #     ...
+
+
+# # class PerformanceLoggerField(LoggerField):
+# #     ...
+
+
+# # class MetriceLoggerField(LoggerField):
+# #     capture: List[str] = Field(
+# #         ["*"],
+# #         description="Key of the output dict. Corresponding value will be logged. The value can be a regex pattern",
+# #     )
+# class SystemConfig(BaseModel):
+#     logger: Dict[str, LoggerConfig]
 
 
 class LoggerConfig(BaseModel):
-    __root__: Optional[Dict]
+    name: str = Field(
+        ...,
+        description="Path (/path/to/file:FooLogger) or name of loggers in deepsparse/loggers/registry/__init__ path",
+    )
+    handler: Optional[Dict] = None
 
 
-class SystemTargetConfig(BaseModel):
-    tag: Optional[List[str]] = Field(None, description="Tag id to register logging")
-    func: List[str] = Field(
-        "identity",
-        description="Callable to apply to 'value' for logging. Defaults to ",
+class PythonLoggingConfig(LoggerConfig):
+    name: str = Field(
+        default=dict(default=dict(name="PythonLogger")),
+        description="Default config for PythonLogger",
     )
 
 
-class MetricTargetConfig(SystemTargetConfig):
-    name: List[str] = Field(
-        None, description="Name of a desired ClassName.__class__.__name__ to log"
+class TargetConfig(BaseModel):
+    func: str = Field(
+        default="identity",
+        description=(
+            "Callable to apply to 'value' for dimensionality reduction, if necessary"
+            "func can be a path /path/to/file:func) or name of func in deepsparse/loggers/registry/__init__ path"
+        ),
     )
-    output_key: List[str] = Field(
-        None,
-        description="If the callable output of ClassName is a dict, then log the value from the key output_key.",
-    )
 
-
-class RootLoggerConfig(BaseModel):
-    ...
-
-
-class LoggerField(BaseModel):
-    frequency: int = Field(
+    freq: int = Field(
         default=1,
         description="The rate to log. Log every N occurances",
     )
-    tag: List[str] = Field(
-        ["*"],  # Log every tag by default
-        description="Tag to register logging. The value can be a regex pattern",
-    )
-    func: List[str] = Field(
-        ["identity"],
-        description="Callable to apply to 'value' for logging. Defaults to ",
-    )
+    uses: List[str] = Field(default=["default"], description="")
 
 
-class SystemLoggerField(LoggerField):
-    ...
-
-
-class PerformanceLoggerField(LoggerField):
-    ...
-
-
-class MetriceLoggerField(LoggerField):
+class MetricTargetConfig(TargetConfig):
     capture: List[str] = Field(
         ["*"],
         description="Key of the output dict. Corresponding value will be logged. The value can be a regex pattern",
     )
 
 
-class LoggerConfig(BaseModel):
+class LoggingConfig(BaseModel):
 
     version: int = Field(
         default=2,
         description="Pipeline logger version",
     )
 
-    system: Dict[str, SystemLoggerField] = Field(
-        default=dict(default=SystemLoggerField()),
+    logger: Dict[str, LoggerConfig] = Field(
+        PythonLoggingConfig(),
+        description="Loggers to be Used",
+    )
+
+    system: Dict[str, List[TargetConfig]] = Field(
+        default={"*": [TargetConfig()]},
         description="Default python logging module logger",
     )
 
-    performance: Dict[str, PerformanceLoggerField] = Field(
-        dict(default=PerformanceLoggerField()),
-        description="Default python logging module logger",
+    performance: Dict[str, List[TargetConfig]] = Field(
+        default={"cpu": [TargetConfig()]},
+        description="Performance level config",
     )
 
-    metric: Dict[str, MetriceLoggerField] = Field(
-        default=dict(default=MetriceLoggerField()),
+    metric: Dict[str, List[MetricTargetConfig]] = Field(
+        default={r"(?i)operator": [MetricTargetConfig()]},
         description="Metric level config",
     )
 

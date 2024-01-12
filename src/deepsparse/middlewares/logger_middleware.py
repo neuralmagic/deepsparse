@@ -37,6 +37,7 @@ class LoggerMiddleware(MiddlewareCallable):
 
             logger.log(value=rtn, tag=name)
             logger.log(value={"foo": rtn.value}, tag=name)
+
             print(logger.logger["AddOneOperator"][0].logs)
             breakpoint()
 

@@ -122,7 +122,7 @@ class InferenceState(State, TimerState, LoggerState):
         if key in self.current_state:
             return self.current_state[key]
 
-    def copy_state(self, props=["timer","logger"]):
+    def copy_state(self, props=["timer", "logger"]):
         """copy everything except the attrs in props"""
 
         original_values = {
