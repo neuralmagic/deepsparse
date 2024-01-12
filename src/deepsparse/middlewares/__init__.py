@@ -16,3 +16,4 @@
 
 from .logger_middleware import LoggerMiddleware
 from .middleware import MiddlewareCallable, MiddlewareManager, MiddlewareSpec
+from .timer_middleware import *
