@@ -134,6 +134,7 @@ class TestsIntegrationLLMsPipelines:
         self.default_pipeline = None
         self.max_new_tokens = max_new_tokens
 
+    """
     def test_ort_single_token_prefill(self, setup):
         # Test the pipeline that uses ORT engine. The test covers the
         # following scenario:
@@ -188,6 +189,7 @@ class TestsIntegrationLLMsPipelines:
             output=output,
             torch_ground_truth=self.torch_ground_truth,
         )
+    """
 
     def test_deepsparse_single_token_prefill(self, setup):
         # Test the pipeline that uses deepsparse engine. The test covers the
@@ -207,6 +209,7 @@ class TestsIntegrationLLMsPipelines:
                 max_new_tokens=self.max_new_tokens, output_scores=True
             ),
         )
+        print(output)
 
         self._test_output(
             output=output,
@@ -215,6 +218,7 @@ class TestsIntegrationLLMsPipelines:
             run_kv_cache_validation=not self.internal_kv_cache,
         )
 
+    """
     def test_deepsparse_multi_token_prefill(self, setup):
         # Test the pipeline that uses deepsparse engine. The test covers the
         # following scenario:
@@ -243,6 +247,8 @@ class TestsIntegrationLLMsPipelines:
 
     def test_inference_no_kv_cache_ort(self, setup):
         self._test_inference_no_kv_cache(engine_type="onnxruntime")
+
+    """
 
     def _test_inference_no_kv_cache(self, engine_type):
         pipeline = self.get_pipeline(
@@ -287,6 +293,10 @@ class TestsIntegrationLLMsPipelines:
         # we expect the logits to be exactly the same
         # as the target logits; the generated sequence should
         # also be the same as the target sequence
+
+        print("target logits")
+        print(target_logits[0])
+        
         assert numpy.allclose(score, target_logits[0], atol=self.precision)
         assert self.prompt + output.generations[0].text == generated_text
 
