@@ -135,7 +135,6 @@ class Pipeline(Operator):
                 )
             elif model:
                 new_kwargs["model_path"] = model
-
             pipeline = Operator.create(task=task, **new_kwargs)
             if not isinstance(pipeline, cls):
                 raise RuntimeError(

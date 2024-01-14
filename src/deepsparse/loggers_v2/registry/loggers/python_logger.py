@@ -52,6 +52,32 @@ class PythonLogger:
         log_type: str,
         func: Optional[str] = None,
         level: str = "info",
+        **kwargs,
     ):
+        placeholders = f"[{log_type}.{tag}.{str(func)}]"
+        if (run_time := kwargs.get("time")) is not None:
+            placeholders += f"[⏱️{run_time}]"
+
         logger = getattr(self.logger, level)
-        logger(f"{log_type}.{tag}.{value}.{str(func)}")
+        logger(f"{placeholders}: {value}")
+
+"""
+from deepsparse.loggers_v2.registry.loggers.python_logger import PythonLogger
+pp = PythonLogger()
+
+aa = { "value" : 1,"tag" : 1, "log_type" : "haha","func" : "foo","level":"warning"}
+aaa ={ "value" : 1,"tag" : 1, "log_type" : "haha","func" : "foo","level":"warning", "time": 11}
+pp.log(**aa)
+pp.log(**aaa)
+
+"""
+
+class CustomFormatter(logging.Formatter):
+    def format(self, record):
+        # Add your custom placeholders to the log record
+        record.placeholders = f"[{record.log_type}.{record.tag}.{str(record.func)}]"
+        if hasattr(record, 'run_time'):
+            record.placeholders += f"[⏱️{record.run_time}]"
+
+        # Use the original formatter to format the log message
+        return super().format(record)

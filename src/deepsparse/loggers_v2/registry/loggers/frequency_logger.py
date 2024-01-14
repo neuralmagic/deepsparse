@@ -49,3 +49,5 @@ class FrequencyLogger:
         if counter % self.frequency == 0:
             return True
         return False
+    
+

@@ -16,4 +16,5 @@
 
 from .logger_middleware import LoggerMiddleware
 from .middleware import MiddlewareCallable, MiddlewareManager, MiddlewareSpec
-from .timer_middleware import *
+from .timer_middleware import TimerMiddleware, NAME_KEY, IS_NESTED_KEY
+

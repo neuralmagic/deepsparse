@@ -14,6 +14,7 @@
 
 import logging
 from typing import List, Optional
+from deepsparse.loggers_v2.logger_manager import LoggerManager
 
 from deepsparse.middlewares import MiddlewareManager
 from deepsparse.operators import EngineOperator
@@ -63,6 +64,7 @@ class TextGenerationPipeline(Pipeline):
         continuous_batch_sizes: Optional[List[int]] = None,
         benchmark: bool = False,
         middleware_manager: Optional[MiddlewareManager] = None,
+        logger_manager: Optional[LoggerManager] = None,
         **engine_kwargs,
     ):
         """
@@ -278,6 +280,7 @@ class TextGenerationPipeline(Pipeline):
             pipeline_state=pipeline_state,
             continuous_batching_scheduler=continuous_batching_scheduler,
             middleware_manager=middleware_manager,
+            logger_manager=logger_manager,
             benchmark=benchmark,
         )
 

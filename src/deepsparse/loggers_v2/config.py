@@ -50,20 +50,6 @@ from pydantic import BaseModel, Extra, Field, root_validator, validator
 #     backup_count: int = Field(default=3, description="Number of backups")
 
 
-# class PerformanceConfig(BaseModel):
-#     enabled: bool = Field(default=True, description="True to log, False to ignore")
-#     frequency: int = Field(
-#         default=1, description="The rate to log. Log every N occurances"
-#     )
-#     loggers: List[str] = Field(
-#         default=["python"],
-#         description=(
-#             "List of loggers to use. Should be in the format",
-#             "path/to/file.py:ClassName",
-#         ),
-#     )
-
-
 # class PythonLoggingConfig(BaseModel):
 #     level: str = Field(default="INFO", description="Root logger level")
 #     stream: StreamLoggingConfig = Field(
@@ -98,77 +84,12 @@ from pydantic import BaseModel, Extra, Field, root_validator, validator
 #     filename: str
 
 
-# class LoggerConfig(BaseModel):
-#     __root__: Optional[Dict]
-
-
-# class SystemTargetConfig(BaseModel):
-#     tag: Optional[List[str]] = Field(None, description="Tag id to register logging")
-#     func: List[str] = Field(
-#         "identity",
-#         description="Callable to apply to 'value' for logging. Defaults to ",
-#     )
-
-
-# class MetricTargetConfig(SystemTargetConfig):
-#     name: List[str] = Field(
-#         None, description="Name of a desired ClassName.__class__.__name__ to log"
-#     )
-#     output_key: List[str] = Field(
-#         None,
-#         description="If the callable output of ClassName is a dict, then log the value from the key output_key.",
-#     )
-
-
-# class RootLoggerConfig(BaseModel):
-#     ...
-
-
-# # class LoggerConfig(BaseModel):
-# #     frequency: int = Field(
-# #         default=1,
-# #         description="The rate to log. Log every N occurances",
-# #     )
-# #     tag: List[str] = Field(
-# #         ["*"],  # Log every tag by default
-# #         description="Tag to register logging. The value can be a regex pattern",
-# #     )
-# #     func: List[str] = Field(
-# #         ["identity"],
-# #         description="Callable to apply to 'value' for logging. Defaults to ",
-# #     )
-
-
-# # class SystemLoggerField(LoggerField):
-# #     ...
-
-
-# # class PerformanceLoggerField(LoggerField):
-# #     ...
-
-
-# # class MetriceLoggerField(LoggerField):
-# #     capture: List[str] = Field(
-# #         ["*"],
-# #         description="Key of the output dict. Corresponding value will be logged. The value can be a regex pattern",
-# #     )
-# class SystemConfig(BaseModel):
-#     logger: Dict[str, LoggerConfig]
-
-
 class LoggerConfig(BaseModel):
     name: str = Field(
-        ...,
+        default="PythonLogger",
         description="Path (/path/to/file:FooLogger) or name of loggers in deepsparse/loggers/registry/__init__ path",
     )
     handler: Optional[Dict] = None
-
-
-class PythonLoggingConfig(LoggerConfig):
-    name: str = Field(
-        default=dict(default=dict(name="PythonLogger")),
-        description="Default config for PythonLogger",
-    )
 
 
 class TargetConfig(BaseModel):
@@ -202,7 +123,7 @@ class LoggingConfig(BaseModel):
     )
 
     logger: Dict[str, LoggerConfig] = Field(
-        PythonLoggingConfig(),
+        default=dict(default=LoggerConfig()),
         description="Loggers to be Used",
     )
 
@@ -220,6 +141,12 @@ class LoggingConfig(BaseModel):
         default={r"(?i)operator": [MetricTargetConfig()]},
         description="Metric level config",
     )
+    
+    @validator("logger", always=True)
+    def always_include_python_logger(cls, value):
+        if "default" not in value:
+            value["default"] = LoggerConfig()
+        return value
 
     @classmethod
     def from_yaml(cls, yaml_path: str):
@@ -232,6 +159,7 @@ class LoggingConfig(BaseModel):
     def from_str(cls, stringified_yaml: str):
         """Load from stringified yaml"""
         yaml_content = yaml.safe_load(stringified_yaml)
+
         return cls(**yaml_content)
 
     @classmethod
@@ -241,4 +169,4 @@ class LoggingConfig(BaseModel):
             if config.endswith(".yaml"):
                 return cls.from_yaml(config)
             return cls.from_str(config)
-        return LoggerConfig()
+        return LoggingConfig()

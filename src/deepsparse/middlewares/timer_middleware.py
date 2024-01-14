@@ -17,10 +17,9 @@ from typing import Any
 from deepsparse.middlewares.middleware import MiddlewareCallable
 
 
-__all__ = ["TimerMiddleware", "IS_NESTED_KEY", "NAME_KEY"]
-
 IS_NESTED_KEY = "is_nested"
 NAME_KEY = "name"
+INFERENCE_STATE_KEY = "inference_state"
 
 
 class TimerMiddleware(MiddlewareCallable):
@@ -34,9 +33,72 @@ class TimerMiddleware(MiddlewareCallable):
         name = kwargs.get(NAME_KEY)
         is_nested = kwargs.pop(IS_NESTED_KEY, False)
 
-        inference_state = kwargs.get("inference_state")
+        inference_state = kwargs.get(INFERENCE_STATE_KEY)
         timer = inference_state.timer
         with timer.time(id=name, enabled=not is_nested):
             rtn = self.call_next(*args, **kwargs)
+            xx = unwrap_logged_value(rtn)
             breakpoint()
             return rtn
+
+def unwrap_logged_value(
+    value: Any, parent_identifier: str = "", seperator: str = "__"
+# ) -> Generator[Tuple[str, Any], None, None]:
+):
+    """
+    Unwrap the `value`, given that it may be a nested
+    data structure
+    e.g.
+    ```
+    value = {"foo": {"alice": 1, "bob": 2},
+             "bazz": 2},
+    for identifier, value in unwrap_logged_value(value):
+        -> yields:
+            "foo__alice", 1
+            "foo__bob", 2
+            "bazz", 2 (no unwrapping)
+    ```
+
+    :param value: The value to possibly unwrap
+    :param parent_identifier: The identifier that may be prepended to the
+        child identifier retrieved from the nested dictionary
+    :param seperator: The seperator to use when composing the parent and child
+        identifiers
+    :return: A generator that:
+        - if `value` is a dictionary:
+            continues to unwrap the dictionary...
+        - if `value` is a BatchResult object:
+            yields the `parent_identifier` and items in `value`
+        - if `value` is not a dictionary or BatchResult object
+            yields the `parent_identifier` and `value`
+        Note: `parent_identifier` is composed by connecting the keys over
+            the multiple levels of nesting with the seperator value is extracted
+            from the nested dictionary (corresponding to the appropriate composed
+            identifier)
+    """
+    breakpoint()
+    if not isinstance(value, dict):
+        yield parent_identifier, value
+    else:
+        for child_identifier, child_value in value.items():
+            new_parent_identifier = (
+                f"{parent_identifier}{seperator}{child_identifier}"
+                if parent_identifier
+                else child_identifier
+            )
+            if isinstance(child_value, BatchResult):
+                for child_value_item in child_value:
+                    yield new_parent_identifier, child_value_item
+            elif isinstance(child_value, dict):
+                yield from unwrap_logged_value(
+                    child_value, new_parent_identifier, seperator
+                )
+            else:
+                yield new_parent_identifier, child_value
+
+
+class BatchResult(list):
+    """
+    Wrapper class for a list of values that
+    are derived from a set of batch data
+    """

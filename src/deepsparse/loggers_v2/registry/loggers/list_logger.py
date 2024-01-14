@@ -19,9 +19,9 @@ from .frequency_logger import FrequencyLogger
 
 
 class ListLogger:
-    def __init__(self, handler: Optional[Dict] = None):
+    def __init__(self, **_ignore):
         self.logs = []
-        self.logger = lambda x: self.logs.append(x)
+        # self.logger = lambda x: self.logs.append(x)
 
     def log(
         self,
@@ -32,4 +32,12 @@ class ListLogger:
         *args,
         **kwargs,
     ):
-        self.logs.append(f"{log_type}.{tag}.{value}.{str(func)}")
+        # self.logs.append(f"{log_type}.{tag}.{str(func)}.{value}")
+        placeholders = f"[{log_type}.{tag}.{str(func)}]"
+        if (run_time := kwargs.get("time")) is not None:
+            placeholders += f"[⏱️{run_time}]"
+        if (capture := kwargs.get("capture")) is not None:
+            placeholders += f" {capture}"
+
+        self.logs.append(f"{placeholders}: {value}")
+        

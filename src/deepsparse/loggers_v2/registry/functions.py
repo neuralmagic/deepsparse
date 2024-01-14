@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Any, List
+from typing import Any, List, Iterable
 
 import numpy
 
@@ -21,18 +21,19 @@ def identity(x: Any):
     return x
 
 
-def max(x: List):
-    if len(x) > 0:
-        if isinstance(x, numpy.ndarray):
-            return x.max()
-        return max(x)
+def max(lst: Any):
+    
+    if isinstance(lst, Iterable) and len(lst) > 0:
+        arr = numpy.array(lst)
+        while arr.size > 1:
+            arr = numpy.mean(arr)
+        return arr.item()
+    return lst
 
 
 def average(lst: List):
     if len(lst) > 0:
-
-        if isinstance(x, numpy.ndarray):
-            return lst.mean()
-        total = sum(lst)
-        average = total / len(lst)
-        return average
+        arr = numpy.array(lst)
+        while arr.size > 1:
+            arr = numpy.mean(arr)
+        return arr.item()

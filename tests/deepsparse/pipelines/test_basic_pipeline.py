@@ -45,15 +45,12 @@ class AddTwoOperator(Operator):
     def run(self, inp: IntSchema, **kwargs) -> Dict:
         return {"value": inp.value + 2}
 
-
-AddThreePipeline = Pipeline(
-    ops=[AddOneOperator(), AddTwoOperator()],
-    router=LinearRouter(end_route=2),
-    schedulers=[OperatorScheduler()],
-)
-
-
 def test_run_simple_pipeline():
+    AddThreePipeline = Pipeline(
+        ops=[AddOneOperator(), AddTwoOperator()],
+        router=LinearRouter(end_route=2),
+        schedulers=[OperatorScheduler()],
+    )
     pipeline_input = IntSchema(value=5)
     pipeline_output = AddThreePipeline(pipeline_input)
 

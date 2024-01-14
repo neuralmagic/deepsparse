@@ -16,7 +16,7 @@ import importlib
 import re
 from collections import defaultdict
 
-# from deepsparse.loggers import custom_logger_from_identifier
+from deepsparse.loggers import custom_logger_from_identifier
 from threading import Lock
 from typing import Any, Callable, Dict, Optional
 
@@ -37,10 +37,16 @@ class FrequncyExecutor:
         with self._lock:
             if stub not in self.counter:
                 self.counter[stub] = 0
-            frequency = self.frequency.get(stub_frequency)
+            for key, value in self.frequency.items():
+                if should_allow_log_by_pattern(key, stub_frequency):
+                    frequency = value
+ 
             self.counter[stub] = (self.counter[stub] + 1) % frequency
             should_execute = self.counter[stub] == 0
-            print(self.counter[stub], stub)
+            print(stub)
+            print(self.frequency)
+            print(self.counter)
+        # breakpoint()
         if should_execute:
             return True
         return False
@@ -52,7 +58,7 @@ def import_from_registry(name: str):
     try:
         return getattr(module, name)
     except:
-        raise ValueError(f"Cannot find Class with name {name} in {registry}")
+        raise ValueError(f"Cannot import class/func with name '{name}' from {registry}")
 
 
 def import_from_path(path: str):
@@ -77,8 +83,10 @@ def should_allow_log_by_pattern(
 ):
     if pattern == "*":
         return True
-    if string is not None and re.match(pattern, string):
-        return True
+    if string is not None:
+        comp = re.compile(pattern)
+        if comp.search(string):
+            return True
     return False
 
 
@@ -98,8 +106,8 @@ class RootLogger(FrequncyExecutor):
         super().__init__()
         self.config = config
         self.leaf_logger = leaf_logger
-        self.logger = defaultdict(list)
-        self.func = set()
+        self.logger = defaultdict(list) # tag as key
+        self.func = {} # func name: callable
         self.tag = set()
         self.create()
 
@@ -111,11 +119,10 @@ class RootLogger(FrequncyExecutor):
         for tag, func_args in self.config.items():
             for func_arg in func_args:
                 func = func_arg.get("func")
-                self.func.add(func)
+                self.func[func] = import_from_registry(func)
                 self.frequency[f"{tag}.{func}"] = func_arg.get("freq", 1)
                 for logger_id in func_arg.get("uses", []):
                     self.logger[tag].append(self.leaf_logger[logger_id])
-
     def log(
         self, value: Any, log_type: str, tag: Optional[str] = None, *args, **kwargs
     ):
@@ -124,15 +131,16 @@ class RootLogger(FrequncyExecutor):
         """
         for pattern, loggers in self.logger.items():
             if should_allow_log_by_pattern(pattern, tag):
-                for func in self.func:
+                for func_name, func_callable in self.func.items():
                     if super().should_execute_on_frequency(
-                        value=value, tag=tag, log_type=log_type, func=func
+                        value=value, tag=tag, log_type=log_type, func=func_name
                     ):
+                        value = func_callable(value)
                         for logger in loggers:
                             logger.log(
                                 value=value,
                                 tag=tag,
-                                func=func,
+                                func=func_name,
                                 log_type=log_type,
                                 *args,
                                 **kwargs,
@@ -180,6 +188,12 @@ class MetricLogger(RootLogger):
             for func_arg in func_args:
                 for capture in func_arg["capture"]:
                     self.capture.add(capture)
+                    
+    def log(self, capture: str, *args, **kwargs):
+        for pattern in self.capture:
+            if should_allow_log_by_pattern(pattern, capture):
+                super().log(log_type=self.LOG_TYPE,capture=capture, *args, **kwargs)
+
 
     # def log(self, value: Any, tag: Optional[str] = None, *args, **kwargs):
     #     if isinstance(value, Dict):

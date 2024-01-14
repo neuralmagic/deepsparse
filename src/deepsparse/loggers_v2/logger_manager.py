@@ -31,10 +31,40 @@ class LogType(Enum):
     SYSTEM = "SYSTEM"
     PERFORMANCE = "PERFORMANCE"
     METRIC = "METRIC"
+    
+    
+ROOT_LOGGER = {
+    "system": SystemLogger,
+    "performance": PerformanceLogger,
+    "metric": MetricLogger,
+}
+    
+class LoggerFactory:
+    def __init__(self):
+        self.leaf_logger = {}
+        self.logger = {}
+    
+    
+    def build_leaf_logger(self, logger_config: Dict[str, Dict]):
+        for name, init_args in logger_config.items():
+            self.leaf_logger[name] = instantiate_logger(
+                name=init_args.pop("name"),
+                init_args=init_args,
+            )
+    
+    def create(self, config: LoggingConfig):
+        for log_type, logger in ROOT_LOGGER.items():
+            log_type_args = config.get(log_type)
+            if log_type_args is not None:
+                self.logger[log_type] = logger(
+                    config=config[log_type],
+                    leaf_logger=self.leaf_logger,
+                )
+    
 
 
 class LoggerManager(AsyncSubmitter):
-    # class LoggerManager(AsyncSubmitter, FrequencyManager, LoggerFactory):
+    # class LoggerManager(AsyncSubmitter, LoggerFactory):
 
     """
     Initialize loggers for Pipeline
@@ -42,19 +72,19 @@ class LoggerManager(AsyncSubmitter):
     :param config: Path to yaml or stringified yaml
     """
 
-    def __init__(self, config: Optional[str] = None):
+    def __init__(self, config: str = ""):
         super().__init__()
         self.config = LoggingConfig.from_config(config).dict()
         self.leaf_logger: Dict = {}
         self.instantiate_leaf_logger(self.config.get("logger"))
-
+        breakpoint()
         # send logggers the factory with the config
         factory = logger_factory(
             self.config,
             self.leaf_logger,
         )
 
-        self.loggers = {
+        self.logger = {
             LogType.SYSTEM: factory.get("system"),
             LogType.PERFORMANCE: factory.get("performance"),
             LogType.METRIC: factory.get("metric"),
@@ -77,7 +107,7 @@ class LoggerManager(AsyncSubmitter):
     ):
         log_type = log_type.upper()
         if log_type in LogType.__members__:
-            logger = self.loggers.get(LogType[log_type])
+            logger = self.logger.get(LogType[log_type])
             if logger:
                 logger.log(value=value, tag=tag, *args, **kwargs)
 
@@ -98,12 +128,12 @@ class LoggerManager(AsyncSubmitter):
 
     @property
     def system(self) -> Optional[SystemLogger]:
-        return self.loggers[LogType.SYSTEM]
+        return self.logger[LogType.SYSTEM]
 
     @property
     def performance(self) -> Optional[PerformanceLogger]:
-        return self.loggers[LogType.PERFORMANCE]
+        return self.logger[LogType.PERFORMANCE]
 
     @property
     def metric(self) -> Optional[MetricLogger]:
-        return self.loggers[LogType.METRIC]
+        return self.logger[LogType.METRIC]

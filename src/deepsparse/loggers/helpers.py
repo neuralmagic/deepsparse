@@ -75,6 +75,7 @@ def unwrap_logged_value(
             from the nested dictionary (corresponding to the appropriate composed
             identifier)
     """
+    breakpoint()
     if not isinstance(value, dict):
         yield parent_identifier, value
     else:
