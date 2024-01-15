@@ -188,7 +188,7 @@ class TestsIntegrationLLMsPipelines:
             output=output,
             torch_ground_truth=self.torch_ground_truth,
         )
-   
+
     def test_deepsparse_single_token_prefill(self, setup):
         # Test the pipeline that uses deepsparse engine. The test covers the
         # following scenario:
@@ -216,7 +216,6 @@ class TestsIntegrationLLMsPipelines:
             run_kv_cache_validation=not self.internal_kv_cache,
         )
 
-   
     def test_deepsparse_multi_token_prefill(self, setup):
         # Test the pipeline that uses deepsparse engine. The test covers the
         # following scenario:
@@ -245,7 +244,6 @@ class TestsIntegrationLLMsPipelines:
 
     def test_inference_no_kv_cache_ort(self, setup):
         self._test_inference_no_kv_cache(engine_type="onnxruntime")
-
 
     def _test_inference_no_kv_cache(self, engine_type):
         pipeline = self.get_pipeline(
