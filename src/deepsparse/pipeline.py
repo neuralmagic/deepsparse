@@ -140,7 +140,7 @@ class Pipeline(Operator):
                     "provided task should be registered using the OperatorRegistry"
                 )
         except Exception:
-            _LOGGER.warning(f"Failed to create v2 '{task}' pipeline, trying legacy.")
+            _LOGGER.warning(f"Could not create v2 '{task}' pipeline, trying legacy")
             from deepsparse.legacy import Pipeline
 
             pipeline = Pipeline.create(task=task, **kwargs)
