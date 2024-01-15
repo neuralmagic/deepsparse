@@ -117,6 +117,7 @@ def download_wand_binaries(package_path: str, full_version: str, is_release: boo
     """
     release_string = "release" if is_release else "nightly"
     platform_string = get_platform_string()
+    full_version = "1.7.0.20240105"
 
     print(
         f"Unable to find wand binaries locally in {package_path}.\n"
