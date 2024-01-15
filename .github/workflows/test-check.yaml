@@ -48,7 +48,7 @@ jobs:
       - name: ⚙️ Install dependencies
         run: pip install .[dev,server,image_classification,transformers,clip]
       - name: Run base tests
-        run: make test
+        run: WAND_OPT_FLAGS=default,~pyramids,~fusion make test
   cli-smoke-tests:
     strategy:
       fail-fast: false
