@@ -20,6 +20,7 @@ concurrency:
 env:
   SPARSEZOO_TEST_MODE: true
   NM_DISABLE_ANALYTICS: "true"
+  WAND_OPT_FLAGS: "default,~pyramids,~fusion"
 
 jobs:
   base-tests:
