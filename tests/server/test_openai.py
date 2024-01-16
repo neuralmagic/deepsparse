@@ -22,6 +22,7 @@ from deepsparse.server.openai_server import (
     OpenAIServer,
 )
 from fastapi.testclient import TestClient
+from transformers import AutoTokenizer
 
 
 TEST_MODEL_ID = "hf:mgoin/TinyStories-1M-ds"
@@ -178,14 +179,14 @@ def test_completions(client, model_card):
 
 
 def test_completions_tokenized(client, model_card):
-    temp_pipeline = Pipeline.create(task="text_generation", model_path=TEST_MODEL_ID)
     prompt = "The Boston Bruins are "
     max_tokens = 30
 
     # Test both passing in input_ids itself as a List[int],
     # and inside of a "batch" as a List[List[int]]
     # TODO: Multiple prompts/batching isn't supported yet
-    input_ids = temp_pipeline.tokenizer(prompt).input_ids
+    tokenizer = AutoTokenizer.from_pretrained(TEST_MODEL_ID.removeprefix("hf:"))
+    input_ids = tokenizer(prompt).input_ids
     num_prompt_tokens = len(input_ids)
 
     for prompt in [input_ids, [input_ids]]:
