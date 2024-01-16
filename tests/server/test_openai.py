@@ -11,6 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from transformers import AutoTokenizer
+
 import pytest
 from deepsparse import Pipeline
 from deepsparse.server.config import EndpointConfig, ServerConfig
@@ -22,7 +24,6 @@ from deepsparse.server.openai_server import (
     OpenAIServer,
 )
 from fastapi.testclient import TestClient
-from transformers import AutoTokenizer
 
 
 TEST_MODEL_ID = "hf:mgoin/TinyStories-1M-ds"
