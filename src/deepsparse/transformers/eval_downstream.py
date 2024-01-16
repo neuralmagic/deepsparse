@@ -110,6 +110,9 @@ def perplexity_eval(args, dataset_name="openai_humaneval"):
         # Set perplexity computation to accumulate negative log-likelihood across
         # sections
         accumulate = True
+    elif dataset_name == "ultrachat200k":
+        dataset = load_dataset("HuggingFaceH4/ultrachat_200k", name="default", split="test_sft")
+        accumulate = False
     else:
         dataset = load_dataset(dataset_name, split="test")
         accumulate = False
@@ -580,6 +583,10 @@ SUPPORTED_DATASETS = {
     "c4": lambda args: perplexity_eval(
         args,
         dataset_name="c4",
+    ),
+    "ultrachat200k": lambda args: perplexity_eval(
+        args,
+        dataset_name="ultrachat200k",
     ),
 }
 
