@@ -111,7 +111,9 @@ def perplexity_eval(args, dataset_name="openai_humaneval"):
         # sections
         accumulate = True
     elif dataset_name == "ultrachat200k":
-        dataset = load_dataset("HuggingFaceH4/ultrachat_200k", name="default", split="test_sft")
+        dataset = load_dataset(
+            "HuggingFaceH4/ultrachat_200k", name="default", split="test_sft"
+        )
         accumulate = False
     else:
         dataset = load_dataset(dataset_name, split="test")
