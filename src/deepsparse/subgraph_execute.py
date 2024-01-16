@@ -181,7 +181,7 @@ class SubGraphExecutor:
                     operator_output, output_to_yield = self._parse_streaming_output(
                         operator_output
                     )
-                    self._run_next_step(router, ops, func, sub_graph, operator_output)
+                    self._run_next_step(router, ops, func, sub_graph, operator_output, loop=loop)
                     if output_to_yield:
                         yield output_to_yield, sub_graph.step, operator_output, sub_graph.inf  # noqa: E501
 
