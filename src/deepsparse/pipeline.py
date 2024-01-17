@@ -665,14 +665,14 @@ class Pipeline(Operator):
         :param inference_state: inference state for the operator
         :param next_step: dictionary key to fetch the operator from the pipeline ops.
         """
-        run_cb = False
+        running_continuous_batching = False
         if (
             isinstance(self.ops[next_step], EngineOperator)
             and self._continuous_batching_scheduler
         ):
             func = self._continuous_batching_scheduler.submit
             inp = self.ops[next_step].input_schema(**inp)
-            run_cb = True
+            running_continuous_batching = True
         else:
             func = self._scheduler_group.submit
 
@@ -685,7 +685,7 @@ class Pipeline(Operator):
             **kwargs,
         )
 
-        if kwargs.get("loop") and run_cb:
+        if kwargs.get("loop") and running_continuous_batching:
             return asyncio.futures.wrap_future(future, loop=kwargs.get("loop"))
         return future
 
