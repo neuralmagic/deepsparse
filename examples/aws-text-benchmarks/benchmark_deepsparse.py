@@ -1,10 +1,28 @@
-from deepsparse import Pipeline, Context
+# Copyright (c) 2021 - present / Neuralmagic, Inc. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import os
+import time
+
+import numpy as np
+from tqdm import tqdm
+from transformers import AutoTokenizer
+
 import deepsparse.transformers
 from datasets import load_dataset
-from transformers import AutoTokenizer
-from tqdm import tqdm
-import numpy as np
-import time, os
+from deepsparse import Context, Pipeline
+
 
 os.environ["NM_BIND_THREADS_TO_CORES"] = "1"
 INPUT_COL = "text"
@@ -18,7 +36,13 @@ tokenizer = AutoTokenizer.from_pretrained(model_path)
 
 
 def pre_process_fn(examples):
-    return tokenizer(examples[INPUT_COL], add_special_tokens=True, return_tensors="np", padding=False, truncation=False)
+    return tokenizer(
+        examples[INPUT_COL],
+        add_special_tokens=True,
+        return_tensors="np",
+        padding=False,
+        truncation=False,
+    )
 
 
 dataset = dataset.map(pre_process_fn, batched=True)
@@ -32,7 +56,7 @@ inputs = ([""] * num_pad_items) + dataset[INPUT_COL]
 batches = []
 
 for b_index_start in range(0, len(inputs), batch_size):
-    batches.append(inputs[b_index_start:b_index_start + batch_size])
+    batches.append(inputs[b_index_start : b_index_start + batch_size])
 
 ## RUN THROUPUT TESTING
 print("\nCompiling models:")
@@ -43,7 +67,7 @@ tc_pipeline = Pipeline.create(
     model_scheme="mnli",
     sequence_length=buckets,
     batch_size=batch_size,
-    context=Context(num_streams=1)
+    context=Context(num_streams=1),
 )
 print("\nRunning test:")
 # run inferences on the datset
@@ -51,7 +75,9 @@ start = time.perf_counter()
 
 predictions = []
 for batch in tqdm(batches):
-    predictions.append(tc_pipeline(sequences=batch, labels=['Sports', 'Business', 'Sci/Tech']))
+    predictions.append(
+        tc_pipeline(sequences=batch, labels=["Sports", "Business", "Sci/Tech"])
+    )
 
 # flatten and remove padded predictions
 predictions = [pred for sublist in predictions for pred in sublist.labels]
