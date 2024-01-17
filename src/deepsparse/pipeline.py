@@ -685,6 +685,9 @@ class Pipeline(Operator):
             **kwargs,
         )
 
+        # Wraps the future returned by continuous_batching to be an asyncio.Future
+        # we also only want to do this when we are in running async pathways in which
+        # case the kwargs will contain a loop from the subgraph executor
         if kwargs.get("loop") and running_continuous_batching:
             return asyncio.futures.wrap_future(future, loop=kwargs.get("loop"))
         return future
