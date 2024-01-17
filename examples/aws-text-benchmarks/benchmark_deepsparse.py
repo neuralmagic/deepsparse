@@ -15,11 +15,9 @@
 import os
 import time
 
-import numpy as np
 from tqdm import tqdm
 from transformers import AutoTokenizer
 
-import deepsparse.transformers
 from datasets import load_dataset
 from deepsparse import Context, Pipeline
 
@@ -31,7 +29,7 @@ batch_size = 64
 buckets = [64, 128, 256]
 model_path = "./sparse-model/deployment/"
 
-### TOKENIZE DATASET - (used to comptue buckets)
+# TOKENIZE DATASET - (used to comptue buckets)
 tokenizer = AutoTokenizer.from_pretrained(model_path)
 
 
@@ -50,7 +48,7 @@ dataset = dataset.add_column("num_tokens", list(map(len, dataset["input_ids"])))
 dataset = dataset.sort("num_tokens")
 max_token_len = dataset[-1]["num_tokens"]
 
-### SPLIT DATA INTO BATCHES
+# SPLIT DATA INTO BATCHES
 num_pad_items = batch_size - (dataset.num_rows % batch_size)
 inputs = ([""] * num_pad_items) + dataset[INPUT_COL]
 batches = []
@@ -58,7 +56,7 @@ batches = []
 for b_index_start in range(0, len(inputs), batch_size):
     batches.append(inputs[b_index_start : b_index_start + batch_size])
 
-## RUN THROUPUT TESTING
+# RUN THROUPUT TESTING
 print("\nCompiling models:")
 
 tc_pipeline = Pipeline.create(

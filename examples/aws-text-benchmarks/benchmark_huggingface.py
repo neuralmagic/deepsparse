@@ -14,7 +14,6 @@
 
 import time
 
-from tqdm import tqdm
 from transformers import AutoTokenizer, pipeline
 from transformers.pipelines.pt_utils import KeyDataset
 
@@ -25,13 +24,13 @@ from datasets import load_dataset
 model_path = "./dense-model/training/"
 batch_size = 64
 
-### SETUP DATASETS - in this case, we download ag_news
+# SETUP DATASETS - in this case, we download ag_news
 print("Setting up the dataset:")
 
 INPUT_COL = "text"
 dataset = load_dataset("ag_news", split="train[:3000]")
 
-### TOKENIZE DATASETS - to sort dataset
+# TOKENIZE DATASETS - to sort dataset
 tokenizer = AutoTokenizer.from_pretrained(model_path)
 
 
@@ -49,10 +48,10 @@ dataset = dataset.map(pre_process_fn, batched=True)
 dataset = dataset.add_column("num_tokens", list(map(len, dataset["input_ids"])))
 dataset = dataset.sort("num_tokens")
 
-### SPLIT DATA INTO BATCHES
+# SPLIT DATA INTO BATCHES
 hf_dataset = KeyDataset(dataset, INPUT_COL)
 
-### RUN THROUGPUT TESTING
+# RUN THROUGPUT TESTING
 # load model
 hf_pipeline = pipeline(
     "zero-shot-classification",
