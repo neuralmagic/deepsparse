@@ -676,7 +676,7 @@ class Pipeline(Operator):
         else:
             func = self._scheduler_group.submit
 
-        future = self.run_func(
+        return self.run_func(
             func=func,
             operator=self.ops[next_step],
             inp=inp,
@@ -684,13 +684,6 @@ class Pipeline(Operator):
             inference_state=inference_state,
             **kwargs,
         )
-
-        # Wraps the future returned by continuous_batching to be an asyncio.Future
-        # we also only want to do this when we are in running async pathways in which
-        # case the kwargs will contain a loop from the subgraph executor
-        if kwargs.get("loop") and running_continuous_batching:
-            return asyncio.futures.wrap_future(future, loop=kwargs.get("loop"))
-        return future
 
 
 def text_generation_pipeline(*args, **kwargs) -> "Pipeline":
