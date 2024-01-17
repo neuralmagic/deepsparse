@@ -58,9 +58,9 @@ class TimerState:
         self._timer = None
 
     @contextmanager
-    def time(self, id: str):
+    def time(self, id: str, enabled: bool = True):
         if self._timer is not None:
-            with self.timer.time(id=id):
+            with self.timer.time(id=id, enabled=enabled):
                 yield
         else:
             yield  # null context
