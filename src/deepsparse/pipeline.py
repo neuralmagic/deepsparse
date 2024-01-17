@@ -206,7 +206,7 @@ class Pipeline(Operator):
                         operator_output=operator_output,
                         inference_state=inference_state,
                         next_step=next_step,
-                        loop=loop
+                        loop=loop,
                     )
 
                 # Non Streaming/Generator pathway
@@ -370,7 +370,7 @@ class Pipeline(Operator):
         operator_output: Any,
         inference_state: InferenceState,
         next_step: str,
-        loop
+        loop: asyncio.AbstractEventLoop,
     ) -> AsyncGenerator:
 
         """
@@ -584,7 +584,12 @@ class Pipeline(Operator):
         return self.condense_inputs(outputs)
 
     async def _apply_split_generation_async(
-        self, inp: Any, inference_state: InferenceState, step: str, end: List[str], **kwargs
+        self,
+        inp: Any,
+        inference_state: InferenceState,
+        step: str,
+        end: List[str],
+        loop: Optional[asyncio.AbstractEventLoop] = None,
     ) -> AsyncGenerator:
         """
         Applies the same logic as _apply_split_async but returns an AsycnGenerator.
@@ -593,13 +598,18 @@ class Pipeline(Operator):
 
         for i in range(len(batches)):
             split_graphs = self._create_and_start_subgraph(
-                inference_state=inference_state, data=[batches[i]], step=step, end=end
+                inference_state=inference_state,
+                data=[batches[i]],
+                step=step,
+                end=end,
+                loop=loop,
             )
             async for output in self.subgraph_executor.run_sub_graphs_async_generator(
                 router=self.generator_router,
                 ops=self.ops,
                 func=self._run_next,
                 sub_graphs=split_graphs,
+                loop=loop,
             ):
                 yield output
 
@@ -629,7 +639,7 @@ class Pipeline(Operator):
         data: List[Any],
         step: str,
         end: List[str],
-        loop = None
+        loop: Optional[asyncio.AbstractEventLoop] = None,
     ) -> List[SubGraph]:
         """
         Create SubGraphs given a list of data and an InferenceState objects. A SubGraph
@@ -650,7 +660,7 @@ class Pipeline(Operator):
             )
             for i in range(len(data))
         ]
-        
+
         split_graphs = self.subgraph_executor.start_subgraphs(
             func=self._run_next, sub_graph_inputs=data, sub_graphs=graphs, loop=loop
         )
@@ -692,7 +702,6 @@ class Pipeline(Operator):
         if kwargs.get("loop") and run_continuous_batching:
             future = asyncio.futures.wrap_future(future)
         return future
-            
 
 
 def text_generation_pipeline(*args, **kwargs) -> "Pipeline":

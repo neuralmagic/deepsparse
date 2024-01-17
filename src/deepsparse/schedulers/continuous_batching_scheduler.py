@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import asyncio
 from concurrent.futures import Future
 from threading import Lock
 from typing import List
