@@ -95,6 +95,14 @@ class TestsIntegrationLLMsPipelines:
         # return a pipeline with the updated default kwargs
         updated_kwargs = self.default_pipeline_kwargs.copy()
         updated_kwargs.update(kwargs)
+
+        # weak assumption, but if onnx_model_name is specified,
+        # then we are running non-kv cache version of the pipeline
+        # so we should remove all kv cache specific arguments
+        if updated_kwargs.get("onnx_model_name"):
+            updated_kwargs.pop("internal_kv_cache")
+            updated_kwargs.pop("force_max_tokens")
+
         return TextGenerationPipeline(**updated_kwargs)
 
     @pytest.fixture

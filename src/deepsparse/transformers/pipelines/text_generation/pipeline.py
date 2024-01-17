@@ -58,22 +58,28 @@ _LOGGER = logging.getLogger(__name__)
 class TextGenerationPipeline(Pipeline):
     DEFAULT_SEQUENCE_LENGTH = 1024
 
-    def __new__(cls, *args, **kwargs):
-        # dynamically decide which pipeline (with KV Cache support or without)
-        # to initialize based on the model_path
-        # (if it has a KV Cache inputs/outputs or not)
+    def __new__(
+        cls,
+        model_path: str,
+        sequence_length: int = DEFAULT_SEQUENCE_LENGTH,
+        onnx_model_name: Optional[str] = None,
+        **kwargs,
+    ):
+        """
+        Dynamically decide which pipeline (with KV Cache support or without)
+        to initialize based on the model_path
+        (check whether it has a KV Cache inputs/outputs or not)
 
-        model_path = kwargs.get("model_path")
-        sequence_length = kwargs.get("sequence_length", cls.DEFAULT_SEQUENCE_LENGTH)
-        onnx_model_name = kwargs.get("onnx_model_name")
-        if model_path is None:
-            raise ValueError(
-                "model_path must be provided to initialize TextGenerationPipeline"
-            )
-
-        model_path, *_ = setup_transformers_pipeline(
-            model_path,
-            sequence_length,
+        :param model_path: path to the model to use for text generation.
+        :param sequence_length: sequence length to compile model and tokenizer for.
+            This controls the maximum context length of the pipeline. Default is 1024
+        :param onnx_model_name: name of the onnx model to use for text generation.
+            This is only used if the model_path is a directory. If None, defaults to
+            model.onnx
+        """
+        model_path, config, tokenizer = setup_transformers_pipeline(
+            model_path=model_path,
+            sequence_length=sequence_length,
             onnx_model_name=onnx_model_name,
         )
         if not verify_kv_cache_present(model_path):
@@ -81,18 +87,36 @@ class TextGenerationPipeline(Pipeline):
                 "Initializing TextGenerationPipeline without KV Cache support. "
                 "Some of the input parameters will be ignored."
             )
-            return TextGenerationPipelineNoCache(*args, **kwargs)
+            tokenizer.padding_side = "right"
+            return TextGenerationPipelineNoCache(
+                model_path=model_path,
+                config=config,
+                tokenizer=tokenizer,
+                sequence_length=sequence_length,
+                **kwargs,
+            )
+
+        # because we route variables to the object that implements
+        # __new__, instead of passing newly created variables through
+        # __init__, we need to store the variables in the class
+        cls.model_path = model_path
+        cls.config = config
+        cls.tokenizer = tokenizer
+        cls.sequence_length = sequence_length
+
+        # delete the variables that are now superfluous
+        # but would otherwise be passed as kwargs to the pipeline
+        del model_path
+
         return super().__new__(cls)
 
     def __init__(
         self,
-        model_path: str,
         prompt_sequence_length: int = 16,
-        sequence_length: int = DEFAULT_SEQUENCE_LENGTH,
         internal_kv_cache: bool = True,
         force_max_tokens: bool = False,
-        generation_config=None,
         continuous_batch_sizes: Optional[List[int]] = None,
+        generation_config=None,
         benchmark: bool = False,
         middleware_manager: Optional[MiddlewareManager] = None,
         **engine_kwargs,
@@ -100,9 +124,6 @@ class TextGenerationPipeline(Pipeline):
         """
         Pipeline for text generation tasks.
 
-        :param model_path: path to the model to use for text generation.
-        :param sequence_length: sequence length to compile model and tokenizer for.
-            This controls the maximum context length of the pipeline. Default is 1024
         :param prompt_sequence_length: For large prompts, the prompt is
             processed in chunks of this length. This is to maximize the inference
             speed. By default, this is set to 16. The length should also be 1 or a
@@ -120,6 +141,9 @@ class TextGenerationPipeline(Pipeline):
             top_k, repetition_penalty, do_sample, temperature. If None is provided,
             deepsparse defaults will be used. For all other input types, HuggingFace
             defaults for GenerationConfig will be used.
+        :param benchmark: if True, the pipeline will print out the time taken for each
+            operator.
+        :param middleware_manager: MiddlewareManager object to use for the pipeline.
         :param engine_kwargs: kwargs for the engine. These will be used to initialize
             the EngineOperator.
 
@@ -129,16 +153,6 @@ class TextGenerationPipeline(Pipeline):
                 f"prompt_sequence_length must be 1 or multiple of 4. "
                 f"prompt_sequence_length is {prompt_sequence_length}"
             )
-
-        # Note: this will add the model_path to the eninge_kwargs
-        (
-            self.model_path,
-            self.config,
-            self.tokenizer,
-            engine_kwargs,
-        ) = setup_transformers_pipeline(
-            model_path, sequence_length, engine_kwargs=engine_kwargs
-        )
 
         causal_mask_present = causal_mask_input_present(self.model_path)
         if not causal_mask_present:
@@ -155,14 +169,14 @@ class TextGenerationPipeline(Pipeline):
             internal_kv_cache = False
 
         single_engine_operator = NLEngineOperator(
-            sequence_length=sequence_length,
+            sequence_length=self.sequence_length,
             internal_kv_cache=internal_kv_cache,
             input_ids_length=1,
             **engine_kwargs,
         )
 
         multi_engine_operator = NLEngineOperator(
-            sequence_length=sequence_length,
+            sequence_length=self.sequence_length,
             internal_kv_cache=internal_kv_cache,
             input_ids_length=prompt_sequence_length,
             **engine_kwargs,
@@ -183,12 +197,12 @@ class TextGenerationPipeline(Pipeline):
         parse_inputs = ParseTextGenerationInputs()
         process_inputs = ProcessInputsTextGeneration(
             generation_config=process_generation_config(generation_config),
-            sequence_length=sequence_length,
+            sequence_length=self.sequence_length,
             tokenizer=self.tokenizer,
         )
 
         kv_cache_creator = KVCacheCreator(
-            sequence_length=sequence_length,
+            sequence_length=self.sequence_length,
             tokenizer=self.tokenizer,
             prompt_sequence_length=prompt_sequence_length,
             internal_kv_cache=internal_kv_cache,
@@ -201,17 +215,17 @@ class TextGenerationPipeline(Pipeline):
 
         multi_engine_prefill = MultiEnginePrefill(
             prompt_sequence_length=prompt_sequence_length,
-            sequence_length=sequence_length,
+            sequence_length=self.sequence_length,
         )
         compile_prompt_logits = CompilePromptLogits()
 
         autoregressive_preprocess = AutoRegressiveOperatorPreprocess(
-            sequence_length=sequence_length,
+            sequence_length=self.sequence_length,
             prompt_sequence_length=prompt_sequence_length,
         )
         token_generator = TokenGeneratorOperator()
         prep_for_generation = PrepareGeneration(
-            sequence_length=sequence_length,
+            sequence_length=self.sequence_length,
             prompt_sequence_length=prompt_sequence_length,
             token_generator=token_generator,
         )

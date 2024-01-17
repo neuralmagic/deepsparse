@@ -22,7 +22,7 @@ import os
 import re
 from pathlib import Path
 from tempfile import NamedTemporaryFile
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import List, Optional, Tuple, Union
 
 import numpy
 import onnx
@@ -50,11 +50,8 @@ def setup_transformers_pipeline(
     model_path: str,
     sequence_length: int,
     tokenizer_padding_side: str = "left",
-    engine_kwargs: Optional[Dict] = None,
     onnx_model_name: Optional[str] = None,
-) -> Tuple[
-    str, transformers.PretrainedConfig, transformers.PreTrainedTokenizer, Dict[str, Any]
-]:
+) -> Tuple[str, transformers.PretrainedConfig, transformers.PreTrainedTokenizer]:
     """
     A helper function that sets up the model path, config, tokenizer,
     and engine kwargs for a transformers model.
@@ -64,8 +61,7 @@ def setup_transformers_pipeline(
         either "left" or "right"
     :param onnx_model_name: The name of the onnx model to be loaded.
         If not specified, defaults are used (see fetch_onnx_file_path)
-    :param engine_kwargs: The kwargs to pass to the engine
-    :return The model path, config, tokenizer, and engine kwargs
+    :return The model path, config, tokenizer
     """
     model_path, config, tokenizer = fetch_onnx_file_path(
         model_path, sequence_length, onnx_model_name
@@ -75,16 +71,7 @@ def setup_transformers_pipeline(
     if not tokenizer.pad_token:
         tokenizer.pad_token = tokenizer.eos_token
 
-    engine_kwargs = engine_kwargs or {}
-    if engine_kwargs.get("model_path"):
-        raise ValueError(
-            "The engine kwargs already specify "
-            f"a model path: {engine_kwargs['model_path']}, "
-            f"but a model path was also provided: {model_path}. "
-            "Please only provide one."
-        )
-    engine_kwargs["model_path"] = model_path
-    return model_path, config, tokenizer, engine_kwargs
+    return model_path, config, tokenizer
 
 
 def fetch_onnx_file_path(

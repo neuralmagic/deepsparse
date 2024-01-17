@@ -11,14 +11,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import logging
-from typing import Dict, Optional
+
+from transformers import AutoConfig, AutoTokenizer
 
 from deepsparse.pipeline import Pipeline
 from deepsparse.routers import GraphRouter
 from deepsparse.schedulers import OperatorScheduler
-from deepsparse.transformers.helpers import setup_transformers_pipeline
 from deepsparse.transformers.pipelines.text_generation import (
     CompileGenerations,
     GenerateNewTokenOperator,
@@ -41,25 +40,16 @@ class TextGenerationPipelineNoCache(Pipeline):
     def __init__(
         self,
         model_path: str,
-        sequence_length: int = 1024,
-        onnx_model_name: Optional[str] = None,
+        config: AutoConfig,
+        tokenizer: AutoTokenizer,
+        sequence_length: int,
         generation_config=None,
-        engine_kwargs: Optional[Dict] = None,
-        **kwargs,
+        **engine_kwargs,
     ):
-
-        (
-            self.model_path,
-            self.config,
-            self.tokenizer,
-            engine_kwargs,
-        ) = setup_transformers_pipeline(
-            model_path,
-            sequence_length,
-            tokenizer_padding_side="right",
-            onnx_model_name=onnx_model_name,
-            engine_kwargs=engine_kwargs,
-        )
+        self.model_path = model_path
+        self.config = config
+        self.tokenizer = tokenizer
+        engine_kwargs["model_path"] = model_path
 
         token_generator = TokenGeneratorOperator()
 
