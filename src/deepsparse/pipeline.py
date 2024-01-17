@@ -665,16 +665,18 @@ class Pipeline(Operator):
         :param inference_state: inference state for the operator
         :param next_step: dictionary key to fetch the operator from the pipeline ops.
         """
+        run_cb = False
         if (
             isinstance(self.ops[next_step], EngineOperator)
             and self._continuous_batching_scheduler
         ):
             func = self._continuous_batching_scheduler.submit
             inp = self.ops[next_step].input_schema(**inp)
+            run_cb = True
         else:
             func = self._scheduler_group.submit
 
-        return self.run_func(
+        future = self.run_func(
             func=func,
             operator=self.ops[next_step],
             inp=inp,
@@ -682,6 +684,10 @@ class Pipeline(Operator):
             inference_state=inference_state,
             **kwargs,
         )
+
+        if kwargs.get("loop") and run_cb:
+            return asyncio.futures.wrap_future(future, loop=kwargs.get("loop"))
+        return future
 
 
 def text_generation_pipeline(*args, **kwargs) -> "Pipeline":
