@@ -115,35 +115,30 @@ class Pipeline(Operator):
         :return: pipeline object initialized for the given task
         """
         new_kwargs = {}
-        for k in kwargs:
+        for k in kwargs.keys():
             if k in V2_NOT_SUPPORTED:
                 _LOGGER.warning(f"{k} is not yet supported in the v2 pipeline.")
             else:
                 new_kwargs[k] = kwargs.get(k)
 
-        try:
-            model_path = new_kwargs.get("model_path")
-            model = new_kwargs.pop("model", None)
+        model_path = new_kwargs.get("model_path")
+        model = new_kwargs.pop("model", None)
 
-            if model and model_path:
-                raise ValueError(
-                    f"Only one of model and model_path may be supplied, found {model} "
-                    f"and {model_path} respectively"
-                )
-            elif model:
-                new_kwargs["model_path"] = model
+        if model and model_path:
+            raise ValueError(
+                f"Only one of model and model_path may be supplied, found {model} "
+                f"and {model_path} respectively"
+            )
+        elif model:
+            new_kwargs["model_path"] = model
 
-            pipeline = Operator.create(task=task, **new_kwargs)
-            if not isinstance(pipeline, cls):
-                raise RuntimeError(
-                    "Pipeline was not created for the given task. The "
-                    "provided task should be registered using the OperatorRegistry"
-                )
-        except Exception:
-            _LOGGER.warning(f"Could not create v2 '{task}' pipeline, trying legacy")
-            from deepsparse.legacy import Pipeline
+        pipeline = Operator.create(task=task, **new_kwargs)
+        if not isinstance(pipeline, cls):
+            raise RuntimeError(
+                "Pipeline was not created for the given task. The "
+                "provided task should be registered using the OperatorRegistry"
+            )
 
-            pipeline = Pipeline.create(task=task, **kwargs)
         return pipeline
 
     @classmethod

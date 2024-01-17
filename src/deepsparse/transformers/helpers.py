@@ -135,11 +135,13 @@ def get_deployment_path(
     :return: path to the deployment directory and path to the ONNX file inside
         the deployment directory
     """
-    onnx_model_name = onnx_model_name or MODEL_ONNX_NAME
-
     if os.path.isfile(model_path):
         # return the parent directory of the ONNX file
+        if onnx_model_name:
+            model_path = os.path.join(os.path.dirname(model_path), onnx_model_name)
         return os.path.dirname(model_path), model_path
+
+    onnx_model_name = onnx_model_name or MODEL_ONNX_NAME
 
     if os.path.isdir(model_path):
         model_files = os.listdir(model_path)

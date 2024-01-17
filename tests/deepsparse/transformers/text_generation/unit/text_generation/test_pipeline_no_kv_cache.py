@@ -12,34 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-
-import pytest
+from deepsparse import TextGeneration
+from deepsparse.transformers.pipelines.text_generation.pipeline import (
+    TextGenerationPipeline,
+)
 from deepsparse.transformers.pipelines.text_generation.pipeline_no_kv_cache import (
     TextGenerationPipelineNoCache,
 )
 
 
-@pytest.mark.parametrize(
-    "onnx_model_name, raise_error",
-    [("model.onnx", True), (None, True), ("model-orig.onnx", False)],
-)
-def test_verify_no_kv_cache_present(model_attributes, onnx_model_name, raise_error):
-    _, model_path = model_attributes
-    # model_path points to .../directory/model.onnx
-    # we need to go up one level to .../directory
-    model_path = os.path.dirname(model_path)
+def test_create_pipeline_with_kv_cache_support(model_attributes):
+    pipeline = TextGeneration(model_path=model_attributes[1])
+    assert isinstance(pipeline, TextGenerationPipeline)
+    pipeline = TextGeneration(model_path=model_attributes[1], onnx_model_name=None)
+    assert isinstance(pipeline, TextGenerationPipeline)
 
-    if raise_error:
-        with pytest.raises(ValueError):
-            if onnx_model_name is None:
-                TextGenerationPipelineNoCache(model_path=model_path)
-            else:
-                TextGenerationPipelineNoCache(
-                    model_path=model_path, onnx_model_name=onnx_model_name
-                )
-        return
-    else:
-        TextGenerationPipelineNoCache(
-            model_path=model_path, onnx_model_name=onnx_model_name
-        )
+
+def test_create_pipeline_with_no_kv_cache_support(model_attributes):
+    pipeline = TextGeneration(
+        model_path=model_attributes[1], onnx_model_name="model-orig.onnx"
+    )
+    assert isinstance(pipeline, TextGenerationPipelineNoCache)
