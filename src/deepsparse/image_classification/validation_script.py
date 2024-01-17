@@ -27,13 +27,13 @@ Options:
                                   on Imagenette  [default: zoo:cv/classificati
                                   on/resnet_v1-50/pytorch/sparseml/imagenette/
                                   base-none]
+  --image-size, --image_size INTEGER
+                                  integer size to evaluate images at (will be
+                                  reshaped to square shape)  [default: 224]
   --batch-size, --batch_size INTEGER
                                   Test batch size, must divide the dataset
                                   evenly, else last batch will be dropped
                                   [default: 1]
-  --image-size, --image_size INTEGER
-                                  integer size to evaluate images at (will be
-                                  reshaped to square shape)  [default: 224]
   --num-cores, --num_cores INTEGER
                                   Number of CPU cores to run deepsparse with,
                                   default is all available
@@ -213,11 +213,10 @@ def main(
     pipeline = Pipeline.create(
         task="image_classification",
         model_path=model_path,
+        engine_type=engine,
         batch_size=batch_size,
         num_cores=num_cores,
-        engine_type=engine,
     )
-    print(f"engine info: {pipeline.engine}")
     correct = total = 0
     progress_bar = tqdm(data_loader)
 

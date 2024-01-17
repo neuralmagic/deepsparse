@@ -19,7 +19,7 @@ from typing import Callable, List, Type, Union
 import numpy
 
 import torch
-from deepsparse import Pipeline
+from deepsparse.legacy import Pipeline
 from deepsparse.yolo import YOLOOutput as YOLODetOutput
 from deepsparse.yolo import YOLOPipeline
 from deepsparse.yolov8.schemas import YOLOSegOutput
@@ -108,24 +108,27 @@ class YOLOv8Pipeline(YOLOPipeline):
             )
 
     def process_engine_outputs_seg(
-        self, engine_outputs: List[numpy.ndarray], nc: int = 80, **kwargs
+        self,
+        engine_outputs: List[numpy.ndarray],
+        **kwargs,
     ) -> YOLOSegOutput:
         """
         The pathway for processing the outputs of the engine for YOLOv8 segmentation.
         :param engine_outputs: list of numpy arrays that are the output of the engine
             forward pass
-        : params nc: number of classes. If not provided, calculated as
-            detection.shape[1] - 4
         :return: outputs of engine post-processed into an object in the `output_schema`
             format of this pipeline
         """
 
         detections, mask_protos = engine_outputs
 
+        # defined per ultralytics documentation
+        num_classes = detections.shape[1] - 4
+
         # NMS
         detections_output = self.nms_function(
             outputs=detections,
-            nc=nc,
+            nc=num_classes,
             iou_thres=kwargs.get("iou_thres", 0.25),
             conf_thres=kwargs.get("conf_thres", 0.45),
             multi_label=kwargs.get("multi_label", False),

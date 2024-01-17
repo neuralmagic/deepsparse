@@ -17,13 +17,15 @@ Benchmarking script for ONNX models with the DeepSparse engine.
 
 ##########
 Command help:
-usage: deepsparse.benchmark [-h] [-b BATCH_SIZE] [-seq_len SEQUENCE_LENGTH]
+usage: deepsparse.benchmark [-h] [-b BATCH_SIZE] [-i INPUT_SHAPES]
+                            [-ncores NUM_CORES] [-s {async,sync,elastic}]
+                            [-t TIME] [-w WARMUP_TIME] [-nstreams NUM_STREAMS]
+                            [-seq_len SEQUENCE_LENGTH]
                             [-input_ids_len INPUT_IDS_LENGTH]
-                            [-i INPUT_SHAPES] [-ncores NUM_CORES]
-                            [-s {async,sync,elastic}] [-t TIME]
-                            [-w WARMUP_TIME] [-nstreams NUM_STREAMS]
-                            [-pin {none,core,numa}] [-e ENGINE] [-q]
-                            [-x EXPORT_PATH]
+                            [-pin {none,core,numa}] [-e ENGINE]
+                            [--no-internal-kv-cache] [-q] [-x EXPORT_PATH]
+                            [--disable-kv-cache-overrides]
+                            [--num-kv-cache-tokens NUM_KV_CACHE_TOKENS]
                             model_path
 
 Benchmark ONNX models in the DeepSparse Engine
@@ -36,14 +38,6 @@ optional arguments:
   -b BATCH_SIZE, --batch_size BATCH_SIZE
                         The batch size to run the analysis for. Must be
                         greater than 0
-  -seq_len SEQUENCE_LENGTH, --sequence_length SEQUENCE_LENGTH
-                        The sequence length to run the KV cache supported
-                        model benchmarks for. Must be greater than 0, default
-                        is 2048
-  -input_ids_len INPUT_IDS_LENGTH, --input_ids_length INPUT_IDS_LENGTH
-                        The input ids length to run the KV cache supported
-                        model benchmarks for. Must be greater than 0, default
-                        is 1
   -i INPUT_SHAPES, -shapes INPUT_SHAPES, --input_shapes INPUT_SHAPES
                         Override the shapes of the inputs, i.e. -shapes
                         "[1,2,3],[4,5,6],[7,8,9]" results in input0=[1,2,3]
@@ -68,6 +62,14 @@ optional arguments:
                         parallel using async scenario. Default is
                         automatically determined for given hardware and may be
                         sub-optimal.
+  -seq_len SEQUENCE_LENGTH, --sequence_length SEQUENCE_LENGTH
+                        The sequence length to run the KV cache supported
+                        model benchmarks for. Must be seq_len >= 1, default is
+                        None
+  -input_ids_len INPUT_IDS_LENGTH, --input_ids_length INPUT_IDS_LENGTH
+                        The input ids length to run the KV cache supported
+                        model benchmarks for. Must be 1 <= input_ids_len <=
+                        seq_len, default is 1
   -pin {none,core,numa}, --thread_pinning {none,core,numa}
                         Enable binding threads to cores ('core' the default),
                         threads to cores on sockets ('numa'), or disable
@@ -80,9 +82,21 @@ optional arguments:
                         <path to python script>:<Engine Class name>. This
                         engine class will be dynamically imported during
                         runtime
+  --no-internal-kv-cache, --no_internal_kv_cache
+                        DeepSparse engine only - If not present, and model has
+                        KV cache, KV Cache state will be managed within the
+                        compiled deepsparse model. This is preferred when
+                        applicable for best performance. Set flag to disable
   -q, --quiet           Lower logging verbosity
   -x EXPORT_PATH, --export_path EXPORT_PATH
                         Store results into a JSON file
+  --disable-kv-cache-overrides, --disable_kv_cache_overrides
+                        If set, it will not alter the model
+                        with kv cache overrides
+  --num-kv-cache-tokens NUM_KV_CACHE_TOKENS, --num_kv_cache_tokens NUM_KV_CACHE_TOKENS
+                        If using internal kv cache, sets the number of tokens to fill 
+                        the cache with. Must be between 0 and sequence_length -
+                        input_ids_length
 
 ##########
 Example on a BERT from SparseZoo:
@@ -116,9 +130,10 @@ import argparse
 import importlib
 import json
 import logging
-from typing import Dict
+import os
+from typing import Dict, Optional
 
-from deepsparse import __version__, compile_model
+from deepsparse import Engine, __version__
 from deepsparse.benchmark.helpers import (
     decide_thread_pinning,
     parse_num_streams,
@@ -132,6 +147,7 @@ from deepsparse.log import set_logging_level
 from deepsparse.utils import (
     generate_random_inputs,
     has_model_kv_cache,
+    infer_sequence_length,
     model_to_path,
     override_onnx_input_shapes,
     overwrite_onnx_model_inputs_for_kv_cache_models,
@@ -165,22 +181,6 @@ def parse_args():
         type=int,
         default=1,
         help="The batch size to run the analysis for. Must be greater than 0",
-    )
-    parser.add_argument(
-        "-seq_len",
-        "--sequence_length",
-        type=int,
-        default=512,
-        help="The sequence length to run the KV cache supported model "
-        "benchmarks for. Must be 1 <= seq_len, default is 512",
-    )
-    parser.add_argument(
-        "-input_ids_len",
-        "--input_ids_length",
-        type=int,
-        default=1,
-        help="The input ids length to run the KV cache supported model "
-        "benchmarks for. Must be 1 <= input_ids_len <= seq_len, default is 1",
     )
     parser.add_argument(
         "-i",
@@ -244,6 +244,22 @@ def parse_args():
         ),
     )
     parser.add_argument(
+        "-seq_len",
+        "--sequence_length",
+        type=int,
+        default=None,
+        help="The sequence length to run the KV cache supported model "
+        "benchmarks for. Must be seq_len >= 1, default is None",
+    )
+    parser.add_argument(
+        "-input_ids_len",
+        "--input_ids_length",
+        type=int,
+        default=1,
+        help="The input ids length to run the KV cache supported model "
+        "benchmarks for. Must be 1 <= input_ids_len <= seq_len, default is 1",
+    )
+    parser.add_argument(
         "-pin",
         "--thread_pinning",
         type=str,
@@ -268,6 +284,18 @@ def parse_args():
         ),
     )
     parser.add_argument(
+        "--no-internal-kv-cache",
+        "--no_internal_kv_cache",
+        help=(
+            "DeepSparse engine only - If not present, and model has KV cache, "
+            "KV Cache state will be managed within the compiled deepsparse "
+            "model. This is preferred when applicable for best performance. Set "
+            "flag to disable"
+        ),
+        action="store_true",
+        default=False,
+    )
+    parser.add_argument(
         "-q",
         "--quiet",
         help="Lower logging verbosity",
@@ -280,6 +308,23 @@ def parse_args():
         help="Store results into a JSON file",
         type=str,
         default=None,
+    )
+    parser.add_argument(
+        "--disable-kv-cache-overrides",
+        "--disable_kv_cache_overrides",
+        help=("If set, it will not alter the model with kv cache overrides"),
+        action="store_true",
+        default=False,
+    )
+    parser.add_argument(
+        "--num-kv-cache-tokens",
+        "--num_kv_cache_tokens",
+        type=int,
+        default=os.environ.get("NM_BENCHMARK_KV_TOKENS") or 1,
+        help=(
+            "If using internal kv cache, sets the number of tokens to fill the cache "
+            "with. Must be between 0 and sequence_length - input_ids_length"
+        ),
     )
 
     return parser.parse_args()
@@ -304,19 +349,48 @@ def load_custom_engine(custom_engine_identifier: str):
 def benchmark_model(
     model_path: str,
     batch_size: int = 1,
-    sequence_length: int = 2048,
-    input_ids_length: int = 1,
     input_shapes: str = "",
-    num_cores: int = None,
+    num_cores: Optional[int] = None,
     scenario: str = "sync",
     time: int = 10,
     warmup_time: int = 2,
-    num_streams: int = None,
+    num_streams: Optional[int] = None,
+    sequence_length: Optional[int] = None,
+    input_ids_length: Optional[int] = 1,
     thread_pinning: str = "core",
     engine: str = DEEPSPARSE_ENGINE,
+    internal_kv_cache: bool = True,
     quiet: bool = False,
-    export_path: str = None,
+    export_path: Optional[str] = None,
+    disable_kv_cache_overrides: bool = False,
+    num_kv_cache_tokens: int = 1,
 ) -> Dict:
+    """
+    Benchmark a model on a given engine
+
+    :param model_path: Path or stub to the model
+    :param batch_size: Batch size, Defaults to 1.
+    :param input_shapes: Shape of the input. Defaults to "".
+    :param num_cores: Number of cores to use. Defaults to None.
+    :param scenario: The "type" of scenario to use. Defaults to "sync".
+    :param time: Total run-time to run the benchmark for. Defaults to 10.
+    :param warmup_time: Time to run the engine before running benchmarks. Defaults to 2.
+    :param num_streams: Number of streams. Defaults to None.
+    :param sequence_length: Sequence length for text-gen. Defaults to None.
+    :param input_ids_length: Length of the input ids. Defaults to 1.
+    :param thread_pinning: The hardware to pin for threading. Defaults to "core".
+    :param engine: The type of engine to use. Defaults to our proprietary
+        DEEPSPARSE_ENGINE.
+    :param internal_kv_cache: Runs the benchmark with or w/o the kv cache.
+        Defaults to True.
+    :param quiet: Verbose option if set to False. Defaults to False.
+    :param export_path: Path to save the results. Defaults to None.
+    :param disable_kv_cache_overrides: Option to override the kv cache.
+        Defaults to False.
+    :returns: Dictionary of benchmarked metrics
+
+    """
+
     if quiet:
         set_logging_level(logging.WARN)
 
@@ -332,39 +406,71 @@ def benchmark_model(
     orig_model_path = model_path
     model_path = model_to_path(model_path)
 
+    cached_outputs = None
     if has_model_kv_cache(model_path):
-        if batch_size != 1:
-            raise ValueError(
-                "Unable to run models with KV cache support "
-                "for batch size different than one."
-                "Please set batch size to 1 and try again"
+        if not disable_kv_cache_overrides:
+            if not sequence_length:
+                sequence_length = infer_sequence_length(model_path)
+            if input_ids_length > sequence_length:
+                raise ValueError(
+                    f"input_ids_length: {input_ids_length} "
+                    f"must be less than sequence_length: {sequence_length}"
+                )
+
+            _LOGGER.info(
+                "Found model with KV cache support. "
+                "Benchmarking the autoregressive model with "
+                f"input_ids_length: {input_ids_length} and "
+                f"sequence length: {sequence_length}."
             )
 
-        _LOGGER.info(
-            "Found model with KV cache support. "
-            "Benchmarking the autoregressive model with "
-            f"input_ids_length: {input_ids_length} and "
-            f"sequence length: {sequence_length}."
-        )
+            (
+                model_path,
+                cached_outputs,
+                _,
+            ) = overwrite_onnx_model_inputs_for_kv_cache_models(
+                onnx_file_path=model_path,
+                input_ids_length=input_ids_length,
+                sequence_length=sequence_length,
+                batch_size=batch_size,
+            )
 
-        model_path, _, _ = overwrite_onnx_model_inputs_for_kv_cache_models(
-            onnx_file_path=model_path,
-            input_ids_length=input_ids_length,
-            sequence_length=sequence_length,
-            batch_size=batch_size,
+        if internal_kv_cache and engine != DEEPSPARSE_ENGINE:
+            raise ValueError(
+                "Attempting to benchmark a model using engine: "
+                f"{engine} and internal_kv_cache set to True. "
+                "The use of internal_kv_cache is only "
+                f"supported for the engine: {DEEPSPARSE_ENGINE}. "
+                f"To disable the use of the internal_kv_cache, "
+                f"set the flag: --no-internal-kv-cache"
+            )
+
+        # This environment variable sets the KV cache to a fixed number of prefilled
+        # tokens for consistent benchmarking
+        os.environ["NM_BENCHMARK_KV_TOKENS"] = str(num_kv_cache_tokens)
+
+        _LOGGER.info(
+            f"Benchmarking Engine: {engine} with "
+            f"{'internal' if internal_kv_cache else 'external'} KV cache management "
+            f"and {num_kv_cache_tokens} tokens in the cache"
         )
+    else:
+        input_ids_length = None
+        sequence_length = None
+        internal_kv_cache = False
 
     num_streams = parse_num_streams(num_streams, num_cores, scenario)
 
     # Compile the ONNX into a runnable model
     if engine == DEEPSPARSE_ENGINE:
-        model = compile_model(
+        model = Engine(
             model=model_path,
             batch_size=batch_size,
             num_cores=num_cores,
             num_streams=num_streams,
             scheduler=scheduler,
             input_shapes=input_shapes,
+            cached_outputs=cached_outputs if internal_kv_cache else None,
         )
     elif engine == ORT_ENGINE:
         model = ORTEngine(
@@ -407,16 +513,14 @@ def benchmark_model(
         seconds_to_run=time,
         seconds_to_warmup=warmup_time,
         num_streams=num_streams,
+        internal_kv_cache=internal_kv_cache,
     )
-
     export_dict = {
         "engine": str(model),
         "version": __version__,
         "orig_model_path": orig_model_path,
         "model_path": model_path,
         "batch_size": batch_size,
-        "sequence_length": sequence_length,
-        "input_ids_length": input_ids_length,
         "input_shapes": input_shapes,
         "num_cores": num_cores,
         "scenario": scenario,
@@ -426,24 +530,23 @@ def benchmark_model(
         "benchmark_result": benchmark_result,
         "fraction_of_supported_ops": getattr(model, "fraction_of_supported_ops", None),
     }
+    if sequence_length and input_ids_length:
+        export_dict["sequence_length"] = sequence_length
+        export_dict["input_ids_length"] = input_ids_length
 
     # Export results
     if export_path:
         _LOGGER.info("Saving benchmark results to JSON file at {}".format(export_path))
         with open(export_path, "w") as out:
             json.dump(export_dict, out, indent=2)
-
     return export_dict
 
 
 def main():
-
     args = parse_args()
 
     result = benchmark_model(
         model_path=args.model_path,
-        sequence_length=args.sequence_length,
-        input_ids_length=args.input_ids_length,
         batch_size=args.batch_size,
         input_shapes=args.input_shapes,
         num_cores=args.num_cores,
@@ -451,18 +554,22 @@ def main():
         time=args.time,
         warmup_time=args.warmup_time,
         num_streams=args.num_streams,
+        sequence_length=args.sequence_length,
+        input_ids_length=args.input_ids_length,
         thread_pinning=args.thread_pinning,
         engine=args.engine,
+        internal_kv_cache=not args.no_internal_kv_cache,
         quiet=args.quiet,
         export_path=args.export_path,
+        disable_kv_cache_overrides=args.disable_kv_cache_overrides,
+        num_kv_cache_tokens=args.num_kv_cache_tokens,
     )
 
     # Results summary
     print("Original Model Path: {}".format(args.model_path))
     print("Batch Size: {}".format(args.batch_size))
-    if args.sequence_length is not None:
+    if args.sequence_length:
         print("Sequence Length: {}".format(args.sequence_length))
-    if args.input_ids_length is not None:
         print("Input IDs Length: {}".format(args.input_ids_length))
     print("Scenario: {}".format(args.scenario))
     print(

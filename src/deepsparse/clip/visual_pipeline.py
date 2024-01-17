@@ -22,7 +22,7 @@ from torchvision import transforms
 from torchvision.transforms import InterpolationMode
 
 from deepsparse.clip.constants import CLIP_RGB_MEANS, CLIP_RGB_STDS
-from deepsparse.pipeline import Pipeline
+from deepsparse.legacy.pipeline import Pipeline
 from deepsparse.pipelines.computer_vision import ComputerVisionSchema
 from deepsparse.utils import model_to_path
 

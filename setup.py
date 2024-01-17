@@ -51,15 +51,15 @@ _PACKAGE_NAME = (
 )
 
 if is_enterprise:
-    license = "Apache"
+    license = "Neural Magic Master Software License and Service Agreement"
 else:
-    license = "Neural Magic DeepSparse Community License, Apache"
+    license = "Neural Magic DeepSparse Community License"
 
 if is_enterprise:
-    # do not include the LICENSE-NEURALMAGIC file
+    # do not include the LICENSE file
     # in the deepsparse-ent installation folder
     license_nm_path = os.path.join(
-        os.path.dirname(os.path.realpath(__file__)), "LICENSE-NEURALMAGIC"
+        os.path.dirname(os.path.realpath(__file__)), "LICENSE"
     )
     os.remove(license_nm_path)
 
@@ -99,23 +99,25 @@ _dev_deps = [
     "black==22.12.0",
     "flake8>=3.8.3",
     "isort>=5.7.0",
-    "m2r2~=0.2.7",
-    "mistune==0.8.4",
-    "myst-parser~=0.14.0",
     "flaky~=3.7.0",
     "ndjson>=0.3.1",
-    "rinohtype>=0.4.2",
-    "sphinx>=3.4.0",
-    "sphinx-copybutton>=0.3.0",
-    "sphinx-markdown-tables>=0.0.15",
     "wheel>=0.36.2",
     "pytest>=6.0.0",
-    "sphinx-multiversion==0.2.4",
-    "sphinx-rtd-theme",
     "onnxruntime>=1.7.0",
     "flask>=1.0.0",
     "flask-cors>=3.0.0",
     "Pillow>=8.3.2",
+]
+_docs_deps = [
+    "m2r2~=0.2.7",
+    "mistune==0.8.4",
+    "myst-parser~=0.14.0",
+    "rinohtype>=0.4.2",
+    "sphinx>=3.4.0",
+    "sphinx-copybutton>=0.3.0",
+    "sphinx-markdown-tables>=0.0.15",
+    "sphinx-multiversion==0.2.4",
+    "sphinx-rtd-theme",
 ]
 _server_deps = [
     "uvicorn>=0.15.0",
@@ -129,12 +131,9 @@ _server_deps = [
 _onnxruntime_deps = [
     "onnxruntime>=1.7.0",
 ]
-_image_classification_deps = [
-    "torchvision>=0.3.0,<0.14",
-    "opencv-python<=4.6.0.66",
-]
-_yolo_integration_deps = [
-    "torchvision>=0.3.0,<=0.15.1",
+_torch_deps = ["torch>=1.7.0,<2.2"]
+_computer_vision_deps = [
+    "torchvision>=0.3.0,<0.17",
     "opencv-python<=4.6.0.66",
 ]
 _openpifpaf_integration_deps = [
@@ -143,14 +142,15 @@ _openpifpaf_integration_deps = [
     "pycocotools >=2.0.6",
     "scipy==1.10.1",
 ]
-_yolov8_integration_deps = _yolo_integration_deps + ["ultralytics==8.0.124"]
+_yolov8_integration_deps = _computer_vision_deps + ["ultralytics==8.0.124"]
 _transformers_integration_deps = [
-    f"{'nm-transformers' if is_release else 'nm-transformers-nightly'}"
-    f"~={version_base}",
-    "datasets<=2.11",
+    "transformers<4.37",
+    "datasets<2.16",
+    "accelerate<0.26",
     "scikit-learn",
     "seqeval",
 ]
+_sentence_transformers_integration_deps = ["optimum-deepsparse"] + _torch_deps
 
 # haystack dependencies are installed from a requirements file to avoid
 # conflicting versions with NM's deepsparse/transformers
@@ -165,11 +165,9 @@ _haystack_requirements_file_path = os.path.join(
 _haystack_integration_deps = _parse_requirements_file(_haystack_requirements_file_path)
 _clip_deps = [
     "open_clip_torch==2.20.0",
-    "scipy<1.9.2,>=1.8",
-    f"{'nm-transformers' if is_release else 'nm-transformers-nightly'}",
+    "scipy<1.10,>=1.8",
+    "transformers<4.35",
 ]
-
-_torch_deps = ["torch>=1.7.0,<=2.0"]
 
 
 def _check_supported_system():
@@ -187,17 +185,8 @@ def _check_supported_system():
         )
 
     if sys.platform.startswith("darwin"):
-        if os.getenv("NM_ALLOW_DARWIN", "0") != "0":
-            # experimental support for mac, allow install to go through
-            return
-        else:
-            # mac is not supported, raise error on install
-            raise OSError(
-                "Native Mac is currently unsupported for DeepSparse. "
-                "Please run on a Linux system or within a Linux container on Mac. "
-                "More info can be found in our docs here: "
-                "https://docs.neuralmagic.com/deepsparse/source/hardware.html"
-            )
+        # beta support for mac, allow install to go through
+        return
 
     # unknown system, raise error on install
     raise OSError(
@@ -211,7 +200,7 @@ def _check_supported_system():
 
 def _check_supported_python_version():
     supported_major = 3
-    supported_minor = [8, 9, 10]
+    supported_minor = [8, 9, 10, 11]
 
     if (
         sys.version_info[0] != supported_major
@@ -275,15 +264,18 @@ def _setup_install_requires() -> List:
 def _setup_extras() -> Dict:
     return {
         "dev": _dev_deps,
+        "docs": _docs_deps,
         "server": _server_deps,
         "onnxruntime": _onnxruntime_deps,
-        "image_classification": _image_classification_deps,
-        "yolo": _yolo_integration_deps,
-        "yolov5": _yolo_integration_deps,
+        "image_classification": _computer_vision_deps,
+        "yolo": _computer_vision_deps,
+        "yolov5": _computer_vision_deps,
         "haystack": _haystack_integration_deps,
         "openpifpaf": _openpifpaf_integration_deps,
         "yolov8": _yolov8_integration_deps,
         "transformers": _transformers_integration_deps,
+        "llm": _transformers_integration_deps,
+        "sentence_transformers": _sentence_transformers_integration_deps,
         "torch": _torch_deps,
         "clip": _clip_deps,
     }
@@ -298,6 +290,7 @@ def _setup_entry_points() -> Dict:
         "console_scripts": [
             f"deepsparse.transformers.run_inference={data_api_entrypoint}",
             f"deepsparse.transformers.eval_downstream={eval_downstream}",
+            "deepsparse.infer=deepsparse.transformers.inference.infer:main",
             "deepsparse.debug_analysis=deepsparse.debug_analysis:main",
             "deepsparse.analyze=deepsparse.analyze:main",
             "deepsparse.check_hardware=deepsparse.cpu:print_hardware_capability",
@@ -305,6 +298,7 @@ def _setup_entry_points() -> Dict:
             "deepsparse.benchmark_pipeline=deepsparse.benchmark.benchmark_pipeline:main",  # noqa E501
             "deepsparse.benchmark_sweep=deepsparse.benchmark.benchmark_sweep:main",
             "deepsparse.server=deepsparse.server.cli:main",
+            "deepsparse.openai=deepsparse.server.cli:openai",
             "deepsparse.object_detection.annotate=deepsparse.yolo.annotate:main",
             "deepsparse.yolov8.annotate=deepsparse.yolov8.annotate:main",
             "deepsparse.yolov8.eval=deepsparse.yolov8.validation:main",
@@ -315,6 +309,7 @@ def _setup_entry_points() -> Dict:
             f"deepsparse.image_classification.eval={ic_eval}",
             "deepsparse.license=deepsparse.license:main",
             "deepsparse.validate_license=deepsparse.license:validate_license_cli",
+            "deepsparse.eval=deepsparse.evaluation.cli:main",
         ]
     }
 
@@ -349,7 +344,7 @@ setup(
     install_requires=_setup_install_requires(),
     extras_require=_setup_extras(),
     entry_points=_setup_entry_points(),
-    python_requires=">=3.8, <3.11",
+    python_requires=">=3.8, <3.12",
     classifiers=[
         "Development Status :: 5 - Production/Stable",
         "Programming Language :: Python :: 3",
@@ -357,12 +352,12 @@ setup(
         "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.11",
         "Intended Audience :: Developers",
         "Intended Audience :: Education",
         "Intended Audience :: Information Technology",
         "Intended Audience :: Science/Research",
         "License :: Other/Proprietary License",
-        "License :: OSI Approved :: Apache Software License",
         "Operating System :: POSIX :: Linux",
         "Topic :: Scientific/Engineering",
         "Topic :: Scientific/Engineering :: Artificial Intelligence",

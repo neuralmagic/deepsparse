@@ -41,7 +41,7 @@ import numpy
 from pydantic import BaseModel, Field
 from transformers.tokenization_utils_base import PaddingStrategy, TruncationStrategy
 
-from deepsparse import Pipeline
+from deepsparse.legacy import Pipeline
 from deepsparse.log import get_main_logger
 from deepsparse.transformers.helpers import truncate_transformer_onnx_model
 from deepsparse.transformers.pipelines import TransformersPipeline
@@ -100,10 +100,7 @@ class ExtractionStrategy(str, Enum):
 @Pipeline.register(
     task="transformers_embedding_extraction",
     task_aliases=[],
-    default_model_path=(
-        "zoo:nlp/masked_language_modeling/bert-base/pytorch/huggingface/"
-        "wikipedia_bookcorpus/pruned80_quant-none-vnni"
-    ),
+    default_model_path=("zoo:bert-large-wikipedia_bookcorpus-pruned90"),
 )
 class TransformersEmbeddingExtractionPipeline(TransformersPipeline):
     """

@@ -1,4 +1,9 @@
 {
+    "aliveStatusCodes": [
+        0,
+        200,
+        403,
+    ],
     "ignorePatterns": [
         {
             "pattern": ".*localhost.*"

@@ -41,8 +41,7 @@ def test_run_inference_ner(cleanup: Dict[str, List]):
         "--task",
         "ner",
         "--model-path",
-        "zoo:nlp/token_classification/bert-base/pytorch/huggingface/conll2003/"
-        "12layer_pruned80_quant-none-vnni",
+        "zoo:bert-large-conll2003_wikipedia_bookcorpus-pruned80.4block_quantized",
         "--data",
         "tests/test_data/bert-ner-test-input.json",
         "--output-file",
@@ -60,7 +59,7 @@ def test_run_inference_ner(cleanup: Dict[str, List]):
     assert "fail" not in res.stdout.lower()
 
     # light validation of output file
-    expected = "red"
+    expected = "canadian"
     assert os.path.exists("output.json")
     with open("output.json") as f:
         data = json.load(f)
@@ -73,15 +72,13 @@ def test_run_inference_ner(cleanup: Dict[str, List]):
     [
         pytest.param(
             "csv",
-            "zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/"
-            "pruned_6layers-aggressive_98",
+            "zoo:bert-base-squad_wikipedia_bookcorpus-pruned90",
             True,
             marks=pytest.mark.smoke,
         ),
         (
             "json",
-            "zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/"
-            "pruned_6layers-aggressive_98",
+            "zoo:bert-base-squad_wikipedia_bookcorpus-pruned90",
             False,
         ),
     ],
@@ -131,32 +128,32 @@ def test_run_inference_qa(
     [
         (
             "csv",
-            "zoo:nlp/text_classification/bert-base/pytorch/huggingface/sst2/base-none",
+            "zoo:bert-large-mnli_wikipedia_bookcorpus-pruned80.4block_quantized",
             False,
             ["--batch-size", "1", "--engine-type", "onnxruntime"],
         ),
         (
             "txt",
-            "zoo:nlp/text_classification/bert-base/pytorch/huggingface/sst2/base-none",
+            "zoo:bert-large-mnli_wikipedia_bookcorpus-pruned80.4block_quantized",
             True,
             ["--num-cores", "4", "--engine-type", "onnxruntime"],
         ),
         pytest.param(
             "csv",
-            "zoo:nlp/text_classification/bert-base/pytorch/huggingface/sst2/base-none",
+            "zoo:bert-large-mnli_wikipedia_bookcorpus-pruned80.4block_quantized",
             True,
             [],
             marks=pytest.mark.smoke,
         ),
         (
             "json",
-            "zoo:nlp/text_classification/bert-base/pytorch/huggingface/sst2/base-none",
+            "zoo:bert-large-mnli_wikipedia_bookcorpus-pruned80.4block_quantized",
             True,
             ["--batch-size", "5", "--engine-type", "deepsparse"],
         ),
         (
             "txt",
-            "zoo:nlp/text_classification/bert-base/pytorch/huggingface/sst2/base-none",
+            "zoo:bert-large-mnli_wikipedia_bookcorpus-pruned80.4block_quantized",
             True,
             ["--batch-size", "10", "--num-cores", "4"],
         ),

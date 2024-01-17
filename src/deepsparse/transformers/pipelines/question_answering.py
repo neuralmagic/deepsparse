@@ -37,13 +37,14 @@ import collections
 import json
 import logging
 import os
+import warnings
 from typing import Any, Dict, List, Optional, Tuple, Type
 
 import numpy
 from pydantic import BaseModel, Field
 from transformers.data import SquadExample
 
-from deepsparse import Pipeline
+from deepsparse.legacy import Pipeline
 from deepsparse.transformers.pipelines import TransformersPipeline
 
 
@@ -80,10 +81,7 @@ class QuestionAnsweringOutput(BaseModel):
 @Pipeline.register(
     task="question_answering",
     task_aliases=["qa"],
-    default_model_path=(
-        "zoo:nlp/question_answering/bert-base/pytorch/huggingface/"
-        "squad/12layer_pruned80_quant-none-vnni"
-    ),
+    default_model_path=("zoo:bert-large-squad_wikipedia_bookcorpus-pruned90_quantized"),
 )
 class QuestionAnsweringPipeline(TransformersPipeline):
     """
@@ -507,6 +505,20 @@ class QuestionAnsweringPipeline(TransformersPipeline):
     def _tokenize(self, example: SquadExample, *args):
         # The logic here closely matches the tokenization step performed
         # on evaluation dataset in the SparseML question answering training script
+
+        added_special_tokens = self.tokenizer.num_special_tokens_to_add()
+        effective_max_length = self.sequence_length - added_special_tokens
+        if self.doc_stride >= effective_max_length:
+            new_doc_stride = effective_max_length
+            warnings.warn(
+                f"Tokenizer stride set to {self.doc_stride}, "
+                f"which is greater than or equal to its effective max length "
+                f"of {effective_max_length} (= {self.sequence_length} "
+                f"original max length - {added_special_tokens} added special tokens). "
+                f"Capping the doc stride to {new_doc_stride}"
+            )
+            self._doc_stride = new_doc_stride
+
         if not self.tokenizer.is_fast:
             raise ValueError(
                 "This example script only works for models that have a fast tokenizer."

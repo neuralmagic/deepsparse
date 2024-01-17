@@ -126,7 +126,7 @@ Making a request:
 ```python
 import requests
 
-url = "http://localhost:5543/predict" # Server's port default to 5543
+url = "http://localhost:5543/v2/models/question_answering/infer" # Server's port default to 5543
 
 obj = {
     "question": "Who is Mark?", 
@@ -151,7 +151,7 @@ https://sparsezoo.neuralmagic.com/?useCase=text_generation)
 ```python
 from deepsparse import Pipeline
 
-opt_pipeline = Pipeline.create(task="opt")
+opt_pipeline = Pipeline.create(task="opt", model_path="zoo:opt-1.3b-opt_pretrain-quantW8A8")
 
 inference = opt_pipeline("Who is the president of the United States?")
 
@@ -163,21 +163,21 @@ Spinning up:
 ```bash
 deepsparse.server \
     task text-generation \
-    --model_path # TODO: Pending until text generation models get uploaded to SparseZoo
+    --model_path zoo:opt-1.3b-opt_pretrain-pruned50_quantW8A8
 ```
 
 Making a request:
 ```python
 import requests
 
-url = "http://localhost:5543/predict" # Server's port default to 5543
+url = "http://localhost:5543/v2/models/text_generation/infer" # Server's port default to 5543
 
-obj = {"sequence": "Who is the president of the United States?"}
+obj = {"prompt": "Large language models are"}
 
 response = requests.post(url, json=obj)
-response.text
+print(response.json()["generations"][0]["text"])
 
->> 'The president of the United States is the head of the executive branch of government...'
+>> ' often used to model the language of a large number of users...'
 ```
 
 ### Sentiment Analysis
@@ -192,15 +192,18 @@ https://sparsezoo.neuralmagic.com/?useCase=sentiment_analysis)
 ```python
 from deepsparse import Pipeline
 
-sa_pipeline = Pipeline.create(task="sentiment-analysis")
+sa_pipeline = Pipeline.create(
+    task="sentiment-analysis",
+    model_path="zoo:bert-large-sst2_wikipedia_bookcorpus-pruned90_quantized"
+)
 
-inference = sa_pipeline("Snorlax loves my Tesla!")
+inference = sa_pipeline("I love it!")
 
->> [{'label': 'LABEL_1', 'score': 0.9884248375892639}]  # positive sentiment
+>> TextClassificationOutput(labels=['positive'], scores=[0.9998450875282288])
 
-inference = sa_pipeline("Snorlax hates pineapple pizza!")
+inference = sa_pipeline("I hate it!")
 
->> [{'label': 'LABEL_0', 'score': 0.9981569051742554}]  # negative sentiment
+>> TextClassificationOutput(labels=['negative'], scores=[0.9985774755477905])
 ```
 
 #### HTTP Server
@@ -208,14 +211,14 @@ Spinning up:
 ```bash
 deepsparse.server \
     task sentiment-analysis \
-    --model_path "zoo:nlp/sentiment_analysis/bert-base/pytorch/huggingface/sst2/12layer_pruned80_quant-none-vnni"
+    --model_path "zoo:nlp/sentiment_analysis/bert-base/pytorch/huggingface/sst2/pruned80_quant-none-vnni"
 ```
 
 Making a request:
 ```python
 import requests
 
-url = "http://localhost:5543/predict" # Server's port default to 5543
+url = "http://localhost:5543/v2/models/sentiment_analysis/infer" # Server's port default to 5543
 
 obj = {"sequences": "Snorlax loves my Tesla!"}
 
@@ -268,7 +271,7 @@ Making a request:
 ```python
 import requests
 
-url = "http://localhost:5543/predict" # Server's port default to 5543
+url = "http://localhost:5543/v2/models/text_classification/infer" # Server's port default to 5543
 
 obj = {
     "sequences": [
@@ -285,7 +288,7 @@ response.text
 >> '{"labels": ["duplicate"], "scores": [0.9947025775909424]}'
 ```
 
-#### Token Classification Pipeline
+### Token Classification Pipeline
 The token classification task takes in sequences as inputs and assigns a class to each token.
 The following example uses a pruned and quantized token classification NER BERT model
 trained on the `CoNLL` dataset downloaded from the SparseZoo.
@@ -314,14 +317,14 @@ Spinning up:
 ```bash
 deepsparse.server \
     task token-classification \
-    --model_path "zoo:nlp/token_classification/bert-base/pytorch/huggingface/conll2003/12layer_pruned80_quant-none-vnni"
+    --model_path "zoo:nlp/token_classification/bert-base/pytorch/huggingface/conll2003/pruned90-none"
 ```
 
 Making a request:
 ```python
 import requests
 
-url = "http://localhost:5543/predict" # Server's port default to 5543
+url = "http://localhost:5543/v2/models/token_classification/infer" # Server's port default to 5543
 
 obj = {"inputs": "Drive from California to Texas!"}
 
@@ -353,6 +356,7 @@ deepsparse.benchmark zoo:nlp/question_answering/bert-base/pytorch/huggingface/sq
 
 To learn more about benchmarking, refer to the appropriate documentation.
 Also, check out our [Benchmarking tutorial](https://github.com/neuralmagic/deepsparse/tree/main/src/deepsparse/benchmark)!
+
 
 ## Tutorials:
 For a deeper dive into using transformers within the Neural Magic ecosystem, refer to the detailed tutorials on our [website](https://neuralmagic.com/):

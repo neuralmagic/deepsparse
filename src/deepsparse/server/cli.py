@@ -22,14 +22,24 @@ There are two sub-commands for the server:
 import os
 import warnings
 from tempfile import TemporaryDirectory
-from typing import Optional
+from typing import Optional, Union
 
 import click
 import yaml
 
-from deepsparse.pipeline import SupportedTasks
-from deepsparse.server.config import EndpointConfig, ServerConfig
-from deepsparse.server.server import start_server
+# TODO: update to use new tasks once server support lands
+from deepsparse.legacy.tasks import SupportedTasks
+from deepsparse.server.config import (
+    INTEGRATION_LOCAL,
+    INTEGRATION_OPENAI,
+    INTEGRATION_SAGEMAKER,
+    INTEGRATIONS,
+    EndpointConfig,
+    ServerConfig,
+)
+from deepsparse.server.deepsparse_server import DeepsparseServer
+from deepsparse.server.openai_server import OpenAIServer
+from deepsparse.server.sagemaker import SagemakerServer
 
 
 HOST_OPTION = click.option(
@@ -109,11 +119,11 @@ WORKERS_OPTION = click.option(
 
 INTEGRATION_OPTION = click.option(
     "--integration",
-    type=click.Choice(["local", "sagemaker"], case_sensitive=False),
+    type=click.Choice(INTEGRATIONS, case_sensitive=False),
     default="local",
     help=(
         "Name of deployment integration that this server will be deployed to "
-        "Currently supported options are 'default' and 'sagemaker' for "
+        "Currently supported options are 'default', 'openai', or 'sagemaker' for "
         "inference deployment with Amazon Sagemaker"
     ),
 )
@@ -221,7 +231,6 @@ def main(
                 EndpointConfig(
                     task=task,
                     name=f"{task}",
-                    route="/predict",
                     model=model_path,
                     batch_size=batch_size,
                 )
@@ -234,14 +243,33 @@ def main(
             config_path = os.path.join(tmp_dir, "server-config.yaml")
             with open(config_path, "w") as fp:
                 yaml.dump(cfg.dict(), fp)
-            start_server(
-                config_path, host, port, log_level, hot_reload_config=hot_reload_config
+
+            server = _fetch_server(integration=integration, config=config_path)
+            server.start_server(
+                host, port, log_level, hot_reload_config=hot_reload_config
             )
 
     if config_file is not None:
-        start_server(
-            config_file, host, port, log_level, hot_reload_config=hot_reload_config
-        )
+        server = _fetch_server(integration=integration, config=config_file)
+        server.start_server(host, port, log_level, hot_reload_config=hot_reload_config)
+
+
+@main.command(
+    context_settings=dict(
+        token_normalize_func=lambda x: x.replace("-", "_"), show_default=True
+    ),
+)
+@click.argument("config-file", type=str)
+@HOST_OPTION
+@PORT_OPTION
+@LOG_LEVEL_OPTION
+@HOT_RELOAD_OPTION
+def openai(
+    config_file: str, host: str, port: int, log_level: str, hot_reload_config: bool
+):
+
+    server = OpenAIServer(server_config=config_file)
+    server.start_server(host, port, log_level, hot_reload_config=hot_reload_config)
 
 
 @main.command(
@@ -263,9 +291,6 @@ def config(
         "Using the `config` sub command is deprecated. "
         "Use the `--config_file` argument instead.",
         category=DeprecationWarning,
-    )
-    start_server(
-        config_path, host, port, log_level, hot_reload_config=hot_reload_config
     )
 
 
@@ -319,7 +344,6 @@ def task(
             EndpointConfig(
                 task=task,
                 name=f"{task}",
-                route="/predict",
                 model=model_path,
                 batch_size=batch_size,
             )
@@ -331,8 +355,35 @@ def task(
         config_path = os.path.join(tmp_dir, "server-config.yaml")
         with open(config_path, "w") as fp:
             yaml.dump(cfg.dict(), fp)
-        start_server(
-            config_path, host, port, log_level, hot_reload_config=hot_reload_config
+
+        server = _fetch_server(integration=integration, config=config_path)
+        server.start_server(host, port, log_level, hot_reload_config=hot_reload_config)
+
+
+def _fetch_server(integration: str, config: Union[ServerConfig, str]):
+    if isinstance(config, str):
+        with open(config) as fp:
+            obj = yaml.safe_load(fp)
+
+        config = ServerConfig(**obj)
+
+    if config.integration:
+        # if the cli argument provided is not local, use the cli argument
+        # otherwise, override with the value in the config file. This gives the
+        # cli precedence.
+        if integration == INTEGRATION_LOCAL:
+            integration = config.integration
+
+    if integration == INTEGRATION_LOCAL:
+        return DeepsparseServer(server_config=config)
+    elif integration == INTEGRATION_SAGEMAKER:
+        return SagemakerServer(server_config=config)
+    elif integration == INTEGRATION_OPENAI:
+        return OpenAIServer(server_config=config)
+    else:
+        raise ValueError(
+            f"{integration} is not a supported integration. Must be "
+            f"one of {INTEGRATIONS}."
         )
 
 

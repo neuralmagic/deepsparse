@@ -52,13 +52,16 @@ __all__ = [
     "truncate_onnx_embedding_model",
     "overwrite_onnx_model_inputs_for_kv_cache_models",
     "default_cached_outputs",
+    "infer_sequence_length",
     "has_model_kv_cache",
     "CACHE_INPUT_PREFIX",
     "CACHE_OUTPUT_PREFIX",
+    "MODEL_ONNX_NAME",
 ]
 
 _LOGGER = logging.getLogger(__name__)
 
+MODEL_ONNX_NAME = "model.onnx"
 CACHE_INPUT_PREFIX = "past_key_values"
 CACHE_OUTPUT_PREFIX = "present"
 
@@ -125,11 +128,30 @@ def model_to_path(model: Union[str, Model, File]) -> str:
         model = Model(model)
 
     if Model is not object and isinstance(model, Model):
+        # trigger download and unzipping of deployment directory if not cached
+        model.deployment.path
+
         # default to the main onnx file for the model
-        model = model.onnx_model.path
+        model = model.deployment.get_file(MODEL_ONNX_NAME).path
+
     elif File is not object and isinstance(model, File):
         # get the downloaded_path -- will auto download if not on local system
         model = model.path
+
+    if isinstance(model, str) and model.startswith("hf:"):
+        # load Hugging Face model from stub
+        from huggingface_hub import snapshot_download
+
+        deployment_path = snapshot_download(repo_id=model.replace("hf:", "", 1))
+        onnx_path = os.path.join(deployment_path, MODEL_ONNX_NAME)
+        if not os.path.isfile(onnx_path):
+            raise ValueError(
+                f"Could not find the ONNX model file '{MODEL_ONNX_NAME}' in the "
+                f"Hugging Face Hub repository located at {deployment_path}. Please "
+                f"ensure the model has been correctly exported to ONNX format and "
+                f"exists in the repository."
+            )
+        return onnx_path
 
     if not isinstance(model, str):
         raise ValueError("unsupported type for model: {}".format(type(model)))
@@ -139,7 +161,7 @@ def model_to_path(model: Union[str, Model, File]) -> str:
 
     model_path = Path(model)
     if model_path.is_dir():
-        return str(model_path / "model.onnx")
+        return str(model_path / MODEL_ONNX_NAME)
 
     return model
 
@@ -264,7 +286,7 @@ def override_onnx_batch_size(
         external_input.type.tensor_type.shape.dim[0].dim_value = batch_size
 
     if inplace:
-        _LOGGER.info(
+        _LOGGER.debug(
             f"Overwriting in-place the batch size of the model at {onnx_filepath}"
         )
         save_onnx(model, onnx_filepath)
@@ -340,7 +362,7 @@ def override_onnx_input_shapes(
             dim.dim_value = input_shapes[input_idx][dim_idx]
 
     if inplace:
-        _LOGGER.info(
+        _LOGGER.debug(
             f"Overwriting in-place the input shapes of the model at {onnx_filepath}"
         )
         onnx.save(model, onnx_filepath)
@@ -542,7 +564,7 @@ def overwrite_onnx_model_inputs_for_kv_cache_models(
         else:
             raise ValueError(f"Unexpected external input name: {external_input.name}")
 
-    _LOGGER.info(
+    _LOGGER.debug(
         "Overwriting in-place the input shapes "
         f"of the transformer model at {onnx_file_path}"
     )
@@ -586,3 +608,24 @@ def has_model_kv_cache(model: Union[str, ModelProto]) -> bool:
     :return True if the model has a KV cache support, False otherwise.
     """
     return bool(any(default_cached_outputs(model)))
+
+
+def infer_sequence_length(model: Union[str, ModelProto]) -> int:
+    """
+    :param model: model
+    :return: inferred sequence length of the model
+    """
+    if not isinstance(model, ModelProto):
+        model = onnx.load(model, load_external_data=False)
+
+    # try to find attention mask dim, default to 0
+    target_input_idx = 0
+    for idx, inp in enumerate(model.graph.input):
+        if inp.name == "attention_mask":
+            target_input_idx = idx
+    try:
+        # return shape of second dim if possible
+        target_input = model.graph.input[target_input_idx]
+        return target_input.type.tensor_type.shape.dim[1].dim_value
+    except Exception:
+        return 0  # unable to infer seq len

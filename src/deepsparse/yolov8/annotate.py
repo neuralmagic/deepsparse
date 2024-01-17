@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """
-Usage: deepsparse.object_detection.annotate [OPTIONS]
+Usage: deepsparse.yolov8.annotate [OPTIONS]
 
   Annotation Script for YOLOv8 with DeepSparse
 
@@ -21,14 +21,16 @@ Options:
   --model_filepath, --model-filepath TEXT
                                   Path/SparseZoo stub to the model file to be
                                   used for annotation
-  --source TEXT                   File path to an image or directory of image
+  --subtask TEXT                  A subtask to run the YOLOv8 model on.
+                                  Defaults to 'detection'
+  --source TEXT                   File path to image or directory of .jpg
                                   files, a .mp4 video, or an integer (i.e. 0)
                                   for webcam  [required]
   --engine [deepsparse|onnxruntime|torch]
                                   Inference engine backend to run on. Choices
                                   are 'deepsparse', 'onnxruntime', and
                                   'torch'. Default is 'deepsparse'
-  --model_input_image_shape, --model-input-shape INTEGER...
+  --model_input_image_shape, --model-input-image-shape INTEGER...
                                   Image shape to override model with for
                                   inference, must be two integers
   --num_cores, --num-cores INTEGER
@@ -51,8 +53,8 @@ Options:
                                   then it will be ignored
   --no_save, --no-save            Set flag when source is from webcam to not
                                   save results.Not supported for non-webcam
-                                  sources  [default: False]
-  --help                          Show this message and exit
+                                  sources
+  --help                          Show this message and exit.
 
 #######
 Examples:

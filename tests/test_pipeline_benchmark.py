@@ -65,6 +65,11 @@ from tests.helpers import run_command
             ],
         ),
         (
+            "image_classification",
+            "zoo:cv/classification/resnet_v1-50_2x/pytorch/sparseml/imagenet/base-none",
+            [],
+        ),
+        (
             "token_classification",
             "zoo:nlp/token_classification/distilbert-none/pytorch/huggingface/"
             "conll2003/pruned90-none",
@@ -168,7 +173,7 @@ def test_calculations():
 
     batch_times = timer_manager.all_times
     total_run_time = 6.0
-    section_stats = calculate_section_stats(batch_times, total_run_time, 1)
+    section_stats, _ = calculate_section_stats(batch_times, total_run_time, 1)
     assert math.isclose(
         section_stats["stage_1"]["total_percentage"], 33.33, rel_tol=0.05
     )

@@ -12,262 +12,263 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import inspect
 
-import numpy as np
-import onnx
-import onnxruntime
-from transformers import AutoModelForCausalLM, AutoTokenizer
+import numpy
 
 import pytest
-from deepsparse import Pipeline
-from deepsparse.transformers.utils.helpers import create_causal_mask
-from deepsparse.utils.onnx import (
-    CACHE_INPUT_PREFIX,
-    overwrite_onnx_model_inputs_for_kv_cache_models,
-)
-from sparsezoo import Model
+
+# TODO: skipping a few tests with missing features
+from deepsparse.pipeline import Pipeline
+from deepsparse.transformers.schemas.text_generation_schemas import TextGenerationOutput
+from deepsparse.transformers.utils.helpers import prepends_bos_token
 
 
-def _initialize_kv_cache_state(model, length=0):
-    # get one of the cache inputs
-    cache_input = next(
-        input
-        for input in model.graph.input
-        if input.name.startswith(CACHE_INPUT_PREFIX)
+@pytest.fixture
+def pipeline():
+    return Pipeline.create(
+        task="text_generation",
+        model_path="hf:mgoin/TinyStories-1M-deepsparse",
+        engine_type="onnxruntime",
     )
-    # read the shape of the cache input
-    batch_size = cache_input.type.tensor_type.shape.dim[0].dim_value
-    num_attention_heads = cache_input.type.tensor_type.shape.dim[1].dim_value
-    hidden_dims = cache_input.type.tensor_type.shape.dim[3].dim_value
-
-    # create a kv cache dictionary
-    kv_cache = {
-        input_.name: np.zeros(
-            (batch_size, num_attention_heads, length, hidden_dims), dtype=np.float32
-        )
-        for input_ in model.graph.input
-        if input_.name.startswith(CACHE_INPUT_PREFIX)
-    }
-
-    return kv_cache
 
 
-START = 0  # global variable for dummy_callback
+@pytest.fixture
+def prompt():
+    return "Never gonna give you up, never gonna let you down"
 
 
-@pytest.mark.parametrize(
-    "internal_kv_cache",
-    [True, False],
-)
-@pytest.mark.parametrize(
-    "model_stub, model_name, uses_bos_token",
-    [
-        (
-            "zoo:nlg/text_generation/opt-1.3b/pytorch/"
-            "huggingface/opt_pretrain/base-none",
-            "facebook/opt-1.3b",
-            True,
-        ),
-        (
-            "zoo:nlg/text_generation/codegen_mono-350m/pytorch/"
-            "huggingface/bigpython_bigquery_thepile/base-none",
-            "salesforce/codegen-350m-mono",
-            False,
-        ),
-    ],
-    scope="class",
-)
-@pytest.mark.skip(
-    reason="Those tests are too heavy to " "run as a normal part of the CI."
-)
-class TestTextGenerationPipeline:
-    @pytest.fixture
-    def setup(self, model_stub, model_name, uses_bos_token, internal_kv_cache):
+def test_freeze_first_position(pipeline):
+    # Test whether we should be "freezing" the first token after
+    # the kv cache is full
+    assert not prepends_bos_token(pipeline.tokenizer)
 
-        self.max_generated_tokens = 16
-        self.model = Model(model_stub)
-        self.internal_kv_cache = internal_kv_cache
 
-        pipeline = Pipeline.create(
-            task="text_generation",
-            model_path=model_stub,
-            sequence_length=32,
-            prompt_sequence_length=4,
-            max_generated_tokens=self.max_generated_tokens,
-            internal_kv_cache=self.internal_kv_cache,
-        )
-        short_prompt = "this"
-        long_prompt = "this is a sample prompt that we will use to test the pipeline"
+def test_run_same_prompt_multiple_times(pipeline, prompt):
+    # Test the scenario, where the same prompt is run multiple times
+    # Every run should produce the same output
+    output_1 = pipeline(prompt, output_scores=True)
+    output_2 = pipeline(prompt, output_scores=True)
 
-        # make sure that the short prompt will be only
-        # processed by a single token engine
-        # (DISABLED FOR NOW UNTIL WE HAVE ZOO CAUSAL MASK SUPPORT)
-        # assert (
-        #     len(pipeline.tokenizer.tokenize(short_prompt)) + int(uses_bos_token)
-        #     < pipeline.prompt_sequence_length
-        # )
-        # make sure that the long prompt will be processed by
-        # single token and multiple token engines
-        # (DISABLED FOR NOW UNTIL WE HAVE ZOO CAUSAL MASK SUPPORT)
-        # assert (
-        #     len(pipeline.tokenizer.tokenize(long_prompt)) + int(uses_bos_token)
-        #     > pipeline.prompt_sequence_length * 3
-        # )
+    assert output_1.generations[0].text == output_2.generations[0].text
+    assert numpy.allclose(
+        output_1.generations[0].score,
+        output_2.generations[0].score,
+        atol=1e-3,
+    )
 
-        yield pipeline, model_name, uses_bos_token, short_prompt, long_prompt
 
-    def test_freeze(self, setup):
-        # test whether we should be "freezing" the first token after
-        # the kv cache is full
-        pipeline, _, uses_bos_token, _, _ = setup
-        assert pipeline.engine._freeze_first_position == uses_bos_token
+def _test_stop_inference_kv_cache_full(
+    pipeline,
+    prompt,
+    max_new_tokens,
+    expected_finished_reason,
+    expected_generated_tokens_length=None,
+):
+    out = pipeline(prompt=prompt, max_new_tokens=max_new_tokens)
+    kv_cache_state = out.kv_cache_state[0]
+    finished_reason = out.generations[0].finished_reason
+    generated_text = out.generations[0].text
+    assert finished_reason == expected_finished_reason
+    assert len(pipeline.tokenizer(generated_text)["input_ids"]) == (
+        expected_generated_tokens_length or max_new_tokens
+    )
+    return kv_cache_state
 
-    def test_model_output_sequences(self, setup):
-        # test model output against sources of truth
-        pipeline, model_name, _, short_prompt, long_prompt = setup
 
-        output_sequences = pipeline(sequences=[short_prompt, long_prompt])
+@pytest.mark.skip("debug mode currently not enabled")
+def test_stop_inference_kv_cache_full(prompt):
+    # Tests the proper behavior of the kv cache around the
+    # scenario when the kv cache becomes full during the inference
 
-        # test against huggingface model
-        output_hugging_face = self._get_output_huggingface(
-            sequences=[short_prompt, long_prompt], model_name=model_name
-        )
-        assert short_prompt + output_sequences.sequences[0] == output_hugging_face[0]
-        assert long_prompt + output_sequences.sequences[1] == output_hugging_face[1]
+    # We set the sequence length to a small value to assert that
+    # the kv cache buffer fills up quickly
+    sequence_length = 32
+    # We set the prompt sequence length to 1 to assert that the
+    # inference will run until the kv cache is full. If the
+    # `prompt_sequence_length` is larger than 1, it is very probable
+    # that the inference will stop before the kv cache is full
+    # (as the `prompt_sequence_length` reduces the number of
+    # tokens that are generated in the first iteration)
+    prompt_sequence_length = 1
 
-    def test_model_output_cache(self, setup):
-        pipeline, model_name, _, short_prompt, long_prompt = setup
-        if self.internal_kv_cache:
-            pytest.skip(
-                "Running pipeline with internal "
-                "deepsparse cache will not result "
-                "in meaningful cache entries."
-            )
-        self._test_cache_state(short_prompt, pipeline, model_name)
-        self._test_cache_state(long_prompt, pipeline, model_name)
+    pipeline = Pipeline.create(
+        task="text_generation",
+        model_path="hf:mgoin/TinyStories-1M-deepsparse",
+        engine_type="onnxruntime",
+        sequence_length=sequence_length,
+        force_max_tokens=True,
+        prompt_sequence_length=prompt_sequence_length,
+    )
+    pipeline._debug = True
 
-    def test_callback(self, setup):
-        pipeline, *_ = setup
+    prompt_length = len(pipeline.tokenizer(prompt)["input_ids"])
 
-        def dummy_callback(token):
-            global START
-            START += 1
-            return START < 3
+    cache_capacity = sequence_length - prompt_sequence_length
+    # we need to subtract 1 to account for the initial generated token during the
+    # prompt inference
+    cache_capacity -= 1
 
-        inputs = {
-            "sequences": "def fib(a, b, accumulator=0)",
-            "callback": dummy_callback,
-            "return_logits": True,
-        }
+    # max_new_tokens so that there is still one more "free" space in the kv cache
+    # (we can still do autoregressive inference)
+    max_new_tokens_minus_one = cache_capacity - prompt_length - 1
+    # max_new_tokens so that the kv cache is full
+    # (so we can still do one last correct autoregressive
+    # inference in the next iteration)
+    max_new_tokens = cache_capacity - prompt_length
+    # max_new_tokens so that kv cache has already removed the last entry
+    # (so we can no longer do autoregressive inference in the next iteration)
+    max_new_tokens_plus_one = cache_capacity - prompt_length + 1
+    # max_new_tokens so that kv cache would remove two last entries
+    # (but it will not, the inference terminates early and produces
+    # the same result as max_new_tokens_plus_one)
+    max_new_tokens_plus_two = cache_capacity - prompt_length + 2
 
-        outs = pipeline(**inputs)
-        assert outs.logits.shape[1] == 3
+    kv_cache_state_full_minus_one = _test_stop_inference_kv_cache_full(
+        pipeline,
+        prompt,
+        max_new_tokens_minus_one,
+        expected_finished_reason="max_new_tokens",
+    )
+    kv_cache_state_full = _test_stop_inference_kv_cache_full(
+        pipeline, prompt, max_new_tokens, expected_finished_reason="max_new_tokens"
+    )
+    kv_cache_state_full_plus_one = _test_stop_inference_kv_cache_full(
+        pipeline, prompt, max_new_tokens_plus_one, expected_finished_reason="capacity"
+    )
+    kv_cache_state_full_plus_two = _test_stop_inference_kv_cache_full(
+        pipeline,
+        prompt,
+        max_new_tokens_plus_two,
+        expected_generated_tokens_length=max_new_tokens_plus_one,
+        expected_finished_reason="capacity",
+    )
+    """
+    Check the following structure ok the kv cache:
+    minus_one | full | plus_one | plus_two
+    --------------------------------------
+     [- 0 -] | [row A] | [row B] | [row B]
+     [row A] | [row B] | [row C] | [row C]
+     [row B] | [row C] | [row D] | [row D]
+       ...   |   ...   |   ...   |  ...
+    """
+    # check for the "free" space in the kv cache
+    assert kv_cache_state_full_minus_one["past_key_values.0.key"][:, :, 0, :].sum() == 0
+    # check for the row A
+    assert numpy.array_equal(
+        kv_cache_state_full_minus_one["past_key_values.0.key"][:, :, 1, :],
+        kv_cache_state_full["past_key_values.0.key"][:, :, 0, :],
+    )
+    # check for the row B
+    assert numpy.array_equal(
+        kv_cache_state_full["past_key_values.0.key"][:, :, 1, :],
+        kv_cache_state_full_plus_one["past_key_values.0.key"][:, :, 0, :],
+    )
+    # check equality between plus_one and plus_two
+    assert numpy.array_equal(
+        kv_cache_state_full_plus_one["past_key_values.0.key"],
+        kv_cache_state_full_plus_two["past_key_values.0.key"],
+    )
 
-    def _test_cache_state(self, prompt, pipeline, model_name):
-        # make sure that the cache state after running a prompt
-        # is correct
 
-        pipeline(sequences=prompt)
-        cache_state_dict = pipeline.engine.kv_cache.cached_inputs
-        cache_state_list = [cache_state_dict[key] for key in cache_state_dict.keys()]
+def test_run_multiple_prompts_in_parallel(pipeline, prompt):
+    # Test the scenario, where multiple prompts are run in parallel
+    # Same two prompts should produce the same output
 
-        # generate ground truth from ORT
-        target_cache_state = self._get_cache_state_ort_kv_cache(
-            model_onnx_path=self.model.deployment.get_file("model.onnx").path,
-            sequence=prompt,
-            model_name=model_name,
-        )
-        # get the number of processed prompt tokens
-        num_prompt_tokens = len(pipeline.tokenizer.tokenize(prompt)) + int(
-            pipeline.engine._freeze_first_position
-        )
+    output = pipeline([prompt, prompt], output_scores=True)
 
-        for x, y in zip(cache_state_list, target_cache_state):
-            """
-            x will be a cache array
-            [blank, blank, ..., prompt_cache_1, prompt_cache_2, ...,
-             gen_token_cache_1, gen_token_cache_2, ...]
-            we need to first remove blank entries and then keep the
-            remaining prompt_cache entries (remove gen_token_cache entries)
-            """
-            first_non_blank_cache_entry = min(
-                i for i in range(x.shape[2]) if np.count_nonzero(x[:, :, i, :])
-            )
-            x = x[:, :, first_non_blank_cache_entry:, :]
-            x = x[:, :, :num_prompt_tokens, :]
+    logits_0 = output.generations[0].score
+    sequence_0 = output.generations[0].text
 
-            """
-            y will be a cache array
-            [blank, blank, ..., prompt_cache_1, prompt_cache_2, ...]
-            we need to keep the prompt_cache entries only
-            """
-            y = y[:, :, -num_prompt_tokens:, :]
+    logits_1 = output.generations[1].score
+    sequence_1 = output.generations[1].text
 
-            assert np.allclose(x, y, atol=1e-4)
+    assert numpy.allclose(logits_0, logits_1, atol=1e-3)
+    assert sequence_0 == sequence_1
 
-    def _get_output_huggingface(self, sequences, model_name):
-        hf_outputs = []
-        # setup tokenizer
-        tokenizer = AutoTokenizer.from_pretrained(model_name)
-        tokenizer.padding_side = "left"
-        if tokenizer.pad_token is None:
-            tokenizer.pad_token = tokenizer.eos_token
 
-        # setup model
-        model = AutoModelForCausalLM.from_pretrained(model_name)
+def test_num_generated_predictions(pipeline, prompt):
+    # Test the scenario, where multiple predictions are generated
+    # from the same prompt
 
-        # generate ground truth output
-        for prompt in sequences:
-            input_ids = tokenizer(prompt, return_tensors="pt").input_ids
-            generated_ids = model.generate(
-                input_ids, max_new_tokens=self.max_generated_tokens
-            )
-            hf_output = tokenizer.decode(generated_ids[0], skip_special_tokens=True)
-            hf_outputs.append(hf_output)
-        return hf_outputs
+    output_sequences = pipeline(prompt, num_return_sequences=2)
 
-    @staticmethod
-    def _get_cache_state_ort_kv_cache(model_onnx_path, sequence, model_name):
-        # setup tokenizer
-        tokenizer = AutoTokenizer.from_pretrained(model_name)
-        tokenizer.padding_side = "left"
-        if tokenizer.pad_token is None:
-            tokenizer.pad_token = tokenizer.eos_token
+    assert len(output_sequences.generations) == 1
+    assert len(output_sequences.generations[0]) == 2
 
-        # setup model and session
-        # (run full sequence inference)
-        overwrite_onnx_model_inputs_for_kv_cache_models(
-            model_onnx_path, sequence_length=128, input_ids_length=128
-        )
-        sess = onnxruntime.InferenceSession(model_onnx_path)
+    output_sequences = pipeline([prompt, prompt], num_return_sequences=2)
+    assert len(output_sequences.generations) == 2
 
-        # get model inputs
-        onnx_model = onnx.load(model_onnx_path, load_external_data=False)
-        model_inputs = [x.name for x in onnx_model.graph.input]
-        kv_cache = _initialize_kv_cache_state(model=onnx_model)
+    for generation in output_sequences.generations:
+        assert len(generation) == 2
 
-        inputs = tokenizer(
-            sequence, return_tensors="np", padding="max_length", max_length=128
-        )
-        onnxruntime_inputs = dict(
-            attention_mask=inputs["attention_mask"],
-            input_ids=inputs["input_ids"],
-            **kv_cache,
-        )
 
-        if "positions" in model_inputs:
-            attention_mask = inputs["attention_mask"]
-            positions = attention_mask.cumsum(1) * attention_mask - 1
-            onnxruntime_inputs["positions"] = positions
+def test_token_generation_deterministic(pipeline, prompt):
+    inference = pipeline(prompt, num_return_sequences=3, do_sample=False)
+    generations = inference.generations
+    # Output should be the same from one another
+    text_outputs = [x.text for x in generations[0]]
+    assert len(set(text_outputs)) == 1
 
-        if "causal_mask" in model_inputs:
-            causal_mask = create_causal_mask(
-                input_ids=inputs["input_ids"], attention_mask=inputs["attention_mask"]
-            )
-            onnxruntime_inputs["causal_mask"] = causal_mask
 
-        # run inference and return the cache state
-        outputs = sess.run(None, onnxruntime_inputs)
-        logits, *kv_cache = outputs
+def test_token_generation_non_deterministic(pipeline, prompt):
 
-        return kv_cache
+    inference = pipeline(prompt, num_return_sequences=3, do_sample=True)
+    generations = inference.generations
+    # Output should be different from one another
+    text_outputs = [x.text for x in generations[0]]
+    assert len(set(text_outputs)) == 3
+
+
+def test_pipeline_for_ppl_eval(pipeline, prompt):
+    predictions = pipeline(
+        prompt,
+        output_scores=True,
+        return_input_tokens=True,
+        fixed_sequences_length=True,
+        include_prompt_logits=True,
+        max_length=1,
+    )
+    assert hasattr(predictions, "generations")
+    assert hasattr(predictions, "input_tokens")
+    assert hasattr(predictions.generations[0], "score")
+    assert "input_ids" in predictions.input_tokens
+    assert "attention_mask" in predictions.input_tokens
+
+
+def test_streaming_mode_returns_generator(pipeline, prompt):
+    response_generator = pipeline(prompt, streaming=True)
+    assert inspect.isgenerator(
+        response_generator
+    ), "Pipeline should return a generator in streaming mode"
+
+    assert all(
+        isinstance(response, TextGenerationOutput) for response in response_generator
+    ), "Pipeline should return a generator of output_schema \
+           objects in streaming mode"
+
+
+def test_streaming_with_several_prompts(pipeline, prompt):
+    additional_prompt = "Never gonna run around and desert you"
+    prompts = [prompt, additional_prompt]
+
+    generations_first_prompt_only = list(pipeline(prompt=prompts[0], streaming=True))
+    generations_second_prompt_only = list(pipeline(prompt=prompts[1], streaming=True))
+
+    bag_of_words_first_prompt = [
+        g.generations[0].text for g in generations_first_prompt_only
+    ]
+    bag_of_words_second_prompt = [
+        g.generations[0].text for g in generations_second_prompt_only
+    ]
+
+    generations = pipeline(prompt=prompts, streaming=True)
+    bag_of_words_shared = []
+    for r in generations:
+        for gen in r.generations:
+            text = gen.text
+            bag_of_words_shared.append(text)
+
+    assert sorted(bag_of_words_first_prompt + bag_of_words_second_prompt) == sorted(
+        bag_of_words_shared
+    )

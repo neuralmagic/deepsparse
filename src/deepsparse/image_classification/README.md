@@ -46,7 +46,6 @@ Example:
 ```bash
 sparseml.image_classification.export_onnx \
     --arch-key resnet50 \
-    --dataset imagenet \
     --dataset-path ~/datasets/ILSVRC2012 \
     --checkpoint-path ~/checkpoints/resnet50_checkpoint.pth
 ```
@@ -151,7 +150,7 @@ Making a request:
 ```python
 import requests
 
-url = 'http://0.0.0.0:5543/predict/from_files'
+url = 'http://0.0.0.0:5543/v2/models/image_classification/infer/from_files'
 path = ['goldfish.jpeg'] # just put the name of images in here
 files = [('request', open(img, 'rb')) for img in path]
 resp = requests.post(url=url, files=files)

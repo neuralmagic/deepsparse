@@ -14,7 +14,7 @@
 
 import logging
 import re
-from typing import List, Tuple
+from typing import List, Tuple, Union
 
 import numpy
 
@@ -27,7 +27,10 @@ __all__ = [
     "numpy_softmax",
     "split_engine_inputs",
     "join_engine_outputs",
+    "prep_for_serialization",
 ]
+
+from pydantic import BaseModel
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -168,7 +171,7 @@ def numpy_softmax(x: numpy.ndarray, axis: int = 0):
 
 def split_engine_inputs(
     items: List[numpy.ndarray], batch_size: int
-) -> List[List[numpy.ndarray]]:
+) -> Tuple[List[List[numpy.ndarray]], int]:
     """
     Splits each item into numpy arrays with the first dimension == `batch_size`.
 
@@ -204,7 +207,8 @@ def split_engine_inputs(
     :param items: list of numpy arrays to split
     :param batch_size: size of each batch to split into
 
-    :return: list of batches, where each batch is a list of numpy arrays
+    :return: list of batches, where each batch is a list of numpy arrays,
+        as well as the total batch size
     """
     # The engine expects to recieve data in numpy format, so at this point it should be
     assert all(isinstance(item, numpy.ndarray) for item in items)
@@ -262,3 +266,39 @@ def join_engine_outputs(
             candidate_output[i] = candidate_output[i][:orig_batch_size]
 
     return candidate_output
+
+
+def prep_for_serialization(
+    data: Union[BaseModel, numpy.ndarray, list]
+) -> Union[BaseModel, list]:
+    """
+    Prepares input data for JSON serialization by converting any numpy array
+    field to a list. For large numpy arrays, this operation will take a while to run.
+
+    :param data: data to that is to be processed before
+        serialization. Nested objects are supported.
+    :return: Pipeline_outputs with potential numpy arrays
+        converted to lists
+    """
+    if isinstance(data, BaseModel):
+        for field_name in data.__fields__.keys():
+            field_value = getattr(data, field_name)
+            if isinstance(field_value, (numpy.ndarray, BaseModel, list)):
+                setattr(
+                    data,
+                    field_name,
+                    prep_for_serialization(field_value),
+                )
+
+    elif isinstance(data, numpy.ndarray):
+        data = data.tolist()
+
+    elif isinstance(data, list):
+        for i, value in enumerate(data):
+            data[i] = prep_for_serialization(value)
+
+    elif isinstance(data, dict):
+        for key, value in data.items():
+            data[key] = prep_for_serialization(value)
+
+    return data

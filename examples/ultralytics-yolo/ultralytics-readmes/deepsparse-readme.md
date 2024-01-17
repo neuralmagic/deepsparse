@@ -65,7 +65,7 @@ We will walk through an example benchmarking and deploying a sparse version of Y
 
 ### Install DeepSparse
 
-Run the following to install DeepSparse. We recommend you use a virtual enviornment with Python.
+Run the following to install DeepSparse. We recommend you use a virtual environment with Python.
 
 ```bash
 pip install deepsparse[server,yolo,onnxruntime]

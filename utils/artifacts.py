@@ -14,6 +14,7 @@
 
 import argparse
 import os
+import platform
 import sys
 import tarfile
 from io import BytesIO
@@ -45,6 +46,22 @@ def parse_args():
     )
 
     return parser.parse_args()
+
+
+def get_platform_string():
+    machine = platform.machine()
+    system = platform.system()
+
+    if system == "Linux":
+        if machine == "x86_64":
+            return "manylinux_x86_64"
+        elif machine == "aarch64":
+            return "manylinux_aarch64"
+    elif system == "Darwin":
+        if machine == "arm64":
+            return "macosx_13_0_arm64"
+
+    raise ValueError(f"Unsupported or unrecognized platform: {machine}, {system}")
 
 
 def get_release_and_version(package_path: str) -> Tuple[bool, bool, str, str, str, str]:
@@ -99,6 +116,8 @@ def download_wand_binaries(package_path: str, full_version: str, is_release: boo
     and extract them to the right location
     """
     release_string = "release" if is_release else "nightly"
+    platform_string = get_platform_string()
+    full_version = "1.7.0.20240110"
 
     print(
         f"Unable to find wand binaries locally in {package_path}.\n"
@@ -111,7 +130,7 @@ def download_wand_binaries(package_path: str, full_version: str, is_release: boo
         f"-cp{sys.version_info[0]}{sys.version_info[1]}"
         f"-cp{sys.version_info[0]}{sys.version_info[1]}"
         f"{'' if sys.version_info[1] > 7 else 'm'}"  # 3.6 and 3.7 have a 'm'
-        "-manylinux_x86_64.tar.gz"
+        f"-{platform_string}.tar.gz"
     )
 
     print("Requesting", artifact_url)

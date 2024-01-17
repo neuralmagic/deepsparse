@@ -40,7 +40,7 @@ from pydantic import BaseModel, Field
 from transformers.file_utils import ExplicitEnum
 from transformers.tokenization_utils_base import PaddingStrategy, TruncationStrategy
 
-from deepsparse import Pipeline
+from deepsparse.legacy import Pipeline
 from deepsparse.transformers.pipelines import TransformersPipeline
 
 
@@ -137,10 +137,7 @@ class TokenClassificationOutput(BaseModel):
 @Pipeline.register(
     task="token_classification",
     task_aliases=["ner"],
-    default_model_path=(
-        "zoo:nlp/token_classification/bert-base/pytorch/huggingface/"
-        "conll2003/12layer_pruned80_quant-none-vnni"
-    ),
+    default_model_path=("zoo:distilbert-conll2003_wikipedia_bookcorpus-pruned90"),
 )
 class TokenClassificationPipeline(TransformersPipeline):
     """
@@ -525,7 +522,6 @@ class TokenClassificationPipeline(TransformersPipeline):
         return bi, tag
 
     def _group_entities(self, entities: List[dict]) -> List[dict]:
-
         entity_groups = []
         entity_group_disagg = []
 
