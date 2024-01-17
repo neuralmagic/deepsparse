@@ -85,7 +85,11 @@ class GenerateNewTokenOperator(Operator):
             finish_reason = FinishReason.CALLBACK
 
         max_tokens = inference_state.current_state.get("max_tokens")
-        if len(inference_state.current_state.get("generated_tokens")) + 1 == max_tokens:
+        if (
+            max_tokens is not None
+            and len(inference_state.current_state.get("generated_tokens")) + 1
+            >= max_tokens
+        ):
             finish_reason = inference_state.current_state.get("length_finish_reason")
 
         state_update = {
