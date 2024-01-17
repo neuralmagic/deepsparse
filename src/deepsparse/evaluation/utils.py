@@ -146,15 +146,13 @@ def create_model_from_target(
     :param engine_type: The engine type to initialize the model with.
     :return: The initialized model
     """
-    sequence_length = kwargs.pop("sequence_length", 2048)
-    batch_size = kwargs.pop("batch_size", 1)
     if engine_type in [DEEPSPARSE_ENGINE, ORT_ENGINE]:
         return Pipeline.create(
             task="text-generation",
             model_path=target,
-            sequence_length=sequence_length,
+            sequence_length=kwargs.pop("sequence_length", 2048),
             engine_type=engine_type,
-            batch_size=batch_size,
+            batch_size=kwargs.pop("batch_size", 1),
             **kwargs,
         )
     else:

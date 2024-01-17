@@ -116,12 +116,13 @@ class TextGenerationPipeline(Pipeline):
         generation_config=None,
         benchmark: bool = False,
         middleware_manager: Optional[MiddlewareManager] = None,
-        onnx_model_name: Optional[str] = None,
         **engine_kwargs,
     ):
         """
         Pipeline for text generation tasks.
 
+        :param sequence_length: sequence length to compile model and tokenizer for.
+            This controls the maximum context length of the pipeline. Default is 1024
         :param prompt_sequence_length: For large prompts, the prompt is
             processed in chunks of this length. This is to maximize the inference
             speed. By default, this is set to 16. The length should also be 1 or a
@@ -144,8 +145,11 @@ class TextGenerationPipeline(Pipeline):
         :param middleware_manager: MiddlewareManager object to use for the pipeline.
         :param engine_kwargs: kwargs for the engine. These will be used to initialize
             the EngineOperator.
-
         """
+        # potentially pop out the onnx_model_name from engine_kwargs if it exists
+        # (necessary for due to the existence of __new__)
+        engine_kwargs.pop("onnx_model_name", None)
+
         if (prompt_sequence_length % 4 != 0) and (prompt_sequence_length != 1):
             raise ValueError(
                 f"prompt_sequence_length must be 1 or multiple of 4. "
