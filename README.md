@@ -15,6 +15,7 @@ limitations under the License.
 -->
 
 
+
 <div style="display: flex; flex-direction: column; align-items: center;">
   <h1>
     <img alt="tool icon" src="https://raw.githubusercontent.com/neuralmagic/deepsparse/main/docs/old/source/icon-deepsparse.png" />
