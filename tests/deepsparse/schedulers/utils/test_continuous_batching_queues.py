@@ -33,7 +33,6 @@ from deepsparse.schedulers.utils import (
         ([4], 5, 4),
     ],
 )
-@pytest.mark.skip("debuging")
 def test_queue_single_pop(batch_sizes, num_entries, expected_batch_size):
     queue = ContinuousBatchingQueue(batch_sizes=batch_sizes)
     assert not queue.has_batch()
@@ -48,7 +47,6 @@ def test_queue_single_pop(batch_sizes, num_entries, expected_batch_size):
     assert batch == list(range(expected_batch_size))
 
 
-@pytest.mark.skip("debuging")
 def test_queue_multi_pop():
     queue = ContinuousBatchingQueue(batch_sizes=[2, 4, 8])
 
@@ -78,7 +76,6 @@ def test_queue_multi_pop():
     assert queue.empty()
 
 
-@pytest.mark.skip("debuging")
 def test_queue_invalid_pop():
     queue = ContinuousBatchingQueue(batch_sizes=[4, 8])
     for i in range(3):
@@ -89,7 +86,6 @@ def test_queue_invalid_pop():
         queue.pop_batch()
 
 
-@pytest.mark.skip("debuging")
 def test_queues_pop_batch_max_valid_batch():
     queues = ContinuousBatchingQueues()
 
@@ -122,7 +118,6 @@ def test_queues_pop_batch_max_valid_batch():
     assert all(isinstance(item, QueueEntry) for item in second_popped_batch)
 
 
-@pytest.mark.skip("debuging")
 def test_queues_pop_batch_time_elapsed_priority():
     queues = ContinuousBatchingQueues()
 
@@ -150,7 +145,6 @@ def test_queues_pop_batch_time_elapsed_priority():
     assert len(popped_batch) == 2
 
 
-@pytest.mark.skip("debuging")
 def test_queues_pop_batch_blocking():
     queues = ContinuousBatchingQueues()
     queues.add_queue("key_1", [2])
