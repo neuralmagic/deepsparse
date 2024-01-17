@@ -292,7 +292,7 @@ class OpenAIServer(Server):
                 logprobs = (
                     create_logprobs(
                         output.token_ids["input_ids"],
-                        output.logprobs,
+                        output.scores,
                         pipeline=pipeline,
                     )
                     if request.logprobs
@@ -415,7 +415,7 @@ class OpenAIServer(Server):
             generated_outputs = []
             for prompt_generation in generations:
                 completion = CompletionOutput(
-                    logprobs=prompt_generation.score,
+                    scores=prompt_generation.score,
                     text=prompt_generation.text,
                     token_ids=tokenize(prompt_generation.text),
                     finish_reason=prompt_generation.finished_reason,
@@ -440,7 +440,7 @@ class OpenAIServer(Server):
                     prompt_token_ids=generation.input_tokens,
                     outputs=[
                         CompletionOutput(
-                            logprobs=output.score,
+                            scores=output.score,
                             text=output.text,
                             token_ids=concat_token_ids,
                             finish_reason=output.finished_reason,
@@ -451,15 +451,14 @@ class OpenAIServer(Server):
 
 
 def create_logprobs(
-    token_ids: List[int], log_probs: numpy.ndarray, pipeline: Pipeline
+    token_ids: List[int], scores: numpy.ndarray, pipeline: Pipeline
 ) -> LogProbs:
 
     logprobs = LogProbs()
     tokens = pipeline.tokenizer.batch_decode(token_ids)
 
     for i in range(len(tokens)):
-        log_prob = float(numpy.log(max(softmax(log_probs[i]))))
-
+        log_prob = float(numpy.log(max(softmax(scores[i]))))
         logprobs.tokens.append(tokens[i])
         logprobs.token_logprobs.append(log_prob)
 
@@ -549,7 +548,7 @@ async def completion_stream_generator(
             logprobs = (
                 create_logprobs(
                     output.token_ids[-1]["input_ids"],
-                    output.logprobs[0],
+                    output.scores[0],
                     pipeline=pipeline,
                 )
                 if request.logprobs
@@ -561,6 +560,7 @@ async def completion_stream_generator(
                 created_time=created_time,
                 pipeline=pipeline,
                 logprobs=logprobs,
+                finish_reason=output.finish_reason,
             )
             yield f"data: {response_json}\n\n"
     yield "data: [DONE]\n\n"
@@ -589,6 +589,7 @@ async def chat_completion_stream_generator(
                 request_id=request_id,
                 created_time=created_time,
                 pipeline=pipeline,
+                finish_reason=output.finish_reason,
             )
             yield f"data: {response_json}\n\n"
     yield "data: [DONE]\n\n"
