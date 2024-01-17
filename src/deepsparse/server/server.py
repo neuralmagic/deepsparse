@@ -143,7 +143,7 @@ class Server:
         return self._add_routes(app)
 
     def _base_routes(self) -> FastAPI:
-        app = FastAPI()
+        app = FastAPI(title="DeepSparse Server API")
         app.add_middleware(
             SystemLoggingMiddleware,
             server_logger=self.server_logger,
@@ -238,6 +238,7 @@ class Server:
         system_logging_config: SystemLoggingConfig,
         raw_request: Request,
     ):
+
         if hasattr(proxy_pipeline.pipeline, "run_async"):
             inference_state = InferenceState()
             inference_state.create_state({})

@@ -17,7 +17,7 @@ import os
 from pathlib import Path
 from typing import Any, AsyncGenerator, Callable, Dict, Generator, List, Optional, Union
 
-from deepsparse.middlewares import MiddlewareManager
+from deepsparse.middlewares import IS_NESTED_KEY, NAME_KEY, MiddlewareManager
 from deepsparse.operators import EngineOperator, Operator
 from deepsparse.pipeline_config import PipelineConfig
 from deepsparse.routers import Router
@@ -29,7 +29,7 @@ from deepsparse.schedulers import (
 from deepsparse.subgraph_execute import SubGraphExecutor
 from deepsparse.utils import InferenceState, PipelineState
 from deepsparse.utils.subgraph import SubGraph
-from deepsparse.utils.time import TimerManager
+from deepsparse.utils.time import TIMER_KEY, InferenceStages, TimerManager
 
 
 __all__ = [
@@ -82,6 +82,7 @@ class Pipeline(Operator):
         pipeline_state: Optional[PipelineState] = None,
         middleware_manager: Optional[MiddlewareManager] = None,
         timer_manager: Optional[TimerManager] = None,
+        benchmark: bool = False,
     ):
 
         self.ops = ops
@@ -96,6 +97,15 @@ class Pipeline(Operator):
 
         self._scheduler_group = SchedulerGroup(self.schedulers)
         self.subgraph_executor = SubGraphExecutor()
+        self.benchmark = benchmark
+
+    @property
+    def input_schema(self):
+        raise AttributeError("No input schema has been set for this pipeline.")
+
+    @property
+    def output_schema(self):
+        raise AttributeError("No output schema has been set for this pipeline.")
 
     @classmethod
     def create(cls, task: str, **kwargs) -> "Pipeline":
@@ -130,6 +140,7 @@ class Pipeline(Operator):
                     "provided task should be registered using the OperatorRegistry"
                 )
         except Exception:
+            _LOGGER.warning(f"Could not create v2 '{task}' pipeline, trying legacy")
             from deepsparse.legacy import Pipeline
 
             pipeline = Pipeline.create(task=task, **kwargs)
@@ -178,63 +189,73 @@ class Pipeline(Operator):
 
         next_step = self.router.START_ROUTE
         operator_output = None
+        if (
+            not hasattr(inference_state, TIMER_KEY)
+            or getattr(inference_state, TIMER_KEY) is None
+        ):
+            timer = self.timer_manager.get_new_timer()
+            inference_state.set_timer(timer)
 
-        while next_step != self.router.END_ROUTE:
-            # Check if running streaming; if that is the case, will return
-            # an AsyncGenerator. This requires the pipeline to support
-            # streaming with a generator_router set
-            if inference_state.current_state.get("streaming"):
-                return self._run_generate_async(
-                    operator_output=operator_output,
-                    inference_state=inference_state,
-                    next_step=next_step,
-                )
-
-            # Non Streaming/Generator pathway
-            if next_step == self.router.SPLIT_ROUTE:
-                if operator_output is None:
-                    raise ValueError(
-                        f"{self.router.SPLIT_ROUTE} should appear after "
-                        f"{self.ROUTER.START_ROUTE}"
-                    )
-
-                operator_output = await self._apply_split_async(
-                    operator_output, inference_state, loop=loop
-                )
-                next_step = self.router.JOIN_ROUTE
-
-            else:
-                if next_step == self.router.START_ROUTE:
-                    outputs = self.run_func(
-                        *args,
-                        func=self._scheduler_group.submit,
-                        operator=self.ops[next_step],
+        with inference_state.time(id=InferenceStages.TOTAL_INFERENCE):
+            while next_step != self.router.END_ROUTE:
+                # Check if running streaming; if that is the case, will return
+                # an AsyncGenerator. This requires the pipeline to support
+                # streaming with a generator_router set
+                if inference_state.current_state.get("streaming"):
+                    return self._run_generate_async(
+                        operator_output=operator_output,
                         inference_state=inference_state,
-                        pipeline_state=self.pipeline_state,
-                        loop=loop,
-                        **kwargs,
-                    )
-                else:
-                    outputs = self._run_next(
-                        inp=operator_output,
                         next_step=next_step,
-                        inference_state=inference_state,
-                        loop=loop,
                     )
 
-                await outputs
-                operator_output = outputs.result()
+                # Non Streaming/Generator pathway
+                if next_step == self.router.SPLIT_ROUTE:
+                    if operator_output is None:
+                        raise ValueError(
+                            f"{self.router.SPLIT_ROUTE} should appear after "
+                            f"{self.ROUTER.START_ROUTE}"
+                        )
 
-                if isinstance(operator_output, tuple):
-                    operator_output, state_update = (
-                        operator_output[0],
-                        operator_output[-1],
+                    operator_output = await self._apply_split_async(
+                        operator_output, inference_state, loop=loop
                     )
-                    inference_state.update_state(state_update)
+                    next_step = self.router.JOIN_ROUTE
 
-            next_step = self.router.next(next_step, self.ops, operator_output)
+                else:
+                    if next_step == self.router.START_ROUTE:
+                        outputs = self.run_func(
+                            *args,
+                            func=self._scheduler_group.submit,
+                            operator=self.ops[next_step],
+                            inference_state=inference_state,
+                            pipeline_state=self.pipeline_state,
+                            loop=loop,
+                            **kwargs,
+                        )
+                    else:
+                        outputs = self._run_next(
+                            inp=operator_output,
+                            next_step=next_step,
+                            inference_state=inference_state,
+                            loop=loop,
+                        )
 
-        return operator_output
+                    await outputs
+                    operator_output = outputs.result()
+
+                    if isinstance(operator_output, tuple):
+                        operator_output, state_update = (
+                            operator_output[0],
+                            operator_output[-1],
+                        )
+                        inference_state.update_state(state_update)
+
+                next_step = self.router.next(next_step, self.ops, operator_output)
+
+            rtn = operator_output
+
+        self.timer_manager.update(inference_state.timer.measurements)
+        return rtn
 
     def run(
         self,
@@ -248,6 +269,7 @@ class Pipeline(Operator):
 
         :param inference_state: inference_state for the pipeline.
         """
+
         next_step = self.router.START_ROUTE
         operator_output = None
         while next_step != self.router.END_ROUTE:
@@ -397,6 +419,7 @@ class Pipeline(Operator):
         :return: output of the pipeline operators ran with the router for the given
             input
         """
+        is_nested = True
         if kwargs.get("inference_state"):
             inference_state = kwargs.pop("inference_state")
         else:
@@ -406,16 +429,23 @@ class Pipeline(Operator):
             inference_state.create_state({})
             inference_state.set_timer(timer)
 
+            timer = self.timer_manager.get_new_timer()
+            inference_state.set_timer(timer)
+            is_nested = False
+
         kwargs["inference_state"] = inference_state
-
-        next_call = self.run
-        if self.middleware_manager is not None:
-            next_call = self.middleware_manager.build_middleware_stack(next_call)
-
-        rtn = next_call(*args, **kwargs)
+        kwargs[NAME_KEY] = InferenceStages.TOTAL_INFERENCE
+        kwargs[IS_NESTED_KEY] = is_nested
 
         # timer shared across all operators, has all measurements
         timer = inference_state.timer
+
+        next_call = self.run
+        if self.middleware_manager is not None:
+            # make next calls to be middlewares if any
+            next_call = self.middleware_manager.build_middleware_stack(next_call)
+
+        rtn = next_call(*args, **kwargs)
 
         # update all the measurments
         self.timer_manager.update(timer.measurements)
@@ -479,6 +509,13 @@ class Pipeline(Operator):
             wrapped_operator = self.middleware_manager.wrap(operator)
 
         kwargs["operator"] = wrapped_operator
+
+        if isinstance(inp, dict):
+            if NAME_KEY not in inp:
+                kwargs[NAME_KEY] = operator.__class__.__name__
+        else:
+            kwargs[NAME_KEY] = operator.__class__.__name__
+
         if inp:
             output = (
                 func(*args, **kwargs, **inp)

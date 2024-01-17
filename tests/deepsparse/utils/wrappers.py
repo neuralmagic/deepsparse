@@ -12,7 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# flake8: noqa
+import asyncio
+import inspect
 
-from .middleware import MiddlewareCallable, MiddlewareManager, MiddlewareSpec
-from .timer_middleware import *
+
+def asyncio_run(async_func):
+    def wrapper(*args, **kwargs):
+        return asyncio.run(async_func(*args, **kwargs))
+
+    wrapper.__signature__ = inspect.signature(
+        async_func
+    )  # without this, fixtures are not injected
+
+    return wrapper

@@ -15,6 +15,7 @@
 import logging
 from typing import List, Optional
 
+from deepsparse.middlewares import MiddlewareManager
 from deepsparse.operators import EngineOperator
 from deepsparse.operators.registry import OperatorRegistry
 from deepsparse.pipeline import Pipeline
@@ -92,6 +93,8 @@ class TextGenerationPipeline(Pipeline):
         force_max_tokens: bool = False,
         generation_config=None,
         continuous_batch_sizes: Optional[List[int]] = None,
+        benchmark: bool = False,
+        middleware_manager: Optional[MiddlewareManager] = None,
         **engine_kwargs,
     ):
         """
@@ -121,7 +124,6 @@ class TextGenerationPipeline(Pipeline):
             the EngineOperator.
 
         """
-
         if (prompt_sequence_length % 4 != 0) and (prompt_sequence_length != 1):
             raise ValueError(
                 f"prompt_sequence_length must be 1 or multiple of 4. "
@@ -307,7 +309,17 @@ class TextGenerationPipeline(Pipeline):
             schedulers=scheduler,
             pipeline_state=pipeline_state,
             continuous_batching_scheduler=continuous_batching_scheduler,
+            middleware_manager=middleware_manager,
+            benchmark=benchmark,
         )
+
+    @property
+    def input_schema(self):
+        return self.ops["process_input"].input_schema
+
+    @property
+    def output_schema(self):
+        return self.ops["process_outputs"].output_schema
 
     def expand_inputs(self, items, batch_size):
         items = [items.get(key) for key in items.keys()]
@@ -317,6 +329,16 @@ class TextGenerationPipeline(Pipeline):
 
     def condense_inputs(self, *args, **kwargs):
         return args[0], kwargs
+
+    @property
+    def sequence_length(self) -> int:
+        """
+        Property to return the sequence length for the pipeline.
+        (relies on the single engine operator)
+
+        :return: the sequence length for the pipeline
+        """
+        return self.ops["single_engine"].sequence_length
 
     def _get_continuous_batching_scheduler(
         self, batch_sizes: List[int], engines: List[EngineOperator]

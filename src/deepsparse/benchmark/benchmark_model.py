@@ -25,6 +25,7 @@ usage: deepsparse.benchmark [-h] [-b BATCH_SIZE] [-i INPUT_SHAPES]
                             [-pin {none,core,numa}] [-e ENGINE]
                             [--no-internal-kv-cache] [-q] [-x EXPORT_PATH]
                             [--disable-kv-cache-overrides]
+                            [--num-kv-cache-tokens NUM_KV_CACHE_TOKENS]
                             model_path
 
 Benchmark ONNX models in the DeepSparse Engine
@@ -92,6 +93,10 @@ optional arguments:
   --disable-kv-cache-overrides, --disable_kv_cache_overrides
                         If set, it will not alter the model
                         with kv cache overrides
+  --num-kv-cache-tokens NUM_KV_CACHE_TOKENS, --num_kv_cache_tokens NUM_KV_CACHE_TOKENS
+                        If using internal kv cache, sets the number of tokens to fill 
+                        the cache with. Must be between 0 and sequence_length -
+                        input_ids_length
 
 ##########
 Example on a BERT from SparseZoo:
@@ -125,6 +130,7 @@ import argparse
 import importlib
 import json
 import logging
+import os
 from typing import Dict, Optional
 
 from deepsparse import Engine, __version__
@@ -310,6 +316,16 @@ def parse_args():
         action="store_true",
         default=False,
     )
+    parser.add_argument(
+        "--num-kv-cache-tokens",
+        "--num_kv_cache_tokens",
+        type=int,
+        default=os.environ.get("NM_BENCHMARK_KV_TOKENS") or 1,
+        help=(
+            "If using internal kv cache, sets the number of tokens to fill the cache "
+            "with. Must be between 0 and sequence_length - input_ids_length"
+        ),
+    )
 
     return parser.parse_args()
 
@@ -343,11 +359,38 @@ def benchmark_model(
     input_ids_length: Optional[int] = 1,
     thread_pinning: str = "core",
     engine: str = DEEPSPARSE_ENGINE,
-    internal_kv_cache: bool = False,
+    internal_kv_cache: bool = True,
     quiet: bool = False,
     export_path: Optional[str] = None,
     disable_kv_cache_overrides: bool = False,
+    num_kv_cache_tokens: int = 1,
 ) -> Dict:
+    """
+    Benchmark a model on a given engine
+
+    :param model_path: Path or stub to the model
+    :param batch_size: Batch size, Defaults to 1.
+    :param input_shapes: Shape of the input. Defaults to "".
+    :param num_cores: Number of cores to use. Defaults to None.
+    :param scenario: The "type" of scenario to use. Defaults to "sync".
+    :param time: Total run-time to run the benchmark for. Defaults to 10.
+    :param warmup_time: Time to run the engine before running benchmarks. Defaults to 2.
+    :param num_streams: Number of streams. Defaults to None.
+    :param sequence_length: Sequence length for text-gen. Defaults to None.
+    :param input_ids_length: Length of the input ids. Defaults to 1.
+    :param thread_pinning: The hardware to pin for threading. Defaults to "core".
+    :param engine: The type of engine to use. Defaults to our proprietary
+        DEEPSPARSE_ENGINE.
+    :param internal_kv_cache: Runs the benchmark with or w/o the kv cache.
+        Defaults to True.
+    :param quiet: Verbose option if set to False. Defaults to False.
+    :param export_path: Path to save the results. Defaults to None.
+    :param disable_kv_cache_overrides: Option to override the kv cache.
+        Defaults to False.
+    :returns: Dictionary of benchmarked metrics
+
+    """
+
     if quiet:
         set_logging_level(logging.WARN)
 
@@ -402,9 +445,14 @@ def benchmark_model(
                 f"set the flag: --no-internal-kv-cache"
             )
 
+        # This environment variable sets the KV cache to a fixed number of prefilled
+        # tokens for consistent benchmarking
+        os.environ["NM_BENCHMARK_KV_TOKENS"] = str(num_kv_cache_tokens)
+
         _LOGGER.info(
             f"Benchmarking Engine: {engine} with "
-            f"{'internal' if internal_kv_cache else 'external'} KV cache management"
+            f"{'internal' if internal_kv_cache else 'external'} KV cache management "
+            f"and {num_kv_cache_tokens} tokens in the cache"
         )
     else:
         input_ids_length = None
@@ -514,6 +562,7 @@ def main():
         quiet=args.quiet,
         export_path=args.export_path,
         disable_kv_cache_overrides=args.disable_kv_cache_overrides,
+        num_kv_cache_tokens=args.num_kv_cache_tokens,
     )
 
     # Results summary
