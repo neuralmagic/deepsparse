@@ -246,7 +246,14 @@ class Server:
             pipeline_outputs = await proxy_pipeline.pipeline.run_async(
                 **await raw_request.json(), inference_state=inference_state
             )
+            """
 
+            pipeline_outputs = proxy_pipeline.pipeline.run(
+                prompt="Mario jumped", max_length=500, inference_state=inference_state
+            )
+            """
+
+        """
             if isinstance(pipeline_outputs, AsyncGenerator):
 
                 async def format_response():
@@ -271,7 +278,7 @@ class Server:
                 )
         except Exception as e:
             _LOGGER.debug(f"Logging failed, {e}")
-
+        """
         return prep_for_serialization(pipeline_outputs)
 
     @staticmethod
