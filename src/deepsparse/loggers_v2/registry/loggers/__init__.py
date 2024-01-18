@@ -15,4 +15,5 @@
 # flake8: noqa
 
 from .list_logger import ListLogger
+from .prometheus_logger import PrometheusLogger
 from .python_logger import PythonLogger
