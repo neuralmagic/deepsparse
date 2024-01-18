@@ -32,7 +32,6 @@ class FrequencyFilter:
         self, tag: str, log_type: str, func: Callable
     ) -> bool:
 
-        should_execute = False
         stub = f"{log_type}.{tag}.{func}"
         stub_frequency = f"{tag}.{func}"
         with self._lock:
@@ -44,6 +43,6 @@ class FrequencyFilter:
                 if is_match_found(key, stub_frequency):
                     frequency = value
                     self.counter[stub] = (self.counter[stub] + 1) % frequency
-                    should_execute = should_execute or (self.counter[stub] == 0)
+                    return self.counter[stub] == 0
 
-        return should_execute
+        return False
