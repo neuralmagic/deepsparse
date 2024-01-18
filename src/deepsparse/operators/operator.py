@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from abc import ABC, abstractmethod
-from typing import Any, Optional, Type
+from typing import Any, Dict, Optional, Tuple, Type, Union
 
 from pydantic import BaseModel
 
@@ -67,7 +67,7 @@ class Operator(ABC):
         *args,
         inference_state: InferenceState,
         **kwargs,
-    ) -> Any:
+    ) -> Union[Any, Tuple[Any, Dict]]:
         """
         Parses inputs to this Operator and runs the run() method of this operator
 
@@ -77,7 +77,8 @@ class Operator(ABC):
         :param pipeline_state: pipeline_state for the pipeline. The values in the state
             are created during pipeline creation and are read-only during inference.
         :param kwargs: kwargs when not initializing from an instantiated schema
-        :return: operator output
+        :return: operator output. Some operators may return a tuple, consisting of the
+            output and the state update in the form of a dictionary
         """
         if self.has_input_schema():
             if len(args) > 1:
@@ -105,8 +106,16 @@ class Operator(ABC):
                 inference_state=inference_state,
                 **kwargs,
             )
+
+        state_update = None
+        if isinstance(run_output, tuple):
+            run_output, state_update = run_output
+
         if self.has_output_schema():
-            return self.output_schema(**run_output)
+            run_output = self.output_schema(**run_output)
+
+        if state_update:
+            return run_output, state_update
         return run_output
 
     @classmethod

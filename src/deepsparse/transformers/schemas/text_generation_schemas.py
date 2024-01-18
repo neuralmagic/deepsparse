@@ -14,6 +14,7 @@
 
 import datetime
 import pathlib
+from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Callable, Dict, List, Optional, Sequence, Union
 
@@ -22,20 +23,21 @@ from transformers import GenerationConfig
 
 
 # Based off of https://huggingface.co/docs/transformers/main_classes/text_generation#transformers.GenerationConfig # noqa E501
+@dataclass
 class GenerationDefaults:
     # Parameters that control the length of the output
-    max_length = None
-    max_new_tokens = 100
+    max_length: int = field(default=None)
+    max_new_tokens: int = field(default=100)
     # Parameters that control the generation strategy used
-    do_sample = False
+    do_sample: bool = field(default=False)
     # Parameters for manipulation of the model output logits
-    temperature = 1.0
-    top_k = 50
-    top_p = 1.0
-    repetition_penalty = 1.0
+    temperature: float = field(default=1.0)
+    top_k: int = field(default=50)
+    top_p: float = field(default=1.0)
+    repetition_penalty: float = field(default=1.0)
     # Parameters that define the outputs
-    num_return_sequences = 1
-    output_scores = False
+    num_return_sequences: int = field(default=1)
+    output_scores: bool = field(default=False)
 
 
 class FinishReason(Enum):
