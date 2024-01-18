@@ -34,8 +34,8 @@ class RootLogger(FrequencyFilter):
         super().__init__()
         self.config = config
         self.leaf_logger = leaf_logger
-        self.logger = defaultdict(list)  # tag as key
-        self.func = {}  # func name: callable
+        self.logger = defaultdict(list)  # tag as key, store list of loggers
+        self.func = defaultdict(list)  # tag as key, store list of func
         self.tag = set()
         self.create()
 
@@ -47,7 +47,8 @@ class RootLogger(FrequencyFilter):
         for tag, func_args in self.config.items():
             for func_arg in func_args:
                 func = func_arg.get("func")
-                self.func[func] = import_from_registry(func)
+                self.func[tag].append((func, import_from_registry(func)))
+
                 super().add_template_to_frequency(
                     tag=tag, func=func, rate=func_arg.get("freq", 1)
                 )
@@ -62,7 +63,7 @@ class RootLogger(FrequencyFilter):
         """
         for pattern, loggers in self.logger.items():
             if is_match_found(pattern, tag):
-                for func_name, func_callable in self.func.items():
+                for func_name, func_callable in self.func[pattern]:
                     if super().should_execute_on_frequency(
                         tag=tag, log_type=log_type, func=func_name
                     ):
