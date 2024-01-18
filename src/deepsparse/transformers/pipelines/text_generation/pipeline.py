@@ -178,11 +178,7 @@ class TextGenerationPipeline(Pipeline):
             prompt_sequence_length=prompt_sequence_length,
         )
         token_generator = TokenGeneratorOperator()
-        prep_for_generation = PrepareGeneration(
-            sequence_length=sequence_length,
-            prompt_sequence_length=prompt_sequence_length,
-            token_generator=token_generator,
-        )
+
         generate_new_token = GenerateNewTokenOperator(
             tokenizer=self.tokenizer, force_max_tokens=force_max_tokens
         )
@@ -191,6 +187,12 @@ class TextGenerationPipeline(Pipeline):
         compile_generated_tokens = CompileGeneratedTokens()
         join_output = JoinOutput(tokenizer=self.tokenizer)
         process_streaming_output = ProcessStreamingOperator(tokenizer=self.tokenizer)
+        prep_for_generation = PrepareGeneration(
+            sequence_length=sequence_length,
+            prompt_sequence_length=prompt_sequence_length,
+            token_generator=token_generator,
+            process_output_operator=process_output,
+        )
 
         # TODO: do we want to support lists for different engines?
         continuous_batching_scheduler = None
