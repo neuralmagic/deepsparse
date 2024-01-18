@@ -65,7 +65,7 @@ def unravel_value_as_generator(
 
     if isinstance(value, Dict):
         for key, val in value.items():
-            new_capture = capture + f"['{key}]'"
+            new_capture = capture + f"['{key}']"
             yield from unravel_value_as_generator(val, new_capture)
 
     elif isinstance(value, numpy.ndarray):
@@ -77,12 +77,9 @@ def unravel_value_as_generator(
             yield from unravel_value_as_generator(val, new_capture)
 
     elif isinstance(value, List):
-        if len(value) == 0 or isinstance(value[0], SCALAR_TYPES_TUPLE):
-            yield (capture, value)
-        else:
-            for idx, val in enumerate(value):
-                new_capture = capture + f"[{idx}]"
-                yield from unravel_value_as_generator(val, new_capture)
+        for idx, val in enumerate(value):
+            new_capture = capture + f"[{idx}]"
+            yield from unravel_value_as_generator(val, new_capture)
 
     elif isinstance(value, Enum):
         yield (capture.lstrip("."), value.value)
