@@ -14,8 +14,8 @@
 import logging
 import pathlib
 import uuid
-from pathlib import Path
 from dataclasses import asdict
+from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 import numpy
@@ -23,7 +23,6 @@ import onnx
 from transformers import AutoTokenizer, GenerationConfig
 
 from deepsparse.transformers.schemas.text_generation_schemas import GenerationDefaults
-from deepsparse.utils.onnx import CACHE_INPUT_PREFIX, CACHE_OUTPUT_PREFIX
 from deepsparse.utils.onnx import (
     CACHE_INPUT_PREFIX,
     CACHE_OUTPUT_PREFIX,
