@@ -19,6 +19,8 @@ from enum import Enum
 from logging.handlers import RotatingFileHandler
 from typing import Any, Dict, Optional
 
+from deepsparse.loggers_v2.registry.loggers.base_logger import BaseLogger
+
 
 class LoggerType(Enum):
     STREAM = logging.StreamHandler
@@ -31,7 +33,7 @@ def create_file_if_not_exists(filename):
         open(filename, "a").close()
 
 
-class PythonLogger:
+class PythonLogger(BaseLogger):
     def __init__(
         self,
         handler: Optional[Dict] = None,

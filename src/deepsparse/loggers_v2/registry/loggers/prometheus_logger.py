@@ -22,7 +22,8 @@ import warnings
 from collections import defaultdict
 from typing import Any, Dict, Optional, Type, Union
 
-from deepsparse.loggers import BaseLogger, SystemGroups
+from deepsparse.loggers import SystemGroups
+from deepsparse.loggers_v2.registry.loggers.base_logger import BaseLogger
 
 
 try:
@@ -135,8 +136,8 @@ class PrometheusLogger(BaseLogger):
 
     def _get_prometheus_metric(
         self,
-        tag: str,  # capture
-        log_type: str,  # log_type: str
+        tag: str,
+        log_type: str,
         **kwargs,
     ) -> Optional[_PrometheusMetric]:
         saved_metric = self._prometheus_metrics.get(tag)
@@ -150,7 +151,6 @@ class PrometheusLogger(BaseLogger):
         log_type: str,
         **kwargs,
     ) -> Optional[_PrometheusMetric]:
-        # add a new metric to the registry
         prometheus_metric = get_prometheus_metric(tag, log_type, REGISTRY, **kwargs)
         self._prometheus_metrics[tag] = prometheus_metric
         return prometheus_metric
@@ -193,7 +193,7 @@ def get_prometheus_metric(
     :param registry: The Prometheus registry to which the metric should be added
     :return: The Prometheus metric object or None if the tag not supported
     """
-    # if log_type == MetricCategories.SYSTEM:
+
     if log_type == "system":
         metric = _get_metric_from_the_mapping(tag)
     else:
