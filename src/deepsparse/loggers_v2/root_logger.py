@@ -30,53 +30,101 @@ class LogType(Enum):
 
 
 class RootLogger(FrequencyFilter):
-    def __init__(self, config: Dict, leaf_logger):
+    """
+    Child class for SystemLogger, PerformanceLogger, MetricLogger
+    All class instantitated with RootLogger will have its own FrequencyFilter
+
+    :param config: config with respect to the log_type (LoggerConfig().dict().get(log_type))
+    :param leaf_logger: leaf logger singleton shared among other RootLogger
+
+    """
+
+    def __init__(self, config: Dict, leaf_logger: Dict):
         super().__init__()
         self.config = config
         self.leaf_logger = leaf_logger
-        self.logger = defaultdict(list)  # tag as key, store list of loggers
-        self.func = defaultdict(list)  # tag as key, store list of func
-        self.tag = set()
+        self.run_args = defaultdict(lambda: defaultdict(list))
         self.create()
 
     def create(self):
         """
-        Instantiate the loggers as singleton and
-            import the class/func from registry
+        Organize the config to facillate .log call. Populate self.run_args
+
+        Note:
+
+        self.run_args = {
+            tag: {                          # tag from config
+                func: [                     # func from config
+                    (freq, leaf_loggers),   # freq from config
+                    (freq, leaf_loggers),
+                    (freq, leaf_loggers),
+                ],
+                func2: [...]
+            },
+            tag2: {...}
+        }
+
         """
         for tag, func_args in self.config.items():
             for func_arg in func_args:
                 func = func_arg.get("func")
-                self.func[tag].append((func, import_from_registry(func)))
 
-                super().add_template_to_frequency(
-                    tag=tag, func=func, rate=func_arg.get("freq", 1)
-                )
+                leaf_loggers = []
                 for logger_id in func_arg.get("uses", []):
-                    self.logger[tag].append(self.leaf_logger[logger_id])
+                    leaf_loggers.append(self.leaf_logger[logger_id])
+
+                self.run_args[tag][func].append(
+                    (func_arg.get("freq", 1), leaf_loggers),
+                )
 
     def log(
         self, value: Any, log_type: str, tag: Optional[str] = None, *args, **kwargs
     ):
         """
-        Send args to its appropriate logger if the given tag is valid
+        Send args to the leaf loggers if the given tag, func, freq are accpeted. Need to
+         pass two filters to be accepted.
+
+         1. The inputted arg must be found in the config file
+         2. The number of calls to the current self.log(...) must be a multiple of
+            freq from the config file wrt tag and func
+
+        If accepted, log to leaf loggers wrt the leaf loggers that was configured with
+         tag and func
+
+        :param value: Any value to log, may be dimentionally reduced by func
+        :param log_type: String representing the root logger level
+        :param tag: Candidate id that will be used to filter out only the wanted log
+
         """
-        for pattern, loggers in self.logger.items():
-            if is_match_found(pattern, tag):
-                for func_name, func_callable in self.func[pattern]:
-                    if super().should_execute_on_frequency(
-                        tag=tag, log_type=log_type, func=func_name
-                    ):
-                        value = func_callable(value)
-                        for logger in loggers:
-                            logger.log(
-                                value=value,
-                                tag=tag,
-                                func=func_name,
-                                log_type=log_type,
-                                *args,
-                                **kwargs,
-                            )
+        for tag_from_config, tag_run_args in self.run_args.items():
+            if is_match_found(tag_from_config, tag):
+
+                # key: func_name, value: [(freq, leaf_loggers)]
+                for func_from_config, func_execute_args in tag_run_args.items():
+
+                    for execute_arg in func_execute_args:
+                        freq_from_config, leaf_loggers = execute_arg
+
+                        # increment the counter
+                        self.inc(tag_from_config, func_from_config)
+
+                        # check if the given tag.func is a multiple of the counter
+                        if self.should_execute_on_frequency(
+                            tag_from_config, func_from_config, freq_from_config
+                        ):
+                            if func_from_config is not None:
+                                func_callable = import_from_registry(func_from_config)
+                                value = func_callable(value)
+
+                            for leaf_logger in leaf_loggers:
+                                leaf_logger.log(
+                                    value=value,
+                                    tag=tag,
+                                    func=func_from_config,
+                                    log_type=log_type,
+                                    *args,
+                                    **kwargs,
+                                )
 
 
 class SystemLogger(RootLogger):
