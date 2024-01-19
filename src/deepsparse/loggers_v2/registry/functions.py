@@ -29,14 +29,14 @@ def identity(x: Any):
 
 
 def max(lst: Any):
-    return _apply_function_to_list(lst, numpy.max)
+    return _apply_function_to_iterable(lst, numpy.max)
 
 
 def average(lst: Any):
-    return _apply_function_to_list(lst, numpy.mean)
+    return _apply_function_to_iterable(lst, numpy.mean)
 
 
-def _apply_function_to_list(iterable: Iterable, func: Callable) -> Any:
+def _apply_function_to_iterable(iterable: Iterable, func: Callable) -> Any:
     """
     Apply a callable to apply to an iterable. Used for dimentionality reduction
     to output a scalar
@@ -46,8 +46,8 @@ def _apply_function_to_list(iterable: Iterable, func: Callable) -> Any:
 
     """
     if isinstance(iterable, Iterable) and len(iterable) > 0:
-        arr = numpy.array(iterable)
-        while arr.size > 1:
-            arr = func(arr)
+        if not isinstance(iterable, numpy.array):
+            arr = numpy.array(iterable)
+        arr = func(arr)
         return arr.item()
     return iterable
