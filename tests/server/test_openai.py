@@ -11,6 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import numpy
+
 import pytest
 from deepsparse import Pipeline
 from deepsparse.server.config import EndpointConfig, ServerConfig
@@ -22,6 +24,7 @@ from deepsparse.server.openai_server import (
     OpenAIServer,
 )
 from fastapi.testclient import TestClient
+from scipy.special import softmax
 
 
 @pytest.fixture(scope="module")
@@ -172,3 +175,39 @@ def test_completions(client, model_card):
         == 'a was very happy and thanked the man. He said, "Thank you, Sara. You are a '
         + 'good friend."\n\nSara smiled and'
     )
+
+
+def test_logprobs(client, model_card):
+    max_tokens = 30
+    prompt = "The Boston Bruins are "
+    request = CompletionRequest(
+        prompt=prompt,
+        max_tokens=max_tokens,
+        model=model_card.id,
+        logprobs=1,
+    )
+    response = client.post("/v1/completions", json=request.dict())
+    assert response.status_code == 200
+
+    usage = response.json()["usage"]
+    assert usage["prompt_tokens"] == 5
+    assert usage["completion_tokens"] == max_tokens
+    assert usage["total_tokens"] == usage["prompt_tokens"] + usage["completion_tokens"]
+
+    expected_response = (
+        'a was very happy and thanked the man. He said, "Thank you, '
+        'Sara. You are a good friend."\n\nSara smiled and'
+    )
+    assert response.json()["choices"][0]["text"] == expected_response
+
+    # Ensure that local pipeline produces the same text and logprobs
+    local_model = Pipeline.create(task="text-generation", model=model_card.id)
+    output = local_model(prompt=prompt, max_length=max_tokens, output_scores=True)
+    assert output.generations[0].text == expected_response
+
+    for local_gen, server_gen in zip(output.generations, response.json()["choices"]):
+        local_top1_logprobs = [
+            numpy.log(max(softmax(logits))) for logits in local_gen.score
+        ]
+        server_top1_logprobs = server_gen["logprobs"]["token_logprobs"]
+        assert numpy.allclose(local_top1_logprobs, server_top1_logprobs)
