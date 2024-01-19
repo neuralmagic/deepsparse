@@ -13,29 +13,52 @@
 # limitations under the License.
 
 import importlib
+import re
+from typing import Any, Type
 
 
-def import_from_registry(name: str):
-    registry = "src.deepsparse.loggers_v2.registry.__init__"
-    module = importlib.import_module(registry)
+LOGGER_REGISTRY = "src.deepsparse.loggers_v2.registry.__init__"
+
+
+def import_from_registry(name: str) -> Type[Any]:
+    """
+    Import `name` from the LOGGER_REGISTRY
+
+    :param name: name of the function or class name in LOGGER_REGISTRY
+    :return: Function or class object
+    """
+    module = importlib.import_module(LOGGER_REGISTRY)
     try:
         return getattr(module, name)
-    except Exception:
-        raise ValueError(f"Cannot import class/func with name '{name}' from {registry}")
+    except AttributeError:
+        raise AttributeError(
+            f"Cannot import class/func with name '{name}' from {LOGGER_REGISTRY}"
+        )
 
 
-def import_from_path(path: str):
+def import_from_path(path: str) -> Type[Any]:
+    """
+    Import the module and the name of the function/class separated by :
+
+    Examples:
+      path = "/path/to/file.py:func_name"
+      path = "/path/to/file:class_name"
+
+    :param path: path including the file path and object name
+    :return Function or class object
+
+    """
     path, class_name = path.split(":")
-    path = path.split(".py")[0]
-
     _path = path
-    path = path.replace(r"/", ".")
+
+    path = path.split(".py")[0]
+    path = re.sub(r"/+", ".", path)
     try:
         module = importlib.import_module(path)
-    except Exception:
-        raise ValueError(f"Cannot find module with path {_path}")
+    except ImportError:
+        raise ImportError(f"Cannot find module with path {_path}")
 
     try:
         return getattr(module, class_name)
-    except Exception:
-        raise ValueError(f"Cannot find {class_name} in {_path}")
+    except AttributeError:
+        raise AttributeError(f"Cannot find {class_name} in {_path}")
