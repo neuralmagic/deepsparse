@@ -237,7 +237,28 @@ class OpenAIServer(Server):
 
             request_id = f"cmpl-{random_uuid()}"
             created_time = int(time.time())
-            prompt = request.prompt
+
+            if isinstance(request.prompt, list):
+                if len(request.prompt) == 0:
+                    return create_error_response(
+                        HTTPStatus.BAD_REQUEST, "please provide at least one prompt"
+                    )
+                first_element = request.prompt[0]
+                if isinstance(first_element, int):
+                    # There is just a single tokenized prompt
+                    prompt = pipeline.tokenizer.decode(request.prompt)
+                elif isinstance(first_element, (str, list)):
+                    if len(request.prompt) > 1:
+                        return create_error_response(
+                            HTTPStatus.BAD_REQUEST,
+                            "multiple prompts in a batch is not currently supported",
+                        )
+                    if isinstance(first_element[0], int):
+                        prompt = pipeline.tokenizer.decode(first_element)
+                    else:
+                        prompt = first_element
+            else:
+                prompt = request.prompt
 
             try:
                 sampling_params = dict(
