@@ -26,9 +26,11 @@ class MockValue:
 @pytest.mark.parametrize(
     "pattern, string, truth",
     [
-        (".*", "foo", True),  # matches everything
-        (r"(?i)operator", "foo", False),
-        (r"(?i)operator", "AddOneOperator", True),
+        ("re:.*", "foo", True),  # matches everything
+        (r"re:(?i)operator", "foo", False),
+        (r"re:(?i)operator", "AddOneOperator", True),
+        ("operator", "AddOneOperator", False),
+        ("Operator", "AddOneOperator", True),
     ],
 )
 def test_is_match_found(pattern, string, truth):

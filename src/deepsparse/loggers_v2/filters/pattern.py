@@ -31,10 +31,39 @@ def is_match_found(
     pattern: str,
     string: Optional[str] = None,
 ):
+    """
+    Check if a given pattern matches a string.
+
+    - If the `pattern` starts with "re:", it treats the `pattern` as a regular
+      expression and searches for a match within the `string`.
+
+    :param pattern: (str): The pattern to match, which can be a simple string or a
+        regular expression (if it starts with "re:").
+    :param string: (str, optional): The string to test against the pattern.
+        Defaults to None.
+    :return: bool: True if a match is found, False otherwise.
+
+    Examples:
+        >>> is_match_found("apple", "apple pie")
+        True
+
+        >>> is_match_found("cherry", "apple pie")
+        False
+
+        >>> is_match_found(r"re:\d{3}-\d{2}-\d{4}", "123-45-6789") # noqa
+        True
+
+        >>> is_match_found(r"re:\d{3}-\d{2}-\d{4}", "abc-def-ghij") # noqa
+        False
+    """
     if string is not None:
-        comp = re.compile(pattern)
-        if comp.search(string) is not None:
-            return True
+        if pattern.startswith("re:"):
+            comp = re.compile(pattern[3:])
+            if comp.search(string) is not None:
+                return True
+        else:
+            if pattern in string:
+                return True
     return False
 
 
