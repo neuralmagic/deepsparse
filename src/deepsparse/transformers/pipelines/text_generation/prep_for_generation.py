@@ -106,7 +106,7 @@ class PrepareGeneration(Operator):
             output = {
                 "tokens": token_generator.tokens,
                 "kv_cache": kv_cache,
-                "in_generation": True,
+                "in_generation": False,
             }
             # TODO: maybe break this operator up since it is both generating and setting
             # up values needed for generation? Holding off on this as this will change

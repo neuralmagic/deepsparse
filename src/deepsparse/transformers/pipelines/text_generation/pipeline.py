@@ -238,7 +238,7 @@ class TextGenerationPipeline(Pipeline):
                 "compile_logits",
                 "generate_new_token",
             ],
-            "prep_for_generation": "autoregressive_preprocess",
+            "prep_for_generation": ["compile_generations", "autoregressive_preprocess"],
             "generate_new_token": "compile_generated_tokens",
         }
 
