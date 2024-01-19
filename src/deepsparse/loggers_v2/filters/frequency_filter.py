@@ -12,37 +12,41 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from collections import defaultdict
 from threading import Lock
-from typing import Any, Callable
-
-from .pattern import is_match_found
 
 
 class FrequencyFilter:
     def __init__(self):
         self._lock = Lock()
-        self.frequency = {}
-        self.counter = {}
+        self.counter = defaultdict(int)
 
-    def add_template_to_frequency(self, tag: str, func: str, rate: int = 1):
+    def inc(self, tag: str, func: str) -> None:
+        """
+        Increment the counter with respect to tag and func
+
+        :param tag: Tag fro the config file
+        :param func: Name of the func from the config file
+
+        """
+        stub = f"{tag}.{func}"
         with self._lock:
-            self.frequency[f".*{tag}.*{func}.*"] = rate
+            self.counter[stub] += 1
 
-    def should_execute_on_frequency(
-        self, tag: str, log_type: str, func: Callable
-    ) -> bool:
+    def should_execute_on_frequency(self, tag: str, func: str, freq: int) -> bool:
+        """
+        Check if the given tag, func and freq satisfies the criteria to execute.
+        If the counter with respect to tag and func is a multiple of freq, then
+        execute
 
-        stub = f"{log_type}.{tag}.{func}"
-        stub_frequency = f"{tag}.{func}"
+        :param tag: Tag fro the config file
+        :param func: Name of the func from the config file
+        :param freq: The rate to log from the config file
+
+        """
+
+        stub = f"{tag}.{func}"
         with self._lock:
-            if stub not in self.counter:
-                self.counter[stub] = 0
+            counter = self.counter[stub]
 
-            for key, value in self.frequency.items():
-
-                if is_match_found(key, stub_frequency):
-                    frequency = value
-                    self.counter[stub] = (self.counter[stub] + 1) % frequency
-                    return self.counter[stub] == 0
-
-        return False
+        return counter % freq == 0

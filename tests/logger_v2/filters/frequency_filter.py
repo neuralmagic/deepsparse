@@ -12,236 +12,118 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from collections import defaultdict
+from threading import Lock
+from typing import Any, Callable
+
 import pytest
 from deepsparse.loggers_v2.filters import FrequencyFilter
+from deepsparse.loggers_v2.filters.pattern import is_match_found
 
 
 @pytest.mark.parametrize(
-    "tag,func,rate, expected_counter",  # From config file
+    "tag, func, freq, expected_counter, iter",  # From config file
     [
-        ("(?i)operator", "max", 2, 311 // 2),
-        ("(?i)operator", "max", 3, 311 // 3),
+        ("(?i)operator", "max", 2, 6, 12),
+        ("(?i)operator", "max", 3, 4, 12),
+        ("(?i)operator", "max", 5, 2, 12),
     ],
 )
-def test_frequency_filter(tag, func, rate, expected_counter):
+def test_frequency_filter(tag, func, freq, expected_counter, iter):
     """basic filtering test by frequency"""
     freq_filter = FrequencyFilter()
-    freq_filter.add_template_to_frequency(tag, func, rate)
 
     counter = 0
-    for _ in range(311):
+    for _ in range(iter):
+        freq_filter.inc(tag, func)
+
         if freq_filter.should_execute_on_frequency(
-            tag="operator",
-            log_type="system",
+            tag=tag,
             func=func,
+            freq=freq,
         ):
             counter += 1
-
+    stub = f"{tag}.{func}"
     assert counter == expected_counter
+    assert freq_filter.counter[stub] == iter
 
 
 @pytest.mark.parametrize(
-    "freq, iter, expected_times_to_log",  # From config file
+    "tag_freq_func, iter, expected_counter_calls",  # From config file
     [
-        (
-            1,
-            1,
+        (  # unique tag, same func
+            [
+                ("tag1", 1, "func"),
+                ("tag2", 3, "func"),
+                ("tag3", 7, "func"),
+            ],
+            15,
             {
-                "AutoRegressiveOperatorPreprocess": 1,
-                "NLEngineOperator": 1,
-                "GenerateNewTokenOperator": 1,
+                "tag1.func": 15,
+                "tag2.func": 5,
+                "tag3.func": 2,
             },
         ),
-        (
-            2,
-            1,
+        (  # duplicated tag1.func
+            [
+                ("tag1", 1, "func"),
+                ("tag1", 3, "func"),
+                ("tag3", 7, "func"),
+            ],
+            15,
             {
-                "AutoRegressiveOperatorPreprocess": 1,
-                "NLEngineOperator": 1,
-                "GenerateNewTokenOperator": 1,
+                "tag1.func": 15 + 5,
+                "tag3.func": 2,
             },
         ),
-        (
-            3,
-            1,
+        (  # duplicated tag1
+            [
+                ("tag1", 3, "func"),
+                ("tag1", 3, "func2"),
+                ("tag3", 7, "func3"),
+            ],
+            15,
             {
-                "AutoRegressiveOperatorPreprocess": 0,
-                "NLEngineOperator": 1,
-                "GenerateNewTokenOperator": 1,
+                "tag1.func": 5,
+                "tag1.func2": 5,
+                "tag3.func3": 2,
             },
         ),
-        (
-            4,
-            1,
+        (  # tag, func being shared
+            [
+                ("tag1", 3, "func"),
+                ("tag1", 3, "func2"),
+                ("tag3", 7, "func"),
+                ("tag3", 5, "func3"),
+            ],
+            15,
             {
-                "AutoRegressiveOperatorPreprocess": 0,
-                "NLEngineOperator": 0,
-                "GenerateNewTokenOperator": 0,
-            },
-        ),
-        (
-            4,
-            2,
-            {
-                "AutoRegressiveOperatorPreprocess": 1,
-                "NLEngineOperator": 1,
-                "GenerateNewTokenOperator": 1,
-            },
-        ),
-        (
-            4,
-            12,
-            {
-                "AutoRegressiveOperatorPreprocess": 6,
-                "NLEngineOperator": 9,
-                "GenerateNewTokenOperator": 9,
+                "tag1.func": 5,
+                "tag1.func2": 5,
+                "tag3.func": 2,
+                "tag3.func3": 3,
             },
         ),
     ],
 )
-def test_frequency_filter_with_multiple_tags(freq, iter, expected_times_to_log):
-    """Test if the given tag should be logged
-
-    AutoRegressiveOperatorPreprocess matches with Auto, Operator, max_freq for this to log is 2
-    NLEngineOperator matches with Engine, (Token|Engine), Operator, max_freq for this to log is 3
-    GenerateNewTokenOperator matches with Token, (Token|Engine), Operator, max_freq for this to log is 3
-
-    f(log) = floor(matches x iter / freq) for each func, for each root logger
-    """
-
-    tags_from_config = [
-        "Auto",  # only one match
-        "Engine",  # only one match
-        "Token",  # only one match
-        "(Token|Engine)",  # two matches
-        "Operator",  # three matches
-    ]
+def test_frequency_filter_with_tag_freq_func_combination(
+    tag_freq_func, iter, expected_counter_calls
+):
+    """Test to check the regex number of matches with respect to the input tag"""
 
     freq_filter = FrequencyFilter()
+    counter = defaultdict(int)
 
-    for tag in tags_from_config:
-        freq_filter.add_template_to_frequency(tag, "func", freq)
+    for tag, freq, func in tag_freq_func:
+        stub = f"{tag}.{func}"
 
-    tags_to_log = {key: 0 for key in expected_times_to_log.keys()}
-    for _ in range(iter):
-        for tag_to_log in tags_to_log.keys():
+        for _ in range(iter):
+            freq_filter.inc(tag, func)
+
             if freq_filter.should_execute_on_frequency(
-                tag=tag_to_log,
-                log_type="system",
-                func="func",
+                tag=tag,
+                func=func,
+                freq=freq,
             ):
-                tags_to_log[tag_to_log] += 1
-
-    assert tags_to_log == expected_times_to_log
-
-
-@pytest.mark.parametrize(
-    "freq, iter, funcs, expected_times_to_log",  # From config file
-    [
-        (
-            1,
-            1,
-            ["foo", "bar"],
-            {
-                "AutoRegressiveOperatorPreprocess": 1,
-                "NLEngineOperator": 1,
-                "GenerateNewTokenOperator": 1,
-            },
-        ),
-        (
-            1,
-            1,
-            ["foo", "foo"],
-            {
-                "AutoRegressiveOperatorPreprocess": 2,
-                "NLEngineOperator": 2,
-                "GenerateNewTokenOperator": 2,
-            },
-        ),
-        (
-            1,
-            1,
-            ["bar", "bar"],
-            {
-                "AutoRegressiveOperatorPreprocess": 0,
-                "NLEngineOperator": 0,
-                "GenerateNewTokenOperator": 0,
-            },
-        ),
-    ],
-)
-def test_frequency_filter_with_multiple_func(freq, iter, funcs, expected_times_to_log):
-    """Test if the logs are separated by func
-
-    AutoRegressiveOperatorPreprocess matches with Auto, Operator, max_freq for this to log is 2
-    NLEngineOperator matches with Engine, (Token|Engine), Operator, max_freq for this to log is 3
-    GenerateNewTokenOperator matches with Token, (Token|Engine), Operator, max_freq for this to log is 3
-
-    f(log) = floor(matches x iter / freq) for each func, for each root logger
-    """
-
-    tags_from_config = [
-        "Auto",  # only one match
-        "Engine",  # only one match
-        "Token",  # only one match
-        "(Token|Engine)",  # two matches
-        "Operator",  # three matches
-    ]
-
-    freq_filter = FrequencyFilter()
-
-    for tag in tags_from_config:
-        freq_filter.add_template_to_frequency(tag, "foo", freq)
-
-    tags_to_log = {key: 0 for key in expected_times_to_log.keys()}
-    for _ in range(iter):
-        for tag_to_log in tags_to_log.keys():
-            for func in funcs:
-                if freq_filter.should_execute_on_frequency(
-                    tag=tag_to_log,
-                    log_type="system",
-                    func=func,
-                ):
-                    tags_to_log[tag_to_log] += 1
-    assert tags_to_log == expected_times_to_log
-
-
-def test_frequency_filter_with_multiple_log_type():
-    """Test if logs are separated by log_type
-    Call using metric, one before the log satisfies freq, call using a different log_type.
-
-    AutoRegressiveOperatorPreprocess matches with Auto, Operator, max_freq for this to log is 2
-    NLEngineOperator matches with Engine, (Token|Engine), Operator, max_freq for this to log is 3
-    GenerateNewTokenOperator matches with Token, (Token|Engine), Operator, max_freq for this to log is 3
-
-    f(log) = floor(matches x iter / freq) for each func, for each root logger
-    """
-
-    freq_filter = FrequencyFilter()
-
-    freq_filter.add_template_to_frequency("tag", "func", 2)
-
-    counter = 0
-
-    freq_filter.should_execute_on_frequency(
-        tag="tag",
-        log_type="system",
-        func="func",
-    )
-
-    if freq_filter.should_execute_on_frequency(
-        tag="tag",
-        log_type="metric",
-        func="func",
-    ):
-        counter += 1  # should not be here
-    assert counter == 0
-
-    if freq_filter.should_execute_on_frequency(
-        tag="tag",
-        log_type="system",
-        func="func",
-    ):
-        counter += 1  # this should run
-
-    assert counter == 1
+                counter[stub] += 1
+    assert counter == expected_counter_calls
