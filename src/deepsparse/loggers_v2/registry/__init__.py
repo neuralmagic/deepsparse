@@ -15,4 +15,4 @@
 # flake8: noqa
 
 from .functions import average, identity, max
-from .loggers import ListLogger, PrometheusLogger, PythonLogger
+from .loggers import PrometheusLogger, PythonLogger
