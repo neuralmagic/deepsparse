@@ -13,10 +13,14 @@
 # limitations under the License.
 
 
-from typing import Any, Dict
+from typing import TYPE_CHECKING, Any, Dict
 
 from .root_logger import LogType, MetricLogger, PerformanceLogger, SystemLogger
 from .utils import import_from_path, import_from_registry
+
+
+if TYPE_CHECKING:
+    from deepsparse.loggers_v2.registry.loggers.base_logger import BaseLogger
 
 
 ROOT_LOGGER_DICT = {
@@ -27,6 +31,15 @@ ROOT_LOGGER_DICT = {
 
 
 class LoggerFactory:
+    """
+    Factory to obtain root logger entrypoints given config file
+
+    self.leaf_logger         # dict{key=logger_id, value=instantiated logger obj}
+    self.root_logger_factory # dict{key=str, value=RootLogger}
+    self.logger              # dict{key=LOG_TYPE.enum, value=RootLogger}
+
+    """
+
     def __init__(self, config: Dict[str, Dict]):
         self.config = config
 
@@ -41,8 +54,15 @@ class LoggerFactory:
 
     def build_leaf_logger(
         self,
-    ):
-        """Build the leaf logegr singleton"""
+    ) -> None:
+        """
+        Build the leaf logegr singleton
+
+        Notes:
+         name is the uuid of the logger, ex. default for
+         PythonLogger (specified by the user)
+
+        """
         logger_config = self.config.get("logger")
         for name, init_args in logger_config.items():
             self.leaf_logger[name] = self.instantiate_logger(
@@ -50,7 +70,13 @@ class LoggerFactory:
                 init_args=init_args,
             )
 
-    def build_root_logger(self):
+    def build_root_logger(self) -> None:
+        """
+        Build the root logger factory instantiating the
+        root loggers with the leaf logger singleton and
+        its section of the config file
+
+        """
 
         for log_type, logger in ROOT_LOGGER_DICT.items():
             log_type_args = self.config.get(log_type)
@@ -60,16 +86,25 @@ class LoggerFactory:
                     leaf_logger=self.leaf_logger,
                 )
 
-    def create(self):
+    def create(self) -> None:
+        """Create the entrypoints to access the root loggers"""
+
         self.logger = {
             LogType.SYSTEM: self.root_logger_factory.get("system"),
             LogType.PERFORMANCE: self.root_logger_factory.get("performance"),
             LogType.METRIC: self.root_logger_factory.get("metric"),
         }
 
-    def instantiate_logger(self, name: str, init_args: Dict[str, Any] = {}):
+    def instantiate_logger(
+        self, name: str, init_args: Dict[str, Any] = {}
+    ) -> BaseLogger:
+        """
+        Instiate the logger from `name`, a path or the name of BaseLogger
+        in the registry. Path example: path/to/file.py:LoggerName
+
+        """
         if ":" in name:
-            # path/to/file.py:class_or_func
+            # Path example: path/to/file.py:LoggerName
             logger = import_from_path(path=name)
             return logger(**init_args)
 
