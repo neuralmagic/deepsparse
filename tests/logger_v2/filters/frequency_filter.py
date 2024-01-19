@@ -13,12 +13,9 @@
 # limitations under the License.
 
 from collections import defaultdict
-from threading import Lock
-from typing import Any, Callable
 
 import pytest
 from deepsparse.loggers_v2.filters import FrequencyFilter
-from deepsparse.loggers_v2.filters.pattern import is_match_found
 
 
 @pytest.mark.parametrize(

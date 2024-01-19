@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# flake8: noqa
 
 from .frequency_filter import FrequencyFilter
-from .pattern import is_match_found
+from .pattern import is_match_found, unravel_value_as_generator
