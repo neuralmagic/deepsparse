@@ -207,6 +207,6 @@ def test_completions_tokenized(client, model_card):
 
         assert (
             response.json()["choices"][0]["text"]
-            == 'a was very happy and thanked the man. He said, "Thank you, Sara. You are a '
-            + 'good friend."\n\nSara smiled and'
+            == 'a was very happy and thanked the man. He said, "Thank you, Sara. '
+            + 'You are a good friend."\n\nSara smiled and'
         )
