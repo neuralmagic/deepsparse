@@ -186,10 +186,12 @@ def test_completions_tokenized(client, model_card):
     # Test both passing in input_ids itself as a List[int],
     # and inside of a "batch" as a List[List[int]]
     # TODO: Multiple prompts/batching isn't supported yet
-    tokenizer = AutoTokenizer.from_pretrained(TEST_MODEL_ID.removeprefix("hf:"))
+    prefix = "hf:"
+    tokenizer = AutoTokenizer.from_pretrained(TEST_MODEL_ID[len(prefix) :])
     input_ids = tokenizer(prompt).input_ids
     num_prompt_tokens = len(input_ids)
 
+    # Testing both passing in a single prompt tokenized, and it wrapped in a list
     for prompt in [input_ids, [input_ids]]:
         request = CompletionRequest(
             prompt=prompt, max_tokens=max_tokens, model=model_card.id
