@@ -12,66 +12,65 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
+
 from unittest.mock import Mock
 
 from deepsparse.loggers_v2.root_logger import RootLogger
 
 
-class TestRootLogger(unittest.TestCase):
-    def test_log_method(self):
+def test_log_method():
 
-        mock_leaf_1 = Mock()
-        mock_leaf_1.log = Mock()
+    mock_leaf_1 = Mock()
+    mock_leaf_1.log = Mock()
 
-        mock_leaf_2 = Mock()
-        mock_leaf_2.log = Mock()
+    mock_leaf_2 = Mock()
+    mock_leaf_2.log = Mock()
 
-        mock_leaf_logger = {
-            "logger_id_1": mock_leaf_1,
-            "logger_id_2": mock_leaf_2,
-        }
+    mock_leaf_logger = {
+        "logger_id_1": mock_leaf_1,
+        "logger_id_2": mock_leaf_2,
+    }
 
-        mock_config = {
-            "tag1": [{"func": "identity", "freq": 2, "uses": ["logger_id_1"]}],
-            "tag2": [
-                {"func": "identity", "freq": 3, "uses": ["logger_id_2", "logger_id_1"]}
-            ],
-        }
+    mock_config = {
+        "tag1": [{"func": "identity", "freq": 2, "uses": ["logger_id_1"]}],
+        "tag2": [
+            {"func": "identity", "freq": 3, "uses": ["logger_id_2", "logger_id_1"]}
+        ],
+    }
 
-        root_logger = RootLogger(mock_config, mock_leaf_logger)
+    root_logger = RootLogger(mock_config, mock_leaf_logger)
 
-        root_logger.log("log_value", "log_type", "tag1")
-        assert mock_leaf_1.log.call_count == 0
+    root_logger.log("log_value", "log_type", "tag1")
+    assert mock_leaf_1.log.call_count == 0
 
-        root_logger.log("log_value", "log_type", "tag1")
-        assert mock_leaf_1.log.call_count == 1
+    root_logger.log("log_value", "log_type", "tag1")
+    assert mock_leaf_1.log.call_count == 1
 
-        mock_leaf_logger["logger_id_1"].log.assert_called_with(
-            value="log_value",
-            tag="tag1",
-            func="identity",
-            log_type="log_type",
-        )
+    mock_leaf_logger["logger_id_1"].log.assert_called_with(
+        value="log_value",
+        tag="tag1",
+        func="identity",
+        log_type="log_type",
+    )
 
-        root_logger.log("log_value", "log_type", "tag2")
-        root_logger.log("log_value", "log_type", "tag2")
-        assert mock_leaf_2.log.call_count == 0
+    root_logger.log("log_value", "log_type", "tag2")
+    root_logger.log("log_value", "log_type", "tag2")
+    assert mock_leaf_2.log.call_count == 0
 
-        root_logger.log("log_value", "log_type", "tag2")
-        assert mock_leaf_2.log.call_count == 1
-        assert mock_leaf_1.log.call_count == 2
+    root_logger.log("log_value", "log_type", "tag2")
+    assert mock_leaf_2.log.call_count == 1
+    assert mock_leaf_1.log.call_count == 2
 
-        mock_leaf_logger["logger_id_1"].log.assert_called_with(
-            value="log_value",
-            tag="tag2",
-            func="identity",
-            log_type="log_type",
-        )
+    mock_leaf_logger["logger_id_1"].log.assert_called_with(
+        value="log_value",
+        tag="tag2",
+        func="identity",
+        log_type="log_type",
+    )
 
-        mock_leaf_logger["logger_id_2"].log.assert_called_with(
-            value="log_value",
-            tag="tag2",
-            func="identity",
-            log_type="log_type",
-        )
+    mock_leaf_logger["logger_id_2"].log.assert_called_with(
+        value="log_value",
+        tag="tag2",
+        func="identity",
+        log_type="log_type",
+    )

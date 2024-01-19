@@ -18,7 +18,10 @@ from enum import Enum
 from typing import Any, Dict, Optional
 
 from deepsparse.loggers_v2.filters.frequency_filter import FrequencyFilter
-from deepsparse.loggers_v2.filters.pattern import is_match_found
+from deepsparse.loggers_v2.filters.pattern import (
+    is_match_found,
+    unravel_value_as_generator,
+)
 
 from .utils import import_from_registry
 
@@ -43,7 +46,7 @@ class RootLogger(FrequencyFilter):
         super().__init__()
         self.config = config
         self.leaf_logger = leaf_logger
-        self.run_args = defaultdict(lambda: defaultdict(list))
+        self.run_args = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
         self.create()
 
     def create(self):
@@ -53,13 +56,15 @@ class RootLogger(FrequencyFilter):
         Note:
 
         self.run_args = {
-            tag: {                          # tag from config
-                func: [                     # func from config
-                    (freq, leaf_loggers),   # freq from config
-                    (freq, leaf_loggers),
-                    (freq, leaf_loggers),
-                ],
-                func2: [...]
+            tag: {
+                func: {
+                    freq: [
+                        ([loggers], [capture]),
+                        ([loggers2], [capture2]),
+                        ...
+                    ]
+                },
+                func2: {...}
             },
             tag2: {...}
         }
@@ -73,58 +78,115 @@ class RootLogger(FrequencyFilter):
                 for logger_id in func_arg.get("uses", []):
                     leaf_loggers.append(self.leaf_logger[logger_id])
 
-                self.run_args[tag][func].append(
-                    (func_arg.get("freq", 1), leaf_loggers),
+                self.run_args[tag][func][func_arg.get("freq", 1)].append(
+                    (leaf_loggers, func_arg.get("capture"))
                 )
 
     def log(
-        self, value: Any, log_type: str, tag: Optional[str] = None, *args, **kwargs
+        self,
+        value: Any,
+        log_type: str,
+        tag: str,
+        capture: Optional[str] = None,
+        *args,
+        **kwargs,
     ):
         """
         Send args to the leaf loggers if the given tag, func, freq are accpeted. Need to
-         pass two filters to be accepted.
+         pass three filters to be accepted.
 
-         1. The inputted arg must be found in the config file
+         1. The provided tag must be a subset or regex match with the tags in the
+            root logger config file
          2. The number of calls to the current self.log(...) must be a multiple of
             freq from the config file wrt tag and func
+         3. If capture is speficied in the config file (only for metric log), it must be
+            a subset or have a regex match
 
-        If accepted, log to leaf loggers wrt the leaf loggers that was configured with
-         tag and func
+        If accepted, value=func(value) if func is provided, and pass this value to the
+        leaf loggers
 
         :param value: Any value to log, may be dimentionally reduced by func
         :param log_type: String representing the root logger level
         :param tag: Candidate id that will be used to filter out only the wanted log
+        :param capture: The property or dict key to record if match exists. If set to None
+            no capture filter will be applied even if set in config
 
         """
         for tag_from_config, tag_run_args in self.run_args.items():
             if is_match_found(tag_from_config, tag):
 
-                # key: func_name, value: [(freq, leaf_loggers)]
+                # key: func_name, value: {freq: {...}}
                 for func_from_config, func_execute_args in tag_run_args.items():
 
-                    for execute_arg in func_execute_args:
-                        freq_from_config, leaf_loggers = execute_arg
+                    # key: freq, value = [ ([loggers], [capture]), ... ]
+                    for freq_from_config, execute_args in func_execute_args.items():
 
                         # increment the counter
                         self.inc(tag_from_config, func_from_config)
 
-                        # check if the given tag.func is a multiple of the counter
-                        if self.should_execute_on_frequency(
-                            tag_from_config, func_from_config, freq_from_config
-                        ):
-                            if func_from_config is not None:
-                                func_callable = import_from_registry(func_from_config)
-                                value = func_callable(value)
+                        # execute_arg = ([loggers], [capture])
+                        for execute_arg in execute_args:
 
-                            for leaf_logger in leaf_loggers:
-                                leaf_logger.log(
-                                    value=value,
-                                    tag=tag,
-                                    func=func_from_config,
-                                    log_type=log_type,
-                                    *args,
-                                    **kwargs,
-                                )
+                            leaf_loggers, captures_from_config = execute_arg
+
+                            # check if the given tag.func is a multiple of the counter
+                            if self.should_execute_on_frequency(
+                                tag_from_config, func_from_config, freq_from_config
+                            ):
+                                # Capture filter (filter by class prop or dict key)
+                                if capture is None:
+                                    self._apply_func_and_log(
+                                        value=value,
+                                        tag=tag,
+                                        log_type=log_type,
+                                        func_from_config=func_from_config,
+                                        leaf_loggers=leaf_loggers,
+                                        *args,
+                                        **kwargs,
+                                    )
+
+                                else:
+                                    for capture_from_config in captures_from_config:
+                                        if is_match_found(capture_from_config, capture):
+                                            for (
+                                                captured,
+                                                value,
+                                            ) in unravel_value_as_generator(value):
+
+                                                self._apply_func_and_log(
+                                                    value=value,
+                                                    tag=tag,
+                                                    log_type=log_type,
+                                                    func_from_config=func_from_config,
+                                                    leaf_loggers=leaf_loggers,
+                                                    capture=captured,
+                                                    *args,
+                                                    **kwargs,
+                                                )
+
+    def _apply_func_and_log(
+        self,
+        value: Any,
+        log_type: str,
+        tag: str,
+        func_from_config: str,
+        leaf_loggers: list,
+        *args,
+        **kwargs,
+    ):
+        if func_from_config is not None:
+            func_callable = import_from_registry(func_from_config)
+            value = func_callable(value)
+
+        for leaf_logger in leaf_loggers:
+            leaf_logger.log(
+                value=value,
+                tag=tag,
+                func=func_from_config,
+                log_type=log_type,
+                *args,
+                **kwargs,
+            )
 
 
 class SystemLogger(RootLogger):
@@ -159,17 +221,7 @@ class MetricLogger(RootLogger):
     LOG_TYPE = "metric"
 
     def __init__(self, config: Dict, leaf_logger):
-        self.capture = set()
         super().__init__(config, leaf_logger)
 
-    def create(self):
-        super().create()
-        for func_args in self.config.values():
-            for func_arg in func_args:
-                for capture in func_arg["capture"]:
-                    self.capture.add(capture)
-
-    def log(self, capture: str, *args, **kwargs):
-        for pattern in self.capture:
-            if is_match_found(pattern, capture):
-                super().log(log_type=self.LOG_TYPE, capture=capture, *args, **kwargs)
+    def log(self, *args, **kwargs):
+        super().log(log_type=self.LOG_TYPE, *args, **kwargs)
