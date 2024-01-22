@@ -40,6 +40,7 @@ class ParseTextGenerationInputs(Operator):
             these kwargs will be used to instantiate one
         :return: parsed TextGenerationInput object
         """
+
         if "sequences" in kwargs and "prompt" not in kwargs:
             # support prompt and sequences interchangeably
             kwargs["prompt"] = kwargs["sequences"]
