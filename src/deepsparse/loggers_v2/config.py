@@ -12,71 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
-# class LogLevelEnum(str, Enum):
-#     DEBUG = "DEBUG"
-#     INFO = "INFO"
-#     WARNING = "WARNING"
-#     ERROR = "ERRPR"
-#     CRITICAL = "CRITICAL"
-
-
-# class StreamLoggingConfig(BaseModel):
-#     level: str = Field(default="INFO", description="Logger level")
-#     formatter: str = Field(
-#         default="%(asctime)s - %(levelname)s - %(message)s",
-#         description="Log display format",
-#     )
-
-
-# class FileLoggingConfig(StreamLoggingConfig):
-#     filename: str = Field(
-#         default="/tmp/pipeline.log", description="Path to save the logs"
-#     )
-
-
-# class RotatingLoggingConfig(StreamLoggingConfig):
-#     filename: str = Field(
-#         default="/tmp/pipeline_rotate.log", description="Path to save the logs"
-#     )
-#     max_bytes: int = Field(default=2048, description="Max size till rotation")
-#     backup_count: int = Field(default=3, description="Number of backups")
-
-
-# class PythonLoggingConfig(BaseModel):
-#     level: str = Field(default="INFO", description="Root logger level")
-#     stream: StreamLoggingConfig = Field(
-#         default=StreamLoggingConfig(), description="Stream logging config"
-#     )
-#     file: FileLoggingConfig = Field(
-#         default=FileLoggingConfig(), description="File logging config"
-#     )
-#     rotating: RotatingLoggingConfig = Field(
-#         default=RotatingLoggingConfig(), description="Rotating logging config"
-#     )
-
-
-# class CustomLoggingConfig(BaseModel):
-#     frequency: int = Field(
-#         default=1, description="The rate to log. Log every N occurances"
-#     )
-#     use: str = Field(
-#         description=(
-#             "List of loggers to use. Should be in the format",
-#             "path/to/file.py:ClassName",
-#         ),
-#     )
-
-#     class Config:
-#         extra = Extra.allow  # Allow extra kwargs
-
-
-# class PrometheusLoggingConfig(BaseModel):
-#     use: str = Field(default="path", description="Prometheus Logging path")
-#     port: int
-#     filename: str
-
-
 from typing import Dict, List, Optional
 
 import yaml
@@ -128,11 +63,6 @@ class MetricTargetConfig(TargetConfig):
 
 class LoggingConfig(BaseModel):
 
-    version: int = Field(
-        default=2,
-        description="Pipeline logger version",
-    )
-
     loggers: Dict[str, LoggerConfig] = Field(
         default=dict(default=LoggerConfig()),
         description="Loggers to be Used",
@@ -175,7 +105,7 @@ class LoggingConfig(BaseModel):
 
     @classmethod
     def from_config(cls, config: Optional[str] = None):
-        # """Helper to load from file or string"""
+        """Helper to load from file or string"""
         if config:
             if config.endswith(".yaml"):
                 return cls.from_yaml(config)

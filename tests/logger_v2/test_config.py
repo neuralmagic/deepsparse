@@ -21,7 +21,6 @@ def test_config_generates_default_json():
     """Check the default LoggingConfig"""
 
     expected_config = """
-    version: 2
     loggers:
       default:
         name: PythonLogger
