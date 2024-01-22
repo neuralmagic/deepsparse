@@ -40,9 +40,13 @@ from deepsparse.transformers.pipelines.text_generation import (
     ProcessStreamingOperator,
     TokenGeneratorOperator,
 )
+from deepsparse.transformers.pipelines.text_generation.pipeline_no_kv_cache import (
+    TextGenerationPipelineNoCache,
+)
 from deepsparse.transformers.utils.helpers import (
     causal_mask_input_present,
     process_generation_config,
+    verify_kv_cache_present,
 )
 from deepsparse.utils import PipelineState, split_engine_inputs
 
@@ -52,15 +56,64 @@ _LOGGER = logging.getLogger(__name__)
 
 @OperatorRegistry.register(name=["text_generation", "opt", "mpt", "llama"])
 class TextGenerationPipeline(Pipeline):
+    DEFAULT_SEQUENCE_LENGTH = 1024
+
+    def __new__(
+        cls,
+        model_path: str,
+        sequence_length: int = DEFAULT_SEQUENCE_LENGTH,
+        onnx_model_name: Optional[str] = None,
+        **kwargs,
+    ):
+        """
+        Dynamically decide which pipeline (with KV Cache support or without)
+        to initialize based on the model_path
+        (check whether it has a KV Cache inputs/outputs or not)
+
+        :param model_path: path to the model to use for text generation.
+        :param sequence_length: sequence length to compile model and tokenizer for.
+            This controls the maximum context length of the pipeline. Default is 1024
+        :param onnx_model_name: name of the onnx model to use for text generation.
+            This is only used if the model_path is a directory. If None, defaults to
+            model.onnx
+        """
+        model_path, config, tokenizer = setup_transformers_pipeline(
+            model_path=model_path,
+            sequence_length=sequence_length,
+            onnx_model_name=onnx_model_name,
+        )
+
+        if not verify_kv_cache_present(model_path):
+            _LOGGER.info(
+                "Initializing TextGenerationPipeline without KV Cache support. "
+                "Some of the input parameters will be ignored."
+            )
+            tokenizer.padding_side = "right"
+            return TextGenerationPipelineNoCache(
+                model_path=model_path,
+                config=config,
+                tokenizer=tokenizer,
+                sequence_length=sequence_length,
+                **kwargs,
+            )
+
+        # because we route variables to the object that implements
+        # __new__, instead of passing newly created variables through
+        # __init__, we need to store the variables in the class
+        cls.model_path = model_path
+        cls.config = config
+        cls.tokenizer = tokenizer
+
+        return super().__new__(cls)
+
     def __init__(
         self,
-        model_path: str,
+        sequence_length: int = DEFAULT_SEQUENCE_LENGTH,
         prompt_sequence_length: int = 16,
-        sequence_length: int = 1024,
         internal_kv_cache: bool = True,
         force_max_tokens: bool = False,
-        generation_config=None,
         continuous_batch_sizes: Optional[List[int]] = None,
+        generation_config=None,
         benchmark: bool = False,
         middleware_manager: Optional[MiddlewareManager] = None,
         **engine_kwargs,
@@ -68,7 +121,6 @@ class TextGenerationPipeline(Pipeline):
         """
         Pipeline for text generation tasks.
 
-        :param model_path: path to the model to use for text generation.
         :param sequence_length: sequence length to compile model and tokenizer for.
             This controls the maximum context length of the pipeline. Default is 1024
         :param prompt_sequence_length: For large prompts, the prompt is
@@ -88,25 +140,21 @@ class TextGenerationPipeline(Pipeline):
             top_k, repetition_penalty, do_sample, temperature. If None is provided,
             deepsparse defaults will be used. For all other input types, HuggingFace
             defaults for GenerationConfig will be used.
+        :param benchmark: if True, the pipeline will print out the time taken for each
+            operator.
+        :param middleware_manager: MiddlewareManager object to use for the pipeline.
         :param engine_kwargs: kwargs for the engine. These will be used to initialize
             the EngineOperator.
-
         """
+        # potentially pop out the onnx_model_name from engine_kwargs if it exists
+        # (necessary for due to the existence of __new__)
+        engine_kwargs.pop("onnx_model_name", None)
+
         if (prompt_sequence_length % 4 != 0) and (prompt_sequence_length != 1):
             raise ValueError(
                 f"prompt_sequence_length must be 1 or multiple of 4. "
                 f"prompt_sequence_length is {prompt_sequence_length}"
             )
-
-        # Note: this will add the model_path to the eninge_kwargs
-        (
-            self.model_path,
-            self.config,
-            self.tokenizer,
-            engine_kwargs,
-        ) = setup_transformers_pipeline(
-            model_path, sequence_length, engine_kwargs=engine_kwargs
-        )
 
         causal_mask_present = causal_mask_input_present(self.model_path)
         if not causal_mask_present:
