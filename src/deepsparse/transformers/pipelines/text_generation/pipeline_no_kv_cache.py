@@ -102,7 +102,7 @@ class TextGenerationPipelineNoCache(Pipeline):
         # TODO: Using the GraphRouter, but should use
         # LinearRouter with appropriate split/join support
         router = GraphRouter(
-            end_route="STOP", start_route="process_input", route=routes
+            end_route="STOP", start_route="parse_inputs", route=routes
         )
         scheduler = [OperatorScheduler()]
         super().__init__(
