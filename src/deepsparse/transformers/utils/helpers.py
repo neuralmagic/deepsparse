@@ -14,13 +14,20 @@
 import logging
 import pathlib
 import uuid
+from dataclasses import asdict
+from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 import numpy
 import onnx
 from transformers import AutoTokenizer, GenerationConfig
 
-from deepsparse.utils.onnx import CACHE_INPUT_PREFIX, CACHE_OUTPUT_PREFIX
+from deepsparse.transformers.schemas.text_generation_schemas import GenerationDefaults
+from deepsparse.utils.onnx import (
+    CACHE_INPUT_PREFIX,
+    CACHE_OUTPUT_PREFIX,
+    default_cached_outputs,
+)
 
 
 __all__ = [
@@ -37,9 +44,25 @@ __all__ = [
     "compute_engine_inputs",
     "set_generated_length",
     "causal_mask_input_present",
+    "verify_kv_cache_present",
 ]
 
 _LOGGER = logging.getLogger(__name__)
+
+
+def verify_kv_cache_present(model_path: Union[str, Path]) -> bool:
+    """
+    Verifies whether the ONNX model has
+    KV cache inputs/outputs present.
+    :return: True if compatible, False otherwise
+    """
+    is_kv_cache_present = any(default_cached_outputs(model_path))
+    if not is_kv_cache_present:
+        _LOGGER.debug(
+            f"The model: {model_path} has KV cache inputs/outputs present. "
+            "Please use the TextGenerationPipeline instead."
+        )
+    return is_kv_cache_present
 
 
 def causal_mask_input_present(model_path: str) -> bool:
