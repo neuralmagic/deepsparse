@@ -44,6 +44,10 @@ def _apply_function_to_iterable(iterable: Iterable, func: Callable) -> Any:
     :param iterable: An iterable
     :param func: the functiont to apply to the iterable to return a scalae
 
+    Example:
+        # Apply numpy.mean to an iterable 
+         _apply_function_to_iterable(iterable, numpy.mean)
+
     """
     if isinstance(iterable, Iterable) and len(iterable) > 0:
         if not isinstance(iterable, numpy.array):
