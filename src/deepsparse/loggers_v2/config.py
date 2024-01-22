@@ -13,6 +13,70 @@
 # limitations under the License.
 
 
+# class LogLevelEnum(str, Enum):
+#     DEBUG = "DEBUG"
+#     INFO = "INFO"
+#     WARNING = "WARNING"
+#     ERROR = "ERRPR"
+#     CRITICAL = "CRITICAL"
+
+
+# class StreamLoggingConfig(BaseModel):
+#     level: str = Field(default="INFO", description="Logger level")
+#     formatter: str = Field(
+#         default="%(asctime)s - %(levelname)s - %(message)s",
+#         description="Log display format",
+#     )
+
+
+# class FileLoggingConfig(StreamLoggingConfig):
+#     filename: str = Field(
+#         default="/tmp/pipeline.log", description="Path to save the logs"
+#     )
+
+
+# class RotatingLoggingConfig(StreamLoggingConfig):
+#     filename: str = Field(
+#         default="/tmp/pipeline_rotate.log", description="Path to save the logs"
+#     )
+#     max_bytes: int = Field(default=2048, description="Max size till rotation")
+#     backup_count: int = Field(default=3, description="Number of backups")
+
+
+# class PythonLoggingConfig(BaseModel):
+#     level: str = Field(default="INFO", description="Root logger level")
+#     stream: StreamLoggingConfig = Field(
+#         default=StreamLoggingConfig(), description="Stream logging config"
+#     )
+#     file: FileLoggingConfig = Field(
+#         default=FileLoggingConfig(), description="File logging config"
+#     )
+#     rotating: RotatingLoggingConfig = Field(
+#         default=RotatingLoggingConfig(), description="Rotating logging config"
+#     )
+
+
+# class CustomLoggingConfig(BaseModel):
+#     frequency: int = Field(
+#         default=1, description="The rate to log. Log every N occurances"
+#     )
+#     use: str = Field(
+#         description=(
+#             "List of loggers to use. Should be in the format",
+#             "path/to/file.py:ClassName",
+#         ),
+#     )
+
+#     class Config:
+#         extra = Extra.allow  # Allow extra kwargs
+
+
+# class PrometheusLoggingConfig(BaseModel):
+#     use: str = Field(default="path", description="Prometheus Logging path")
+#     port: int
+#     filename: str
+
+
 from typing import Dict, List, Optional
 
 import yaml
@@ -53,8 +117,8 @@ class TargetConfig(BaseModel):
 
 
 class MetricTargetConfig(TargetConfig):
-    capture: List[str] = Field(
-        [".*"],
+    capture: Optional[List[str]] = Field(
+        None,
         description=(
             "Key of the output dict. Corresponding value will be logged. "
             "The value can be a regex pattern"
@@ -69,7 +133,7 @@ class LoggingConfig(BaseModel):
         description="Pipeline logger version",
     )
 
-    logger: Dict[str, LoggerConfig] = Field(
+    loggers: Dict[str, LoggerConfig] = Field(
         default=dict(default=LoggerConfig()),
         description="Loggers to be Used",
     )
@@ -89,7 +153,7 @@ class LoggingConfig(BaseModel):
         description="Metric level config",
     )
 
-    @validator("logger", always=True)
+    @validator("loggers", always=True)
     def always_include_python_logger(cls, value):
         if "default" not in value:
             value["default"] = LoggerConfig()

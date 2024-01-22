@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import json
-
 import yaml
 
 from deepsparse.loggers_v2.config import LoggerConfig, LoggingConfig
@@ -24,33 +22,34 @@ def test_config_generates_default_json():
 
     expected_config = """
     version: 2
-    logger:
+    loggers:
       default:
         name: PythonLogger
-        handler: null
+        handler: null # None in python
     system:
       ".*":
-        - func: identity
-          freq: 1
-          uses:
-            - default
+      - func: identity
+        freq: 1
+        uses:
+        - default
     performance:
       cpu:
-        - func: identity
-          freq: 1
-          uses:
-            - default
+      - func: identity
+        freq: 1
+        uses:
+        - default
     metric:
       "(?i)operator":
-        - func: identity
-          freq: 1
-          uses:
-            - default
-          capture:
-            - .*
+      - func: identity
+        freq: 1
+        uses:
+        - default
+        capture: null
+
     """
     expected_dict = yaml.safe_load(expected_config)
     default_dict = LoggingConfig().dict()
+    breakpoint()
     assert expected_dict == default_dict
 
 
@@ -59,7 +58,7 @@ def test_logger_config_accepts_kwargs():
     name: PythonLogger
     foo: 1
     bar: "2024"
-    baz: 
+    baz:
       one: 1
       two: 2
     boston:
