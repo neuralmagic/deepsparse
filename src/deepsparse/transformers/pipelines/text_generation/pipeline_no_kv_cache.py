@@ -11,14 +11,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import logging
-from typing import Dict, Optional
+
+from transformers import AutoConfig, AutoTokenizer
 
 from deepsparse.pipeline import Pipeline
 from deepsparse.routers import GraphRouter
 from deepsparse.schedulers import OperatorScheduler
-from deepsparse.transformers.helpers import setup_transformers_pipeline
 from deepsparse.transformers.pipelines.text_generation import (
     CompileGenerations,
     GenerateNewTokenOperator,
@@ -32,7 +31,6 @@ from deepsparse.transformers.pipelines.text_generation import (
 )
 from deepsparse.transformers.utils.helpers import process_generation_config
 from deepsparse.utils import split_engine_inputs
-from deepsparse.utils.onnx import default_cached_outputs
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -42,26 +40,16 @@ class TextGenerationPipelineNoCache(Pipeline):
     def __init__(
         self,
         model_path: str,
-        sequence_length: int = 1024,
-        onnx_model_name: Optional[str] = None,
+        config: AutoConfig,
+        tokenizer: AutoTokenizer,
+        sequence_length: int,
         generation_config=None,
-        engine_kwargs: Optional[Dict] = None,
-        **kwargs,
+        **engine_kwargs,
     ):
-
-        (
-            self.model_path,
-            self.config,
-            self.tokenizer,
-            engine_kwargs,
-        ) = setup_transformers_pipeline(
-            model_path,
-            sequence_length,
-            tokenizer_padding_side="right",
-            onnx_model_name=onnx_model_name,
-            engine_kwargs=engine_kwargs,
-        )
-        self.verify_no_kv_cache_present()
+        self.model_path = model_path
+        self.config = config
+        self.tokenizer = tokenizer
+        engine_kwargs["model_path"] = model_path
 
         token_generator = TokenGeneratorOperator()
 
@@ -137,17 +125,3 @@ class TextGenerationPipelineNoCache(Pipeline):
         out, orig_batch_size = split_engine_inputs(items, batch_size)
         combined_batches = [{"input_ids": b[0], "attention_mask": b[1]} for b in out]
         return combined_batches, orig_batch_size
-
-    def verify_no_kv_cache_present(self) -> bool:
-        """
-        Verifies that the ONNX model does not have
-        KV cache inputs/outputs present.
-        :return: True if compatible, False otherwise
-        """
-        is_kv_cache_present = any(default_cached_outputs(self.model_path))
-        if is_kv_cache_present:
-            raise ValueError(
-                f"The model: {self.model_path} has KV cache inputs/outputs present. "
-                "Please use the TextGenerationPipeline instead."
-            )
-        return not is_kv_cache_present
