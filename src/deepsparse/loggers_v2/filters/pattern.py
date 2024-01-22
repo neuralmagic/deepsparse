@@ -62,7 +62,7 @@ def is_match_found(
             if comp.search(string) is not None:
                 return True
         else:
-            if pattern in string:
+            if pattern is string:
                 return True
     return False
 

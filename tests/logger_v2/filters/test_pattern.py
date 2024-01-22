@@ -30,7 +30,9 @@ class MockValue:
         (r"re:(?i)operator", "foo", False),
         (r"re:(?i)operator", "AddOneOperator", True),
         ("operator", "AddOneOperator", False),
-        ("Operator", "AddOneOperator", True),
+        ("Operator", "AddOneOperator", False),
+        ("AddOneOperator", "AddOneOperator", True),
+        
     ],
 )
 def test_is_match_found(pattern, string, truth):
