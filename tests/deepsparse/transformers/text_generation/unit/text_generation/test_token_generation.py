@@ -51,7 +51,9 @@ def test_prep_for_generation(
     assert prep_for_generation.can_operate(inputs)
 
     prompt_logits = [numpy.random.rand(1, len(mock_tokens_multiple), len(tokenizer))]
-    mock_inference_state.update_state({"prompt_logits": prompt_logits})
+    mock_inference_state.update_state(
+        {"prompt_logits": prompt_logits, "max_tokens": 10}
+    )
     outputs, state = prep_for_generation.run(
         tokens=mock_tokens_multiple,
         kv_cache=mock_kv_cache_three_tokens_processed,

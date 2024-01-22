@@ -12,11 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import copy
-from typing import Any
+from typing import Any, Optional
 
 import numpy
 
 from deepsparse.operators import Operator
+from deepsparse.subgraph_execute import StreamingOutput
 from deepsparse.transformers.pipelines.text_generation import TokenGeneratorOperator
 from deepsparse.transformers.schemas.text_generation_schemas import (
     FinishReason,
@@ -35,10 +36,14 @@ class PrepareGeneration(Operator):
         token_generator: TokenGeneratorOperator,
         prompt_sequence_length: int,
         sequence_length: int,
+        process_output_operator: Optional[Operator] = None,
     ):
         self.sequence_length = sequence_length
         self.token_generator_creator = token_generator
         self.prompt_sequence_length = prompt_sequence_length
+        # Needed for streaming as currently both setting up generation and generating
+        # Will split this up soon
+        self.process_output_operator = process_output_operator
 
     def can_operate(self, inp: Any):
         kv_cache = inp.get("kv_cache")
@@ -84,6 +89,7 @@ class PrepareGeneration(Operator):
             prompt_sequence_length=self.prompt_sequence_length,
             finish_reason_choices=FinishReason,
         )
+
         state_update = {
             "max_tokens": max_tokens,
             "length_finish_reason": length_finish_reason,
@@ -102,4 +108,28 @@ class PrepareGeneration(Operator):
                 "kv_cache": kv_cache,
                 "in_generation": True,
             }
+            # TODO: maybe break this operator up since it is both generating and setting
+            # up values needed for generation? Holding off on this as this will change
+            # routes slighty and want to confirm wont break anything for non-kv cache
+            if inference_state.current_state.get("streaming") and max_tokens >= 1:
+                finished_reason = [length_finish_reason] if max_tokens == 1 else [None]
+
+                if self.process_output_operator is None:
+                    raise ValueError(
+                        "An operator must be provided to process outputs"
+                        "while streaming."
+                    )
+                data_to_yield = self.process_output_operator.run(
+                    generated_tokens=state_update.get("generated_tokens"),
+                    finished_reason=finished_reason,
+                    inference_state=inference_state,
+                    generated_logits=prompt_logits[0, -1, :],
+                )
+                output = StreamingOutput(
+                    data_to_yield=self.process_output_operator.output_schema(
+                        **data_to_yield
+                    ),
+                    data_to_return=output,
+                )
+
         return output, state_update
