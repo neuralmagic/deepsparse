@@ -15,7 +15,7 @@
 
 from collections import defaultdict
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 from deepsparse.loggers_v2.filters.frequency_filter import FrequencyFilter
 from deepsparse.loggers_v2.filters.pattern import (
@@ -35,10 +35,11 @@ class LogType(Enum):
 class RootLogger(FrequencyFilter):
     """
     Child class for SystemLogger, PerformanceLogger, MetricLogger
-    All class instantitated with RootLogger will have its own FrequencyFilter
+    All class instantitated with RootLogger will have
+    its own FrequencyFilter
 
-    :param config: config with respect to the
-     log_type (LoggerConfig().dict().get(log_type))
+    :param config: config with respect to
+     the log_type (LoggerConfig().dict().get(log_type))
     :param leaf_logger: leaf logger singleton shared among other RootLogger
 
     """
@@ -88,7 +89,6 @@ class RootLogger(FrequencyFilter):
         value: Any,
         log_type: str,
         tag: str,
-        capture: Optional[str] = None,
         *args,
         **kwargs,
     ):
@@ -96,8 +96,8 @@ class RootLogger(FrequencyFilter):
         Send args to the leaf loggers if the given tag, func, freq are accpeted. Need to
          pass three filters to be accepted.
 
-         1. Tag filter: the provided tag must be a subset or regex match with the tags
-            in theroot logger config file
+         1. Tag filter: the provided tag must be a subset or regex match with the
+            tags in the root logger config file
          2. The number of calls to the current self.log(...) must be a multiple of
             freq from the config file wrt tag and func
          3. If capture is speficied in the config file (only for metric log), it must be
@@ -118,7 +118,6 @@ class RootLogger(FrequencyFilter):
                 tag=tag,
                 value=value,
                 log_type=log_type,
-                capture=capture,
                 tag_from_config=tag_from_config,
                 tag_run_args=tag_run_args,
                 *args,
@@ -150,8 +149,8 @@ class RootLogger(FrequencyFilter):
         **kwargs,
     ):
         """
-        Increment the counter with respect to the matching tag and func from the
-         config file, and then unwrap func_execute_args.
+        Increment the counter with respect to the matching tag and func from
+        the config file, and then unwrap func_execute_args.
 
         Args:
         :param func_execute_args: defaultdict with frequency as key and tuple of
@@ -196,7 +195,6 @@ class RootLogger(FrequencyFilter):
         func_from_config: str,
         freq_from_config: int,
         captures_from_config: List[str],
-        capture: str,
         value: Any,
         *args,
         **kwargs,
@@ -221,7 +219,7 @@ class RootLogger(FrequencyFilter):
             tag_from_config, func_from_config, freq_from_config
         ):
             # Capture filter (filter by class prop or dict key)
-            if capture is None:
+            if captures_from_config is None or len(captures_from_config) == 0:
                 self._apply_func_and_log(
                     value=value,
                     func_from_config=func_from_config,
@@ -231,16 +229,20 @@ class RootLogger(FrequencyFilter):
 
             else:
                 for capture_from_config in captures_from_config:
-                    if is_match_found(capture_from_config, capture):
-                        for (
-                            captured,
-                            value,
-                        ) in unravel_value_as_generator(value):
-
+                    for (
+                        capture,
+                        value,
+                    ) in unravel_value_as_generator(value):
+                        # capture match cannot be exact match, bc value might be from
+                        # a dict of a dict,
+                        # so value["key1"]["key2"], -> capture=["key1"]["key2"]
+                        if capture_from_config in capture or is_match_found(
+                            capture_from_config, capture
+                        ):
                             self._apply_func_and_log(
                                 value=value,
                                 func_from_config=func_from_config,
-                                capture=captured,
+                                capture=capture,
                                 *args,
                                 **kwargs,
                             )
