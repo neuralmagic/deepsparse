@@ -14,12 +14,14 @@
 import logging
 import pathlib
 import uuid
+from dataclasses import asdict
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 import numpy
 import onnx
 from transformers import AutoTokenizer, GenerationConfig
 
+from deepsparse.transformers.schemas.text_generation_schemas import GenerationDefaults
 from deepsparse.utils.onnx import CACHE_INPUT_PREFIX, CACHE_OUTPUT_PREFIX
 
 
@@ -325,8 +327,18 @@ def process_generation_config(
     if not generation_config:
         return None
 
+    # Create a generation config object
+    deepsparse_defaults = GenerationDefaults()
+    # override with deepsparse defaults
+    deepsparse_default_gen_config = GenerationConfig.from_dict(
+        asdict(deepsparse_defaults)
+    )
+
+    # Override with any defaults provided by the user in the form of a dictionary
     if isinstance(generation_config, dict):
-        return GenerationConfig.from_dict(generation_config)
+        for k, v in generation_config.items():
+            setattr(deepsparse_default_gen_config, k, v)
+        return deepsparse_default_gen_config
 
     if isinstance(generation_config, (str, pathlib.Path)):
         generation_config = pathlib.Path(generation_config)
