@@ -32,4 +32,4 @@ def try_import_lm_evaluation_harness(raise_error=False):
 
 if try_import_lm_evaluation_harness(raise_error=False):
     from .lm_evaluation_harness import *
-from .perplexity import integration_eval
+from .perplexity import *
