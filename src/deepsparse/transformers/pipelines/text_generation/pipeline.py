@@ -54,7 +54,7 @@ from deepsparse.utils import PipelineState, split_engine_inputs
 _LOGGER = logging.getLogger(__name__)
 
 
-@OperatorRegistry.register(name=["text_generation", "opt", "mpt", "llama"])
+@OperatorRegistry.register(name="text_generation", alias=["opt", "mpt", "llama"])
 class TextGenerationPipeline(Pipeline):
     DEFAULT_SEQUENCE_LENGTH = 1024
 
