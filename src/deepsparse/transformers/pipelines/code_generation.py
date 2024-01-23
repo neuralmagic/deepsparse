@@ -20,7 +20,7 @@ from deepsparse.transformers.pipelines.text_generation import TextGenerationPipe
 __all__ = ["CodeGenerationPipeline"]
 
 
-@OperatorRegistry.register(name=["code_generation", "code_gen", "codegen"])
+@OperatorRegistry.register(name="code_generation", alias=["code_gen", "codegen"])
 class CodeGenerationPipeline(TextGenerationPipeline):
     """
     Subclass of text generation pipeline to support any defaults or
