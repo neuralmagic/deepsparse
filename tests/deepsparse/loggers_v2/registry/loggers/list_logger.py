@@ -29,9 +29,7 @@ class ListLogger:
         **kwargs,
     ):
         placeholders = f"[{log_type}.{tag}.{str(func)}]"
-        if (run_time := kwargs.get("run_time")) is not None:
-            placeholders += f"[⏱️{run_time}]"
         if (capture := kwargs.get("capture")) is not None:
-            placeholders += f" {func}({capture})"
+            placeholders = f" {func}({tag}{capture})"
 
         self.logs.append(f"{placeholders}: {value}")
