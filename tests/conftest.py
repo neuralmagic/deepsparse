@@ -27,6 +27,15 @@ from tests.utils.helpers import find_file_with_pattern
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
+try:
+    # force sklearn to be imported first if available
+    # due to a bug on some graviton systems
+    import sklearn
+except:
+    pass
+
+
 try:
     import torch
 
