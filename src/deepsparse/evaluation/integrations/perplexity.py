@@ -46,7 +46,6 @@ def integration_eval(
     A function that computes the perplexity of a pipeline given a set
     of dataset names.
 
-
     :param pipeline: the pipeline to evaluate. The assumed pipeline
         is a TextGenerationPipeline, either with or without the KV
         cache support
@@ -57,7 +56,6 @@ def integration_eval(
         (evaluates on entire dataset)
     :return: a Result object containing the raw and formatted results
     """
-
     datasets = datasets if isinstance(datasets, list) else [datasets]
     results_raw = defaultdict(str)
     for dataset_name in datasets:
@@ -85,7 +83,7 @@ def integration_eval(
 
 def run_perplexity(
     pipeline: Union[TextGenerationPipelineNoCache, TextGenerationPipeline],
-    dataset: Any,  # TODO: Edit
+    dataset: Any,  # TODO: Edit, once we agree on the dataset registry
     batch_size: int,
     accumulate: bool,
     limit: Optional[int] = None,
@@ -122,21 +120,25 @@ def run_perplexity(
 
         batch.append(sample)
 
+        # TODO: Assert here that the pipeline has set
+        # include_prompt_logits=True,
+        # return_input_tokens=True,
+
         if len(batch) == batch_size:
             if isinstance(pipeline, TextGenerationPipelineNoCache):
                 out = pipeline(
                     prompt=batch,
-                    include_prompt_logits=True,
                     output_scores=True,
+                    include_prompt_logits=True,
                     return_input_tokens=True,
                 )
             else:
                 out = pipeline(
                     prompt=batch,
-                    include_prompt_logits=True,
                     output_scores=True,
-                    return_input_tokens=True,
                     max_len=1,
+                    include_prompt_logits=True,
+                    return_input_tokens=True,
                 )
 
             # TODO: Perhaps we can vectorize it to be more efficient

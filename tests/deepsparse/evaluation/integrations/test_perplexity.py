@@ -13,12 +13,11 @@
 # limitations under the License.
 
 import pytest
-from deepsparse.transformers.pipelines.text_generation import TextGenerationPipeline
 from deepsparse.evaluation.integrations.perplexity import (
     integration_eval,
     load_perplexity_dataset,
 )
-
+from deepsparse.transformers.pipelines.text_generation import TextGenerationPipeline
 from evaluate import load
 
 
@@ -46,7 +45,7 @@ from evaluate import load
 )
 class TestLMEvaluationHarness:
     def test_perplexity_with_kv_cache(self, model_path, model_id, datasets, batch_size):
-        limit = 5
+        limit = 3
 
         result_gt = self._get_ground_truth(
             datasets=datasets, batch_size=batch_size, limit=limit, model_id=model_id
@@ -61,11 +60,15 @@ class TestLMEvaluationHarness:
             batch_size=batch_size,
             limit=limit,
         )
+        # TODO: Will fail for now, to be fixed
+        assert result.formatted[0].metrics[0].value == pytest.approx(
+            result_gt["perplexities"], 1e-2
+        )
 
     def test_perplexity_with_no_kv_cache_pipeline(
         self, model_path, model_id, datasets, batch_size
     ):
-        limit = 5
+        limit = 3
 
         result_gt = self._get_ground_truth(
             datasets=datasets, batch_size=batch_size, limit=limit, model_id=model_id
@@ -80,6 +83,9 @@ class TestLMEvaluationHarness:
             datasets=datasets,
             batch_size=batch_size,
             limit=limit,
+        )
+        assert result.formatted[0].metrics[0].value == pytest.approx(
+            result_gt["perplexities"], 1e-2
         )
 
     @staticmethod
