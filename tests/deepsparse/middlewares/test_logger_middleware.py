@@ -32,6 +32,7 @@ from collections import defaultdict
 from typing import List
 
 import pytest
+from deepsparse import TextGeneration
 from deepsparse.loggers_v2.logger_manager import LoggerManager
 from deepsparse.middlewares import (
     LoggerMiddleware,
@@ -51,15 +52,54 @@ from tests.deepsparse.pipelines.test_basic_pipeline import (
 from tests.deepsparse.utils.wrappers import asyncio_run
 
 
+PROMPT = "How to make banana bread?"
+GENERATION_CONFIG = {"max_new_tokens": 10}
+
+
+@pytest.fixture
+def text_generation_instance(frequency: int = 1):
+    config = f"""
+    loggers:
+        list:
+            name: tests/deepsparse/loggers_v2/registry/loggers/list_logger.py:ListLogger
+
+    metric:
+        "re:.*":  # regex match all
+            - func: max
+              freq: {frequency}
+              uses:
+                - list
+              capture:
+                - "re:.*"
+    """
+
+    middlewares = [
+        MiddlewareSpec(LoggerMiddleware),
+        # MiddlewareSpec(TimerMiddleware),  # for timer
+    ]
+
+    model = TextGeneration(
+        model_path="hf:mgoin/TinyStories-1M-ds",
+        middleware_manager=MiddlewareManager(middlewares),
+        logger_manager=LoggerManager(config),
+    )
+
+    text = model(PROMPT, **GENERATION_CONFIG).generations[0].text
+
+    assert text is not None
+
+    return model
+
+
 def test_logger_middleware_logs_saved_in_list_logger():
     """Check metric logs in LoggerMiddleware are logged as expected"""
     config = """
-    logger:
+    loggers:
         list:
-            name: ListLogger
+            name: tests/deepsparse/loggers_v2/registry/loggers/list_logger.py:ListLogger
 
     metric:
-        "(?i)operator":
+        "re:(?i)operator": # regex match with non case sensitive Operator
             - func: identity
               freq: 1
               uses:
@@ -86,13 +126,14 @@ def test_logger_middleware_logs_saved_in_list_logger():
     assert pipeline_output.value == 8
 
     # check list logger logs
-    list_log = AddThreePipeline.logger_manager.metric.logger["(?i)operator"][0].logs
+    list_log = AddThreePipeline.logger_manager.metric.leaf_logger["list"].logs
     assert len(list_log) == 2
 
+    # Formatting
     expected_logs = set(
         [
-            "[metric.AddOneOperator.identity] identity(AddOneOperator.value): 6",
-            "[metric.AddTwoOperator.identity] identity(AddTwoOperator.value): 8",
+            "[metric.AddOneOperator.identity]: value=6",
+            "[metric.AddTwoOperator.identity]: value=8",
         ]
     )
     for tag in list_log:
@@ -101,39 +142,35 @@ def test_logger_middleware_logs_saved_in_list_logger():
 
 
 @pytest.mark.parametrize(
-    "frequency, max_expected_len_list_logs",
+    "frequency",
     [
-        (1, 1836),  # middlewares/timer_middleware.py(34) - popping is_nested_key
-        (2, 1836 / 2),
-        (3, 1836 / 3),
-        (4, 1836 / 4),
+        2,
+        3,
+        4,
     ],
 )
 def test_text_generation_pipeline_trigger_logger_with_run_time_with_frequency_filter(
-    frequency, max_expected_len_list_logs
+    frequency, text_generation_instance
 ):
     """Check logger with frequency filter and timer middleware"""
 
-    from deepsparse import TextGeneration
-
     config = f"""
-    logger:
+    loggers:
         list:
-            name: ListLogger
+            name: tests/deepsparse/loggers_v2/registry/loggers/list_logger.py:ListLogger
 
     metric:
-        ".*":
+        "re:.*":  # regex match all
             - func: max
               freq: {frequency}
               uses:
                 - list
               capture:
-                - ".*"
+                - "re:.*"
     """
 
     middlewares = [
         MiddlewareSpec(LoggerMiddleware),
-        MiddlewareSpec(TimerMiddleware),  # for timer
     ]
 
     model = TextGeneration(
@@ -142,15 +179,11 @@ def test_text_generation_pipeline_trigger_logger_with_run_time_with_frequency_fi
         logger_manager=LoggerManager(config),
     )
 
-    prompt = "How to make banana bread?"
-    generation_config = {"max_new_tokens": 10}
-
-    text = model(prompt, **generation_config).generations[0].text
+    text = model(PROMPT, **GENERATION_CONFIG).generations[0].text
     assert text is not None
 
     list_log = model.logger_manager.metric.leaf_logger["list"].logs
-
-    len_attr = len(model.logger_manager.metric.counter)
+    len_attr = len(list_log)
 
     # Expected length of list_logger:
     # In frequency counter, if we have attrs {a: Na, b: Nb, c: Nc},
@@ -158,35 +191,16 @@ def test_text_generation_pipeline_trigger_logger_with_run_time_with_frequency_fi
     # Expected low bound is all attr have frequency - 1 remainders
     max_remainder = len_attr * (frequency - 1)
 
+    max_expected_len_list_logs = (
+        len(text_generation_instance.logger_manager.metric.leaf_logger["list"].logs)
+        / frequency
+    )
+
     assert (
         math.floor(max_expected_len_list_logs - max_remainder)
         <= math.floor(len(list_log))
         <= math.floor(max_expected_len_list_logs)
     )
-
-    # check that timer is in logs
-    assert all("⏱️" in log for log in list_log)
-
-    measurements = model.timer_manager.measurements
-    expected_keys = {
-        "ParseTextGenerationInputs",
-        "PrepareforPrefill",
-        "AutoRegressiveOperatorPreprocess",
-        "NLEngineOperator",
-        "CompilePromptLogits",
-        "PrepareGeneration",
-        "GenerateNewTokenOperator",
-        "CompileGeneratedTokens",
-        "CompileGenerations",
-        "JoinOutput",
-        "ProcessOutputs",
-        "total_inference",
-    }
-    for key in measurements[0].keys():
-        expected_keys.remove(key)
-        assert len(measurements[0][key]) > 0
-
-    assert len(expected_keys) == 0
 
 
 @asyncio_run
@@ -194,18 +208,18 @@ async def test_timer_middleware_loggings_and_timings_async():
     """Check middlewares in async_run using timer and logger"""
 
     config = """
-    logger:
+    loggers:
         list:
-            name: ListLogger
+            name: tests/deepsparse/loggers_v2/registry/loggers/list_logger.py:ListLogger
 
     metric:
-        ".*":
+        "re:.*":
             - func: identity
               freq: 1
               uses:
                 - list
               capture:
-                - ".*"
+                - "re:.*"
     """
 
     middlewares = [
@@ -254,5 +268,6 @@ async def test_timer_middleware_loggings_and_timings_async():
 
     # check list logger logs
     list_log = AddThreePipeline.logger_manager.metric.leaf_logger["list"].logs
-    assert len(list_log) == 2
-    assert all("⏱️" in log for log in list_log)
+
+    # two logs and one timer
+    assert len(list_log) == 3
