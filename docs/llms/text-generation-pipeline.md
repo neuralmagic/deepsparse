@@ -42,7 +42,7 @@ from deepsparse import TextGeneration
 
 # construct a pipeline
 model_path = "zoo:mpt-7b-dolly_mpt_pretrain-pruned50_quantized"
-pipeline = TextGeneration(model=model_path)
+pipeline = TextGeneration(model_path=model_path)
 
 # generate text
 prompt = "Below is an instruction that describes a task. Write a response that appropriately completes the request. ### Instruction: What is Kubernetes? ### Response:"
@@ -59,14 +59,14 @@ print(output.generations[0].text)
 DeepSparse accepts models in ONNX format, passed either as SparseZoo stubs or local directories.
 
 > **Note:** DeepSparse uses ONNX graphs modified for KV-caching. We will publish specs to enable external users to create LLM ONNX graphs for DeepSparse over the next few weeks. ***At present, we suggest only using LLM ONNX graphs created by Neural Magic.***
-> 
+>
 ### **SparseZoo Stubs**
 
 SparseZoo stubs identify a model in SparseZoo. For instance, `zoo:mpt-7b-dolly_mpt_pretrain-pruned50_quantized` identifies a 50% pruned-quantized pre-trained MPT-7b model fine-tuned on the Dolly dataset. We can pass the stub to `TextGeneration`, which downloads and caches the ONNX file.
 
 ```python
 model_path = "zoo:mpt-7b-dolly_mpt_pretrain-pruned50_quantized"
-pipeline = TextGeneration(model=model_path)
+pipeline = TextGeneration(model_path=model_path)
 ```
 
 ### **Local Deployment Directory**
@@ -87,7 +87,7 @@ ls ./local-model/deployment
 We can pass the local directory path to `TextGeneration`:
 ```python
 from deepsparse import TextGeneration
-pipeline = TextGeneration(model="./local-model/deployment")
+pipeline = TextGeneration(model_path="./local-model/deployment")
 ```
 
 ### **Hugging Face Models**
@@ -95,7 +95,7 @@ Hugging Face models that conform to the directory structure listed above can als
 
 ```python
 from deepsparse import TextGeneration
-pipeline = TextGeneration(model="hf:neuralmagic/mpt-7b-gsm8k-pruned60-quant")
+pipeline = TextGeneration(model_path="hf:neuralmagic/mpt-7b-gsm8k-pruned60-quant")
 ```
 
 ## **Input and Output Formats**
@@ -106,7 +106,7 @@ The following examples use a quantized 33M parameter TinyStories model for quick
 ```python
 from deepsparse import TextGeneration
 
-pipeline = TextGeneration(model="hf:mgoin/TinyStories-33M-quant-deepsparse")
+pipeline = TextGeneration(model_path="hf:mgoin/TinyStories-33M-quant-deepsparse")
 ```
 
 ### Input Format
@@ -183,7 +183,7 @@ The following examples use a quantized 33M parameter TinyStories model for quick
 from deepsparse import TextGeneration
 
 model_id = "hf:mgoin/TinyStories-33M-quant-deepsparse"
-pipeline = TextGeneration(model=model_id)
+pipeline = TextGeneration(model_path=model_id)
 ```
 
 ### **Creating a `GenerationConfig`**
@@ -223,7 +223,7 @@ We can pass a `GenerationConfig` to `TextGeneration.__init__` or `TextGeneration
 
 ```python
 # set generation_config during __init__
-pipeline_w_gen_config = TextGeneration(model=model_id, generation_config={"max_new_tokens": 10})
+pipeline_w_gen_config = TextGeneration(model_path=model_id, generation_config={"max_new_tokens": 10})
 
 # generation_config is the default during __call__
 output = pipeline_w_gen_config(prompt=prompt)
@@ -235,7 +235,7 @@ print(f"{prompt}{output.generations[0].text}")
 
 ```python
 # no generation_config set during __init__
-pipeline_w_no_gen_config = TextGeneration(model=model_id)
+pipeline_w_no_gen_config = TextGeneration(model_path=model_id)
 
 # generation_config is the passed during __call__
 output = pipeline_w_no_gen_config(prompt=prompt, generation_config= {"max_new_tokens": 10})
@@ -312,7 +312,7 @@ print(numpy.isfinite(output.generations[0].score).sum(axis=1))
 ```python
 import numpy
 
-# small set of logits are not set to -inf == nucleus sampling used 
+# small set of logits are not set to -inf == nucleus sampling used
 output = pipeline(prompt=prompt, do_sample=True, top_p=0.9, max_new_tokens=15, output_scores=True)
 print(numpy.isfinite(output.generations[0].score).sum(axis=1))
 
