@@ -13,7 +13,9 @@
 # limitations under the License.
 
 from dataclasses import dataclass
-from typing import Dict, List, Optional
+from typing import List, Optional
+
+import numpy
 
 
 @dataclass
@@ -24,15 +26,14 @@ class CompletionOutput:
     :param token_ids: The token IDs of the generated output text.
     :param cumulative_logprob: The cumulative log probability of the generated output
         text.
-    :param logprobs: The log probabilities of the top probability words at each
-        position if the logprobs are requested.
+    :param scores: Scores for generated tokens
     :param finish_reason: The reason why the sequence is finished.
     """
 
     text: str
     token_ids: List[int]
     cumulative_logprob: float = 0.0
-    logprobs: Optional[List[Dict[int, float]]] = None
+    scores: Optional[numpy.ndarray] = None
     finish_reason: Optional[str] = None
 
     def finished(self) -> bool:
