@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import asyncio
 from concurrent.futures import Future
 from threading import Lock
@@ -113,11 +112,13 @@ class ContinuousBatchingScheduler(OperatorScheduler):
                 f"found {type(inputs)}"
             )
 
-        # asyncio.Future() is used when we run the pipeline using async/excecute
-        # operators using asyncio. Outside of the async pathway
-        # (i.e. outside of the server), we use concurrent.Future()
-        future = asyncio.Future() if kwargs.get("loop") else Future()
+        future = Future()
         self._queues.add_queue_item(key=operator, item=inputs, future=future)
+        # Wraps the future to be an asyncio.Future
+        # we also only want to do this when we are in running async pathways in which
+        # case the kwargs will contain a loop from the subgraph executor
+        if kwargs.get("loop"):
+            future = asyncio.futures.wrap_future(future, loop=kwargs.get("loop"))
 
         return future
 

@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import pathlib
+from threading import Lock
 from typing import Dict, Union
 
 import transformers
@@ -53,6 +54,7 @@ class ProcessInputsTextGeneration(Operator):
         self.generation_config = generation_config
         self.tokenizer = tokenizer
         self.sequence_length = sequence_length
+        self._tokenizer_lock = Lock()
 
     def run(self, inp: TextGenerationInput, **kwargs):
         generation_config = check_and_return_generation_config(
@@ -81,13 +83,19 @@ class ProcessInputsTextGeneration(Operator):
             # at once)
             truncate, padding = False, "longest"
 
-        input_tokens = self.tokenizer(
-            inp.sequences,
-            return_tensors="np",
-            max_length=self.sequence_length,
-            padding=padding,
-            truncation=truncate,
-        )
+        with self._tokenizer_lock:
+            # lock use of tokenizer to single thread since tokenizer calls
+            # can change the tokenizer state which will lead to an error
+            # in the tokenizer repo - if this becomes a performance blocker
+            # we can look into keeping multiple tokenizers hoping that they
+            # will not need to change state
+            input_tokens = self.tokenizer(
+                inp.sequences,
+                return_tensors="np",
+                max_length=self.sequence_length,
+                padding=padding,
+                truncation=truncate,
+            )
 
         input_ids = input_tokens["input_ids"]
         attention_mask = input_tokens["attention_mask"]
