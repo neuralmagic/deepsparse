@@ -95,7 +95,7 @@ class Pipeline(Operator):
         self._continuous_batching_scheduler = continuous_batching_scheduler
         self.middleware_manager = middleware_manager
         self.timer_manager = timer_manager or TimerManager()
-        self.logger_manager = logger_manager
+        self.logger_manager = logger_manager or LoggerManager()
         self.validate()
 
         self._scheduler_group = SchedulerGroup(self.schedulers)
@@ -202,8 +202,7 @@ class Pipeline(Operator):
             not hasattr(inference_state, "logger")
             or getattr(inference_state, "logger") is None
         ):
-            if self.logger_manager is not None:
-                inference_state.set_logger(self.logger_manager.metric)
+            inference_state.set_logger(self.logger_manager.metric)
 
         with inference_state.time(id=InferenceStages.TOTAL_INFERENCE):
             while next_step != self.router.END_ROUTE:
@@ -439,8 +438,7 @@ class Pipeline(Operator):
             timer = self.timer_manager.get_new_timer()
             inference_state.set_timer(timer)
 
-            if self.logger_manager is not None:
-                inference_state.set_logger(self.logger_manager.metric)
+            inference_state.set_logger(self.logger_manager.metric)
 
             is_nested = False
 
