@@ -87,6 +87,7 @@ class PrometheusLogger(BaseLogger):
         port: int = 9090,
         text_log_save_dir: str = os.getcwd(),
         text_log_file_name: Optional[str] = None,
+        **_ignore_args,
     ):
         _check_prometheus_import()
 

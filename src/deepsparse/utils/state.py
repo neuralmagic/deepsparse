@@ -76,15 +76,22 @@ class TimerState(LoggerState):
         self._timer = None
 
     @contextmanager
-    def time(self, id: str, enabled: bool = True, ):
+    def time(
+        self,
+        id: str,
+        enabled: bool = True,
+    ):
         if self._timer is not None:
             with self.timer.time(id=id, enabled=enabled):
                 yield
-            
+
             # log the runtime if logger found
             if self.logger is not None:
                 run_time = self.timer.measurements[id][-1]
-                self.logger.log(value={"time": run_time}, tag=id, )
+                self.logger.log(
+                    value={"time": run_time},
+                    tag=id,
+                )
         else:
             yield  # null context
 
@@ -98,7 +105,6 @@ class TimerState(LoggerState):
     @timer.setter
     def timer(self, timer: Timer):
         self._timer = timer
-
 
 
 class InferenceState(State, TimerState):

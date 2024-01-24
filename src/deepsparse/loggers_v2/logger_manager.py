@@ -16,10 +16,9 @@ import logging
 from concurrent.futures import Future
 from typing import Any
 
-
-from .async_submitter import AsyncExecutor
-from .config import LoggingConfig
-from .logger_factory import (
+from deepsparse.loggers_v2.async_executor import AsyncExecutor
+from deepsparse.loggers_v2.config import LoggingConfig
+from deepsparse.loggers_v2.logger_factory import (
     LoggerFactory,
     LogType,
     MetricLogger,
@@ -91,7 +90,6 @@ class LoggerManager(AsyncExecutor, LoggerFactory):
     def callback(self, future: Future):
         exception = future.exception()
         if exception is not None:
-
             logging.error(
                 value=f"Exception occurred during async logging job: {repr(exception)}",
             )

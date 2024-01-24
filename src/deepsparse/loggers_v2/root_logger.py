@@ -22,8 +22,7 @@ from deepsparse.loggers_v2.filters.pattern import (
     is_match_found,
     unravel_value_as_generator,
 )
-
-from .utils import import_from_registry
+from deepsparse.loggers_v2.utils import import_from_registry
 
 
 class LogType(Enum):

@@ -13,8 +13,6 @@
 # limitations under the License.
 
 
-import time
-from collections import defaultdict
 from typing import Dict
 
 import requests
@@ -23,7 +21,6 @@ from pydantic import BaseModel
 from deepsparse import Pipeline
 from deepsparse.loggers_v2.logger_manager import LoggerManager
 from deepsparse.operators import Operator
-from deepsparse.pipeline import Pipeline
 from deepsparse.routers import LinearRouter
 from deepsparse.schedulers import OperatorScheduler
 
@@ -51,7 +48,7 @@ class AddTwoOperator(Operator):
 def test_pipeline_loggers():
     """basic logging test"""
 
-    config = f"""
+    config = """
     loggers:
         list:
             name: tests/deepsparse/loggers_v2/registry/loggers/list_logger.py:ListLogger
@@ -67,7 +64,11 @@ def test_pipeline_loggers():
 
     class LoggerPipeline(Pipeline):
         def __call__(self, *args, **kwargs):
-            self.logger_manager.log(value=1, log_type="system", tag="tag")
+            self.logger_manager.log(
+                value=1,
+                tag="tag",
+                log_type="system",
+            )
             return super().__call__(*args, **kwargs)
 
     AddThreePipeline = LoggerPipeline(
@@ -177,25 +178,25 @@ def test_pipeline_loggers_with_frequency_multiple_tags():
         def __call__(self, *args, **kwargs):
 
             # record once
-            self.logger_manager.system.log("one", tag="tag2", level="warning")
+            self.logger_manager.system("one", tag="tag2", level="warning")
 
             # record twice
-            self.logger_manager.system.log("two", tag="tag2", level="warning")
+            self.logger_manager.system("two", tag="tag2", level="warning")
 
             # record once
-            self.logger_manager.system.log("three", tag="tag2", level="warning")
+            self.logger_manager.system("three", tag="tag2", level="warning")
 
             # record once
-            self.logger_manager.system.log("four", tag="tag1", level="warning")
+            self.logger_manager.system("four", tag="tag1", level="warning")
 
             # record twice
-            self.logger_manager.system.log("five", tag="tag2", level="warning")
+            self.logger_manager.system("five", tag="tag2", level="warning")
 
             # record once
-            self.logger_manager.system.log("six", tag="tag2", level="warning")
+            self.logger_manager.system("six", tag="tag2", level="warning")
 
             # record twice
-            self.logger_manager.system.log("tag1 seven", tag="tag1", level="warning")
+            self.logger_manager.system("tag1 seven", tag="tag1", level="warning")
             return super().__call__(*args, **kwargs)
 
     AddThreePipeline = LoggerPipeline(
@@ -231,7 +232,10 @@ def test_pipeline_loggers_with_frequency_multiple_tags():
     for number in numbers_to_count:
         assert number_counts[number] == list_logs.count(
             f"[system.tag2.identity]: {number}"
-        ), f"Expected {number_counts[number]} occurrences of '[system.tag2.identity]: {number}'"
+        ), (
+            f"Expected {number_counts[number]} occurrences of "
+            "'[system.tag2.identity]: {number}'"
+        )
 
 
 def test_pipeline_loggers_with_two_log_types():

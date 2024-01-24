@@ -48,7 +48,6 @@ def test_config_generates_default_json():
     """
     expected_dict = yaml.safe_load(expected_config)
     default_dict = LoggingConfig().dict()
-    breakpoint()
     assert expected_dict == default_dict
 
 

@@ -32,7 +32,6 @@ class MockValue:
         ("operator", "AddOneOperator", False),
         ("Operator", "AddOneOperator", False),
         ("AddOneOperator", "AddOneOperator", True),
-        
     ],
 )
 def test_is_match_found(pattern, string, truth):

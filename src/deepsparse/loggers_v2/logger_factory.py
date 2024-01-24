@@ -13,14 +13,16 @@
 # limitations under the License.
 
 
-from typing import TYPE_CHECKING, Any, Dict
+from typing import Any, Dict
 
-from .root_logger import LogType, MetricLogger, PerformanceLogger, SystemLogger
-from .utils import import_from_path, import_from_registry
-
-
-if TYPE_CHECKING:
-    from deepsparse.loggers_v2.registry.loggers.base_logger import BaseLogger
+from deepsparse.loggers_v2.registry.loggers.base_logger import BaseLogger
+from deepsparse.loggers_v2.root_logger import (
+    LogType,
+    MetricLogger,
+    PerformanceLogger,
+    SystemLogger,
+)
+from deepsparse.loggers_v2.utils import import_from_path, import_from_registry
 
 
 ROOT_LOGGER_DICT = {
@@ -63,7 +65,7 @@ class LoggerFactory:
          PythonLogger (specified by the user)
 
         """
-        logger_config = self.config.get("logger")
+        logger_config = self.config.get("loggers")
         for name, init_args in logger_config.items():
             self.leaf_logger[name] = self.instantiate_logger(
                 name=init_args.pop("name"),
