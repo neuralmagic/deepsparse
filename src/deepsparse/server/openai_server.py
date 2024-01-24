@@ -46,10 +46,9 @@ from deepsparse.server.protocol import (
 )
 from deepsparse.server.server import Server
 from deepsparse.tasks import SupportedTasks
-from deepsparse.utils import InferenceState
+from deepsparse.utils import InferenceState, numpy_softmax
 from fastapi import BackgroundTasks, FastAPI, Request
 from fastapi.responses import StreamingResponse
-from scipy.special import softmax
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -481,7 +480,7 @@ def create_logprobs(
     tokens = pipeline.tokenizer.batch_decode(token_ids)
 
     for i in range(len(tokens)):
-        log_prob = float(numpy.log(max(softmax(scores[i]))))
+        log_prob = float(numpy.log(max(numpy_softmax(scores[i]))))
         logprobs.tokens.append(tokens[i])
         logprobs.token_logprobs.append(log_prob)
 
