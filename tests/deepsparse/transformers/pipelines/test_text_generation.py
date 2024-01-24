@@ -272,3 +272,13 @@ def test_streaming_with_several_prompts(pipeline, prompt):
     assert sorted(bag_of_words_first_prompt + bag_of_words_second_prompt) == sorted(
         bag_of_words_shared
     )
+
+
+def test_streaming_non_streaming_generate_same_tokens(pipeline, prompt):
+    generator = pipeline(prompt=prompt, streaming=True)
+    output_1 = pipeline(prompt=prompt).generations[0].text
+    tokens = []
+    for g in generator:
+        tokens.append(g.generations[0].text)
+    output_2 = "".join(tokens)
+    assert output_1 == output_2
