@@ -24,8 +24,8 @@ __all__ = [
 ]
 
 
-def identity(x: Any):
-    return x
+def identity(value: Any):
+    return value
 
 
 def max(lst: Any):
@@ -50,8 +50,11 @@ def _apply_function_to_iterable(iterable: Iterable, func: Callable) -> Any:
 
     """
     if isinstance(iterable, Iterable) and len(iterable) > 0:
-        if not isinstance(iterable, numpy.array):
-            arr = numpy.array(iterable)
-        arr = func(arr)
-        return arr.item()
+        if not isinstance(iterable, numpy.ndarray):
+            iterable = numpy.array(iterable)
+
+        if numpy.can_cast(iterable.dtype, numpy.number):
+            arr = func(iterable)
+            return arr.item()
+
     return iterable

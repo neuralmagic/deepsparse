@@ -13,7 +13,8 @@
 # limitations under the License.
 
 
-from concurrent.futures import Executor, ThreadPoolExecutor
+import threading
+from concurrent.futures import Executor, Future, ThreadPoolExecutor, wait
 from typing import Callable, Optional
 
 
@@ -21,6 +22,8 @@ class AsyncExecutor:
     def __init__(self, max_workers: int = 1, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._job_pool: Executor = ThreadPoolExecutor(max_workers=max_workers)
+        self._job_futures: list[Future] = []
+        self._lock = threading.Lock()
 
     def submit(
         self, func: Callable, callback: Optional[Callable] = None, /, *args, **kwargs
@@ -30,5 +33,16 @@ class AsyncExecutor:
             *args,
             **kwargs,
         )
+        with self._lock:
+            self._job_futures.append(job_future)
         if callback is not None:
             job_future.add_done_callback(callback)
+
+    def wait_for_completion(self):
+        with self._lock:
+
+            # Wait for all submitted jobs to complete
+            wait(self._job_futures)
+
+            # Clear the list of job futures
+            self._job_futures.clear()

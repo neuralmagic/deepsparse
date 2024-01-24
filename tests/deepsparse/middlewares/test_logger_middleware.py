@@ -75,7 +75,6 @@ def text_generation_instance(frequency: int = 1):
 
     middlewares = [
         MiddlewareSpec(LoggerMiddleware),
-        # MiddlewareSpec(TimerMiddleware),  # for timer
     ]
 
     model = TextGeneration(
@@ -125,11 +124,12 @@ def test_logger_middleware_logs_saved_in_list_logger():
     pipeline_output = AddThreePipeline(pipeline_input)
     assert pipeline_output.value == 8
 
+    AddThreePipeline.logger_manager.wait_for_completion()
+
     # check list logger logs
-    list_log = AddThreePipeline.logger_manager.metric.leaf_logger["list"].logs
+    list_log = AddThreePipeline.logger_manager.leaf_logger["list"].logs
     assert len(list_log) == 2
 
-    # Formatting
     expected_logs = set(
         [
             "[metric.AddOneOperator.identity]: value=6",
@@ -182,7 +182,7 @@ def test_text_generation_pipeline_trigger_logger_with_run_time_with_frequency_fi
     text = model(PROMPT, **GENERATION_CONFIG).generations[0].text
     assert text is not None
 
-    list_log = model.logger_manager.metric.leaf_logger["list"].logs
+    list_log = model.logger_manager.leaf_logger["list"].logs
     len_attr = len(list_log)
 
     # Expected length of list_logger:
@@ -192,7 +192,7 @@ def test_text_generation_pipeline_trigger_logger_with_run_time_with_frequency_fi
     max_remainder = len_attr * (frequency - 1)
 
     max_expected_len_list_logs = (
-        len(text_generation_instance.logger_manager.metric.leaf_logger["list"].logs)
+        len(text_generation_instance.logger_manager.leaf_logger["list"].logs)
         / frequency
     )
 
@@ -267,7 +267,10 @@ async def test_timer_middleware_loggings_and_timings_async():
     assert pipeline_time > add_one_operator_time + add_two_operator_time
 
     # check list logger logs
-    list_log = AddThreePipeline.logger_manager.metric.leaf_logger["list"].logs
+    list_log = AddThreePipeline.logger_manager.leaf_logger["list"].logs
+
+    # wait for submitted jobs to complete
+    AddThreePipeline.logger_manager.wait_for_completion()
 
     # two logs and one timer
     assert len(list_log) == 3

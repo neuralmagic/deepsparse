@@ -88,7 +88,7 @@ class TimerState(LoggerState):
             # log the runtime if logger found
             if self.logger is not None:
                 run_time = self.timer.measurements[id][-1]
-                self.logger.log(
+                self.logger(
                     value={"time": run_time},
                     tag=id,
                 )

@@ -37,8 +37,7 @@ class LoggerMiddleware(MiddlewareCallable):
         if inference_state and hasattr(inference_state, "logger"):
             logger = inference_state.logger  # metric logger
             rtn = self.call_next(*args, **kwargs)
-
-            logger.log(
+            logger(
                 value=rtn,
                 tag=tag,
             )
