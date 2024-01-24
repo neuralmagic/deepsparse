@@ -64,10 +64,9 @@ class ProcessOutputs(Operator):
     ):
         generation_config = inference_state.current_state.get("generation_config")
         generated_logits = generated_logits if generation_config.output_scores else None
-        sequences = (
-            self.tokenizer.batch_decode(generated_tokens, skip_special_tokens=True)
-            if generated_tokens[0] is not None
-            else []
+
+        sequences = self.tokenizer.batch_decode(
+            generated_tokens, skip_special_tokens=True
         )
 
         try:

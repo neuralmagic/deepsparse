@@ -19,10 +19,7 @@ from deepsparse.operators import Operator
 from deepsparse.transformers.pipelines.text_generation.nl_engine_operator import (
     NLEngineOutputs,
 )
-from deepsparse.transformers.schemas.text_generation_schemas import (
-    FinishReason,
-    PromptLogitsNoKVCacheInference,
-)
+from deepsparse.transformers.schemas.text_generation_schemas import FinishReason
 from deepsparse.utils import InferenceState
 
 
@@ -36,14 +33,14 @@ class GenerateNewTokenOperator(Operator):
         self.force_max_tokens = force_max_tokens
         self.tokenizer = tokenizer
 
-    def can_operate(self, inp: Union[PromptLogitsNoKVCacheInference, NLEngineOutputs]):
+    def can_operate(self, inp: Union[NLEngineOutputs]):
         if inp.in_generation:
             return True
         return False
 
     def run(
         self,
-        inp: Union[PromptLogitsNoKVCacheInference, NLEngineOutputs],
+        inp: Union[NLEngineOutputs],
         inference_state: InferenceState,
         **kwargs,
     ):
@@ -52,11 +49,7 @@ class GenerateNewTokenOperator(Operator):
             if isinstance(inp, NLEngineOutputs)
             else inp.prompt_logits
         )
-        kv_cache = (
-            inp.kv_cache
-            if not isinstance(inp, PromptLogitsNoKVCacheInference)
-            else None
-        )
+        kv_cache = inp.kv_cache
 
         max_tokens = inference_state.current_state.get("max_tokens")
         length_finish_reason = inference_state.current_state.get("length_finish_reason")
@@ -97,7 +90,8 @@ class GenerateNewTokenOperator(Operator):
             finish_reason = length_finish_reason
             if num_generated_tokens + 1 > max_tokens:
                 token = None
-                logits = None
+                if not inference_state.current_state.get("include_prompt_logits"):
+                    logits = None
 
         state_update = {
             "token_generator": token_generator,
