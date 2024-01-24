@@ -33,14 +33,10 @@ class OperatorRegistry(RegistryMixin):
     """
 
     @classmethod
-    def register_value(cls, operator, name):
+    def register_value(cls, operator, name, alias):
         from deepsparse.operators import Operator
 
-        if not isinstance(name, list):
-            name = [name]
-
-        for task_name in name:
-            register(Operator, operator, task_name, require_subclass=True)
+        register(Operator, operator, name, alias, require_subclass=True)
 
         return operator
 
