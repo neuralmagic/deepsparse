@@ -17,25 +17,32 @@ from typing import Any
 from deepsparse.middlewares.middleware import MiddlewareCallable
 
 
-IS_NESTED_KEY = "is_nested"
 NAME_KEY = "name"
-INFERENCE_STATE_KEY = "inference_state"
 
 
-class TimerMiddleware(MiddlewareCallable):
+class LoggerMiddleware(MiddlewareCallable):
     def __init__(
-        self, call_next: MiddlewareCallable, identifier: str = "TimerMiddleware"
+        self,
+        call_next: MiddlewareCallable,
+        identifier: str = "LoggerMiddleware",
     ):
         self.identifier: str = identifier
         self.call_next: MiddlewareCallable = call_next
 
     def __call__(self, *args, **kwargs) -> Any:
-        name = kwargs.get(NAME_KEY)
-        is_nested = kwargs.pop(IS_NESTED_KEY, False)
 
-        inference_state = kwargs.get(INFERENCE_STATE_KEY)
-        if inference_state and hasattr(inference_state, "timer"):
-            timer = inference_state.timer
-            with timer.time(id=name, enabled=not is_nested):
-                return self.call_next(*args, **kwargs)
+        tag = kwargs.get(NAME_KEY)
+
+        inference_state = kwargs.get("inference_state")
+        if inference_state and hasattr(inference_state, "logger"):
+            logger = inference_state.logger  # metric logger
+            rtn = self.call_next(*args, **kwargs)
+
+            logger.log(
+                value=rtn,
+                tag=tag,
+            )
+
+            return rtn
+
         return self.call_next(*args, **kwargs)

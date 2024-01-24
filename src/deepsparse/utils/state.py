@@ -17,6 +17,7 @@ from contextlib import contextmanager
 from copy import deepcopy
 from typing import Any, Union
 
+from deepsparse.loggers_v2.logger_factory import MetricLogger
 from deepsparse.utils.time import Timer
 
 
@@ -50,7 +51,24 @@ class PipelineState(State):
         self._current_state = new_state
 
 
-class TimerState:
+class LoggerState:
+    def __init__(self):
+        super().__init__()
+        self._logger = None
+
+    def set_logger(self, logger: MetricLogger):
+        self._logger = logger
+
+    @property
+    def logger(self):
+        return self._logger
+
+    @logger.setter
+    def logger(self, logger: MetricLogger):
+        self._logger = logger
+
+
+class TimerState(LoggerState):
     """TimerState shared among all InferenceState"""
 
     def __init__(self):
@@ -58,10 +76,15 @@ class TimerState:
         self._timer = None
 
     @contextmanager
-    def time(self, id: str, enabled: bool = True):
+    def time(self, id: str, enabled: bool = True, ):
         if self._timer is not None:
             with self.timer.time(id=id, enabled=enabled):
                 yield
+            
+            # log the runtime if logger found
+            if self.logger is not None:
+                run_time = self.timer.measurements[id][-1]
+                self.logger.log(value={"time": run_time}, tag=id, )
         else:
             yield  # null context
 
@@ -75,6 +98,7 @@ class TimerState:
     @timer.setter
     def timer(self, timer: Timer):
         self._timer = timer
+
 
 
 class InferenceState(State, TimerState):
@@ -104,7 +128,7 @@ class InferenceState(State, TimerState):
         if key in self.current_state:
             return self.current_state[key]
 
-    def copy_state(self, props=["timer"]):
+    def copy_state(self, props=["timer", "logger"]):
         """copy everything except the attrs in props"""
 
         original_values = {
