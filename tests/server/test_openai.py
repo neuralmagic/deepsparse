@@ -24,8 +24,8 @@ from deepsparse.server.openai_server import (
     ModelPermission,
     OpenAIServer,
 )
-from fastapi.testclient import TestClient
 from deepsparse.utils import numpy_softmax
+from fastapi.testclient import TestClient
 
 
 TEST_MODEL_ID = "hf:mgoin/TinyStories-1M-ds"
