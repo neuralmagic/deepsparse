@@ -202,7 +202,7 @@ class Pipeline(Operator):
             not hasattr(inference_state, "logger")
             or getattr(inference_state, "logger") is None
         ):
-            if self.logger_manager.metric is not None:
+            if self.logger_manager is not None:
                 inference_state.set_logger(self.logger_manager.metric)
 
         with inference_state.time(id=InferenceStages.TOTAL_INFERENCE):
@@ -439,7 +439,7 @@ class Pipeline(Operator):
             timer = self.timer_manager.get_new_timer()
             inference_state.set_timer(timer)
 
-            if self.logger_manager.metric is not None:
+            if self.logger_manager is not None:
                 inference_state.set_logger(self.logger_manager.metric)
 
             is_nested = False
