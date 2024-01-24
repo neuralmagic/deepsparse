@@ -21,13 +21,66 @@ from typing import Any, Dict, Optional
 import numpy
 
 from scipy.special import log_softmax
-from sklearn.metrics import precision_recall_fscore_support
 
 
 __all__ = [
     "PrecisionRecallF1",
     "Perplexity",
 ]
+
+
+def precision_recall_fscore_support(true_labels, predicted_labels, beta=1.0):
+    """
+    Calculate precision, recall, and F-beta score for each class.
+
+    Parameters:
+    true_labels (array-like): True labels of the data.
+    predicted_labels (array-like): Predicted labels by the classifier.
+    beta (float): The strength of recall versus precision in the F-score.
+
+    Returns:
+    precision (numpy.ndarray): Precision for each class.
+    recall (numpy.ndarray): Recall for each class.
+    fscore (numpy.ndarray): F-beta score for each class.
+    support (numpy.ndarray): Number of occurrences of each class in true_labels.
+    """
+    true_labels = numpy.array(true_labels)
+    predicted_labels = numpy.array(predicted_labels)
+
+    unique_labels = numpy.unique(numpy.concatenate([true_labels, predicted_labels]))
+    precision = numpy.zeros(len(unique_labels))
+    recall = numpy.zeros(len(unique_labels))
+    fscore = numpy.zeros(len(unique_labels))
+    support = numpy.zeros(len(unique_labels))
+
+    for i, label in enumerate(unique_labels):
+        true_positive = numpy.sum((predicted_labels == label) & (true_labels == label))
+        false_positive = numpy.sum((predicted_labels == label) & (true_labels != label))
+        false_negative = numpy.sum((predicted_labels != label) & (true_labels == label))
+
+        precision[i] = (
+            true_positive / (true_positive + false_positive)
+            if true_positive + false_positive > 0
+            else 0
+        )
+        recall[i] = (
+            true_positive / (true_positive + false_negative)
+            if true_positive + false_negative > 0
+            else 0
+        )
+        fscore[i] = (
+            (
+                (1 + beta**2)
+                * precision[i]
+                * recall[i]
+                / (beta**2 * precision[i] + recall[i])
+            )
+            if precision[i] + recall[i] > 0
+            else 0
+        )
+        support[i] = numpy.sum(true_labels == label)
+
+    return precision, recall, fscore, support
 
 
 class Perplexity:
