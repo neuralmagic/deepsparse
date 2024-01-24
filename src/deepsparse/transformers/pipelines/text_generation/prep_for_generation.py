@@ -15,6 +15,7 @@ import copy
 from typing import Any, Optional
 
 import numpy
+from pydantic import BaseModel, Field
 
 from deepsparse.operators import Operator
 from deepsparse.subgraph_execute import StreamingOutput
@@ -27,10 +28,19 @@ from deepsparse.transformers.utils.helpers import set_generated_length
 from deepsparse.utils import InferenceState
 
 
-__all__ = ["PrepareGeneration"]
+__all__ = ["PrepareGeneration", "PrepForGenerationOutput"]
+
+
+class PrepForGenerationOutput(BaseModel):
+    prompt_logits: Any = Field(description="logits")
+    kv_cache: Any = Field(description="kv_cache object")
+    in_generation: Any = Field(description="in_generation", default=None)
 
 
 class PrepareGeneration(Operator):
+
+    output_schema = PrepForGenerationOutput
+
     def __init__(
         self,
         token_generator: TokenGeneratorOperator,
@@ -79,7 +89,7 @@ class PrepareGeneration(Operator):
             **inference_state.current_state,
         )
         token_generator = token_generator_creator_output.get("token_generator")
-        token_generator.generate(prompt_logits[0, -1, :])
+        # token_generator.generate(prompt_logits[0, -1, :])
 
         max_tokens, length_finish_reason = set_generated_length(
             max_length=generation_config.max_length,
@@ -90,24 +100,27 @@ class PrepareGeneration(Operator):
             finish_reason_choices=FinishReason,
         )
 
+        # tokens = token_generator.tokens[-1]
+        # logits = numpy.expand_dims(prompt_logits[:, -1, :], 0)
+
         state_update = {
             "max_tokens": max_tokens,
             "length_finish_reason": length_finish_reason,
-            "generated_tokens": [token_generator.tokens[-1]],
-            "generated_logits": [prompt_logits]
-            if include_prompt_logits
-            else [numpy.expand_dims(prompt_logits[:, -1, :], 0)],
+            "generated_tokens": [],
+            "generated_logits": [prompt_logits] if include_prompt_logits else [],
             "finished_reason": [],
             "token_generator": token_generator,
         }
+
         if kv_cache is None:
             output = PromptLogitsNoKVCacheInference(prompt_logits=prompt_logits)
         else:
             output = {
-                "tokens": token_generator.tokens,
                 "kv_cache": kv_cache,
                 "in_generation": True,
+                "prompt_logits": prompt_logits,
             }
+        """
             # TODO: maybe break this operator up since it is both generating and setting
             # up values needed for generation? Holding off on this as this will change
             # routes slighty and want to confirm wont break anything for non-kv cache
@@ -131,5 +144,6 @@ class PrepareGeneration(Operator):
                     ),
                     data_to_return=output,
                 )
+        """
 
         return output, state_update

@@ -52,20 +52,29 @@ class GenerateNewTokenOperator(Operator):
             if isinstance(inp, NLEngineOutputs)
             else inp.prompt_logits
         )
-        kv_cache = inp.kv_cache if isinstance(inp, NLEngineOutputs) else None
+        kv_cache = (
+            inp.kv_cache
+            if not isinstance(inp, PromptLogitsNoKVCacheInference)
+            else None
+        )
+
+        max_tokens = inference_state.current_state.get("max_tokens")
+        length_finish_reason = inference_state.current_state.get("length_finish_reason")
+        generated_tokens = inference_state.current_state.get("generated_tokens")
+        num_generated_tokens = len(generated_tokens)
 
         token_generator = inference_state.current_state.get("token_generator")
         token = token_generator.generate(logits=logits[0, -1, :])
         finish_reason = None
-
-        callback = inference_state.current_state.get("callback")
-        stop = inference_state.current_state.get("stop")
 
         if (
             kv_cache is not None
             and kv_cache.total_num_processed_tokens >= kv_cache.capacity
         ):
             finish_reason = FinishReason.CAPACITY
+
+        callback = inference_state.current_state.get("callback")
+        stop = inference_state.current_state.get("stop")
 
         if token == self.tokenizer.eos_token_id and not self.force_max_tokens:
             finish_reason = FinishReason.STOP
@@ -84,9 +93,11 @@ class GenerateNewTokenOperator(Operator):
             )
             finish_reason = FinishReason.CALLBACK
 
-        max_tokens = inference_state.current_state.get("max_tokens")
-        if len(inference_state.current_state.get("generated_tokens")) + 1 >= max_tokens:
-            finish_reason = inference_state.current_state.get("length_finish_reason")
+        if num_generated_tokens + 1 >= max_tokens:
+            finish_reason = length_finish_reason
+            if num_generated_tokens + 1 > max_tokens:
+                token = None
+                logits = None
 
         state_update = {
             "token_generator": token_generator,
