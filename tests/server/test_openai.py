@@ -25,7 +25,7 @@ from deepsparse.server.openai_server import (
     OpenAIServer,
 )
 from fastapi.testclient import TestClient
-from scipy.special import softmax
+from deepsparse.utils import numpy_softmax
 
 
 TEST_MODEL_ID = "hf:mgoin/TinyStories-1M-ds"
@@ -246,7 +246,7 @@ def test_logprobs(client, model_card):
 
     for local_gen, server_gen in zip(output.generations, response.json()["choices"]):
         local_top1_logprobs = [
-            numpy.log(max(softmax(logits))) for logits in local_gen.score
+            numpy.log(max(numpy_softmax(logits))) for logits in local_gen.score
         ]
         server_top1_logprobs = server_gen["logprobs"]["token_logprobs"]
         assert numpy.allclose(local_top1_logprobs, server_top1_logprobs)
