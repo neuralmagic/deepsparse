@@ -12,8 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import logging
 from concurrent.futures import Future
-from typing import Any, Optional
+from typing import Any
+
 
 from .async_submitter import AsyncExecutor
 from .config import LoggingConfig
@@ -36,9 +38,31 @@ ROOT_LOGGER = {
 class LoggerManager(AsyncExecutor, LoggerFactory):
 
     """
-    Initialize loggers for Pipeline
+    Initialize loggers for Pipeline and create entrypoints to log
+
+    Lifecycle of instantiation:
+        1. Pydantic validation/parser
+        2. In LoggerFactory, instantiate leaf logger as singleton and
+         use them to instantiate for system, performance
+         and metric root loggers
+        3. In root logger instantiation, for each tag, func, freq,
+         generate a default dict to organize the params from the config to
+         facilliate filter rule matching (by tag, by freq, by capture)
+
+    Entrypoints:
+        * .log          -> log async to the root logger, selected by log_type
+        * .system       -> log async to the system logger
+        * .performance  -> log async to the performance logger
+        * .metric       -> log async to the metric logger
+
+    Note:
+        * To access what leaf loggers are being used
+         .root_logger_factory["system" or "performance" or "metric"]
+        * To access the frequency filter counters
+         .root_logger_factory[...].counter
 
     :param config: Path to yaml or stringified yaml
+
     """
 
     def __init__(self, config: str = ""):
@@ -57,9 +81,7 @@ class LoggerManager(AsyncExecutor, LoggerFactory):
             **kwargs,
         )
 
-    def run(
-        self, log_type: str, value: Any, tag: Optional[str] = None, *args, **kwargs
-    ):
+    def run(self, value: Any, tag: str, log_type: str, *args, **kwargs):
         log_type = log_type.upper()
         if log_type in LogType.__members__:
             logger = self.logger.get(LogType[log_type])
@@ -69,19 +91,28 @@ class LoggerManager(AsyncExecutor, LoggerFactory):
     def callback(self, future: Future):
         exception = future.exception()
         if exception is not None:
-            self.system.log(
-                f"Exception occurred during async logging job: {repr(exception)}",
-                level="error",
+
+            logging.error(
+                value=f"Exception occurred during async logging job: {repr(exception)}",
             )
 
-    @property
-    def system(self) -> Optional[SystemLogger]:
-        return self.logger[LogType.SYSTEM]
+    def system(self, *args, **kwargs):
+        self.log(
+            log_type="system",
+            *args,
+            **kwargs,
+        )
 
-    @property
-    def performance(self) -> Optional[PerformanceLogger]:
-        return self.logger[LogType.PERFORMANCE]
+    def performance(self, *args, **kwargs):
+        self.log(
+            log_type="performance",
+            *args,
+            **kwargs,
+        )
 
-    @property
-    def metric(self) -> Optional[MetricLogger]:
-        return self.logger[LogType.METRIC]
+    def metric(self, *args, **kwargs):
+        self.log(
+            log_type="metric",
+            *args,
+            **kwargs,
+        )
