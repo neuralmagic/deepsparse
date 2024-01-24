@@ -171,7 +171,7 @@ def numpy_softmax(x: numpy.ndarray, axis: int = 0):
 
 def numpy_log_softmax(x: numpy.ndarray, axis: int = 0):
     """
-    Ref: https://github.com/scipy/scipy/blob/v1.12.0/scipy/special/_logsumexp.py#L228-L298
+    Ref: https://github.com/scipy/scipy/blob/v1.12.0/scipy/special/_logsumexp.py
 
     In principle: log_softmax(x) = log(softmax(x))
     but using a more accurate implementation.
