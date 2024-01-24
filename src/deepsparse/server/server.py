@@ -117,6 +117,7 @@ class Server:
 
         app = self._build_app()
 
+        """
         uvicorn.run(
             app,
             host=host,
@@ -126,6 +127,14 @@ class Server:
             # NOTE: only want to have 1 server process so models aren't being copied
             workers=1,
         )
+        """
+        options = {
+            'bind': '%s:%s' % (host, port),
+            'worker_class': "uvicorn.workers.UvicornWorker",
+            'max_requests': 10
+
+        }
+        StandaloneApplication(app, options).run()
 
     def _build_app(self) -> FastAPI:
         route_counts = Counter([cfg.route for cfg in self.server_config.endpoints])
@@ -246,7 +255,9 @@ class Server:
             pipeline_outputs = await proxy_pipeline.pipeline.run_async(
                 **await raw_request.json(), inference_state=inference_state
             )
+            print(pipeline_outputs)
 
+        """
             if isinstance(pipeline_outputs, AsyncGenerator):
 
                 async def format_response():
@@ -271,7 +282,7 @@ class Server:
                 )
         except Exception as e:
             _LOGGER.debug(f"Logging failed, {e}")
-
+        """
         return prep_for_serialization(pipeline_outputs)
 
     @staticmethod
@@ -309,3 +320,21 @@ class Server:
         except Exception as e:
             _LOGGER.debug(f"Logging failed, {e}")
         return prep_for_serialization(pipeline_outputs)
+
+import gunicorn.app.base
+
+class StandaloneApplication(gunicorn.app.base.BaseApplication):
+
+    def __init__(self, app, options=None):
+        self.options = options or {}
+        self.application = app
+        super().__init__()
+
+    def load_config(self):
+        config = {key: value for key, value in self.options.items()
+                  if key in self.cfg.settings and value is not None}
+        for key, value in config.items():
+            self.cfg.set(key.lower(), value)
+
+    def load(self):
+        return self.application

@@ -60,6 +60,7 @@ class ContinuousBatchingExecutorThread(Thread):
             # unpack batch of QueueEntry objects
             engine_inputs, futures, _ = list(zip(*batch))
             batch_size = len(engine_inputs)
+            print(batch_size, batch_size)
 
             # type is EngineOperatorInputs
             joined_inputs = engine_operator.input_schema.join(engine_inputs)
