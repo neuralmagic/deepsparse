@@ -42,6 +42,12 @@ class MultiEnginePrefill(Operator):
         kv_cache = inp.get("kv_cache")
         tokens = inp.get("tokens")
 
+        if kv_cache.total_num_processed_tokens >= kv_cache.capacity:
+            raise RuntimeError(
+                "Not enough kv_cache capacity to run generation. Please use a larger "
+                "sequence_length or a shorter prompt"
+            )
+
         if len(tokens) < self.prompt_sequence_length:
             return False
 
