@@ -16,9 +16,9 @@ import logging
 from concurrent.futures import Future
 from typing import Any
 
-from deepsparse.loggers_v2.async_executor import AsyncExecutor
-from deepsparse.loggers_v2.config import LoggingConfig
-from deepsparse.loggers_v2.logger_factory import (
+from deepsparse.loggers.async_executor import AsyncExecutor
+from deepsparse.loggers.config import LoggingConfig
+from deepsparse.loggers.logger_factory import (
     LoggerFactory,
     LogType,
     MetricLogger,

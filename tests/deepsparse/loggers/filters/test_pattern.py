@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import pytest
-from deepsparse.loggers_v2.filters import is_match_found, unravel_value_as_generator
+from deepsparse.loggers.filters import is_match_found, unravel_value_as_generator
 
 
 class MockValue:

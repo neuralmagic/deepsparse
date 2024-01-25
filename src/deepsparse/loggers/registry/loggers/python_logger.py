@@ -19,7 +19,7 @@ from enum import Enum
 from logging.handlers import RotatingFileHandler
 from typing import Any, Dict, Optional
 
-from deepsparse.loggers_v2.registry.loggers.base_logger import BaseLogger
+from deepsparse.loggers.registry.loggers.base_logger import BaseLogger
 
 
 class LoggerType(Enum):

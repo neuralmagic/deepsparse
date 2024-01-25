@@ -17,12 +17,12 @@ from collections import defaultdict
 from enum import Enum
 from typing import Any, Dict, List
 
-from deepsparse.loggers_v2.filters.frequency_filter import FrequencyFilter
-from deepsparse.loggers_v2.filters.pattern import (
+from deepsparse.loggers.filters.frequency_filter import FrequencyFilter
+from deepsparse.loggers.filters.pattern import (
     is_match_found,
     unravel_value_as_generator,
 )
-from deepsparse.loggers_v2.utils import import_from_registry
+from deepsparse.loggers.utils import import_from_registry
 
 
 class LogType(Enum):

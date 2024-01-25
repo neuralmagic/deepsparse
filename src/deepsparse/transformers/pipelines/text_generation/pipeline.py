@@ -15,7 +15,7 @@
 import logging
 from typing import List, Optional
 
-from deepsparse.loggers_v2.logger_manager import LoggerManager
+from deepsparse.loggers.logger_manager import LoggerManager
 from deepsparse.middlewares import MiddlewareManager
 from deepsparse.operators import EngineOperator
 from deepsparse.operators.registry import OperatorRegistry

@@ -15,7 +15,7 @@
 from collections import defaultdict
 
 import pytest
-from deepsparse.loggers_v2.filters import FrequencyFilter
+from deepsparse.loggers.filters import FrequencyFilter
 
 
 @pytest.mark.parametrize(

@@ -14,7 +14,7 @@
 
 import yaml
 
-from deepsparse.loggers_v2.config import LoggerConfig, LoggingConfig
+from deepsparse.loggers.config import LoggerConfig, LoggingConfig
 
 
 def test_config_generates_default_json():

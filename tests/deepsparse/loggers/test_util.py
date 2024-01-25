@@ -14,7 +14,7 @@
 
 
 import pytest
-from deepsparse.loggers_v2.utils import (
+from deepsparse.loggers.utils import (
     LOGGER_REGISTRY,
     import_from_path,
     import_from_registry,

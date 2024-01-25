@@ -15,14 +15,14 @@
 
 from typing import Any, Dict
 
-from deepsparse.loggers_v2.registry.loggers.base_logger import BaseLogger
-from deepsparse.loggers_v2.root_logger import (
+from deepsparse.loggers.registry.loggers.base_logger import BaseLogger
+from deepsparse.loggers.root_logger import (
     LogType,
     MetricLogger,
     PerformanceLogger,
     SystemLogger,
 )
-from deepsparse.loggers_v2.utils import import_from_path, import_from_registry
+from deepsparse.loggers.utils import import_from_path, import_from_registry
 
 
 ROOT_LOGGER_DICT = {

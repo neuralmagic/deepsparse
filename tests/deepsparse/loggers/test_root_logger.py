@@ -15,7 +15,7 @@
 
 from unittest.mock import Mock
 
-from deepsparse.loggers_v2.root_logger import RootLogger
+from deepsparse.loggers.root_logger import RootLogger
 
 
 def test_log_method():

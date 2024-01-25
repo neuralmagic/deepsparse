@@ -19,7 +19,7 @@ import requests
 from pydantic import BaseModel
 
 from deepsparse import Pipeline
-from deepsparse.loggers_v2.logger_manager import LoggerManager
+from deepsparse.loggers.logger_manager import LoggerManager
 from deepsparse.operators import Operator
 from deepsparse.routers import LinearRouter
 from deepsparse.schedulers import OperatorScheduler
@@ -51,7 +51,7 @@ def test_pipeline_loggers():
     config = """
     loggers:
         list:
-            name: tests/deepsparse/loggers_v2/registry/loggers/list_logger.py:ListLogger
+            name: tests/deepsparse/loggers/registry/loggers/list_logger.py:ListLogger
 
     system:
         "tag": # uses exact match. For regex, use "re:tag"
@@ -94,7 +94,7 @@ def test_pipeline_loggers_with_frequency():
     config = """
     loggers:
         list:
-            name: tests/deepsparse/loggers_v2/registry/loggers/list_logger.py:ListLogger
+            name: tests/deepsparse/loggers/registry/loggers/list_logger.py:ListLogger
 
     system:
         "tag":
@@ -152,7 +152,7 @@ def test_pipeline_loggers_with_frequency_multiple_tags():
         default:
             name: PythonLogger
         list:
-            name: tests/deepsparse/loggers_v2/registry/loggers/list_logger.py:ListLogger
+            name: tests/deepsparse/loggers/registry/loggers/list_logger.py:ListLogger
     system:
         tag1:
         - func: identity
@@ -245,7 +245,7 @@ def test_pipeline_loggers_with_two_log_types():
     config = """
     loggers:
         list:
-            name: tests/deepsparse/loggers_v2/registry/loggers/list_logger.py:ListLogger
+            name: tests/deepsparse/loggers/registry/loggers/list_logger.py:ListLogger
 
     system:
         "tag":
@@ -320,7 +320,7 @@ def test_pipeline_loggers_no_tag_match():
     config = """
     loggers:
         list:
-            name: tests/deepsparse/loggers_v2/registry/loggers/list_logger.py:ListLogger
+            name: tests/deepsparse/loggers/registry/loggers/list_logger.py:ListLogger
 
     system:
         "tag":
@@ -374,7 +374,7 @@ def test_pipeline_loggers_with_frequency_tags_multiple_capture():
     config = """
     loggers:
         list:
-            name: tests/deepsparse/loggers_v2/registry/loggers/list_logger.py:ListLogger
+            name: tests/deepsparse/loggers/registry/loggers/list_logger.py:ListLogger
 
     metric:
         "tag": # uses exact match. For regex, use "re:tag"

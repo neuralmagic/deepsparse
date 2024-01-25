@@ -23,7 +23,7 @@ from typing import Dict
 from pydantic import BaseModel
 
 from deepsparse import Pipeline
-from deepsparse.loggers_v2.logger_manager import LoggerManager
+from deepsparse.loggers.logger_manager import LoggerManager
 from deepsparse.operators import Operator
 from deepsparse.routers import LinearRouter
 from deepsparse.schedulers import OperatorScheduler
@@ -59,7 +59,7 @@ def test_pipeline_fine_grained_timer_record_operator_run_times():
     config = """
     loggers:
         list:
-            name: tests/deepsparse/loggers_v2/registry/loggers/list_logger.py:ListLogger
+            name: tests/deepsparse/logger/registry/loggers/list_logger.py:ListLogger
 
     metric:
         "re:.*":

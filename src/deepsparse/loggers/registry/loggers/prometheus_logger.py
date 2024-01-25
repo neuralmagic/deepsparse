@@ -22,8 +22,8 @@ import warnings
 from collections import defaultdict
 from typing import Any, Dict, Optional, Type, Union
 
-from deepsparse.loggers_v2.constants import SystemGroups
-from deepsparse.loggers_v2.registry.loggers.base_logger import BaseLogger
+from deepsparse.loggers.constants import SystemGroups
+from deepsparse.loggers.registry.loggers.base_logger import BaseLogger
 
 
 try:

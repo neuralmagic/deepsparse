@@ -17,7 +17,7 @@ from contextlib import contextmanager
 from copy import deepcopy
 from typing import Any, Union
 
-from deepsparse.loggers_v2.logger_factory import MetricLogger
+from deepsparse.loggers.logger_factory import MetricLogger
 from deepsparse.utils.time import Timer
 
 
