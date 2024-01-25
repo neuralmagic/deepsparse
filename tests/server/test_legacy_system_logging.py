@@ -31,7 +31,7 @@ from tests.deepsparse.legacy.loggers.helpers import ListLogger
 from tests.utils import mock_engine
 
 
-logger_identifier = "tests/deepsparse/loggers/helpers.py:ListLogger"
+logger_identifier = "tests/deepsparse/legacy/loggers/helpers.py:ListLogger"
 stub = "zoo:nlp/text_classification/distilbert-none/pytorch/huggingface/qqp/pruned80_quant-none-vnni"  # noqa E501
 task = "text-classification"
 name = "endpoint_name"

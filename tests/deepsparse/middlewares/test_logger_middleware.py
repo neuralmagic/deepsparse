@@ -61,7 +61,7 @@ def text_generation_instance(frequency: int = 1):
     config = f"""
     loggers:
         list:
-            name: tests/deepsparse/logger/registry/loggers/list_logger.py:ListLogger
+            name: tests/deepsparse/loggers/registry/loggers/list_logger.py:ListLogger
 
     metric:
         "re:.*":  # regex match all
@@ -95,7 +95,7 @@ def test_logger_middleware_logs_saved_in_list_logger():
     config = """
     loggers:
         list:
-            name: tests/deepsparse/logger/registry/loggers/list_logger.py:ListLogger
+            name: tests/deepsparse/loggers/registry/loggers/list_logger.py:ListLogger
 
     metric:
         "re:(?i)operator": # regex match with non case sensitive Operator
@@ -157,7 +157,7 @@ def test_text_generation_pipeline_trigger_logger_with_run_time_with_frequency_fi
     config = f"""
     loggers:
         list:
-            name: tests/deepsparse/logger/registry/loggers/list_logger.py:ListLogger
+            name: tests/deepsparse/loggers/registry/loggers/list_logger.py:ListLogger
 
     metric:
         "re:.*":  # regex match all
@@ -210,7 +210,7 @@ async def test_timer_middleware_loggings_and_timings_async():
     config = """
     loggers:
         list:
-            name: tests/deepsparse/logger/registry/loggers/list_logger.py:ListLogger
+            name: tests/deepsparse/loggers/registry/loggers/list_logger.py:ListLogger
 
     metric:
         "re:.*":

@@ -37,7 +37,7 @@ from tests.test_data.server_test_data import SAMPLE_LOGS_DICT
 from tests.utils import mock_engine
 
 
-logger_identifier = "tests/deepsparse/loggers/helpers.py:ListLogger"
+logger_identifier = "tests/deepsparse/legacy/loggers/helpers.py:ListLogger"
 stub = "zoo:distilbert-sst2_wikipedia_bookcorpus-pruned90"  # noqa E501
 task = "text-classification"
 name = "endpoint_name"
@@ -98,7 +98,7 @@ def test_data_logging_from_predefined():
     calls = fetch_leaf_logger(server_logger).calls
     data_logging_logs = [call for call in calls if "DATA" in call]
     with open(
-        "tests/deepsparse/loggers/metric_functions/predefined/predefined_logs/text_classification.txt",  # noqa E501
+        "tests/deepsparse/legacy/loggers/metric_functions/predefined/predefined_logs/text_classification.txt",  # noqa E501
         "r",
     ) as f:
         expected_logs = f.read().splitlines()

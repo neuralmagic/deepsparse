@@ -59,7 +59,7 @@ def test_pipeline_fine_grained_timer_record_operator_run_times():
     config = """
     loggers:
         list:
-            name: tests/deepsparse/logger/registry/loggers/list_logger.py:ListLogger
+            name: tests/deepsparse/loggers/registry/loggers/list_logger.py:ListLogger
 
     metric:
         "re:.*":

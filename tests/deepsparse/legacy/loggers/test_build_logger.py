@@ -92,7 +92,7 @@ data_logging:
 yaml_config_7 = """
 loggers:
     custom_logger:
-        path: tests/deepsparse/loggers/helpers.py:CustomLogger
+        path: tests/deepsparse/legacy/loggers/helpers.py:CustomLogger
         arg1: 1
         arg2: some_string
 data_logging:
@@ -235,7 +235,7 @@ def test_kwargs():
         ),
         loggers_config={
             "kwargs_logger": {
-                "path": "tests/deepsparse/loggers/helpers.py:KwargsLogger"
+                "path": "tests/deepsparse/legacy/loggers/helpers.py:KwargsLogger"
             }
         },
     )

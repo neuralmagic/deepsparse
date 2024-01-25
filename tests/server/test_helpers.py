@@ -123,7 +123,7 @@ endpoints:
 yaml_config_8 = """
 loggers:
     custom_logger:
-        path: tests/deepsparse/loggers/helpers.py:CustomLogger
+        path: tests/deepsparse/legacy/loggers/helpers.py:CustomLogger
         arg1: 1
         arg2: some_string
 endpoints:
