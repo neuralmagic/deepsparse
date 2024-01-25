@@ -282,3 +282,32 @@ def test_streaming_non_streaming_generate_same_tokens(pipeline, prompt):
         tokens.append(g.generations[0].text)
     output_2 = "".join(tokens)
     assert output_1 == output_2
+
+
+def test_edge_cases(pipeline, prompt):
+    output = pipeline(prompt=prompt, max_length=1, output_scores=True)
+    assert len(output.generations[0].score) == 1
+
+    output = pipeline(
+        prompt=prompt, max_length=1, output_scores=True, include_prompt_logits=True
+    )
+    assert len(output.generations[0].score) == 11
+
+    output = pipeline(prompt=prompt, max_new_tokens=0, output_scores=True)
+    assert len(output.generations[0].score) == 1
+
+    output = pipeline(
+        prompt=prompt, max_new_tokens=0, output_scores=True, include_prompt_logits=True
+    )
+    assert len(output.generations[0].score) == 11
+
+    output = pipeline(prompt=prompt, max_new_tokens=1, output_scores=True)
+    assert len(output.generations[0].score) == 2
+
+    output = pipeline(
+        prompt=prompt, max_new_tokens=1, output_scores=True, include_prompt_logits=True
+    )
+    assert len(output.generations[0].score) == 12
+
+    with pytest.raises(ValueError):
+        pipeline(prompt=prompt, max_length=0)
