@@ -148,7 +148,6 @@ _transformers_integration_deps = [
     "transformers<4.37",
     "datasets<2.16",
     "accelerate<0.26",
-    "scikit-learn",
     "seqeval",
 ]
 _sentence_transformers_integration_deps = ["optimum-deepsparse"] + _torch_deps
@@ -166,8 +165,7 @@ _haystack_requirements_file_path = os.path.join(
 _haystack_integration_deps = _parse_requirements_file(_haystack_requirements_file_path)
 _clip_deps = [
     "open_clip_torch==2.20.0",
-    "scipy<1.10,>=1.8",
-    "transformers<4.35",
+    "transformers<4.37",
 ]
 
 
