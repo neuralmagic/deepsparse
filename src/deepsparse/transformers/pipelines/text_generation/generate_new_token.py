@@ -88,12 +88,8 @@ class GenerateNewTokenOperator(Operator):
             )
             finish_reason = FinishReason.CALLBACK
 
-        if num_generated_tokens + 1 >= max_tokens:
+        if num_generated_tokens + 1 == max_tokens:
             finish_reason = length_finish_reason
-            if num_generated_tokens + 1 > max_tokens:
-                token = None
-                if not inference_state.current_state.get("include_prompt_logits"):
-                    logits = None
 
         state_update = {
             "token_generator": token_generator,
