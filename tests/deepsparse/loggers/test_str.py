@@ -18,7 +18,7 @@
 import numpy as np
 
 import pytest
-from deepsparse import (
+from deepsparse.legacy.loggers import (
     AsyncLogger,
     FunctionLogger,
     MultiLogger,

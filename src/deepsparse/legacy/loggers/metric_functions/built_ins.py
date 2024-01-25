@@ -16,10 +16,10 @@ The set of the general built-in metric functions
 """
 from typing import Any, List, Union
 
-from deepsparse.loggers.metric_functions.registry import (
+from deepsparse.legacy.loggers.metric_functions.registry import (
     register as register_metric_function,
 )
-from deepsparse.loggers.metric_functions.utils import BatchResult
+from deepsparse.legacy.loggers.metric_functions.utils import BatchResult
 
 
 __all__ = ["identity", "predicted_classes", "predicted_top_score"]

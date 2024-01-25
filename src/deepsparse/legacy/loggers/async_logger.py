@@ -21,7 +21,7 @@ import textwrap
 from concurrent.futures import Executor, ThreadPoolExecutor
 from typing import Any
 
-from deepsparse.loggers import BaseLogger, MetricCategories
+from deepsparse.legacy.loggers import BaseLogger, MetricCategories
 
 
 __all__ = ["AsyncLogger"]

@@ -14,7 +14,8 @@
 import math
 
 import pytest
-from deepsparse import FunctionLogger, Pipeline, PythonLogger
+from deepsparse import Pipeline
+from deepsparse.legacy.loggers import FunctionLogger, PythonLogger
 from tests.utils import mock_engine
 
 

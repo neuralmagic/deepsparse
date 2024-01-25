@@ -25,7 +25,7 @@ from typing import Any, Dict, List, Optional, Tuple, Type
 
 import yaml
 
-from deepsparse.loggers import (
+from deepsparse.legacy.loggers import (
     FROM_PREDEFINED,
     AsyncLogger,
     BaseLogger,
@@ -34,14 +34,14 @@ from deepsparse.loggers import (
     PrometheusLogger,
     PythonLogger,
 )
-from deepsparse.loggers.config import (
+from deepsparse.legacy.loggers.config import (
     MetricFunctionConfig,
     PipelineLoggingConfig,
     SystemLoggingConfig,
     SystemLoggingGroup,
 )
-from deepsparse.loggers.helpers import get_function_and_function_name
-from deepsparse.loggers.metric_functions.registry import DATA_LOGGING_REGISTRY
+from deepsparse.legacy.loggers.helpers import get_function_and_function_name
+from deepsparse.legacy.loggers.metric_functions.registry import DATA_LOGGING_REGISTRY
 
 
 __all__ = [

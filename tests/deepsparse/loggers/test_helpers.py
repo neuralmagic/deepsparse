@@ -18,15 +18,15 @@ import numpy
 from pydantic import BaseModel
 
 import pytest
-from deepsparse.loggers.helpers import (
+from deepsparse.legacy.loggers.helpers import (
     access_nested_value,
     check_identifier_match,
     get_function_and_function_name,
     possibly_extract_value,
     unwrap_logged_value,
 )
-from deepsparse.loggers.metric_functions import identity
-from deepsparse.loggers.metric_functions.utils import BatchResult
+from deepsparse.legacy.loggers.metric_functions import identity
+from deepsparse.legacy.loggers.metric_functions.utils import BatchResult
 from tests.test_data.metric_functions import user_defined_identity
 
 

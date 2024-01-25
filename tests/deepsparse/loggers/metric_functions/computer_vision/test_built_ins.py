@@ -15,7 +15,7 @@
 import numpy
 
 import pytest
-from deepsparse.loggers.metric_functions import (
+from deepsparse.legacy.loggers.metric_functions import (
     detected_classes,
     fraction_zeros,
     image_shape,

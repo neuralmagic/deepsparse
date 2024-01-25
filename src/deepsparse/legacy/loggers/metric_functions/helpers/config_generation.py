@@ -25,9 +25,9 @@ from typing import Any, Dict, List, Optional, Union
 
 import yaml
 
-from deepsparse.loggers.build_logger import parse_out_predefined_function_groups
-from deepsparse.loggers.config import MetricFunctionConfig
-from deepsparse.loggers.metric_functions.registry import DATA_LOGGING_REGISTRY
+from deepsparse.legacy.loggers.build_logger import parse_out_predefined_function_groups
+from deepsparse.legacy.loggers.config import MetricFunctionConfig
+from deepsparse.legacy.loggers.metric_functions.registry import DATA_LOGGING_REGISTRY
 
 
 _WHITESPACE = "  "

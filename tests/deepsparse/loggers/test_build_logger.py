@@ -15,19 +15,22 @@
 import yaml
 
 import pytest
-from deepsparse import (
+from deepsparse.legacy.loggers import (
     AsyncLogger,
     MultiLogger,
     PythonLogger,
     default_logger,
     logger_from_config,
 )
-from deepsparse.loggers.build_logger import (
+from deepsparse.legacy.loggers.build_logger import (
     build_logger,
     build_system_loggers,
     system_logging_config_to_groups,
 )
-from deepsparse.loggers.config import MetricFunctionConfig, PipelineSystemLoggingConfig
+from deepsparse.legacy.loggers.config import (
+    MetricFunctionConfig,
+    PipelineSystemLoggingConfig,
+)
 from tests.deepsparse.loggers.helpers import ListLogger, fetch_leaf_logger
 from tests.helpers import find_free_port
 from tests.utils import mock_engine

@@ -13,33 +13,37 @@
 # limitations under the License.
 
 """
-Implementation of the Python Logger that logs to the stdout
+Implementation of the Multi Logger that serves as a
+container for holding multiple loggers
 """
-from datetime import datetime
-from typing import Any
+import textwrap
+from typing import Any, List
 
-from deepsparse.loggers import BaseLogger, MetricCategories
-
-
-__all__ = ["PythonLogger"]
+from deepsparse.legacy.loggers import BaseLogger, MetricCategories
 
 
-class PythonLogger(BaseLogger):
+__all__ = ["MultiLogger"]
+
+
+class MultiLogger(BaseLogger):
     """
-    Python logger that writes the collected logs to stdout
+    A logger that holds a list of loggers and logs to all of them.
     """
+
+    def __init__(self, loggers: List[BaseLogger]):
+        self.loggers = loggers
 
     def log(self, identifier: str, value: Any, category: MetricCategories, **kwargs):
         """
-        Collect information from the pipeline and pipe it them to the stdout
 
         :param identifier: The name of the item that is being logged.
         :param value: The data structure that the logger is logging
         :param category: The metric category that the log belongs to
         :param kwargs: Additional keyword arguments to pass to the logger
         """
-        msg = (
-            f" Identifier: {identifier} | Category: {category.value} "
-            f"| Logged Data: {value} | Additional Info: {kwargs}"
-        )
-        print(datetime.now().strftime("%d/%m/%Y %H:%M:%S:%f") + msg)
+        for logger in self.loggers:
+            logger.log(identifier, value, category, **kwargs)
+
+    def __str__(self):
+        text = "\n".join([str(logger) for logger in self.loggers])
+        return f"{self.__class__.__name__}:\n{textwrap.indent(text, prefix='  ')}"

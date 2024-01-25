@@ -19,15 +19,15 @@ import shutil
 import yaml
 
 import pytest
-from deepsparse.loggers.config import MetricFunctionConfig, PipelineLoggingConfig
-from deepsparse.loggers.metric_functions.helpers.config_generation import (
+from deepsparse.legacy.loggers.config import MetricFunctionConfig, PipelineLoggingConfig
+from deepsparse.legacy.loggers.metric_functions.helpers.config_generation import (
     _loggers_to_config_string,
     _metric_function_config_to_string,
     _metric_functions_configs_to_string,
     _nested_dict_to_lines,
     data_logging_config_from_predefined,
 )
-from deepsparse.loggers.metric_functions.registry import DATA_LOGGING_REGISTRY
+from deepsparse.legacy.loggers.metric_functions.registry import DATA_LOGGING_REGISTRY
 
 
 DATA_LOGGING_REGISTRY_W_DUMMY_GROUP = DATA_LOGGING_REGISTRY.copy()

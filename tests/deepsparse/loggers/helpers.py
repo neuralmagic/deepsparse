@@ -21,7 +21,7 @@ from datetime import datetime
 from time import sleep
 from typing import Any
 
-from deepsparse.loggers import (
+from deepsparse.legacy.loggers import (
     AsyncLogger,
     BaseLogger,
     FunctionLogger,

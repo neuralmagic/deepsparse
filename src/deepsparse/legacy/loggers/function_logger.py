@@ -18,8 +18,12 @@ Implementation of the Function Logger
 import textwrap
 from typing import Any, Callable
 
-from deepsparse.loggers import BaseLogger, MetricCategories
-from deepsparse.loggers.helpers import NO_MATCH, finalize_identifier, match_and_extract
+from deepsparse.legacy.loggers import BaseLogger, MetricCategories
+from deepsparse.legacy.loggers.helpers import (
+    NO_MATCH,
+    finalize_identifier,
+    match_and_extract,
+)
 
 
 __all__ = ["FunctionLogger"]

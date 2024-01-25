@@ -13,8 +13,11 @@
 # limitations under the License.
 
 import pytest
-from deepsparse.loggers.metric_functions import predicted_classes, predicted_top_score
-from deepsparse.loggers.metric_functions.utils import BatchResult
+from deepsparse.legacy.loggers.metric_functions import (
+    predicted_classes,
+    predicted_top_score,
+)
+from deepsparse.legacy.loggers.metric_functions.utils import BatchResult
 
 
 @pytest.mark.parametrize(

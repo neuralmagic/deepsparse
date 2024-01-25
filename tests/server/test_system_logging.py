@@ -17,7 +17,7 @@ from unittest import mock
 import pydantic
 
 import pytest
-from deepsparse.loggers.config import SystemLoggingGroup
+from deepsparse.legacy.loggers.config import SystemLoggingGroup
 from deepsparse.server.config import (
     EndpointConfig,
     ServerConfig,

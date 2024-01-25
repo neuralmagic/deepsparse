@@ -34,7 +34,6 @@ from .engine import *
 from .pipeline_config import *
 from .tasks import *
 from .pipeline import *
-from .loggers import *
 from .version import __version__, is_release
 from .analytics import deepsparse_analytics as _analytics
 from .subgraph_execute import *

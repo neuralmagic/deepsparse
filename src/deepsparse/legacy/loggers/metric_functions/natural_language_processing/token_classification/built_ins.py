@@ -18,10 +18,10 @@ from typing import List
 
 import numpy
 
-from deepsparse.loggers.metric_functions.registry import (
+from deepsparse.legacy.loggers.metric_functions.registry import (
     register as register_metric_function,
 )
-from deepsparse.loggers.metric_functions.utils import BatchResult
+from deepsparse.legacy.loggers.metric_functions.utils import BatchResult
 
 
 __all__ = ["mean_score", "percent_zero_labels"]

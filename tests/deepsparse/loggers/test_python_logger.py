@@ -14,7 +14,8 @@
 
 
 import pytest
-from deepsparse import MetricCategories, Pipeline, PythonLogger
+from deepsparse import Pipeline
+from deepsparse.legacy.loggers import MetricCategories, PythonLogger
 from tests.utils import mock_engine
 
 

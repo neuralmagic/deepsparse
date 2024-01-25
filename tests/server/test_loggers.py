@@ -16,8 +16,11 @@ import shutil
 from collections import Counter
 from unittest import mock
 
-from deepsparse import PythonLogger
-from deepsparse.loggers.config import PipelineSystemLoggingConfig, SystemLoggingGroup
+from deepsparse.legacy.loggers import PythonLogger
+from deepsparse.legacy.loggers.config import (
+    PipelineSystemLoggingConfig,
+    SystemLoggingGroup,
+)
 from deepsparse.server.config import (
     EndpointConfig,
     MetricFunctionConfig,

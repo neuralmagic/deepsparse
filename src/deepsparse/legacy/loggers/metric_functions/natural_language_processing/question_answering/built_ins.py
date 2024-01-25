@@ -15,10 +15,10 @@
 Set of functions for logging metrics from the question answering pipeline
 """
 
-from deepsparse.loggers.metric_functions.natural_language_processing import (
+from deepsparse.legacy.loggers.metric_functions.natural_language_processing import (
     string_length,
 )
-from deepsparse.loggers.metric_functions.registry import (
+from deepsparse.legacy.loggers.metric_functions.registry import (
     register as register_metric_function,
 )
 

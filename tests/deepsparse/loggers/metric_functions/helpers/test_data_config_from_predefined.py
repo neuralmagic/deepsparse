@@ -17,8 +17,8 @@ import os
 import yaml
 
 import pytest
-from deepsparse.loggers.config import PipelineLoggingConfig
-from deepsparse.loggers.metric_functions.helpers import (
+from deepsparse.legacy.loggers.config import PipelineLoggingConfig
+from deepsparse.legacy.loggers.metric_functions.helpers import (
     data_logging_config_from_predefined,
 )
 

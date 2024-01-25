@@ -19,10 +19,10 @@ from typing import Any, List, Optional, Type, Union
 from pydantic import BaseModel
 
 from deepsparse import Context
+from deepsparse.legacy.loggers.base_logger import BaseLogger
+from deepsparse.legacy.loggers.build_logger import logger_from_config
+from deepsparse.legacy.loggers.constants import validate_identifier
 from deepsparse.legacy.tasks import SupportedTasks, dynamic_import_task
-from deepsparse.loggers.base_logger import BaseLogger
-from deepsparse.loggers.build_logger import logger_from_config
-from deepsparse.loggers.constants import validate_identifier
 
 
 __all__ = [

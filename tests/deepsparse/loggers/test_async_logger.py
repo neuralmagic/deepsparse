@@ -20,7 +20,7 @@ from pathlib import Path
 import numpy
 
 import pytest
-from deepsparse.loggers import AsyncLogger, FunctionLogger, MetricCategories
+from deepsparse.legacy.loggers import AsyncLogger, FunctionLogger, MetricCategories
 from tests.deepsparse.loggers.helpers import (
     ErrorLogger,
     FileLogger,

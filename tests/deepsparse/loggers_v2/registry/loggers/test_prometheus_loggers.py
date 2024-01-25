@@ -15,7 +15,7 @@
 import requests
 
 import pytest
-from deepsparse.loggers import MetricCategories
+from deepsparse.legacy.loggers import MetricCategories
 from deepsparse.loggers_v2.filters import unravel_value_as_generator
 from deepsparse.loggers_v2.registry.loggers.prometheus_logger import (
     PrometheusLogger,

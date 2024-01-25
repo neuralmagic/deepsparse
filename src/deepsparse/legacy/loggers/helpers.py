@@ -24,9 +24,9 @@ from typing import Any, Callable, Dict, Generator, Optional, Sequence, Tuple, Un
 
 import numpy
 
-import deepsparse.loggers.metric_functions as built_ins
-from deepsparse.loggers import MetricCategories
-from deepsparse.loggers.metric_functions.utils import BatchResult
+import deepsparse.legacy.loggers.metric_functions as built_ins
+from deepsparse.legacy.loggers import MetricCategories
+from deepsparse.legacy.loggers.metric_functions.utils import BatchResult
 
 
 __all__ = [

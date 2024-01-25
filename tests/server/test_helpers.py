@@ -18,7 +18,7 @@ import yaml
 from pydantic import BaseModel
 
 import pytest
-from deepsparse.loggers import AsyncLogger, MultiLogger, PythonLogger
+from deepsparse.legacy.loggers import AsyncLogger, MultiLogger, PythonLogger
 from deepsparse.server.config import ServerConfig
 from deepsparse.server.helpers import server_logger_from_config
 from tests.deepsparse.loggers.helpers import fetch_leaf_logger

@@ -16,10 +16,10 @@ Set of functions for logging metrics from the natural language processing pipeli
 """
 from typing import List, Union
 
-from deepsparse.loggers.metric_functions.registry import (
+from deepsparse.legacy.loggers.metric_functions.registry import (
     register as register_metric_function,
 )
-from deepsparse.loggers.metric_functions.utils import BatchResult
+from deepsparse.legacy.loggers.metric_functions.utils import BatchResult
 
 
 __all__ = ["string_length", "percent_unknown_tokens"]
