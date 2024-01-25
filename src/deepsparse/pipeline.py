@@ -144,7 +144,6 @@ class Pipeline(Operator):
             from deepsparse.legacy import Pipeline
 
             pipeline = Pipeline.create(task=task, **kwargs)
-
         return pipeline
 
     @classmethod

@@ -33,14 +33,16 @@ class GenerateNewTokenOperator(Operator):
         self.force_max_tokens = force_max_tokens
         self.tokenizer = tokenizer
 
-    def can_operate(self, inp: Union[NLEngineOutputs]):
+    def can_operate(
+        self, inp: Union[NLEngineOutputs, "PrepareForGenerationOutput"]  # noqa: F821
+    ):
         if inp.in_generation:
             return True
         return False
 
     def run(
         self,
-        inp: Union[NLEngineOutputs],
+        inp: Union[NLEngineOutputs, "PrepareForGenerationOutput"],  # noqa: F821
         inference_state: InferenceState,
         **kwargs,
     ):
