@@ -239,7 +239,6 @@ class TextGenerationPipeline(Pipeline):
             sequence_length=sequence_length,
             prompt_sequence_length=prompt_sequence_length,
             token_generator=token_generator,
-            process_output_operator=process_output,
         )
 
         # TODO: do we want to support lists for different engines?
@@ -286,7 +285,7 @@ class TextGenerationPipeline(Pipeline):
                 "compile_logits",
                 "generate_new_token",
             ],
-            "prep_for_generation": "autoregressive_preprocess",
+            "prep_for_generation": "generate_new_token",
             "generate_new_token": "compile_generated_tokens",
         }
 
