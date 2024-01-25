@@ -82,7 +82,6 @@ class PrepareGeneration(Operator):
             **inference_state.current_state,
         )
         token_generator = token_generator_creator_output.get("token_generator")
-        # token_generator.generate(prompt_logits[0, -1, :])
 
         max_tokens, length_finish_reason = set_generated_length(
             max_length=generation_config.max_length,
@@ -92,9 +91,6 @@ class PrepareGeneration(Operator):
             prompt_sequence_length=self.prompt_sequence_length,
             finish_reason_choices=FinishReason,
         )
-
-        # tokens = token_generator.tokens[-1]
-        # logits = numpy.expand_dims(prompt_logits[:, -1, :], 0)
 
         state_update = {
             "max_tokens": max_tokens,
