@@ -100,13 +100,15 @@ class PrepareGeneration(Operator):
             "max_tokens": max_tokens,
             "length_finish_reason": length_finish_reason,
             "generated_tokens": [],
-            "generated_logits": [prompt_logits] if include_prompt_logits else [],
+            "generated_logits": [prompt_logits[:, 0:-1, :]]
+            if include_prompt_logits
+            else [],
             "finished_reason": [],
             "token_generator": token_generator,
         }
 
         if kv_cache is None:
-            output = {"prompt_logits": prompt_logits}
+            output = {"prompt_logits": numpy.expand_dims(prompt_logits[:, -1, :], 0)}
         else:
             output = {
                 "kv_cache": kv_cache,
