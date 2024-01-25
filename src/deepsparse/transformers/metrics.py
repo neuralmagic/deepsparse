@@ -20,7 +20,7 @@ from typing import Any, Dict, Optional
 
 import numpy
 
-from scipy.special import log_softmax
+from deepsparse.utils import numpy_log_softmax
 
 
 __all__ = [
@@ -266,7 +266,7 @@ def _cross_entropy(
         float: The computed cross-entropy loss.
     """
 
-    logp = log_softmax(predictions, axis=-1)
+    logp = numpy_log_softmax(predictions, axis=-1)
     neg_log_likelihoods = -1.0 * numpy.take_along_axis(
         logp, numpy.expand_dims(targets, axis=-1), axis=-1
     )
