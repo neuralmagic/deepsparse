@@ -127,7 +127,7 @@ def test_group_name(mock_engine, group_name, pipeline_name, inputs, optional_ind
     yaml_config = """
     loggers:
         list_logger:
-            path: tests/deepsparse/loggers/helpers.py:ListLogger
+            path: tests/deepsparse/legacy/loggers/helpers.py:ListLogger
     data_logging:
         predefined:
         - func: {group_name}"""

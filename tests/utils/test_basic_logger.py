@@ -89,6 +89,7 @@ def test_pipeline_fine_grained_timer_record_operator_run_times():
         expected_keys.remove(key)
     assert len(expected_keys) == 0
 
+    AddThreePipeline.logger_manager.wait_for_completion()
     list_log = AddThreePipeline.logger_manager.leaf_logger["list"].logs
 
     assert len(list_log) == 2
