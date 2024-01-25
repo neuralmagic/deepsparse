@@ -20,7 +20,7 @@ from typing import Any, Dict, Optional
 
 import numpy
 
-from deepsparse.utils import numpy_log_softmax
+from deepsparse.utils.data import numpy_log_softmax
 
 
 __all__ = [

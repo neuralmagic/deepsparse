@@ -136,7 +136,7 @@ def run_perplexity(
                 out = pipeline(
                     prompt=batch,
                     output_scores=True,
-                    max_len=1,
+                    max_new_tokens=0,
                     include_prompt_logits=True,
                     return_input_tokens=True,
                 )
