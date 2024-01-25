@@ -21,7 +21,7 @@ import pytest
 from deepsparse.legacy.loggers import AsyncLogger, MultiLogger, PythonLogger
 from deepsparse.server.config import ServerConfig
 from deepsparse.server.helpers import server_logger_from_config
-from tests.deepsparse.loggers.helpers import fetch_leaf_logger
+from tests.deepsparse.legacy.loggers.helpers import fetch_leaf_logger
 from tests.helpers import find_free_port
 
 

@@ -31,7 +31,7 @@ from deepsparse.legacy.loggers.config import (
     MetricFunctionConfig,
     PipelineSystemLoggingConfig,
 )
-from tests.deepsparse.loggers.helpers import ListLogger, fetch_leaf_logger
+from tests.deepsparse.legacy.loggers.helpers import ListLogger, fetch_leaf_logger
 from tests.helpers import find_free_port
 from tests.utils import mock_engine
 

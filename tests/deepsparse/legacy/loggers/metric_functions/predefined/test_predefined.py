@@ -22,7 +22,7 @@ import numpy
 import pytest
 from deepsparse import Pipeline
 from deepsparse.legacy.loggers.build_logger import logger_from_config
-from tests.deepsparse.loggers.helpers import fetch_leaf_logger
+from tests.deepsparse.legacy.loggers.helpers import fetch_leaf_logger
 from tests.utils import mock_engine
 
 

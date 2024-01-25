@@ -21,7 +21,7 @@ import numpy
 
 import pytest
 from deepsparse.legacy.loggers import AsyncLogger, FunctionLogger, MetricCategories
-from tests.deepsparse.loggers.helpers import (
+from tests.deepsparse.legacy.loggers.helpers import (
     ErrorLogger,
     FileLogger,
     NullLogger,

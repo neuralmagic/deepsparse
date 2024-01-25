@@ -27,7 +27,7 @@ from deepsparse.server.deepsparse_server import DeepsparseServer
 from deepsparse.server.helpers import server_logger_from_config
 from deepsparse.server.system_logging import log_resource_utilization
 from fastapi.testclient import TestClient
-from tests.deepsparse.loggers.helpers import ListLogger
+from tests.deepsparse.legacy.loggers.helpers import ListLogger
 from tests.utils import mock_engine
 
 

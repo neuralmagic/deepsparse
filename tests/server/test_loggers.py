@@ -31,7 +31,7 @@ from deepsparse.server.deepsparse_server import DeepsparseServer
 from deepsparse.server.helpers import server_logger_from_config
 from fastapi.testclient import TestClient
 from flaky import flaky
-from tests.deepsparse.loggers.helpers import fetch_leaf_logger
+from tests.deepsparse.legacy.loggers.helpers import fetch_leaf_logger
 from tests.helpers import find_free_port
 from tests.test_data.server_test_data import SAMPLE_LOGS_DICT
 from tests.utils import mock_engine

@@ -17,14 +17,14 @@ import time
 import pytest
 from deepsparse import Pipeline
 from deepsparse.legacy.loggers import logger_from_config
-from tests.deepsparse.loggers.helpers import fetch_leaf_logger
+from tests.deepsparse.legacy.loggers.helpers import fetch_leaf_logger
 from tests.utils import mock_engine
 
 
 YAML_CONFIG = """
     loggers:
         list_logger:
-            path: tests/deepsparse/loggers/helpers.py:ListLogger
+            path: tests/deepsparse/legacy/loggers/helpers.py:ListLogger
     system_logging:
         enable: true
         prediction_latency:
