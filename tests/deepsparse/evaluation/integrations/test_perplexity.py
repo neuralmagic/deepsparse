@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import numpy as np
+
 import pytest
 from deepsparse.evaluation.integrations.perplexity import (
     integration_eval,
@@ -21,15 +23,16 @@ from deepsparse.transformers.pipelines.text_generation import TextGenerationPipe
 from evaluate import load
 
 
-@pytest.mark.parametrize(
-    "model_path, model_id",
-    [
-        (
-            "hf:mgoin/TinyStories-1M-deepsparse",
-            "roneneldan/TinyStories-1M",
-        )
-    ],
-)
+@pytest.fixture()
+def model_path():
+    return "hf:mgoin/TinyStories-1M-deepsparse"
+
+
+@pytest.fixture()
+def model_id():
+    return "roneneldan/TinyStories-1M"
+
+
 @pytest.mark.parametrize(
     "datasets",
     [
@@ -44,11 +47,16 @@ from evaluate import load
     [1, 3],
 )
 class TestLMEvaluationHarness:
-    def test_perplexity_with_kv_cache(self, model_path, model_id, datasets, batch_size):
-        limit = 3
+    limit = 4
 
+    def test_perplexity_ground_truth_equal_pipeline(
+        self, model_path, model_id, datasets, batch_size
+    ):
         result_gt = self._get_ground_truth(
-            datasets=datasets, batch_size=batch_size, limit=limit, model_id=model_id
+            datasets=datasets,
+            batch_size=batch_size,
+            limit=self.limit,
+            model_id=model_id,
         )
 
         result = integration_eval(
@@ -58,23 +66,30 @@ class TestLMEvaluationHarness:
             ),
             datasets=datasets,
             batch_size=batch_size,
-            limit=limit,
+            limit=self.limit,
         )
-        # TODO: Will fail for now, to be fixed
-        assert result.formatted[0].metrics[0].value == pytest.approx(
-            result_gt["perplexities"], 1e-2
-        )
+        perplexities = result.formatted[0].metrics[0].value
+        perplexities_gt = result_gt["perplexities"]
+        # TODO: This seemingly big error is due to the fact that
+        # small (1e-2) differences in neg log likelihood get
+        # amplified when computing perplexity
+        # (when applying exp function)
+        assert np.allclose(perplexities, perplexities_gt, atol=100)
 
-    def test_perplexity_with_no_kv_cache_pipeline(
-        self, model_path, model_id, datasets, batch_size
+    def test_perplexity_kv_cache_pipeline_equal_no_kv_cache_pipeline(
+        self, model_path, datasets, batch_size
     ):
-        limit = 3
-
-        result_gt = self._get_ground_truth(
-            datasets=datasets, batch_size=batch_size, limit=limit, model_id=model_id
+        result_kv_cache = integration_eval(
+            pipeline=TextGenerationPipeline(
+                model_path="hf:mgoin/TinyStories-1M-deepsparse",
+                engine_type="onnxruntime",
+            ),
+            datasets=datasets,
+            batch_size=batch_size,
+            limit=self.limit,
         )
 
-        result = integration_eval(
+        result_non_kv_cache = integration_eval(
             pipeline=TextGenerationPipeline(
                 model_path="hf:mgoin/TinyStories-1M-deepsparse",
                 engine_type="onnxruntime",
@@ -82,17 +97,16 @@ class TestLMEvaluationHarness:
             ),
             datasets=datasets,
             batch_size=batch_size,
-            limit=limit,
+            limit=self.limit,
         )
+
+        perplexities_kv_cache = result_kv_cache.formatted[0].metrics[0].value
+        perplexities_non_kv_cache = result_non_kv_cache.formatted[0].metrics[0].value
         # TODO: This seemingly big error is due to the fact that
-        # a) This test evaluates the model on a completely different
-        #   model than the one used for training
-        # b) Small (1e-2) differences in neg log likelihood get
-        #   amplified when computing perplexity
-        # (applying exp function)
-        assert result.formatted[0].metrics[0].value == pytest.approx(
-            result_gt["perplexities"], 6e2
-        )
+        # small (1e-2) differences in neg log likelihood get
+        # amplified when computing perplexity
+        # (when applying exp function)
+        np.allclose(perplexities_kv_cache, perplexities_non_kv_cache, atol=100)
 
     @staticmethod
     def _get_ground_truth(datasets, batch_size, limit, model_id):

@@ -120,10 +120,6 @@ def run_perplexity(
 
         batch.append(sample)
 
-        # TODO: Assert here that the pipeline has set
-        # include_prompt_logits=True,
-        # return_input_tokens=True,
-
         if len(batch) == batch_size:
             if isinstance(pipeline, TextGenerationPipelineNoCache):
                 out = pipeline(
@@ -141,13 +137,15 @@ def run_perplexity(
                     return_input_tokens=True,
                 )
 
-            # TODO: Perhaps we can vectorize it to be more efficient
-            # and elegant
             for s in range(batch_size):
                 # Need to remove tokens that were masked
                 input_ids = out.input_tokens["input_ids"][s].flatten()
                 attention_mask = out.input_tokens["attention_mask"][s].flatten()
                 logits = out.generations[s].score
+                if batch_size > 1 and isinstance(
+                    pipeline, TextGenerationPipelineNoCache
+                ):
+                    logits = logits[-attention_mask.sum() :, :]
 
                 logits = numpy.compress(attention_mask, logits, axis=0)[:-1, :]
                 input_ids = numpy.compress(attention_mask, input_ids)[1:]
