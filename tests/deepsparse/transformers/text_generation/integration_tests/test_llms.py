@@ -132,6 +132,28 @@ class TestsIntegrationLLMsPipelines:
         self.default_pipeline = None
         self.max_new_tokens = max_new_tokens
 
+    def test_continuous_batching_pipeline(self, setup):
+
+        pipeline = self.get_pipeline(
+            prompt_sequence_length=4, continuous_batch_sizes=[2, 4]
+        )
+
+        assert pipeline._continuous_batching_scheduler
+
+        output = pipeline(
+            prompt=self.prompt,
+            include_prompt_logits=True,
+            generation_kwargs=dict(
+                max_new_tokens=self.max_new_tokens,
+                output_scores=True,
+            ),
+        )
+
+        self._test_output(
+            output=output,
+            torch_ground_truth=self.torch_ground_truth,
+        )
+
     def test_ort_single_token_prefill(self, setup):
         # Test the pipeline that uses ORT engine. The test covers the
         # following scenario:
