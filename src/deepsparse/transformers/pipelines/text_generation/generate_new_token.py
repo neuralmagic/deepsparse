@@ -88,6 +88,9 @@ class GenerateNewTokenOperator(Operator):
             )
             finish_reason = FinishReason.CALLBACK
 
+        # Note: this is +1 as the inference state variable keeping track of all the
+        # generated tokens has not yet been updated with the most recently generated
+        # token from this operator
         if num_generated_tokens + 1 == max_tokens:
             finish_reason = length_finish_reason
 
