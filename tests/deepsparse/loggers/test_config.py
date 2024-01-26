@@ -26,7 +26,7 @@ def test_config_generates_default_json():
         name: PythonLogger
         handler: null # None in python
     system:
-      ".*":
+      "re:.*":
       - func: identity
         freq: 1
         uses:

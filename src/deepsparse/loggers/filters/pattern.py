@@ -44,8 +44,11 @@ def is_match_found(
     :return: bool: True if a match is found, False otherwise.
 
     Examples:
-        >>> is_match_found("apple", "apple pie")
+        >>> is_match_found("apple", "apple")
         True
+
+        >>> is_match_found("apple", "apple pie")
+        False
 
         >>> is_match_found("cherry", "apple pie")
         False

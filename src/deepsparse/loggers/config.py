@@ -69,7 +69,7 @@ class LoggingConfig(BaseModel):
     )
 
     system: Dict[str, List[TargetConfig]] = Field(
-        default={".*": [TargetConfig()]},
+        default={"re:.*": [TargetConfig()]},
         description="Default python logging module logger",
     )
 
