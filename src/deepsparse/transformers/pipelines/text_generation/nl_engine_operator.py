@@ -31,7 +31,6 @@ from deepsparse.utils.onnx import (
     overwrite_onnx_model_inputs_for_kv_cache_models,
 )
 
-
 __all__ = ["NLEngineOperator", "NLEngineInputs", "NLEngineOutputs"]
 
 
@@ -105,7 +104,6 @@ class NLEngineOutputs(BaseModel):
 
 
 class NLEngineOperator(EngineOperator):
-
     """
     Operator for the NL Decoder Engine. This Operator inherits from the EngineOperator.
     Specific updates to engine attributes are made through this operator, as well
@@ -117,11 +115,11 @@ class NLEngineOperator(EngineOperator):
     output_schema = NLEngineOutputs
 
     def __init__(
-        self,
-        sequence_length: int,
-        input_ids_length: int,
-        internal_kv_cache: bool = False,
-        **kwargs,
+            self,
+            sequence_length: int,
+            input_ids_length: int,
+            internal_kv_cache: bool = False,
+            **kwargs,
     ):
 
         self.sequence_length = sequence_length
@@ -133,7 +131,7 @@ class NLEngineOperator(EngineOperator):
         super().__init__(**kwargs)
 
     def create_engine(
-        self, batch_size: Optional[int] = None, engine_kwargs: Optional[dict] = None
+            self, batch_size: Optional[int] = None, engine_kwargs: Optional[dict] = None
     ):
 
         batch_size = batch_size if batch_size is not None else self._batch_size
@@ -165,10 +163,10 @@ class NLEngineOperator(EngineOperator):
         return super().create_engine(**kwargs, **engine_kwargs)
 
     def override_model_inputs(
-        self,
-        model_path: Union[str, Path],
-        batch_size: int,
-        return_additional_outputs=False,
+            self,
+            model_path: Union[str, Path],
+            batch_size: int,
+            return_additional_outputs=False,
     ):
         """
         Override the model based on the provided batch_size, sequence_length,
@@ -233,7 +231,11 @@ class NLEngineOperator(EngineOperator):
                     inputs, internal_kv_cache
                 )
 
-            filename = f"analysis-{self.inference_index}.pickle"
+            inferenece_type = 'prefill' if self.prefill else 'decode'
+            filename = f"analysis-{inferenece_type}-{self.inference_index}.pickle"
+            if 'WAND_BENCH_ANALYSIS_DIR' in os.environ:
+                filename = os.path.join(os.environ['WAND_BENCH_ANALYSIS_DIR'], filename)
+
             print(f"Saving text generation inference analysis to {filename}")
             import pickle
             with open(filename, 'wb') as f:
