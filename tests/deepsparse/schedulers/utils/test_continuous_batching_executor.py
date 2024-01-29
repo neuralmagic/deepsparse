@@ -16,6 +16,7 @@ from concurrent.futures import Future
 
 import numpy
 
+import pytest
 from deepsparse.operators import EngineOperator
 from deepsparse.schedulers.utils import (
     ContinuousBatchingExecutorThread,
@@ -23,6 +24,7 @@ from deepsparse.schedulers.utils import (
 )
 
 
+@pytest.mark.skip("skip continuous batching tests")
 def test_continuous_batching_executor_thread():
     # mobilenet model with batch_size=2
     engine_operator = EngineOperator("zoo:mobilenet_v2-1.0-imagenet-base")

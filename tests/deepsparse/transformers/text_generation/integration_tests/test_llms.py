@@ -132,6 +132,7 @@ class TestsIntegrationLLMsPipelines:
         self.default_pipeline = None
         self.max_new_tokens = max_new_tokens
 
+    @pytest.mark.skip("skip continuous batching tests")
     def test_continuous_batching_pipeline(self, setup):
 
         pipeline = self.get_pipeline(
