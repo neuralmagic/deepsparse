@@ -38,7 +38,7 @@ def test_config_generates_default_json():
         uses:
         - default
     metric:
-      "(?i)operator":
+      "re:(?i)operator":
       - func: identity
         freq: 1
         uses:

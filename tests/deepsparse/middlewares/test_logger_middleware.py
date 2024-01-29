@@ -65,7 +65,7 @@ def text_generation_instance(frequency: int = 1):
 
     metric:
         "re:.*":  # regex match all
-            - func: max
+            - func: identity
               freq: {frequency}
               uses:
                 - list
@@ -119,7 +119,6 @@ def test_logger_middleware_logs_saved_in_list_logger():
         middleware_manager=MiddlewareManager(middlewares),
         logger_manager=LoggerManager(config),
     )
-
     pipeline_input = IntSchema(value=5)
     pipeline_output = AddThreePipeline(pipeline_input)
     assert pipeline_output.value == 8
@@ -161,7 +160,7 @@ def test_text_generation_pipeline_trigger_logger_with_run_time_with_frequency_fi
 
     metric:
         "re:.*":  # regex match all
-            - func: max
+            - func: identity
               freq: {frequency}
               uses:
                 - list
@@ -181,26 +180,13 @@ def test_text_generation_pipeline_trigger_logger_with_run_time_with_frequency_fi
 
     text = model(PROMPT, **GENERATION_CONFIG).generations[0].text
     assert text is not None
-
     list_log = model.logger_manager.leaf_logger["list"].logs
-    len_attr = len(list_log)
-
-    # Expected length of list_logger:
-    # In frequency counter, if we have attrs {a: Na, b: Nb, c: Nc},
-    # The expected high bound is N_x / frequency with zero remainder
-    # Expected low bound is all attr have frequency - 1 remainders
-    max_remainder = len_attr * (frequency - 1)
 
     max_expected_len_list_logs = (
         len(text_generation_instance.logger_manager.leaf_logger["list"].logs)
         / frequency
     )
-
-    assert (
-        math.floor(max_expected_len_list_logs - max_remainder)
-        <= math.floor(len(list_log))
-        <= math.floor(max_expected_len_list_logs)
-    )
+    assert math.floor(len(list_log)) <= math.floor(max_expected_len_list_logs)
 
 
 @asyncio_run

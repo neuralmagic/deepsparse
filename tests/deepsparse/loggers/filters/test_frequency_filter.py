@@ -21,9 +21,9 @@ from deepsparse.loggers.filters import FrequencyFilter
 @pytest.mark.parametrize(
     "tag, func, freq, expected_counter, iter",  # From config file
     [
-        ("(?i)operator", "max", 2, 6, 12),
-        ("(?i)operator", "max", 3, 4, 12),
-        ("(?i)operator", "max", 5, 2, 12),
+        ("re:(?i)operator", "max", 2, 6, 12),
+        ("re:(?i)operator", "max", 3, 4, 12),
+        ("re:(?i)operator", "max", 5, 2, 12),
     ],
 )
 def test_frequency_filter(tag, func, freq, expected_counter, iter):

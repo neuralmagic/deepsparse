@@ -79,7 +79,7 @@ class LoggingConfig(BaseModel):
     )
 
     metric: Dict[str, List[MetricTargetConfig]] = Field(
-        default={r"(?i)operator": [MetricTargetConfig()]},
+        default={"re:(?i)operator": [MetricTargetConfig()]},
         description="Metric level config",
     )
 

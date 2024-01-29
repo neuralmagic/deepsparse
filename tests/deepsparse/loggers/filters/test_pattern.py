@@ -27,8 +27,8 @@ class MockValue:
     "pattern, string, truth",
     [
         ("re:.*", "foo", True),  # matches everything
-        (r"re:(?i)operator", "foo", False),
-        (r"re:(?i)operator", "AddOneOperator", True),
+        ("re:(?i)operator", "foo", False),
+        ("re:(?i)operator", "AddOneOperator", True),
         ("operator", "AddOneOperator", False),
         ("Operator", "AddOneOperator", False),
         ("AddOneOperator", "AddOneOperator", True),
