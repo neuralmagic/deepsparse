@@ -17,7 +17,6 @@ import numpy
 from pydantic import BaseModel, Field
 
 from deepsparse.operators import Operator
-from deepsparse.transformers.schemas.text_generation_schemas import FinishReason
 from deepsparse.utils import InferenceState
 
 
@@ -42,9 +41,6 @@ class CompileGenerations(Operator):
         generated_tokens = inference_state.current_state.get("generated_tokens")
         generated_logits = inference_state.current_state.get("generated_logits")
         finished_reason = inference_state.current_state.get("finished_reason")
-
-        if len(finished_reason) == 0:
-            finished_reason.append(FinishReason.LENGTH)
 
         generated_tokens = numpy.array([generated_tokens])
         generated_logits = numpy.concatenate(generated_logits, axis=1)
