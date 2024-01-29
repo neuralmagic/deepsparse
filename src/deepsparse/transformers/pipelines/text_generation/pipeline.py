@@ -184,6 +184,9 @@ class TextGenerationPipeline(Pipeline):
             **engine_kwargs,
         )
 
+        single_engine_operator.prefill = False
+        multi_engine_operator.prefill = True
+
         # NOTE: Currently using pipeline state. Can swap to simply pass in the
         # attributes to the specific Operator that need them, as class attributes.
         pipeline_state_vals[

@@ -139,8 +139,9 @@ class Pipeline(Operator):
                     "Pipeline was not created for the given task. The "
                     "provided task should be registered using the OperatorRegistry"
                 )
-        except Exception:
-            _LOGGER.warning(f"Could not create v2 '{task}' pipeline, trying legacy")
+        except Exception as e:
+            _LOGGER.warning(f"Could not create v2 '{task}' pipeline, with error: {e}")
+            _LOGGER.warning(f"Attempting to create the legacy pipeline")
             from deepsparse.legacy import Pipeline
 
             pipeline = Pipeline.create(task=task, **kwargs)

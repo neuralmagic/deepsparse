@@ -19,7 +19,7 @@ from pydantic import BaseModel, Field
 
 from deepsparse.benchmark import ORTEngine
 from deepsparse.engine import Context as EngineContext
-from deepsparse.engine import Engine, MultiModelEngine, Scheduler
+from deepsparse.engine import DebugAnalysisEngine, KVCacheParams, Engine, MultiModelEngine, Scheduler
 from deepsparse.operators import Operator
 from deepsparse.utils import join_engine_outputs, model_to_path, split_engine_inputs
 
@@ -169,7 +169,14 @@ class EngineOperator(Operator):
                     **engine_args,
                 )
             engine_args.pop("cache_output_bools", None)
-            return Engine(onnx_file_path, **engine_args)
+            engine_args.pop("num_streams", None)
+            cached_outputs = engine_args.pop("cached_outputs", None)
+            if not cached_outputs:
+                raise ValueError
+            engine_args["kv_cache_params"] = KVCacheParams(cached_outputs, 0, 0)
+            engine_args["num_warmup_iterations"] = 0
+            engine_args["num_iterations"] = 1
+            return DebugAnalysisEngine(onnx_file_path, **engine_args)
 
         if engine_type == ORT_ENGINE:
             return ORTEngine(onnx_file_path, **engine_args)
