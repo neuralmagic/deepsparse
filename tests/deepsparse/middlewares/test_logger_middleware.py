@@ -179,6 +179,11 @@ def test_text_generation_pipeline_trigger_logger_with_run_time_with_frequency_fi
     )
 
     text = model(PROMPT, **GENERATION_CONFIG).generations[0].text
+
+    # wait for async loggers to finish
+    model.logger_manager.wait_for_completion()
+    text_generation_instance.logger_manager.wait_for_completion()
+
     assert text is not None
     list_log = model.logger_manager.leaf_logger["list"].logs
 
