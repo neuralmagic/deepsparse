@@ -180,7 +180,7 @@ def main(
     # format kwargs to a  dict
     integration_args = args_to_dict(integration_args)
 
-    _LOGGER.info(f"Creating pipeline to evaluate from: {model_path}")
+    _LOGGER.info(f"Creating pipeline to evaluate from model path: {model_path}")
     _LOGGER.info(f"A pipeline with the engine type: {engine_type} will be created")
 
     _LOGGER.info(
