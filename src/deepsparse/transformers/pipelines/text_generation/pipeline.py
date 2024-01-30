@@ -357,7 +357,7 @@ class TextGenerationPipeline(Pipeline):
         """
         return self.ops["single_engine"].sequence_length
 
-     @property
+    @property
     def batch_size(self) -> int:
         return self.ops["single_engine"].batch_size
 
