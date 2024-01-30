@@ -16,7 +16,6 @@ import logging
 import os
 from abc import abstractmethod
 from collections import Counter
-from concurrent.futures import ThreadPoolExecutor
 from copy import deepcopy
 from typing import AsyncGenerator, List, Optional, Union
 
@@ -78,7 +77,6 @@ class Server:
         _LOGGER.info(f"Using config: {repr(self.server_config)}")
 
         self.context = None
-        self.executor = None
         self.server_logger = server_logger_from_config(self.server_config)
 
     def start_server(
@@ -113,7 +111,6 @@ class Server:
             num_cores=self.server_config.num_cores,
             num_streams=self.server_config.num_workers,
         )
-        self.executor = ThreadPoolExecutor(max_workers=self.context.num_streams)
 
         app = self._build_app()
 
