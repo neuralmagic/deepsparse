@@ -51,6 +51,12 @@ class AutoRegressiveOperatorPreprocess(Operator):
         if inp.get("in_generation"):
             return True
 
+        if kv_cache.total_num_processed_tokens >= kv_cache.capacity:
+            raise RuntimeError(
+                "Not enough kv_cache capacity to run generation. Please use a larger "
+                "sequence_length or a shorter prompt"
+            )
+
         remaining_tokens = len(tokens) - kv_cache.total_num_processed_tokens
         can_process = (
             remaining_tokens > 0 and remaining_tokens < self.prompt_sequence_length
