@@ -20,7 +20,8 @@ Usage: deepsparse.eval [OPTIONS] [INTEGRATION_ARGS]...
   Module for evaluating models on the various evaluation integrations
 
 OPTIONS:
-    --target TARGET     A path to a remote or local directory containing ONNX model
+    --model_path MODEL_PATH 
+                        A path to an ONNX model, local directory containing ONNX model
                         (including all the auxiliary files) or a SparseZoo stub
     -d DATASET, --dataset DATASET
                         The dataset to evaluate on. The user may pass multiple datasets
@@ -91,7 +92,7 @@ _LOGGER = logging.getLogger(__name__)
     "--model_path",
     type=click.Path(dir_okay=True, file_okay=True),
     required=True,
-    help="A path to a remote or local directory containing ONNX model "
+    help="A path to an ONNX model, local directory containing ONNX model"
     "(including all the auxiliary files) or a SparseZoo stub",
 )
 @click.option(
@@ -191,7 +192,7 @@ def main(
     )
 
     result: Result = evaluate(
-        model_path=model_path,
+        model=model_path,
         datasets=datasets,
         integration=integration,
         engine_type=engine_type,

@@ -13,8 +13,9 @@
 # limitations under the License.
 import logging
 from pathlib import Path
-from typing import Any, List, Optional, Union
+from typing import List, Optional, Union
 
+from deepsparse import Pipeline
 from deepsparse.evaluation.registry import EvaluationRegistry
 from deepsparse.evaluation.results import Result
 from deepsparse.evaluation.utils import create_pipeline
@@ -31,7 +32,7 @@ _LOGGER = logging.getLogger(__name__)
 
 
 def evaluate(
-    model_path: Any,
+    model: Union[Pipeline, Path, str],
     datasets: Union[str, List[str]],
     integration: Optional[str] = None,
     engine_type: Union[
@@ -43,12 +44,20 @@ def evaluate(
     **kwargs,
 ) -> Result:
 
+    if isinstance(model, Pipeline):
+        _LOGGER.info(
+            "Passed a Pipeline object into evaluate function. This will "
+            "override the following arguments:"
+        )
+        batch_size = model.batch_size
+        _LOGGER.info(f"batch_size: {batch_size}")
+        engine_type = engine_type
+        _LOGGER.info(f"engine_type: {engine_type}")
+
     # if target is a string, turn it into an appropriate pipeline
-    # otherwise assume it is a model/pipeline
+    # otherwise assume it is a pipeline
     pipeline = (
-        create_pipeline(model_path, engine_type)
-        if isinstance(model_path, (Path, str))
-        else model_path
+        create_pipeline(model, engine_type) if isinstance(model, (Path, str)) else model
     )
 
     eval_integration = EvaluationRegistry.resolve(pipeline, datasets, integration)

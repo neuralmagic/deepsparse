@@ -29,6 +29,7 @@ from deepsparse.evaluation.results import (
     Metric,
     Result,
 )
+from deepsparse.pipeline import Pipeline
 
 
 @EvaluationRegistry.register()
@@ -71,7 +72,7 @@ def unknown_integration_name():
 def test_evaluate_unknown_integration(model_path, datasets, unknown_integration_name):
     with pytest.raises(KeyError):
         evaluate(
-            model_path=model_path,
+            model=model_path,
             datasets=datasets,
             integration=unknown_integration_name,
         )
@@ -79,7 +80,31 @@ def test_evaluate_unknown_integration(model_path, datasets, unknown_integration_
 
 def test_evaluate(model_path, datasets, dummy_integration_name):
     result = evaluate(
-        model_path=model_path,
+        model=model_path,
+        datasets=datasets,
+        integration=dummy_integration_name,
+    )
+    assert isinstance(result, Result)
+
+
+def test_evaluate_pipeline_with_kv_cache(model_path, datasets, dummy_integration_name):
+    result = evaluate(
+        model=Pipeline.create(model_path=model_path, task="text-generation"),
+        datasets=datasets,
+        integration=dummy_integration_name,
+    )
+    assert isinstance(result, Result)
+
+
+def test_evaluate_pipeline_without_kv_cache(
+    model_path, datasets, dummy_integration_name
+):
+    result = evaluate(
+        model=Pipeline.create(
+            model_path=model_path,
+            task="text-generation",
+            onnx_model_name="model-orig.onnx",
+        ),
         datasets=datasets,
         integration=dummy_integration_name,
     )
@@ -95,7 +120,7 @@ def test_evaluation_llm_evaluation_harness_integration_name(
     datasets,
 ):
     assert evaluate(
-        model_path=model_path,
+        model=model_path,
         datasets=datasets,
         limit=2,
         no_cache=True,
