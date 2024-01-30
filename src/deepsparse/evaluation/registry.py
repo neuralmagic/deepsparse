@@ -15,8 +15,9 @@
 Implementation of a registry for evaluation functions
 """
 import logging
-from typing import Any, Callable, List, Optional, Union
+from typing import Callable, List, Optional, Union
 
+from deepsparse import Pipeline
 from sparsezoo.utils.registry import RegistryMixin
 
 
@@ -38,7 +39,7 @@ class EvaluationRegistry(RegistryMixin):
     @classmethod
     def resolve(
         cls,
-        model: Any,
+        pipeline: Pipeline,
         datasets: Union[str, List[str]],
         integration: Optional[str] = None,
     ) -> Callable[..., "Result"]:  # noqa: F821
@@ -59,12 +60,12 @@ class EvaluationRegistry(RegistryMixin):
                 "No integration specified, inferring the evaluation"
                 "function from the input arguments..."
             )
-            integration = resolve_integration(model, datasets)
+            integration = resolve_integration(pipeline, datasets)
 
             if integration is None:
                 raise ValueError(
                     "Unable to resolve an evaluation function for the given model. "
-                    "Specify an integration name or use a model that is supported "
+                    "Specify an integration name or use a pipeline that is supported "
                 )
             _LOGGER.info(f"Inferred the evaluation function: {integration}")
 

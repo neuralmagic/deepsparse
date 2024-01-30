@@ -14,17 +14,17 @@
 
 import pytest
 from deepsparse.evaluation.integrations import try_import_lm_evaluation_harness
-from deepsparse.evaluation.utils import create_model_from_target
+from deepsparse.evaluation.utils import create_pipeline
 
 
 @pytest.mark.parametrize(
     "pipeline, model_torch",
     [
         (
-            create_model_from_target(
+            create_pipeline(
                 "hf:mgoin/TinyStories-1M-deepsparse", engine_type="onnxruntime"
             ),
-            create_model_from_target("roneneldan/TinyStories-1M"),
+            create_pipeline("roneneldan/TinyStories-1M"),
         )
     ],
 )
