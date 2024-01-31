@@ -27,6 +27,7 @@ from deepsparse.schedulers import (
     SchedulerGroup,
 )
 from deepsparse.subgraph_execute import SubGraphExecutor
+from deepsparse.tasks import SupportedTasks
 from deepsparse.utils import InferenceState, PipelineState
 from deepsparse.utils.subgraph import SubGraph
 from deepsparse.utils.time import TIMER_KEY, InferenceStages, TimerManager
@@ -139,7 +140,10 @@ class Pipeline(Operator):
                     "Pipeline was not created for the given task. The "
                     "provided task should be registered using the OperatorRegistry"
                 )
-        except Exception:
+        except Exception as e:
+            if SupportedTasks.is_text_generation(task):
+                raise e
+
             _LOGGER.warning(f"Could not create v2 '{task}' pipeline, trying legacy")
             from deepsparse.legacy import Pipeline
 
