@@ -18,59 +18,53 @@ from deepsparse.evaluation.utils import create_model_from_target
 
 
 @pytest.mark.parametrize(
-    "pipeline, model_torch",
-    [
-        (
-            create_model_from_target(
-                "zoo:mistral-7b-gsm8k_mistral_pretrain-pruned70", engine_type="onnxruntime", sequence_length = 256
-            ),
-            create_model_from_target("roneneldan/TinyStories-1M"),
-        )
-    ],
-)
-@pytest.mark.parametrize(
     "datasets",
     [
-        #["hellaswag"],
+        ["hellaswag"],
         # ["hellaswag", "gsm8k"],
         # "gsm8k",
-        #"arc_challenge",
+        "arc_challenge",
     ],
 )
 @pytest.mark.parametrize(
     "batch_size",
-    [1],
+    [1],  # TODO: Add test for higher batch sizes
 )
-class TestLMEvaluationHarness:
-    @pytest.mark.skipif(
-        not try_import_lm_evaluation_harness(raise_error=False),
-        reason="lm_evaluation_harness not installed",
+@pytest.mark.skipif(
+    not try_import_lm_evaluation_harness(raise_error=False),
+    reason="lm_evaluation_harness not installed",
+)
+def test_integration_eval_onnx_matches_torch(datasets, batch_size):
+    from deepsparse.evaluation.integrations.lm_evaluation_harness import (
+        integration_eval,
     )
-    def test_integration_eval_onnx_matches_torch(
-        self, pipeline, model_torch, datasets, batch_size
-    ):
-        from deepsparse.evaluation.integrations.lm_evaluation_harness import (
-            integration_eval,
-        )
 
-        out_torch = integration_eval(
-            model="hf",
-            model_args="pretrained=roneneldan/TinyStories-1M,dtype=float32",
-            datasets=datasets,
-            batch_size=batch_size,
-            limit=1,
-            use_cache=None,  # avoid saving files when running tests
-        )
-        out_onnx = integration_eval(
-            model=pipeline,
-            datasets=datasets,
-            batch_size=batch_size,
-            limit=1,
-            use_cache=None,  # avoid saving files when running tests
-        )
-        print(out_onnx)
-        print(out_torch)
-        # out_onnx = out_onnx.raw["output"]
-        # out_torch = out_torch.raw["output"]
-        #
-        # assert out_onnx["results"] == out_torch["results"]
+    out_torch = integration_eval(
+        model="hf",
+        model_args="pretrained=roneneldan/TinyStories-1M,dtype=float16",
+        datasets=datasets,
+        batch_size=batch_size,
+        limit=2,
+        use_cache=None,  # avoid saving files when running tests
+    )
+
+    out_onnx = integration_eval(
+        model=create_model_from_target(
+            "hf:mgoin/TinyStories-1M-ds", engine_type="onnxruntime", sequence_length=128
+        ),
+        datasets=datasets,
+        batch_size=batch_size,
+        limit=2,
+        use_cache=None,  # avoid saving files when running tests
+    )
+
+    datasets = datasets if isinstance(datasets, list) else [datasets]
+    for dataset in datasets:
+        torch_samples = out_torch.raw["samples"][dataset]
+        onnx_samples = out_onnx.raw["samples"][dataset]
+        for torch_sample, onnx_sample in zip(torch_samples, onnx_samples):
+            for torch_resp, onnx_resp in zip(
+                torch_sample["resps"], onnx_sample["resps"]
+            ):
+                assert pytest.approx(torch_resp[0][0], 0.1) == onnx_resp[0][0]
+                assert torch_resp[0][1] == onnx_resp[0][1]
