@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import logging
+from concurrent.futures import ThreadPoolExecutor
 from functools import partial
 
 from deepsparse import Pipeline
@@ -73,12 +74,30 @@ class DeepsparseServer(Server):
         endpoint_config: EndpointConfig,
     ):
         pipeline_config = endpoint_config.to_pipeline_config()
-        pipeline_config.kwargs["executor"] = self.executor
 
         _LOGGER.info(f"Initializing pipeline for '{endpoint_config.name}'")
-        pipeline = Pipeline.from_config(
-            pipeline_config, context=self.context, logger=self.server_logger
-        )
+        if pipeline_config.kwargs.get("continuous_batch_sizes"):
+            pipeline_config.kwargs["executor"] = ThreadPoolExecutor(
+                max_workers=self.server_config.num_workers
+            )
+            _LOGGER.info(
+                "for continuous batching, the single stream scheduler will be enabled."
+            )
+            pipeline_config.num_cores = self.server_config.num_cores
+            pipeline_config.scheduler = "single"
+
+            pipeline = Pipeline.from_config(
+                pipeline_config,
+                num_streams=self.server_config.num_workers,
+                logger=self.server_logger,
+            )
+        else:
+            pipeline_config.kwargs["executor"] = ThreadPoolExecutor(
+                max_workers=self.context.num_streams
+            )
+            pipeline = Pipeline.from_config(
+                pipeline_config, context=self.context, logger=self.server_logger
+            )
 
         _LOGGER.info(f"Adding endpoints for '{endpoint_config.name}'")
         self._add_inference_endpoints(

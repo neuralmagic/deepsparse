@@ -376,7 +376,19 @@ class OpenAIServer(Server):
                 f"{SupportedTasks.code_generation._fields}"
             )
 
-        pipeline = Pipeline.from_config(pipeline_config, context=self.context)
+        if pipeline_config.kwargs.get("continuous_batch_sizes"):
+            _LOGGER.info(
+                "for continuous batching, the single stream scheduler will be enabled."
+            )
+            pipeline_config.num_cores = self.server_config.num_cores
+            pipeline_config.scheduler = "single"
+
+            pipeline = Pipeline.from_config(
+                pipeline_config,
+                num_streams=self.server_config.num_workers,
+            )
+        else:
+            pipeline = Pipeline.from_config(pipeline_config, context=self.context)
 
         if not self.model_to_pipeline.get(endpoint_config.model):
             model_card = ModelCard(
