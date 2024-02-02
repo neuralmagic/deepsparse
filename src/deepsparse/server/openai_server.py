@@ -46,10 +46,9 @@ from deepsparse.server.protocol import (
 )
 from deepsparse.server.server import Server
 from deepsparse.tasks import SupportedTasks
-from deepsparse.utils import InferenceState
+from deepsparse.utils import InferenceState, numpy_softmax
 from fastapi import BackgroundTasks, FastAPI, Request
 from fastapi.responses import StreamingResponse
-from scipy.special import softmax
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -376,7 +375,19 @@ class OpenAIServer(Server):
                 f"{SupportedTasks.code_generation._fields}"
             )
 
-        pipeline = Pipeline.from_config(pipeline_config, context=self.context)
+        if pipeline_config.kwargs.get("continuous_batch_sizes"):
+            _LOGGER.info(
+                "for continuous batching, the single stream scheduler will be enabled."
+            )
+            pipeline_config.num_cores = self.server_config.num_cores
+            pipeline_config.scheduler = "single"
+
+            pipeline = Pipeline.from_config(
+                pipeline_config,
+                num_streams=self.server_config.num_workers,
+            )
+        else:
+            pipeline = Pipeline.from_config(pipeline_config, context=self.context)
 
         if not self.model_to_pipeline.get(endpoint_config.model):
             model_card = ModelCard(
@@ -481,7 +492,7 @@ def create_logprobs(
     tokens = pipeline.tokenizer.batch_decode(token_ids)
 
     for i in range(len(tokens)):
-        log_prob = float(numpy.log(max(softmax(scores[i]))))
+        log_prob = float(numpy.log(max(numpy_softmax(scores[i]))))
         logprobs.tokens.append(tokens[i])
         logprobs.token_logprobs.append(log_prob)
 

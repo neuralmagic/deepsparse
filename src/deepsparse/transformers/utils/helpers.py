@@ -104,8 +104,10 @@ def set_generated_length(
     :param max_new_tokens: the max_new_tokens attribute, which may be provided
     as part of the input during inference
     """
-    if max_length:
+    if max_length is not None:
         # if max_length provided, use that to cap total tokens generated
+        if max_length == 0:
+            raise ValueError("max_length must be greater than 0")
         max_tokens = max_length
         finish_reason = finish_reason_choices.LENGTH
     else:

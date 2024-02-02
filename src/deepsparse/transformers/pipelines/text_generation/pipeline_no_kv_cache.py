@@ -19,6 +19,7 @@ from deepsparse.pipeline import Pipeline
 from deepsparse.routers import GraphRouter
 from deepsparse.schedulers import OperatorScheduler
 from deepsparse.transformers.pipelines.text_generation import (
+    CompileGeneratedTokens,
     CompileGenerations,
     GenerateNewTokenOperator,
     JoinOutput,
@@ -73,6 +74,7 @@ class TextGenerationPipelineNoCache(Pipeline):
             tokenizer=self.tokenizer, force_max_tokens=True
         )
         compile_generations = CompileGenerations()
+        compile_generated_tokens = CompileGeneratedTokens()
         join_output = JoinOutput(tokenizer=self.tokenizer)
         process_outputs = ProcessOutputs(tokenizer=self.tokenizer)
 
@@ -82,6 +84,7 @@ class TextGenerationPipelineNoCache(Pipeline):
             "engine_operator": engine_operator,
             "prepare_generation": prepare_generation,
             "generate_new_token": generate_new_token,
+            "compile_generated_tokens": compile_generated_tokens,
             "compile_generations": compile_generations,
             "join_output": join_output,
             "process_outputs": process_outputs,
@@ -92,7 +95,8 @@ class TextGenerationPipelineNoCache(Pipeline):
             "SPLIT": "engine_operator",
             "engine_operator": "prepare_generation",
             "prepare_generation": "generate_new_token",
-            "generate_new_token": "compile_generations",
+            "generate_new_token": "compile_generated_tokens",
+            "compile_generated_tokens": "compile_generations",
             "compile_generations": "JOIN",
             "JOIN": "join_output",
             "join_output": "process_outputs",

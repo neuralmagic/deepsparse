@@ -28,6 +28,7 @@ __all__ = [
     "split_engine_inputs",
     "join_engine_outputs",
     "prep_for_serialization",
+    "numpy_log_softmax",
 ]
 
 from pydantic import BaseModel
@@ -167,6 +168,36 @@ def numpy_softmax(x: numpy.ndarray, axis: int = 0):
     e_x_sum = numpy.sum(e_x, axis=axis, keepdims=True)
     softmax_x = e_x / e_x_sum
     return softmax_x
+
+
+def numpy_log_softmax(x: numpy.ndarray, axis: int = 0):
+    """
+    Ref: https://github.com/scipy/scipy/blob/v1.12.0/scipy/special/_logsumexp.py
+
+    In principle: log_softmax(x) = log(softmax(x))
+    but using a more accurate implementation.
+
+    :param x: array containing values to be softmaxed
+    :param axis: axis across which to perform softmax
+    :return: x with values across axis softmaxed
+    """
+    x_max = numpy.max(x, axis=axis, keepdims=True)
+
+    if x_max.ndim > 0:
+        x_max[~numpy.isfinite(x_max)] = 0
+    elif not numpy.isfinite(x_max):
+        x_max = 0
+
+    tmp = x - x_max
+    exp_tmp = numpy.exp(tmp)
+
+    # suppress warnings about log of zero
+    with numpy.errstate(divide="ignore"):
+        s = numpy.sum(exp_tmp, axis=axis, keepdims=True)
+        out = numpy.log(s)
+
+    out = tmp - out
+    return out
 
 
 def split_engine_inputs(

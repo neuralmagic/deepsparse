@@ -52,7 +52,7 @@ from tests.helpers import run_command
         ),
         (
             "image_classification",
-            "zoo:cv/classification/resnet_v1-50_2x/pytorch/sparseml/imagenet/base-none",
+            "zoo:cv/classification/resnet_v1-50/pytorch/sparseml/imagenet/base-none",
             [
                 "-c",
                 "tests/test_data/pipeline_bench_config.json",
@@ -66,7 +66,7 @@ from tests.helpers import run_command
         ),
         (
             "image_classification",
-            "zoo:cv/classification/resnet_v1-50_2x/pytorch/sparseml/imagenet/base-none",
+            "zoo:cv/classification/resnet_v1-50/pytorch/sparseml/imagenet/base-none",
             [],
         ),
         (
