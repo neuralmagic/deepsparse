@@ -16,13 +16,15 @@
 Integration of the `lm_evaluation_harness`:
 https://github.com/EleutherAI/lm-evaluation-harness
 """
+import copy
 import logging
+from collections import defaultdict
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy
 from tqdm import tqdm
 from transformers import AutoTokenizer
-import copy
+
 from deepsparse import Pipeline
 from deepsparse.evaluation.registry import EvaluationRegistry
 from deepsparse.evaluation.results import Dataset, Evaluation, Metric, Result
@@ -30,7 +32,6 @@ from deepsparse.utils.data import numpy_log_softmax
 from lm_eval import evaluator, tasks, utils
 from lm_eval.api.instance import Instance
 from lm_eval.api.model import LM
-from collections import defaultdict
 
 
 tasks.initialize_tasks("INFO")
@@ -302,7 +303,9 @@ class DeepSparseLM(LM):
                             text = text.split(term)[0]
 
                     res[key].append(text)
-                    self.cache_hook.add_partial("greedy_until", (context, gen_kwargs), text)
+                    self.cache_hook.add_partial(
+                        "greedy_until", (context, gen_kwargs), text
+                    )
                     pbar.update(1)
             # reorder this group of results back to original unsorted form
             res[key] = re_ord.get_original(res[key])
