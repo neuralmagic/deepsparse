@@ -22,7 +22,7 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 import numpy
 from tqdm import tqdm
 from transformers import AutoTokenizer
-
+import copy
 from deepsparse import Pipeline
 from deepsparse.evaluation.registry import EvaluationRegistry
 from deepsparse.evaluation.results import Dataset, Evaluation, Metric, Result
@@ -30,7 +30,7 @@ from deepsparse.utils.data import numpy_log_softmax
 from lm_eval import evaluator, tasks, utils
 from lm_eval.api.instance import Instance
 from lm_eval.api.model import LM
-from lm_eval.utils import Reorderer
+from collections import defaultdict
 
 
 tasks.initialize_tasks("INFO")
@@ -113,6 +113,7 @@ class DeepSparseLM(LM):
         self,
         pipeline: Pipeline,
         batch_size: int = 1,
+        max_gen_toks: int = 128,
         tokenizer: Optional[AutoTokenizer] = None,
     ):
         """
@@ -126,6 +127,7 @@ class DeepSparseLM(LM):
         self.batch_size = batch_size
         self.tokenizer = tokenizer or pipeline.tokenizer
         self._max_length = pipeline.sequence_length
+        self._max_gen_toks = max_gen_toks
 
     def tok_encode(self, string: str) -> List[int]:
         return self.tokenizer.encode(string)
@@ -136,6 +138,10 @@ class DeepSparseLM(LM):
     @property
     def max_length(self) -> int:
         return self._max_length
+
+    @property
+    def max_gen_toks(self) -> int:
+        return self._max_gen_toks
 
     def loglikelihood(self, requests) -> List[Tuple[float, bool]]:
         """
@@ -219,10 +225,91 @@ class DeepSparseLM(LM):
     def loglikelihood_rolling(
         self, requests: list[Instance]
     ) -> list[tuple[float, bool]]:
-        pass
+        raise NotImplementedError()
 
     def generate_until(self, requests: list[Instance]) -> list[str]:
-        pass
+        res = defaultdict(list)
+        re_ords = {}
+
+        def _collate(x):
+            # the negative sign on len(toks) sorts descending
+            toks = self.tok_encode(x[0])
+            return -len(toks), x[0]
+
+        # we group requests by their generation_kwargs,
+        # so that we don't try to execute e.g. greedy sampling and temp=0.8 sampling
+        # in the same batch.
+        grouper = utils.Grouper(requests, lambda x: str(x.args[1]))
+        for key, reqs in grouper.get_grouped().items():
+            # within each set of reqs for given kwargs, we reorder by token length, descending.
+            re_ords[key] = utils.Reorderer([req.args for req in reqs], _collate)
+
+        pbar = tqdm(total=len(requests))
+        # for each different set of kwargs, we execute all requests, by batch.
+        for key, re_ord in re_ords.items():
+            chunks = utils.chunks(re_ord.get_reordered(), n=self.batch_size)
+            for chunk in chunks:
+                contexts, all_gen_kwargs = zip(*chunk)
+                # we assume all gen kwargs in the batch are the same
+                # this is safe to assume because the `grouper` object ensures it.
+                gen_kwargs = all_gen_kwargs[0]
+                # unpack our keyword arguments.
+                until = None
+                if isinstance(gen_kwargs, dict):
+                    kwargs = copy.deepcopy(gen_kwargs)  # edge case for repeats > 1
+                    if "until" in kwargs.keys():
+                        until = kwargs.pop("until")
+                        if isinstance(until, str):
+                            until = [kwargs]
+                        elif not isinstance(until, list):
+                            raise ValueError(
+                                f"Expected `kwargs['until']` to be of type Union[str,list] but got {until}"
+                            )
+                else:
+                    raise ValueError(
+                        f"Expected `kwargs` to be of type `dict` but got {kwargs}"
+                    )
+
+                if not until:
+                    until = [self.tok_decode(self.eot_token_id)]
+
+                if "max_gen_toks" in kwargs.keys():
+                    max_gen_toks = kwargs.pop("max_gen_toks")
+                else:
+                    max_gen_toks = self.max_gen_toks
+
+                # we require users to pass do_sample=True explicitly for non-greedy gen
+                if "do_sample" not in kwargs.keys():
+                    kwargs["do_sample"] = False
+
+                # first stop sequence is used to halt generation upon encountering
+                primary_until = [until[0]]
+
+                responses = self.pipeline(
+                    sequences=contexts,
+                    max_new_tokens=max_gen_toks,
+                    stop=until,
+                    **kwargs,
+                )
+
+                responses = responses if type(responses) is list else [responses]
+                for response, context in zip(responses, contexts):
+                    text = response.generations[0].text
+                    # use secondary stop seqs to cut off should-have-been-stopped content post-hoc
+                    for term in until:
+                        if len(term) > 0:
+                            # ignore possible empty separators
+                            text = text.split(term)[0]
+
+                    res[key].append(text)
+                    self.cache_hook.add_partial("greedy_until", (context, gen_kwargs), text)
+                    pbar.update(1)
+            # reorder this group of results back to original unsorted form
+            res[key] = re_ord.get_original(res[key])
+
+        pbar.close()
+
+        return grouper.get_original(res)
 
     def _encode_pair(
         self, context: str, continuation: str

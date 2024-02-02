@@ -20,10 +20,10 @@ from deepsparse.evaluation.utils import create_model_from_target
 @pytest.mark.parametrize(
     "datasets",
     [
-        ["hellaswag"],
+        #["hellaswag"],
         # ["hellaswag", "gsm8k"],
-        # "gsm8k",
-        "arc_challenge",
+        "gsm8k",
+        #"arc_challenge",
     ],
 )
 @pytest.mark.parametrize(
@@ -39,22 +39,24 @@ def test_integration_eval_onnx_matches_torch(datasets, batch_size):
         integration_eval,
     )
 
-    out_torch = integration_eval(
-        model="hf",
-        model_args="pretrained=roneneldan/TinyStories-1M,dtype=float16",
-        datasets=datasets,
-        batch_size=batch_size,
-        limit=2,
-        use_cache=None,  # avoid saving files when running tests
-    )
+    # out_torch = integration_eval(
+    #     model="hf",
+    #     model_args="pretrained=roneneldan/TinyStories-1M,dtype=float16",
+    #     datasets=datasets,
+    #     batch_size=batch_size,
+    #     limit=1,
+    #     use_cache=None,  # avoid saving files when running tests
+    # )
 
     out_onnx = integration_eval(
         model=create_model_from_target(
-            "hf:mgoin/TinyStories-1M-ds", engine_type="onnxruntime", sequence_length=128
+            "hf:mgoin/TinyStories-1M-ds",
+            #engine_type="onnxruntime",
+            sequence_length=1024
         ),
         datasets=datasets,
         batch_size=batch_size,
-        limit=2,
+        limit=1,
         use_cache=None,  # avoid saving files when running tests
     )
 

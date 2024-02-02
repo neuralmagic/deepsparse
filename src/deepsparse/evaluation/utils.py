@@ -146,6 +146,7 @@ def create_model_from_target(
     :param engine_type: The engine type to initialize the model with.
     :return: The initialized model
     """
+    engine_type = engine_type or DEEPSPARSE_ENGINE
     if engine_type in [DEEPSPARSE_ENGINE, ORT_ENGINE]:
         return Pipeline.create(
             task="text-generation",
