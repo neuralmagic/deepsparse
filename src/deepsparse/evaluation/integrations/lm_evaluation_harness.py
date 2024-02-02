@@ -114,16 +114,22 @@ class DeepSparseLM(LM):
         self,
         pipeline: Pipeline,
         batch_size: int = 1,
-        max_gen_toks: int = 128,
+        max_gen_toks: int = 256,
         tokenizer: Optional[AutoTokenizer] = None,
     ):
         """
         Wrapper around the DeepSparse pipeline to make it compatible with the
         llm-evaluation-harness.
+
+        :param pipeline: the pipeline object to wrap
+        :param batch_size: the batch size to use for evaluation
+        :param max_gen_toks: the maximum number of tokens to generate
+            when using the model for generation (see: greed_until method)
+        :param tokenizer: the tokenizer to use for encoding and decoding
+            strings and tokens. By default, the tokenizer from the pipeline
         """
         super().__init__()
 
-        # Initialize new model and tokenizer instances
         self.pipeline = pipeline
         self.batch_size = batch_size
         self.tokenizer = tokenizer or pipeline.tokenizer
@@ -164,6 +170,13 @@ class DeepSparseLM(LM):
         requests: List[Tuple[Tuple[str, str], List[int], List[int]]],
         disable_tqdm: bool = False,
     ) -> List[Tuple[float, bool]]:
+        """
+        The function to compute the loglikelihood of the continuation
+        tokens given the context tokens.
+
+        This function is an adapted version of the original function from
+        https://github.com/EleutherAI/lm-evaluation-harness/blob/main/lm_eval/models/huggingface.py
+        """
         res = []
 
         def _collate(x):
@@ -226,9 +239,18 @@ class DeepSparseLM(LM):
     def loglikelihood_rolling(
         self, requests: list[Instance]
     ) -> list[tuple[float, bool]]:
-        raise NotImplementedError()
+        raise NotImplementedError(
+            "The method not required by any of our " "current task integrations so far"
+        )
 
     def generate_until(self, requests: list[Instance]) -> list[str]:
+        """
+        The function to generate a certain number of new tokens
+        given a context.
+
+        This function is an adapted version of the original function from
+        https://github.com/EleutherAI/lm-evaluation-harness/blob/main/lm_eval/models/huggingface.py
+        """
         res = defaultdict(list)
         re_ords = {}
 
@@ -283,19 +305,15 @@ class DeepSparseLM(LM):
                 if "do_sample" not in kwargs.keys():
                     kwargs["do_sample"] = False
 
-                # first stop sequence is used to halt generation upon encountering
-                primary_until = [until[0]]
-
-                responses = self.pipeline(
+                out = self.pipeline(
                     sequences=contexts,
                     max_new_tokens=max_gen_toks,
                     stop=until,
                     **kwargs,
                 )
 
-                responses = responses if type(responses) is list else [responses]
-                for response, context in zip(responses, contexts):
-                    text = response.generations[0].text
+                for gen, context in zip(out.generations, contexts):
+                    text = gen.text
                     # use secondary stop seqs to cut off should-have-been-stopped content post-hoc
                     for term in until:
                         if len(term) > 0:
