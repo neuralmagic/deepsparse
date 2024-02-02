@@ -16,7 +16,9 @@
 Integration of the `lm_evaluation_harness`:
 https://github.com/EleutherAI/lm-evaluation-harness
 """
+import copy
 import logging
+from collections import defaultdict
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy
@@ -30,7 +32,6 @@ from deepsparse.utils.data import numpy_log_softmax
 from lm_eval import evaluator, tasks, utils
 from lm_eval.api.instance import Instance
 from lm_eval.api.model import LM
-from lm_eval.utils import Reorderer
 
 
 tasks.initialize_tasks("INFO")
@@ -113,19 +114,27 @@ class DeepSparseLM(LM):
         self,
         pipeline: Pipeline,
         batch_size: int = 1,
+        max_gen_toks: int = 256,
         tokenizer: Optional[AutoTokenizer] = None,
     ):
         """
         Wrapper around the DeepSparse pipeline to make it compatible with the
         llm-evaluation-harness.
+
+        :param pipeline: the pipeline object to wrap
+        :param batch_size: the batch size to use for evaluation
+        :param max_gen_toks: the maximum number of tokens to generate
+            when using the model for generation (see: greed_until method)
+        :param tokenizer: the tokenizer to use for encoding and decoding
+            strings and tokens. By default, the tokenizer from the pipeline
         """
         super().__init__()
 
-        # Initialize new model and tokenizer instances
         self.pipeline = pipeline
         self.batch_size = batch_size
         self.tokenizer = tokenizer or pipeline.tokenizer
         self._max_length = pipeline.sequence_length
+        self._max_gen_toks = max_gen_toks
 
     def tok_encode(self, string: str) -> List[int]:
         return self.tokenizer.encode(string)
@@ -136,6 +145,10 @@ class DeepSparseLM(LM):
     @property
     def max_length(self) -> int:
         return self._max_length
+
+    @property
+    def max_gen_toks(self) -> int:
+        return self._max_gen_toks
 
     def loglikelihood(self, requests) -> List[Tuple[float, bool]]:
         """
@@ -157,6 +170,13 @@ class DeepSparseLM(LM):
         requests: List[Tuple[Tuple[str, str], List[int], List[int]]],
         disable_tqdm: bool = False,
     ) -> List[Tuple[float, bool]]:
+        """
+        The function to compute the loglikelihood of the continuation
+        tokens given the context tokens.
+
+        This function is an adapted version of the original function from
+        https://github.com/EleutherAI/lm-evaluation-harness/blob/main/lm_eval/models/huggingface.py
+        """
         res = []
 
         def _collate(x):
@@ -219,10 +239,98 @@ class DeepSparseLM(LM):
     def loglikelihood_rolling(
         self, requests: list[Instance]
     ) -> list[tuple[float, bool]]:
-        pass
+        raise NotImplementedError(
+            "The method not required by any of our " "current task integrations so far"
+        )
 
     def generate_until(self, requests: list[Instance]) -> list[str]:
-        pass
+        """
+        The function to generate a certain number of new tokens
+        given a context.
+
+        This function is an adapted version of the original function from
+        https://github.com/EleutherAI/lm-evaluation-harness/blob/main/lm_eval/models/huggingface.py
+        """
+        res = defaultdict(list)
+        re_ords = {}
+
+        def _collate(x):
+            # the negative sign on len(toks) sorts descending
+            toks = self.tok_encode(x[0])
+            return -len(toks), x[0]
+
+        # we group requests by their generation_kwargs,
+        # so that we don't try to execute e.g. greedy sampling and temp=0.8 sampling
+        # in the same batch.
+        grouper = utils.Grouper(requests, lambda x: str(x.args[1]))
+        for key, reqs in grouper.get_grouped().items():
+            # within each set of reqs for given kwargs, we reorder by token length, descending.
+            re_ords[key] = utils.Reorderer([req.args for req in reqs], _collate)
+
+        pbar = tqdm(total=len(requests))
+        # for each different set of kwargs, we execute all requests, by batch.
+        for key, re_ord in re_ords.items():
+            chunks = utils.chunks(re_ord.get_reordered(), n=self.batch_size)
+            for chunk in chunks:
+                contexts, all_gen_kwargs = zip(*chunk)
+                # we assume all gen kwargs in the batch are the same
+                # this is safe to assume because the `grouper` object ensures it.
+                gen_kwargs = all_gen_kwargs[0]
+                # unpack our keyword arguments.
+                until = None
+                if isinstance(gen_kwargs, dict):
+                    kwargs = copy.deepcopy(gen_kwargs)  # edge case for repeats > 1
+                    if "until" in kwargs.keys():
+                        until = kwargs.pop("until")
+                        if isinstance(until, str):
+                            until = [kwargs]
+                        elif not isinstance(until, list):
+                            raise ValueError(
+                                f"Expected `kwargs['until']` to be of type Union[str,list] but got {until}"
+                            )
+                else:
+                    raise ValueError(
+                        f"Expected `kwargs` to be of type `dict` but got {kwargs}"
+                    )
+
+                if not until:
+                    until = [self.tok_decode(self.eot_token_id)]
+
+                if "max_gen_toks" in kwargs.keys():
+                    max_gen_toks = kwargs.pop("max_gen_toks")
+                else:
+                    max_gen_toks = self.max_gen_toks
+
+                # we require users to pass do_sample=True explicitly for non-greedy gen
+                if "do_sample" not in kwargs.keys():
+                    kwargs["do_sample"] = False
+
+                out = self.pipeline(
+                    sequences=contexts,
+                    max_new_tokens=max_gen_toks,
+                    stop=until,
+                    **kwargs,
+                )
+
+                for gen, context in zip(out.generations, contexts):
+                    text = gen.text
+                    # use secondary stop seqs to cut off should-have-been-stopped content post-hoc
+                    for term in until:
+                        if len(term) > 0:
+                            # ignore possible empty separators
+                            text = text.split(term)[0]
+
+                    res[key].append(text)
+                    self.cache_hook.add_partial(
+                        "greedy_until", (context, gen_kwargs), text
+                    )
+                    pbar.update(1)
+            # reorder this group of results back to original unsorted form
+            res[key] = re_ord.get_original(res[key])
+
+        pbar.close()
+
+        return grouper.get_original(res)
 
     def _encode_pair(
         self, context: str, continuation: str

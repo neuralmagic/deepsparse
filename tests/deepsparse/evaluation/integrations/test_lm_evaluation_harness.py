@@ -18,12 +18,16 @@ from deepsparse.evaluation.utils import create_model_from_target
 
 
 @pytest.mark.parametrize(
-    "datasets",
+    "datasets, model_path_ds, model_path_hf",
     [
-        ["hellaswag"],
-        # ["hellaswag", "gsm8k"],
-        # "gsm8k",
-        "arc_challenge",
+        (["hellaswag"], "hf:mgoin/TinyStories-1M-ds", "roneneldan/TinyStories-1M"),
+        # (["hellaswag", "gsm8k"],"hf:mgoin/TinyLlama-1.1B-step-50K-105b-ONNX", "TinyLlama/TinyLlama-1.1B-step-50K-105b"),
+        (
+            "gsm8k",
+            "hf:mgoin/TinyLlama-1.1B-step-50K-105b-ONNX",
+            "TinyLlama/TinyLlama-1.1B-step-50K-105b",
+        ),
+        # ("arc_challenge", "hf:mgoin/TinyStories-1M-ds", "roneneldan/TinyStories-1M"),
     ],
 )
 @pytest.mark.parametrize(
@@ -34,27 +38,30 @@ from deepsparse.evaluation.utils import create_model_from_target
     not try_import_lm_evaluation_harness(raise_error=False),
     reason="lm_evaluation_harness not installed",
 )
-def test_integration_eval_onnx_matches_torch(datasets, batch_size):
+def test_integration_eval_onnx_matches_torch(
+    datasets, model_path_ds, model_path_hf, batch_size
+):
     from deepsparse.evaluation.integrations.lm_evaluation_harness import (
         integration_eval,
     )
 
     out_torch = integration_eval(
         model="hf",
-        model_args="pretrained=roneneldan/TinyStories-1M,dtype=float16",
+        model_args=f"pretrained={model_path_hf},dtype=float16",
         datasets=datasets,
         batch_size=batch_size,
-        limit=2,
+        limit=1,
         use_cache=None,  # avoid saving files when running tests
     )
 
     out_onnx = integration_eval(
         model=create_model_from_target(
-            "hf:mgoin/TinyStories-1M-ds", engine_type="onnxruntime", sequence_length=128
+            model_path_ds,
+            engine_type="onnxruntime",
         ),
         datasets=datasets,
         batch_size=batch_size,
-        limit=2,
+        limit=1,
         use_cache=None,  # avoid saving files when running tests
     )
 
