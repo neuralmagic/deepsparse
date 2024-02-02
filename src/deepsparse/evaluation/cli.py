@@ -59,7 +59,7 @@ EXAMPLES
 ##########
 Example command for evaluating a quantized MPT model from SparseZoo using the Deepsparse Engine.
 The evaluation will be run using `lm-evaluation-harness` on `hellaswag` and `gsm8k` datasets:
-deepsparse.eval zoo:mpt-7b-mpt_pretrain-base_quantized \
+deepsparse.eval --target zoo:mpt-7b-mpt_pretrain-base_quantized \
                 --dataset hellaswag \
                 --dataset gsm8k \
                 --integration lm-evaluation-harness \
@@ -72,13 +72,13 @@ from typing import List, Union
 import click
 
 from deepsparse.evaluation.evaluator import evaluate
-from deepsparse.evaluation.results import Result, save_result
 from deepsparse.evaluation.utils import args_to_dict, get_save_path
 from deepsparse.operators.engine_operator import (
     DEEPSPARSE_ENGINE,
     ORT_ENGINE,
     TORCHSCRIPT_ENGINE,
 )
+from sparsezoo.evaluation.results import Result, save_result
 
 
 _LOGGER = logging.getLogger(__name__)

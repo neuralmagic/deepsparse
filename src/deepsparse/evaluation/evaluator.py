@@ -11,22 +11,19 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import logging
 from typing import Any, List, Optional, Union
 
-from deepsparse.evaluation.registry import EvaluationRegistry
-from deepsparse.evaluation.results import Result
+from deepsparse.evaluation.registry import DeepSparseEvaluationRegistry
 from deepsparse.evaluation.utils import create_model_from_target
 from deepsparse.operators.engine_operator import (
     DEEPSPARSE_ENGINE,
     ORT_ENGINE,
     TORCHSCRIPT_ENGINE,
 )
+from sparsezoo.evaluation.results import Result
 
 
 __all__ = ["evaluate"]
-
-_LOGGER = logging.getLogger(__name__)
 
 
 def evaluate(
@@ -50,7 +47,9 @@ def evaluate(
         else target
     )
 
-    eval_integration = EvaluationRegistry.resolve(model, datasets, integration)
+    eval_integration = DeepSparseEvaluationRegistry.resolve(
+        model=model, datasets=datasets, integration=integration
+    )
 
     return eval_integration(
         model=model,
