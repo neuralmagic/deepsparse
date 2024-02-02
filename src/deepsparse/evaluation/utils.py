@@ -15,7 +15,14 @@
 import os
 from typing import Any, Dict, List, Optional, Tuple, Union
 
-from transformers import AutoModelForCausalLM, PreTrainedModel
+
+try:
+    from transformers import AutoModelForCausalLM, PreTrainedModel
+
+    transformers_error = None
+except ImportError as import_error:
+    transformers_error = import_error
+
 
 from deepsparse import Pipeline
 from deepsparse.operators.engine_operator import DEEPSPARSE_ENGINE, ORT_ENGINE
@@ -50,7 +57,7 @@ def potentially_check_dependency_import(integration_name: str) -> bool:
 
 
 def resolve_integration(
-    model: Union[Pipeline, PreTrainedModel], datasets: Union[str, List[str]]
+    model: Union[Pipeline, "PreTrainedModel"], datasets: Union[str, List[str]]
 ) -> Union[str, None]:
     """
     Given a model and dataset, infer the name of the evaluation integration
@@ -73,6 +80,7 @@ def if_generative_language_model(model: Any) -> bool:
     """
     Checks if the model is a generative language model.
     """
+    _check_transformers_dependency()
     if isinstance(model, Pipeline):
         return model.__class__.__name__ == "TextGenerationPipeline"
     elif isinstance(model, PreTrainedModel):
@@ -130,7 +138,7 @@ def create_model_from_target(
     target: str,
     engine_type: Optional[str] = None,
     **kwargs,
-) -> Union[Pipeline, AutoModelForCausalLM]:
+) -> Union[Pipeline, "AutoModelForCausalLM"]:
     """
     Create a model or a pipeline from a target path.
 
@@ -146,6 +154,8 @@ def create_model_from_target(
     :param engine_type: The engine type to initialize the model with.
     :return: The initialized model
     """
+    _check_transformers_dependency()
+
     if engine_type in [DEEPSPARSE_ENGINE, ORT_ENGINE]:
         return Pipeline.create(
             task="text-generation",
@@ -157,3 +167,10 @@ def create_model_from_target(
         )
     else:
         return AutoModelForCausalLM.from_pretrained(target, **kwargs)
+
+
+def _check_transformers_dependency():
+    if transformers_error:
+        raise ImportError(
+            "transformers is needed to use this module"
+        ) from transformers_error
