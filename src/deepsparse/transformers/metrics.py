@@ -275,5 +275,6 @@ def _cross_entropy(
         neg_log_likelihoods = neg_log_likelihoods.mean(axis=-1)
     elif reduction == "sum":
         neg_log_likelihoods = neg_log_likelihoods.sum(axis=-1)
+    print(neg_log_likelihoods)
 
     return neg_log_likelihoods

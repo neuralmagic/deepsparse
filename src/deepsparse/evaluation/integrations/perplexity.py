@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import logging
 from collections import defaultdict
 from typing import Any, Dict, List, Optional, Union
 
@@ -19,8 +20,10 @@ import numpy
 from tqdm import tqdm
 
 from datasets import load_dataset
+from deepsparse import Pipeline
 from deepsparse.evaluation.registry import EvaluationRegistry
 from deepsparse.evaluation.results import Dataset, Evaluation, Metric, Result
+from deepsparse.evaluation.utils import PERPLEXITY
 from deepsparse.transformers.metrics import Perplexity
 from deepsparse.transformers.pipelines.text_generation import TextGenerationPipeline
 from deepsparse.transformers.pipelines.text_generation.pipeline_no_kv_cache import (
@@ -32,15 +35,18 @@ from deepsparse.transformers.pipelines.text_generation.pipeline_no_kv_cache impo
 Integration for the evaluation module
 that computes the perplexity of a model on a dataset
 """
+_LOGGER = logging.getLogger(__name__)
 
 
-@EvaluationRegistry.register(name="perplexity")
+@EvaluationRegistry.register(name=PERPLEXITY)
 def integration_eval(
-    pipeline: Union[TextGenerationPipelineNoCache, TextGenerationPipeline],
+    pipeline: Pipeline,
     datasets: Union[List[str], str],
     batch_size: int = 1,
-    split: str = "test",
     limit: Optional[int] = None,
+    splits: Union[List[str], str, None] = "test",
+    metrics: Union[List[str], str, None] = None,
+    **kwargs,
 ) -> Result:
     """
     A function that computes the perplexity of a pipeline given a set
@@ -51,16 +57,24 @@ def integration_eval(
         cache support
     :param datasets: the names of dataset(s) to evaluate on
     :param batch_size: the batch size to use for evaluation
-    :param split: the split of the dataset to evaluate on. Default is "test"
+    :param splits: the split of the dataset to evaluate on. Default is "test"
+    :param metrics: the metrics to compute. Default is None
     :param limit: the number of batches to evaluate on. Default is None
         (evaluates on entire dataset)
     :return: a Result object containing the raw and formatted results
     """
+    metrics = metrics or PERPLEXITY
+    if metrics != PERPLEXITY:
+        raise ValueError(f"Invalid metric {metrics} for perplexity evaluation")
+    if splits is None:
+        splits = "test"
+        _LOGGER.info("Argument `splits` is None. Defaulting to `test` split.")
+
     datasets = datasets if isinstance(datasets, list) else [datasets]
     results_raw = defaultdict(str)
     for dataset_name in datasets:
         results_raw[dataset_name] = defaultdict()
-        dataset, accumulate = load_perplexity_dataset(dataset_name, split)
+        dataset, accumulate = load_perplexity_dataset(dataset_name, splits)
         perplexity = run_perplexity(
             pipeline=pipeline,
             dataset=dataset,
@@ -71,10 +85,13 @@ def integration_eval(
 
         results_raw[dataset_name] = defaultdict()
         results_raw[dataset_name]["results"] = perplexity
-        results_raw[dataset_name]["split"] = split
+        results_raw[dataset_name]["split"] = splits
 
     results = Result(
-        raw=results_raw,
+        # omit storing raw results. they can potentially
+        # contain numpy arrays that are not serializable.
+        # all the information is stored in the formatted results
+        raw=None,
         formatted=format_raw_results(results_raw),
     )
 
@@ -107,9 +124,10 @@ def run_perplexity(
     perplexity = Perplexity(accumulate=accumulate)
 
     batch = []
-    for idx, sample in enumerate(tqdm(dataset)):
-
-        # TODO: To remove when we import the dataset registry
+    for idx, sample in _enumerate_progress(
+        dataset, max_steps=None if limit is None else limit * batch_size
+    ):
+        # TODO: To remove when we have support for more datasets
         sample = sample["prompt"] + sample["canonical_solution"]
 
         if limit is not None:
@@ -185,14 +203,22 @@ def format_raw_results(results: Dict[str, Any]) -> List[Evaluation]:
     return formatted_results
 
 
-def load_perplexity_dataset(dataset_name: str, split="test"):
+def load_perplexity_dataset(dataset_name: str, splits: Union[List[str], str] = "test"):
     """
     Dummy function to load the dataset for perplexity computation.
     Eventually we want to load the dataset from the nm_utils
     """
+    if isinstance(splits, list):
+        raise NotImplementedError("Evaluation on multiple splits not implemented")
+
     if dataset_name == "openai_humaneval":
-        dataset = load_dataset(dataset_name, split=split)
+        dataset = load_dataset(dataset_name, split=splits)
         accumulate = False
         return dataset, accumulate
     else:
         raise NotImplementedError(f"Dataset {dataset_name} not implemented")
+
+
+def _enumerate_progress(dataset, max_steps):
+    progress_bar = tqdm(dataset, total=max_steps) if max_steps else tqdm(dataset)
+    return enumerate(progress_bar)

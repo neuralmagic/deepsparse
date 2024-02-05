@@ -74,7 +74,7 @@ class TestLMEvaluationHarness:
         # small (1e-2) differences in neg log likelihood get
         # amplified when computing perplexity
         # (when applying exp function)
-        assert np.allclose(perplexities, perplexities_gt, atol=100)
+        assert np.allclose(perplexities, perplexities_gt, rtol=0.1)
 
     def test_perplexity_kv_cache_pipeline_equal_no_kv_cache_pipeline(
         self, model_path, datasets, batch_size
@@ -105,13 +105,13 @@ class TestLMEvaluationHarness:
         # TODO: This seemingly big error is due to the fact that
         # small (1e-2) differences in neg log likelihood get
         # amplified when computing perplexity
-        # (when applying exp function)
-        np.allclose(perplexities_kv_cache, perplexities_non_kv_cache, atol=100)
+        # (when applying exp function).
+        np.allclose(perplexities_kv_cache, perplexities_non_kv_cache, rtol=0.1)
 
     @staticmethod
     def _get_ground_truth(datasets, batch_size, limit, model_id):
         perplexity = load("perplexity", module_type="metric")
-        dataset, *_ = load_perplexity_dataset(dataset_name=datasets, split="test")
+        dataset, *_ = load_perplexity_dataset(dataset_name=datasets, splits="test")
         predictions = []
         for i, sample in enumerate(dataset):
             if i == batch_size * limit:
