@@ -50,14 +50,14 @@ def resolve_integration(
     pipeline: Pipeline, datasets: Union[str, List[str]]
 ) -> Union[str, None]:
     """
-    Given a model and dataset, infer the name of the evaluation integration
+    Given a pipeline and dataset, infer the name of the evaluation integration
     to use. If unable to infer a name, return None.
 
     Currently:
         if the model is a generative language model,
         default to 'lm-evaluation-harness' otherwise return None
 
-    :param model: The model to infer the integration for
+    :param pipeline: The pipeline to infer the integration for
     :param datasets: The datasets to infer the integration for
     :return: The name of the integration to use or None if unable to infer
     """
