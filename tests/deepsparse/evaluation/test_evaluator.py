@@ -133,6 +133,6 @@ def test_cli(tmp_path, target, datasets, dummy_integration_name, type_serializat
         standalone_mode=False,
     )
     # makes sure that the result file is created
-    assert os.path.isfile(
-        os.path.join(os.path.dirname(str(tmp_path)), f"result.{type_serialization}")
+    assert os.path.isfile(os.path.join(os.path.dirname(str(tmp_path)), 
+                                       f"result.{type_serialization}")
     )
