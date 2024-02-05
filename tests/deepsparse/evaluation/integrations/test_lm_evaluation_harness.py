@@ -18,60 +18,98 @@ from deepsparse.evaluation.utils import create_model_from_target
 
 
 @pytest.mark.parametrize(
-    "datasets, model_path_ds, model_path_hf",
-    [
-        (["hellaswag"], "hf:mgoin/TinyStories-1M-ds", "roneneldan/TinyStories-1M"),
-        # (["hellaswag", "gsm8k"],"hf:mgoin/TinyLlama-1.1B-step-50K-105b-ONNX", "TinyLlama/TinyLlama-1.1B-step-50K-105b"),
-        (
-            "gsm8k",
-            "hf:mgoin/TinyLlama-1.1B-step-50K-105b-ONNX",
-            "TinyLlama/TinyLlama-1.1B-step-50K-105b",
-        ),
-        # ("arc_challenge", "hf:mgoin/TinyStories-1M-ds", "roneneldan/TinyStories-1M"),
-    ],
-)
-@pytest.mark.parametrize(
     "batch_size",
-    [1],  # TODO: Add test for higher batch sizes
+    [1, 3],
 )
 @pytest.mark.skipif(
     not try_import_lm_evaluation_harness(raise_error=False),
     reason="lm_evaluation_harness not installed",
 )
-def test_integration_eval_onnx_matches_torch(
-    datasets, model_path_ds, model_path_hf, batch_size
-):
-    from deepsparse.evaluation.integrations.lm_evaluation_harness import (
-        integration_eval,
-    )
+class TestLMEval:
+    @pytest.fixture()
+    def integration_eval(self):
+        from deepsparse.evaluation.integrations.lm_evaluation_harness import (
+            integration_eval as eval_fn,
+        )
 
-    out_torch = integration_eval(
-        model="hf",
-        model_args=f"pretrained={model_path_hf},dtype=float16",
-        datasets=datasets,
-        batch_size=batch_size,
-        limit=1,
-        use_cache=None,  # avoid saving files when running tests
-    )
+        return eval_fn
 
-    out_onnx = integration_eval(
-        model=create_model_from_target(
-            model_path_ds,
-            engine_type="onnxruntime",
-        ),
-        datasets=datasets,
-        batch_size=batch_size,
-        limit=1,
-        use_cache=None,  # avoid saving files when running tests
+    @pytest.mark.parametrize(
+        "datasets_likelihood",
+        [
+            "hellaswag",
+            ["arc_challenge"],
+            ["hellaswag", "arc_challenge"],
+        ],
     )
+    def test_likelihood_scenario(
+        self, batch_size, datasets_likelihood, integration_eval
+    ):
+        model_path_ds = "hf:mgoin/TinyStories-1M-ds"
+        model_path_hf = "roneneldan/TinyStories-1M"
 
-    datasets = datasets if isinstance(datasets, list) else [datasets]
-    for dataset in datasets:
-        torch_samples = out_torch.raw["samples"][dataset]
-        onnx_samples = out_onnx.raw["samples"][dataset]
-        for torch_sample, onnx_sample in zip(torch_samples, onnx_samples):
-            for torch_resp, onnx_resp in zip(
-                torch_sample["resps"], onnx_sample["resps"]
-            ):
-                assert pytest.approx(torch_resp[0][0], 0.1) == onnx_resp[0][0]
-                assert torch_resp[0][1] == onnx_resp[0][1]
+        out_onnx = integration_eval(
+            model=create_model_from_target(
+                model_path_ds,
+                engine_type="onnxruntime",
+            ),
+            datasets=datasets_likelihood,
+            batch_size=batch_size,
+            limit=2,
+            use_cache=None,  # avoid saving files when running tests
+        )
+
+        out_torch = integration_eval(
+            model="hf",
+            model_args=f"pretrained={model_path_hf}",
+            datasets=datasets_likelihood,
+            batch_size=batch_size,
+            limit=2,
+            use_cache=None,  # avoid saving files when running tests
+        )
+        self._test_same(out_onnx, out_torch, datasets_likelihood)
+
+    @pytest.mark.parametrize(
+        "datasets_greedy_until",
+        [
+            "gsm8k",
+        ],
+    )
+    def test_greedy_until_scenario(
+        self, batch_size, datasets_greedy_until, integration_eval
+    ):
+        model_path_ds = "hf:mgoin/TinyLlama-1.1B-step-50K-105b-ONNX"
+        model_path_hf = "TinyLlama/TinyLlama-1.1B-step-50K-105b"
+
+        out_onnx = integration_eval(
+            model=create_model_from_target(model_path_ds, engine_type="onnxruntime"),
+            datasets=datasets_greedy_until,
+            batch_size=batch_size,
+            limit=2,
+            gen_kwargs="max_gen_toks=16",
+            use_cache=None,  # avoid saving files when running tests
+        )
+
+        out_torch = integration_eval(
+            model="hf",
+            model_args=f"pretrained={model_path_hf}",
+            datasets=datasets_greedy_until,
+            batch_size=batch_size,
+            limit=2,
+            gen_kwargs="max_gen_toks=16",
+            use_cache=None,  # avoid saving files when running tests
+        )
+        self._test_same(out_onnx, out_torch, datasets_greedy_until)
+
+    @staticmethod
+    def _test_same(out_onnx, out_torch, datasets):
+        datasets = datasets if isinstance(datasets, list) else [datasets]
+        for dataset in datasets:
+            torch_samples = out_torch.raw["samples"][dataset]
+            onnx_samples = out_onnx.raw["samples"][dataset]
+            for torch_sample, onnx_sample in zip(torch_samples, onnx_samples):
+                print(torch_sample)
+                print(onnx_sample)
+                print(torch_sample["resps"], onnx_sample["resps"])
+                assert torch_sample["resps"] == onnx_sample["resps"]
+

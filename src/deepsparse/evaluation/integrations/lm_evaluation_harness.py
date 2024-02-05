@@ -135,6 +135,7 @@ class DeepSparseLM(LM):
         self.tokenizer = tokenizer or pipeline.tokenizer
         self._max_length = pipeline.sequence_length
         self._max_gen_toks = max_gen_toks
+        self.batch_sizes = {}
 
     def tok_encode(self, string: str) -> List[int]:
         return self.tokenizer.encode(string)
@@ -190,6 +191,10 @@ class DeepSparseLM(LM):
             list(utils.chunks(re_ord.get_reordered(), self.batch_size)),
             disable=disable_tqdm,
         ):
+            batch_inp = []
+            batch_cache_key = []
+            batch_continuation_enc = []
+            # len(chunk) is the batch_size
             for cache_key, context_enc, continuation_enc in chunk:
                 # how this all works (illustrated on a causal decoder-only setup):
                 #          CTX      CONT
@@ -200,39 +205,45 @@ class DeepSparseLM(LM):
 
                 inp = (context_enc + continuation_enc)[-(self.max_length + 1) :][:-1]
 
-                response = self.pipeline(
-                    prompt=self.tokenizer.decode(inp),
-                    max_new_tokens=0,
-                    output_scores=True,
-                    include_prompt_logits=True,
-                )
+                batch_inp.append(self.tokenizer.decode(inp))
+                batch_cache_key.append(cache_key)
+                batch_continuation_enc.append(continuation_enc)
 
-                for i, resp in enumerate(response.generations):
-                    # (seq_len, vocab_size)
-                    multi_scores = resp.score
-                    # (seq_len, vocab_size) but with softmax applied
-                    multi_logits = numpy_log_softmax(multi_scores, axis=1)
-                    # toss out the context half of the sequence
-                    # (cont_len, vocab_size)
-                    continuation_multi_logits = multi_logits[-len(continuation_enc) :]
+            response = self.pipeline(
+                prompt=batch_inp,
+                max_new_tokens=0,
+                output_scores=True,
+                include_prompt_logits=True,
+            )
 
-                    # pick out the logits for the continuation tokens
-                    # (cont_len,)
-                    continuation_logits = continuation_multi_logits[
-                        numpy.arange(len(continuation_enc)), continuation_enc
-                    ]
-                    # check if the tokens generated greedly are the same
-                    # as the expected continuation
-                    greedy_tokens = continuation_multi_logits.argmax(axis=1)
-                    max_equal = greedy_tokens.tolist() == continuation_enc
+            for resp, continuation_enc, cache_key in zip(
+                response.generations, batch_continuation_enc, batch_cache_key
+            ):
+                # (seq_len, vocab_size)
+                multi_scores = resp.score
+                # (seq_len, vocab_size) but with softmax applied
+                multi_logits = numpy_log_softmax(multi_scores, axis=1)
+                # toss out the context half of the sequence
+                # (cont_len, vocab_size)
+                continuation_multi_logits = multi_logits[-len(continuation_enc) :]
 
-                    # Answer: (log prob, is-exact-match)
-                    answer = (float(continuation_logits.sum()), bool(max_equal))
+                # pick out the logits for the continuation tokens
+                # (cont_len,)
+                continuation_logits = continuation_multi_logits[
+                    numpy.arange(len(continuation_enc)), continuation_enc
+                ]
+                # check if the tokens generated greedly are the same
+                # as the expected continuation
+                greedy_tokens = continuation_multi_logits.argmax(axis=1)
+                max_equal = greedy_tokens.tolist() == continuation_enc
 
-                    res.append(answer)
+                # Answer: (log prob, is-exact-match)
+                answer = (float(continuation_logits.sum()), bool(max_equal))
 
-                    if cache_key is not None:
-                        self.cache_hook.add_partial("loglikelihood", cache_key, answer)
+                res.append(answer)
+
+                if cache_key is not None:
+                    self.cache_hook.add_partial("loglikelihood", cache_key, answer)
 
         return re_ord.get_original(res)
 
@@ -251,86 +262,70 @@ class DeepSparseLM(LM):
         This function is an adapted version of the original function from
         https://github.com/EleutherAI/lm-evaluation-harness/blob/main/lm_eval/models/huggingface.py
         """
-        res = defaultdict(list)
-        re_ords = {}
+        if not requests:
+            return []
+        res = []
+        requests = [req.args for req in requests]
 
         def _collate(x):
-            # the negative sign on len(toks) sorts descending
             toks = self.tok_encode(x[0])
-            return -len(toks), x[0]
+            return len(toks), x[0]
 
-        # we group requests by their generation_kwargs,
-        # so that we don't try to execute e.g. greedy sampling and temp=0.8 sampling
-        # in the same batch.
-        grouper = utils.Grouper(requests, lambda x: str(x.args[1]))
-        for key, reqs in grouper.get_grouped().items():
-            # within each set of reqs for given kwargs, we reorder by token length, descending.
-            re_ords[key] = utils.Reorderer([req.args for req in reqs], _collate)
+        re_ord = utils.Reorderer(requests, _collate)
+
+        def sameuntil_chunks(xs, size):
+            ret = []
+            lastuntil = xs[0][1]
+            for x in xs:
+                if len(ret) >= size or x[1] != lastuntil:
+                    yield ret, lastuntil
+                    ret = []
+                    lastuntil = x[1]
+                ret.append(x)
+
+            if ret:
+                yield ret, lastuntil
 
         pbar = tqdm(total=len(requests))
-        # for each different set of kwargs, we execute all requests, by batch.
-        for key, re_ord in re_ords.items():
-            chunks = utils.chunks(re_ord.get_reordered(), n=self.batch_size)
-            for chunk in chunks:
-                contexts, all_gen_kwargs = zip(*chunk)
-                # we assume all gen kwargs in the batch are the same
-                # this is safe to assume because the `grouper` object ensures it.
-                gen_kwargs = all_gen_kwargs[0]
-                # unpack our keyword arguments.
-                until = None
-                if isinstance(gen_kwargs, dict):
-                    kwargs = copy.deepcopy(gen_kwargs)  # edge case for repeats > 1
-                    if "until" in kwargs.keys():
-                        until = kwargs.pop("until")
-                        if isinstance(until, str):
-                            until = [kwargs]
-                        elif not isinstance(until, list):
-                            raise ValueError(
-                                f"Expected `kwargs['until']` to be of type Union[str,list] but got {until}"
-                            )
-                else:
-                    raise ValueError(
-                        f"Expected `kwargs` to be of type `dict` but got {kwargs}"
-                    )
+        for chunk, request_args in tqdm(
+            list(sameuntil_chunks(re_ord.get_reordered(), self.batch_size))
+        ):
+            inps = []
 
-                if not until:
-                    until = [self.tok_decode(self.eot_token_id)]
+            self._max_gen_toks = request_args.pop("max_gen_toks", self.max_gen_toks)
+            print(self._max_gen_toks)
 
-                if "max_gen_toks" in kwargs.keys():
-                    max_gen_toks = kwargs.pop("max_gen_toks")
-                else:
-                    max_gen_toks = self.max_gen_toks
+            for context, _ in chunk:
+                inps.append(context)
 
-                # we require users to pass do_sample=True explicitly for non-greedy gen
-                if "do_sample" not in kwargs.keys():
-                    kwargs["do_sample"] = False
+            until = request_args.pop("until", ["<|endoftext|>"])
+            request_args.pop("do_sample", None)
+            request_args["temperature"] = request_args.get("temperature", 0)
 
-                out = self.pipeline(
-                    sequences=contexts,
-                    max_new_tokens=max_gen_toks,
-                    stop=until,
-                    **kwargs,
+            out = self.pipeline(
+                sequences=inps,
+                max_new_tokens=self.max_gen_toks - 1,
+                stop=until,
+                **request_args,
+            )
+
+            for resp, (context, args_) in zip(out.generations, chunk):
+                text = resp.text
+                until_ = until
+                for term in until_:
+                    if len(term) > 0:
+                        text = text.split(term)[0]
+
+                res.append(text)
+
+                self.cache_hook.add_partial(
+                    "generate_until", (context, {"until": until_}), text
                 )
-
-                for gen, context in zip(out.generations, contexts):
-                    text = gen.text
-                    # use secondary stop seqs to cut off should-have-been-stopped content post-hoc
-                    for term in until:
-                        if len(term) > 0:
-                            # ignore possible empty separators
-                            text = text.split(term)[0]
-
-                    res[key].append(text)
-                    self.cache_hook.add_partial(
-                        "greedy_until", (context, gen_kwargs), text
-                    )
-                    pbar.update(1)
-            # reorder this group of results back to original unsorted form
-            res[key] = re_ord.get_original(res[key])
+                pbar.update(1)
 
         pbar.close()
 
-        return grouper.get_original(res)
+        return re_ord.get_original(res)
 
     def _encode_pair(
         self, context: str, continuation: str
