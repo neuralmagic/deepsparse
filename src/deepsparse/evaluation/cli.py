@@ -20,7 +20,7 @@ Usage: deepsparse.eval [OPTIONS] [INTEGRATION_ARGS]...
   Module for evaluating models on the various evaluation integrations
 
 OPTIONS:
-    --model_path MODEL_PATH 
+    --model_path MODEL_PATH
                         A path to an ONNX model, local directory containing ONNX model
                         (including all the auxiliary files) or a SparseZoo stub
     -d DATASET, --dataset DATASET

@@ -14,12 +14,6 @@
 
 import os
 
-from transformers import (
-    AutoModelForCausalLM,
-    AutoModelForSequenceClassification,
-    GPTNeoForCausalLM,
-)
-
 import pytest
 from deepsparse import Pipeline
 from deepsparse.evaluation.utils import (
