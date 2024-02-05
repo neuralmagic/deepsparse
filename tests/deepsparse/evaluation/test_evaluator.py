@@ -144,7 +144,6 @@ def test_cli(
     runner.invoke(
         main,
         [
-            "--model_path",
             model_path,
             "--dataset",
             datasets[0],

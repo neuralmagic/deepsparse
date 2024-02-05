@@ -43,6 +43,7 @@ class TestLMEval:
         ],
     )
     def test_likelihood_scenario(self, batch_size, datasets, integration_eval):
+
         model_path_ds = "hf:mgoin/TinyStories-1M-ds"
         model_path_hf = "roneneldan/TinyStories-1M"
         limit = 2
@@ -58,15 +59,18 @@ class TestLMEval:
             use_cache=None,  # avoid saving files when running tests
         )
 
-        out_torch = integration_eval(
+        from lm_eval import evaluator, tasks, utils
+
+        datasets_ = (",").join(datasets) if isinstance(datasets, list) else datasets
+        out_torch = evaluator.simple_evaluate(
             model="hf",
             model_args=f"pretrained={model_path_hf}",
-            datasets=datasets,
+            tasks=utils.pattern_match(datasets_.split(","), tasks.ALL_TASKS),
             batch_size=batch_size,
             limit=limit,
             use_cache=None,  # avoid saving files when running tests
         )
-        self._test_same(out_onnx, out_torch, datasets)
+        self._test_same(out_onnx.raw, out_torch, datasets)
 
     @pytest.mark.parametrize(
         "datasets",
@@ -74,9 +78,7 @@ class TestLMEval:
             "gsm8k",
         ],
     )
-    def test_greedy_until_scenario(
-        self, batch_size, datasets, integration_eval, greedy=True
-    ):
+    def test_greedy_until_scenario(self, batch_size, datasets, integration_eval):
         model_path_ds = "hf:mgoin/TinyLlama-1.1B-step-50K-105b-ONNX"
         model_path_hf = "TinyLlama/TinyLlama-1.1B-step-50K-105b"
         limit = 2
@@ -85,7 +87,7 @@ class TestLMEval:
         gen_kwargs = "max_gen_toks=16"
 
         out_onnx = integration_eval(
-            model=create_pipeline(model_path_ds, engine_type="onnxruntime"),
+            create_pipeline(model_path_ds, engine_type="onnxruntime"),
             datasets=datasets,
             batch_size=batch_size,
             limit=limit,
@@ -93,23 +95,26 @@ class TestLMEval:
             use_cache=None,  # avoid saving files when running tests
         )
 
-        out_torch = integration_eval(
+        from lm_eval import evaluator, tasks, utils
+
+        datasets_ = (",").join(datasets) if isinstance(datasets, list) else datasets
+        out_torch = evaluator.simple_evaluate(
             model="hf",
             model_args=f"pretrained={model_path_hf}",
-            datasets=datasets,
+            tasks=utils.pattern_match(datasets_.split(","), tasks.ALL_TASKS),
             batch_size=batch_size,
             limit=limit,
             gen_kwargs=gen_kwargs,
             use_cache=None,  # avoid saving files when running tests
         )
-        self._test_same(out_onnx, out_torch, datasets)
+        self._test_same(out_onnx.raw, out_torch, datasets)
 
     @staticmethod
     def _test_same(out_onnx, out_torch, datasets, greedy=False):
         datasets = datasets if isinstance(datasets, list) else [datasets]
         for dataset in datasets:
-            torch_samples = out_torch.raw["samples"][dataset]
-            onnx_samples = out_onnx.raw["samples"][dataset]
+            torch_samples = out_torch["samples"][dataset]
+            onnx_samples = out_onnx["samples"][dataset]
             for torch_sample, onnx_sample in zip(torch_samples, onnx_samples):
                 if greedy:
                     # for datasets that validate greedy generation
@@ -119,6 +124,6 @@ class TestLMEval:
                     # for datasets that validate likelihood
                     # make sure that likelihoods are the same
                     assert (
-                        pytest.approx(torch_sample["resps"][0], 0.01)
-                        == onnx_sample["resps"][0]
+                        pytest.approx(torch_sample["resps"][0][0], 0.0001)
+                        == onnx_sample["resps"][0][0]
                     )

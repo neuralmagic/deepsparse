@@ -65,7 +65,6 @@ def evaluate(
     return eval_integration(
         pipeline=pipeline,
         datasets=datasets,
-        engine_type=engine_type,
         batch_size=batch_size,
         splits=splits,
         metrics=metrics,

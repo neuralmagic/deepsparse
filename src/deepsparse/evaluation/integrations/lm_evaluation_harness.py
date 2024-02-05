@@ -16,14 +16,11 @@
 Integration of the `lm_evaluation_harness`:
 https://github.com/EleutherAI/lm-evaluation-harness
 """
-import copy
 import logging
-from collections import defaultdict
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 import numpy
 from tqdm import tqdm
-from transformers import AutoTokenizer
 
 from deepsparse import Pipeline
 from deepsparse.evaluation.registry import EvaluationRegistry
@@ -43,9 +40,11 @@ __all__ = ["integration_eval"]
 
 @EvaluationRegistry.register(name="lm-evaluation-harness")
 def integration_eval(
-    model: Any,
+    pipeline: Pipeline,
     datasets: Union[List[str], str],
-    batch_size: int,
+    batch_size: int = 1,
+    splits: Union[List[str], str, None] = None,
+    metrics: Union[List[str], str, None] = None,
     **kwargs,
 ) -> Result:
     """
@@ -53,15 +52,14 @@ def integration_eval(
     https://github.com/EleutherAI/lm-evaluation-harness/blob/master/main.py
     that is compatible with deepsparse.evaluator.py
 
-    :param model: the model/pipeline to evaluate
+    :param pipeline: the model/pipeline to evaluate
     :param datasets: the datasets to evaluate on
     :param batch_size: the batch size to use for evaluation
     :param kwargs: additional arguments to alter the behavior of the evaluation
 
     :return the evaluation results
     """
-    if isinstance(model, Pipeline):
-        model = DeepSparseLM(pipeline=model, batch_size=batch_size)
+    pipeline = DeepSparseLM(pipeline=pipeline, batch_size=batch_size)
 
     datasets = (",").join(datasets) if isinstance(datasets, list) else datasets
     task_names = utils.pattern_match(datasets.split(","), tasks.ALL_TASKS)
@@ -69,7 +67,7 @@ def integration_eval(
     _LOGGER.info(f"Selected Tasks: {task_names}")
 
     results_raw = evaluator.simple_evaluate(
-        model=model, tasks=task_names, batch_size=batch_size, **kwargs
+        model=pipeline, tasks=task_names, batch_size=batch_size, **kwargs
     )
 
     results = Result(
@@ -115,7 +113,7 @@ class DeepSparseLM(LM):
         pipeline: Pipeline,
         batch_size: int = 1,
         max_gen_toks: int = 256,
-        tokenizer: Optional[AutoTokenizer] = None,
+        tokenizer: Optional["AutoTokenizer"] = None,
     ):
         """
         Wrapper around the DeepSparse pipeline to make it compatible with the
@@ -260,7 +258,7 @@ class DeepSparseLM(LM):
         given a context.
 
         This function is an adapted version of the original function from
-        https://github.com/EleutherAI/lm-evaluation-harness/blob/main/lm_eval/models/huggingface.py
+        https://github.com/EleutherAI/lm-evaluation-harness/blob/main/lm_eval/models/openai_completions.py
         """
         if not requests:
             return []
@@ -293,15 +291,16 @@ class DeepSparseLM(LM):
             inps = []
 
             self._max_gen_toks = request_args.pop("max_gen_toks", self.max_gen_toks)
-            print(self._max_gen_toks)
 
             for context, _ in chunk:
+                # add context (prompts) to the list
                 inps.append(context)
 
             until = request_args.pop("until", ["<|endoftext|>"])
             request_args.pop("do_sample", None)
             request_args["temperature"] = request_args.get("temperature", 0)
 
+            # run inference (generate max_gen_toks tokens)
             out = self.pipeline(
                 sequences=inps,
                 max_new_tokens=self.max_gen_toks - 1,
@@ -312,6 +311,7 @@ class DeepSparseLM(LM):
             for resp, (context, args_) in zip(out.generations, chunk):
                 text = resp.text
                 until_ = until
+                # split the text at the first occurrence of any of the until tokens
                 for term in until_:
                     if len(term) > 0:
                         text = text.split(term)[0]
