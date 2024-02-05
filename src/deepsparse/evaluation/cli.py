@@ -92,8 +92,6 @@ _LOGGER = logging.getLogger(__name__)
     "model_path",
     type=click.Path(dir_okay=True, file_okay=True),
     required=True,
-    help="A path to a remote or local directory containing ONNX/torch model "
-    "(including all the auxiliary files) or a SparseZoo stub",
 )
 @click.option(
     "-d",
