@@ -613,7 +613,8 @@ def has_model_kv_cache(model: Union[str, ModelProto]) -> bool:
 def infer_sequence_length(model: Union[str, ModelProto]) -> int:
     """
     :param model: model
-    :return: inferred sequence length of the model
+    :return: inferred sequence length of the model.
+        If unable to infer, return 0
     """
     if not isinstance(model, ModelProto):
         model = onnx.load(model, load_external_data=False)
@@ -623,9 +624,10 @@ def infer_sequence_length(model: Union[str, ModelProto]) -> int:
     for idx, inp in enumerate(model.graph.input):
         if inp.name == "attention_mask":
             target_input_idx = idx
+            break
     try:
         # return shape of second dim if possible
         target_input = model.graph.input[target_input_idx]
         return target_input.type.tensor_type.shape.dim[1].dim_value
     except Exception:
-        return 0  # unable to infer seq len
+        return 0
