@@ -11,23 +11,22 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import ast
+import logging
 import os
 from typing import Any, Dict, List, Optional, Tuple, Union
 
-from transformers import AutoModelForCausalLM, PreTrainedModel
-
 from deepsparse import Pipeline
-from deepsparse.operators.engine_operator import DEEPSPARSE_ENGINE, ORT_ENGINE
+from deepsparse.operators.engine_operator import DEEPSPARSE_ENGINE
 
 
 __all__ = [
-    "create_model_from_target",
+    "create_pipeline",
     "get_save_path",
-    "args_to_dict",
+    "parse_kwarg_tuples",
     "resolve_integration",
 ]
-
+_LOGGER = logging.getLogger(__name__)
 LM_EVALUATION_HARNESS = "lm-evaluation-harness"
 
 
@@ -50,55 +49,98 @@ def potentially_check_dependency_import(integration_name: str) -> bool:
 
 
 def resolve_integration(
-    model: Union[Pipeline, PreTrainedModel], datasets: Union[str, List[str]]
+    pipeline: Pipeline, datasets: Union[str, List[str]]
 ) -> Union[str, None]:
     """
-    Given a model and dataset, infer the name of the evaluation integration
+    Given a pipeline and dataset, infer the name of the evaluation integration
     to use. If unable to infer a name, return None.
 
     Currently:
         if the model is a generative language model,
         default to 'lm-evaluation-harness' otherwise return None
 
-    :param model: The model to infer the integration for
+    :param pipeline: The pipeline to infer the integration for
     :param datasets: The datasets to infer the integration for
     :return: The name of the integration to use or None if unable to infer
     """
-    if if_generative_language_model(model):
+    if if_generative_language_model(pipeline):
         return LM_EVALUATION_HARNESS
     return None
 
 
-def if_generative_language_model(model: Any) -> bool:
+def if_generative_language_model(pipeline: Pipeline) -> bool:
     """
     Checks if the model is a generative language model.
     """
-    if isinstance(model, Pipeline):
-        return model.__class__.__name__ == "TextGenerationPipeline"
-    elif isinstance(model, PreTrainedModel):
-        return "CausalLM" in model.__class__.__name__
-    else:
-        return False
+    pipeline_name = pipeline.__class__.__name__
+    if pipeline_name == "TextGenerationPipeline" or (
+        pipeline_name == "TextGenerationPipelineNoKVCache"
+    ):
+        return True
+
+    return False
 
 
-def args_to_dict(args: Tuple[Any, ...]) -> Dict[str, Any]:
+def parse_kwarg_tuples(kwargs: tuple) -> Dict:
     """
-    Convert a tuple of args to a dict of args.
+    Convert a tuple of kwargs to a dict of kwargs.
+    This function is used to enable the click parsing of kwargs.
 
-    :param args: The args to convert. Should be a tuple of alternating
-        arg names and arg values e.g.('--arg1', 1, 'arg2', 2, -arg3', 3).
+    Example use:
+    ```
+    @click.command(
+    context_settings=dict(
+        ignore_unknown_options=True)
+    )
+    @click.argument(...)
+    @click.option(...)
+    ...
+    @click.argument("kwargs", nargs=-1, type=click.UNPROCESSED)
+    def main(..., kwargs):
+        ...
+        kwargs: Dict[str, Any] = parse_kwarg_tuples(kwargs: Tuple)
+    ```
+
+    Example inputs, outputs:
+    ```
+    input = ('--arg1', 1, 'arg2', 2, '-arg3', 3)
+    output = parse_kwarg_tuples(input)
+    output = {'arg1': 1, 'arg2': 2, 'arg3': 3}
+    ```
+
+    :param kwargs: The kwargs to convert. Should be a tuple of alternating
+        kwargs names and kwargs values e.g.('--arg1', 1, 'arg2', 2, -arg3', 3).
         The names can optionally have a '-' or `--` in front of them.
-    :return: The converted args as a dict.
+    :return: The converted kwargs as a dict.
     """
-    if len(args) == 0:
+    if len(kwargs) == 0:
         return {}
+    if len(kwargs) % 2 != 0:
+        raise ValueError(
+            "kwargs must be a tuple of alternating names and values "
+            "i.e. the length of kwargs tuple must be even. Received "
+            f"kwargs: {kwargs}"
+        )
     # names are uneven indices, values are even indices
-    args_names = args[0::2]
-    args_values = args[1::2]
-    # remove any '-' or '--' from the names
-    args_names = [name.lstrip("-") for name in args_names]
+    kwargs_names = kwargs[0::2]
+    kwargs_values = kwargs[1::2]
+    # by default kwargs values are strings, so convert them
+    # to the appropriate type if possible
+    kwargs_values = list(kwargs_values)
+    for i, value in enumerate(kwargs_values):
+        try:
+            kwargs_values[i] = ast.literal_eval(value)
+        except Exception as e:  # noqa E841
+            _LOGGER.debug(
+                f"Failed to infer non-string type"
+                f"from kwarg value: {value}. It will"
+                f"be left as a string."
+            )
 
-    return dict(zip(args_names, args_values))
+    # remove any '-' or '--' from the names
+    kwargs_names = [name.lstrip("-") for name in kwargs_names]
+
+    return dict(zip(kwargs_names, kwargs_values))
 
 
 def get_save_path(
@@ -126,34 +168,31 @@ def get_save_path(
     return os.path.join(base_path, file_name)
 
 
-def create_model_from_target(
-    target: str,
+def create_pipeline(
+    model_path: str,
     engine_type: Optional[str] = None,
     **kwargs,
-) -> Union[Pipeline, AutoModelForCausalLM]:
+) -> Pipeline:
     """
-    Create a model or a pipeline from a target path.
+    Create a pipeline for evaluation
 
-    Note: This function is currently limited to:
-        - creating pipelines of type 'text-generation'
-        - creating dense huggingface models of type 'AutoModelForCausalLM'
-    This function will be expanded in the future to support more
-    model types and frameworks.
+    Note: This function is currently primarily
+    focused on creating pipelines of type 'text-generation'
+    This function will be expanded in the future to support
+    more tasks and models
 
-    :param target: The target path to initialize the
+    :param model_path: The target path to initialize the
         text generation model from. This can be a local
         or remote path to the model or a sparsezoo stub
     :param engine_type: The engine type to initialize the model with.
-    :return: The initialized model
+    :return: The initialized pipeline
     """
-    if engine_type in [DEEPSPARSE_ENGINE, ORT_ENGINE]:
-        return Pipeline.create(
-            task="text-generation",
-            model_path=target,
-            sequence_length=kwargs.pop("sequence_length", 2048),
-            engine_type=engine_type,
-            batch_size=kwargs.pop("batch_size", 1),
-            **kwargs,
-        )
-    else:
-        return AutoModelForCausalLM.from_pretrained(target, **kwargs)
+    engine_type = engine_type or DEEPSPARSE_ENGINE
+    return Pipeline.create(
+        task=kwargs.pop("task", "text-generation"),
+        model_path=model_path,
+        sequence_length=kwargs.pop("sequence_length", 2048),
+        engine_type=engine_type,
+        batch_size=kwargs.pop("batch_size", 1),
+        **kwargs,
+    )

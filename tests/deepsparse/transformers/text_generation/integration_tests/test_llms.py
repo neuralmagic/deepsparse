@@ -132,6 +132,30 @@ class TestsIntegrationLLMsPipelines:
         self.default_pipeline = None
         self.max_new_tokens = max_new_tokens
 
+    @pytest.mark.skip("skip continuous batching tests")
+    def test_continuous_batching_pipeline(self, setup):
+
+        pipeline = self.get_pipeline(
+            prompt_sequence_length=4, continuous_batch_sizes=[2, 4]
+        )
+
+        assert pipeline._continuous_batching_scheduler
+
+        output = pipeline(
+            prompt=self.prompt,
+            include_prompt_logits=True,
+            generation_kwargs=dict(
+                max_new_tokens=self.max_new_tokens,
+                output_scores=True,
+                num_return_sequences=8,
+            ),
+        )
+
+        self._test_output(
+            output=output,
+            torch_ground_truth=self.torch_ground_truth,
+        )
+
     def test_ort_single_token_prefill(self, setup):
         # Test the pipeline that uses ORT engine. The test covers the
         # following scenario:
@@ -279,13 +303,28 @@ class TestsIntegrationLLMsPipelines:
         # concatenate target prompt_logits and generated_logits
         target_logits = numpy.concatenate([prompt_logits, generated_logits], axis=1)
         # get the logits of the generated sequence
-        score = output.generations[0].score
+
+        if isinstance(output.generations[0], list):
+            generations = output.generations[0]
+            old_score = None
+            old_text = None
+            for generation in generations:
+                score = generation.score
+                text = generation.text
+                if old_score is not None:
+                    assert numpy.allclose(old_score, score, atol=0.001)
+                    assert old_text == text
+                old_score = score
+                old_text = text
+        else:
+            score = output.generations[0].score
+            text = output.generations[0].text
 
         # we expect the logits to be exactly the same
         # as the target logits; the generated sequence should
         # also be the same as the target sequence
         assert numpy.allclose(score, target_logits[0], atol=self.precision)
-        assert self.prompt + output.generations[0].text == generated_text
+        assert self.prompt + text == generated_text
 
         if hasattr(output, "kv_cache_state") and run_kv_cache_validation:
             # (if applicable) the kv cache should be the same as the

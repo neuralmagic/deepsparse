@@ -29,7 +29,7 @@ def pipeline():
     return Pipeline.create(
         task="text_generation",
         model_path="hf:mgoin/TinyStories-1M-deepsparse",
-        engine_type="deepsparse",
+        engine_type="onnxruntime",
     )
 
 
@@ -287,6 +287,8 @@ def test_streaming_non_streaming_generate_same_tokens(pipeline, prompt):
 
 
 def test_edge_cases(pipeline, prompt):
+    # total length of the generated sequence is just 1 token; this should just use
+    # the last prompt logit
     output = pipeline(prompt=prompt, max_length=1, output_scores=True)
     assert len(output.generations[0].score) == 1
 
@@ -295,6 +297,8 @@ def test_edge_cases(pipeline, prompt):
     )
     assert len(output.generations[0].score) == 11
 
+    # max_new_tokens == 0 and max_length == 1 should result in the same behaviour
+    # the generation is only dependent on the prompt logit, not any new generated logit
     output = pipeline(prompt=prompt, max_new_tokens=0, output_scores=True)
     assert len(output.generations[0].score) == 1
 
@@ -303,6 +307,9 @@ def test_edge_cases(pipeline, prompt):
     )
     assert len(output.generations[0].score) == 11
 
+    # expect total scores/length of the generation to be 2: 1 for the token generated
+    # from the last prompt logit and the rest generated from the value provided
+    # using the max_new_tokens argument (which in this case is 1)
     output = pipeline(prompt=prompt, max_new_tokens=1, output_scores=True)
     assert len(output.generations[0].score) == 2
 
@@ -311,6 +318,7 @@ def test_edge_cases(pipeline, prompt):
     )
     assert len(output.generations[0].score) == 12
 
+    # dont support max_length == 0; raise value error
     with pytest.raises(ValueError):
         pipeline(prompt=prompt, max_length=0)
 

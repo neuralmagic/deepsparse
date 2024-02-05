@@ -24,8 +24,7 @@ def try_import_lm_evaluation_harness(raise_error=False):
         if raise_error:
             raise ImportError(
                 "Unable to import lm_eval. "
-                "To install run 'pip install "
-                "git+https://github.com/EleutherAI/lm-evaluation-harness@b018a7d51'"
+                "To install run 'pip install lm-eval==0.4.0'"
             )
         return False
 
