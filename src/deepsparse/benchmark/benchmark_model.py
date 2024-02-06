@@ -411,6 +411,11 @@ def benchmark_model(
         if not disable_kv_cache_overrides:
             if not sequence_length:
                 sequence_length = infer_sequence_length(model_path)
+                if not sequence_length:
+                    raise ValueError(
+                        "Unable to infer sequence length from model. "
+                        "Specify it manually through `sequence_length` argument."
+                    )
             if input_ids_length > sequence_length:
                 raise ValueError(
                     f"input_ids_length: {input_ids_length} "

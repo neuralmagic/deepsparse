@@ -36,7 +36,7 @@ def llm_type_pipeline():
 def test_resolve_known_llm_pipeline(llm_type_pipeline):
     assert (
         resolve_integration(pipeline=llm_type_pipeline, datasets="")
-        == "lm-evaluation-harness"
+        == "lm-eval-harness"
     )
 
 
