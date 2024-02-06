@@ -29,6 +29,7 @@ from deepsparse.transformers.pipelines.text_generation import TextGenerationPipe
 from deepsparse.transformers.pipelines.text_generation.pipeline_no_kv_cache import (
     TextGenerationPipelineNoCache,
 )
+from deepsparse.transformers.utils.eval_helpers import process_concatenated_datasets
 
 
 """
@@ -214,9 +215,16 @@ def load_perplexity_dataset(dataset_name: str, splits: Union[List[str], str] = "
     if dataset_name == "openai_humaneval":
         dataset = load_dataset(dataset_name, split=splits)
         accumulate = False
-        return dataset, accumulate
+    elif dataset_name == "wikitext2":
+        dataset = process_concatenated_datasets
+        accumulate = True
+    elif dataset_name == "c4":
+        dataset = process_concatenated_datasets
+        accumulate = True
     else:
         raise NotImplementedError(f"Dataset {dataset_name} not implemented")
+
+    return dataset, accumulate
 
 
 def _enumerate_progress(dataset, max_steps):

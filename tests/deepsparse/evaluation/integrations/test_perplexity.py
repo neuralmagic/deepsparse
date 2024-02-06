@@ -37,9 +37,8 @@ def model_id():
     "datasets",
     [
         "openai_humaneval",
-        # TODO: add more datasets
-        # "c4",
-        # "wikitext2",
+        "c4",
+        "wikitext2",
     ],
 )
 @pytest.mark.parametrize(
