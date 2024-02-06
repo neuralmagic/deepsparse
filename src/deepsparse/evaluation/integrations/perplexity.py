@@ -239,6 +239,7 @@ def load_perplexity_dataset(
         are provided, or if the dataset does not require a process_concatenated_datasets
         function to load the dataset.
     :param kwargs: additional keyword arguments to pass to the dataset loading function
+    :return: the dataset and whether to accumulate perplexity over samples
     """
     if isinstance(splits, list):
         raise NotImplementedError("Evaluation on multiple splits not implemented")
