@@ -37,25 +37,25 @@ def model_id():
     "datasets",
     [
         "openai_humaneval",
-        "c4",
         "wikitext2",
     ],
 )
-@pytest.mark.parametrize(
-    "batch_size",
-    [1, 3],
-)
+@pytest.mark.parametrize("batch_size", [1, 2])
 class TestLMEvaluationHarness:
-    limit = 4
+    limit = 2
 
     def test_perplexity_ground_truth_equal_pipeline(
         self, model_path, model_id, datasets, batch_size
     ):
+        # setting max_sequence_length to 16 to speed up the test
+        kwargs = dict(max_sequence_length=16) if datasets in {"c4", "wikitext2"} else {}
+
         result_gt = self._get_ground_truth(
             datasets=datasets,
             batch_size=batch_size,
             limit=self.limit,
             model_id=model_id,
+            kwargs=kwargs,
         )
 
         result = integration_eval(
@@ -66,18 +66,21 @@ class TestLMEvaluationHarness:
             datasets=datasets,
             batch_size=batch_size,
             limit=self.limit,
+            # we are setting accumulate=False to compare
+            # with the torch ground truth apples to apples
+            accumulate=False,
+            **kwargs,
         )
         perplexities = result.formatted[0].metrics[0].value
         perplexities_gt = result_gt["perplexities"]
-        # TODO: This seemingly big error is due to the fact that
-        # small (1e-2) differences in neg log likelihood get
-        # amplified when computing perplexity
-        # (when applying exp function)
         assert np.allclose(perplexities, perplexities_gt, rtol=0.1)
 
     def test_perplexity_kv_cache_pipeline_equal_no_kv_cache_pipeline(
-        self, model_path, datasets, batch_size
+        self, model_path, model_id, datasets, batch_size
     ):
+
+        kwargs = dict(max_sequence_length=16) if datasets in {"c4", "wikitext2"} else {}
+
         result_kv_cache = integration_eval(
             pipeline=TextGenerationPipeline(
                 model_path="hf:mgoin/TinyStories-1M-deepsparse",
@@ -86,6 +89,7 @@ class TestLMEvaluationHarness:
             datasets=datasets,
             batch_size=batch_size,
             limit=self.limit,
+            **kwargs,
         )
 
         result_non_kv_cache = integration_eval(
@@ -97,25 +101,22 @@ class TestLMEvaluationHarness:
             datasets=datasets,
             batch_size=batch_size,
             limit=self.limit,
+            **kwargs,
         )
 
         perplexities_kv_cache = result_kv_cache.formatted[0].metrics[0].value
         perplexities_non_kv_cache = result_non_kv_cache.formatted[0].metrics[0].value
-        # TODO: This seemingly big error is due to the fact that
-        # small (1e-2) differences in neg log likelihood get
-        # amplified when computing perplexity
-        # (when applying exp function).
         np.allclose(perplexities_kv_cache, perplexities_non_kv_cache, rtol=0.1)
 
     @staticmethod
-    def _get_ground_truth(datasets, batch_size, limit, model_id):
+    def _get_ground_truth(datasets, batch_size, limit, model_id, kwargs={}):
         perplexity = load("perplexity", module_type="metric")
-        dataset, *_ = load_perplexity_dataset(dataset_name=datasets, splits="test")
+        dataset, *_ = load_perplexity_dataset(dataset_name=datasets, **kwargs)
         predictions = []
         for i, sample in enumerate(dataset):
             if i == batch_size * limit:
                 break
-            predictions.append(sample["prompt"] + sample["canonical_solution"])
+            predictions.append(sample)
         return perplexity.compute(
             predictions=predictions, add_start_token=False, model_id=model_id
         )

@@ -181,3 +181,22 @@ def _split_text_by_tokens(
         )
 
     return split_text
+
+
+class HumanEvalIteratorWrapper:
+    """
+    Wrapper around the `openai_humaneval` dataset,
+    that joins the prompt and the canonical solution
+    into a single string during iteration.
+    """
+
+    def __init__(self, dataset):
+        self.iterator = iter(dataset)
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        # Get the next sample from the original iterator
+        sample = next(self.iterator)
+        return sample["prompt"] + sample["canonical_solution"]

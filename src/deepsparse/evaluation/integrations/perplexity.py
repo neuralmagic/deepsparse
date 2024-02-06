@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import logging
+import os
 from collections import defaultdict
 from typing import Any, Dict, List, Optional, Union
 
@@ -29,7 +30,10 @@ from deepsparse.transformers.pipelines.text_generation import TextGenerationPipe
 from deepsparse.transformers.pipelines.text_generation.pipeline_no_kv_cache import (
     TextGenerationPipelineNoCache,
 )
-from deepsparse.transformers.utils.eval_helpers import process_concatenated_datasets
+from deepsparse.transformers.utils.eval_helpers import (
+    HumanEvalIteratorWrapper,
+    process_concatenated_datasets,
+)
 
 
 """
@@ -42,9 +46,10 @@ _LOGGER = logging.getLogger(__name__)
 @EvaluationRegistry.register(name=PERPLEXITY)
 def integration_eval(
     pipeline: Pipeline,
-    datasets: Union[List[str], str],
+    datasets: Union[List[str], str] = "openai_humaneval",
     batch_size: int = 1,
     limit: Optional[int] = None,
+    accumulate: Optional[bool] = None,
     splits: Union[List[str], str, None] = "test",
     metrics: Union[List[str], str, None] = None,
     **kwargs,
@@ -62,6 +67,11 @@ def integration_eval(
     :param metrics: the metrics to compute. Default is None
     :param limit: the number of batches to evaluate on. Default is None
         (evaluates on entire dataset)
+    :param accumulate: whether to perplexity computation should
+        accumulate negative log-likelihood over samples. Defaults to
+        the default accumulate variable inferred from the dataset in
+        `datasets`. If not None, it will override the inferred accumulate
+         variable.
     :return: a Result object containing the raw and formatted results
     """
     metrics = metrics or PERPLEXITY
@@ -70,12 +80,21 @@ def integration_eval(
     if splits is None:
         splits = "test"
         _LOGGER.info("Argument `splits` is None. Defaulting to `test` split.")
-
     datasets = datasets if isinstance(datasets, list) else [datasets]
     results_raw = defaultdict(str)
     for dataset_name in datasets:
         results_raw[dataset_name] = defaultdict()
-        dataset, accumulate = load_perplexity_dataset(dataset_name, splits)
+        dataset, _accumulate = load_perplexity_dataset(
+            dataset_name=dataset_name, splits=splits, pipeline=pipeline, **kwargs
+        )
+        if accumulate is None:
+            accumulate = _accumulate
+        else:
+            _LOGGER.info(
+                f"Argument `accumulate` set to {accumulate}. "
+                "Overriding the inferred accumulate variable from the dataset."
+            )
+
         perplexity = run_perplexity(
             pipeline=pipeline,
             dataset=dataset,
@@ -101,7 +120,7 @@ def integration_eval(
 
 def run_perplexity(
     pipeline: Union[TextGenerationPipelineNoCache, TextGenerationPipeline],
-    dataset: Any,  # TODO: Edit, once we agree on the dataset registry
+    dataset: "Dataset",
     batch_size: int,
     accumulate: bool,
     limit: Optional[int] = None,
@@ -128,8 +147,6 @@ def run_perplexity(
     for idx, sample in _enumerate_progress(
         dataset, max_steps=None if limit is None else limit * batch_size
     ):
-        # TODO: To remove when we have support for more datasets
-        sample = sample["prompt"] + sample["canonical_solution"]
 
         if limit is not None:
             # stop if we have reached the #limit
@@ -204,22 +221,41 @@ def format_raw_results(results: Dict[str, Any]) -> List[Evaluation]:
     return formatted_results
 
 
-def load_perplexity_dataset(dataset_name: str, splits: Union[List[str], str] = "test"):
+def load_perplexity_dataset(
+    dataset_name: str,
+    splits: Union[List[str], str] = "test",
+    pipeline: Optional[Pipeline] = None,
+    **kwargs,
+):
     """
-    Dummy function to load the dataset for perplexity computation.
+    Function to load the dataset for perplexity computation.
     Eventually we want to load the dataset from the nm_utils
+
+    :param dataset_name: the name of the dataset to load
+    :param splits: the splits to load from the dataset. Default is "test"
+    :param pipeline: the pipeline to use for loading the dataset. The pipeline
+        is used to infer the model path and sequence length to use for loading
+        the dataset. This argument can be omitted if the appropriate kwargs
+        are provided, or if the dataset does not require a process_concatenated_datasets
+        function to load the dataset.
+    :param kwargs: additional keyword arguments to pass to the dataset loading function
     """
     if isinstance(splits, list):
         raise NotImplementedError("Evaluation on multiple splits not implemented")
 
     if dataset_name == "openai_humaneval":
         dataset = load_dataset(dataset_name, split=splits)
+        dataset = HumanEvalIteratorWrapper(dataset)
         accumulate = False
-    elif dataset_name == "wikitext2":
-        dataset = process_concatenated_datasets
-        accumulate = True
-    elif dataset_name == "c4":
-        dataset = process_concatenated_datasets
+    elif dataset_name in {"wikitext2", "c4"}:
+        dataset = process_concatenated_datasets(
+            dataset_name,
+            model_path=kwargs.pop("model_path", os.path.dirname(pipeline.model_path)),
+            max_sequence_length=kwargs.pop(
+                "max_sequence_length", pipeline.sequence_length
+            ),
+            kwargs=kwargs,
+        )
         accumulate = True
     else:
         raise NotImplementedError(f"Dataset {dataset_name} not implemented")
