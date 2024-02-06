@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """
-Integration of the `lm_evaluation_harness`:
+Integration of the `lm-evaluation-harness`:
 https://github.com/EleutherAI/lm-evaluation-harness
 """
 import logging
@@ -25,6 +25,7 @@ from tqdm import tqdm
 from deepsparse import Pipeline
 from deepsparse.evaluation.registry import EvaluationRegistry
 from deepsparse.evaluation.results import Dataset, Evaluation, Metric, Result
+from deepsparse.evaluation.utils import LM_EVALUATION_HARNESS
 from deepsparse.utils.data import numpy_log_softmax
 from lm_eval import evaluator, tasks, utils
 from lm_eval.api.instance import Instance
@@ -38,7 +39,7 @@ _LOGGER = logging.getLogger(__name__)
 __all__ = ["integration_eval"]
 
 
-@EvaluationRegistry.register(name="lm-evaluation-harness")
+@EvaluationRegistry.register(name=LM_EVALUATION_HARNESS)
 def integration_eval(
     pipeline: Pipeline,
     datasets: Union[List[str], str],
@@ -83,7 +84,7 @@ def format_raw_results(results: Dict[str, Any]) -> List[Evaluation]:
     Format the raw results from lm_evaluation_harness into a list of
     Evaluation objects.
 
-    :param results: the raw results from lm_evaluation_harness
+    :param results: the raw results from lm-evaluation-harness
     :return: the formatted results as a list of Evaluation objects
     """
     formatted_results = []
@@ -98,7 +99,7 @@ def format_raw_results(results: Dict[str, Any]) -> List[Evaluation]:
             type=None, name=dataset_name, config=results["config"], split=None
         )
         evaluation = Evaluation(
-            task="lm_evaluation_harness",
+            task=LM_EVALUATION_HARNESS,
             dataset=dataset,
             metrics=metrics,
             samples=None,
@@ -113,7 +114,7 @@ class DeepSparseLM(LM):
         pipeline: Pipeline,
         batch_size: int = 1,
         max_gen_toks: int = 256,
-        tokenizer: Optional["AutoTokenizer"] = None,
+        tokenizer: Optional["AutoTokenizer"] = None,  # noqa: F821
     ):
         """
         Wrapper around the DeepSparse pipeline to make it compatible with the
@@ -157,7 +158,9 @@ class DeepSparseLM(LM):
         new_reqs = []
         for context, continuation in [req.args for req in requests]:
             if context == "":
-                raise NotImplemented("Implementing empty context is not supported yet")
+                raise NotImplementedError(
+                    "Implementing empty context is not supported yet"
+                )
             context_enc, continuation_enc = self._encode_pair(context, continuation)
 
             new_reqs.append(((context, continuation), context_enc, continuation_enc))
@@ -199,7 +202,7 @@ class DeepSparseLM(LM):
                 # inp    0 1 2 3|4 5 6 7 8 9   <- last token is deleted by inp[:, :-1]
                 # model  \               \
                 # logits   1 2 3|4 5 6 7 8 9   <- the ctx half gets tossed out by the
-                # cont_toks      4 5 6 7 8 9      [:, -len(continuation_enc):, :self.vocab_size] slice
+                # cont_toks      4 5 6 7 8 9      [:, -len(continuation_enc):, :self.vocab_size] slice # noqa: E501
 
                 inp = (context_enc + continuation_enc)[-(self.max_length + 1) :][:-1]
 
