@@ -79,16 +79,7 @@ HOT_RELOAD_OPTION = click.option(
     ),
 )
 
-MODEL_OPTION = click.option(
-    "--model_path",
-    type=str,
-    default="default",
-    help=(
-        "The path to a model.onnx file, a model folder containing the model.onnx "
-        "and supporting files, or a SparseZoo model stub. "
-        "If not specified, the default model for the task is used."
-    ),
-)
+MODEL_OPTION = click.argument("model_path", type=str, default="default")
 
 BATCH_OPTION = click.option(
     "--batch_size",
@@ -216,6 +207,10 @@ def main(
        ...
     ```
     """
+    if integration == INTEGRATION_OPENAI:
+        if task is None or task != "text_generation":
+            task = "text_generation"
+
     if ctx.invoked_subcommand is not None:
         return
 
@@ -252,24 +247,6 @@ def main(
     if config_file is not None:
         server = _fetch_server(integration=integration, config=config_file)
         server.start_server(host, port, log_level, hot_reload_config=hot_reload_config)
-
-
-@main.command(
-    context_settings=dict(
-        token_normalize_func=lambda x: x.replace("-", "_"), show_default=True
-    ),
-)
-@click.argument("config-file", type=str)
-@HOST_OPTION
-@PORT_OPTION
-@LOG_LEVEL_OPTION
-@HOT_RELOAD_OPTION
-def openai(
-    config_file: str, host: str, port: int, log_level: str, hot_reload_config: bool
-):
-
-    server = OpenAIServer(server_config=config_file)
-    server.start_server(host, port, log_level, hot_reload_config=hot_reload_config)
 
 
 @main.command(
