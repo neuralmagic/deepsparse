@@ -702,8 +702,8 @@ def text_generation_pipeline(*args, **kwargs) -> "Pipeline":
     :return: text generation pipeline with the given args and
         kwargs passed to Pipeline.create
     """
-    args, kwargs = _check_model_path_arg(*args, **kwargs)
-    return Pipeline.create("text_generation", *args, **kwargs)
+    kwargs = _check_model_path_arg(*args, **kwargs)
+    return Pipeline.create("text_generation", **kwargs)
 
 
 def code_generation_pipeline(*args, **kwargs) -> "Pipeline":
@@ -711,8 +711,8 @@ def code_generation_pipeline(*args, **kwargs) -> "Pipeline":
     :return: text generation pipeline with the given args and
         kwargs passed to Pipeline.create
     """
-    args, kwargs = _check_model_path_arg(*args, **kwargs)
-    return Pipeline.create("code_generation", *args, **kwargs)
+    kwargs = _check_model_path_arg(*args, **kwargs)
+    return Pipeline.create("code_generation", **kwargs)
 
 
 def chat_pipeline(*args, **kwargs) -> "Pipeline":
@@ -720,8 +720,8 @@ def chat_pipeline(*args, **kwargs) -> "Pipeline":
     :return: text generation pipeline with the given args and
         kwargs passed to Pipeline.create
     """
-    args, kwargs = _check_model_path_arg(*args, **kwargs)
-    return Pipeline.create("chat", *args, **kwargs)
+    kwargs = _check_model_path_arg(*args, **kwargs)
+    return Pipeline.create("chat", **kwargs)
 
 
 TextGeneration = text_generation_pipeline
@@ -814,5 +814,4 @@ def _check_model_path_arg(*args, **kwargs):
                 "Only the model path can be provided as a non-kwarg argument"
             )
         kwargs["model_path"] = args[0]
-        args = args[1:]
-    return args, kwargs
+    return kwargs
