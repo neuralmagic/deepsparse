@@ -79,15 +79,10 @@ HOT_RELOAD_OPTION = click.option(
     ),
 )
 
-MODEL_OPTION = click.option(
-    "--model_path",
+MODEL_OPTION = click.argument(
+    "model_path",
     type=str,
     default="default",
-    help=(
-        "The path to a model.onnx file, a model folder containing the model.onnx "
-        "and supporting files, or a SparseZoo model stub. "
-        "If not specified, the default model for the task is used."
-    ),
 )
 
 BATCH_OPTION = click.option(
@@ -172,6 +167,9 @@ def main(
     num_workers: int,
     integration: str,
 ):
+    if integration == INTEGRATION_OPENAI:
+        task = "text_generation"
+
     """
     Start a DeepSparse inference server for serving the models and pipelines.
 
