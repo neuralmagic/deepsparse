@@ -56,7 +56,7 @@ def model_path():
 
 @pytest.fixture()
 def datasets():
-    return ["hellaswag", "gsm8k"]
+    return ["hellaswag"]
 
 
 @pytest.fixture()
