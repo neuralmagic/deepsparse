@@ -702,7 +702,8 @@ def text_generation_pipeline(*args, **kwargs) -> "Pipeline":
     :return: text generation pipeline with the given args and
         kwargs passed to Pipeline.create
     """
-    return Pipeline.create("text_generation", *args, **kwargs)
+    kwargs = _check_model_path_arg(*args, **kwargs)
+    return Pipeline.create("text_generation", **kwargs)
 
 
 def code_generation_pipeline(*args, **kwargs) -> "Pipeline":
@@ -710,7 +711,8 @@ def code_generation_pipeline(*args, **kwargs) -> "Pipeline":
     :return: text generation pipeline with the given args and
         kwargs passed to Pipeline.create
     """
-    return Pipeline.create("code_generation", *args, **kwargs)
+    kwargs = _check_model_path_arg(*args, **kwargs)
+    return Pipeline.create("code_generation", **kwargs)
 
 
 def chat_pipeline(*args, **kwargs) -> "Pipeline":
@@ -718,7 +720,8 @@ def chat_pipeline(*args, **kwargs) -> "Pipeline":
     :return: text generation pipeline with the given args and
         kwargs passed to Pipeline.create
     """
-    return Pipeline.create("chat", *args, **kwargs)
+    kwargs = _check_model_path_arg(*args, **kwargs)
+    return Pipeline.create("chat", **kwargs)
 
 
 TextGeneration = text_generation_pipeline
@@ -802,3 +805,13 @@ def zero_shot_text_classification_pipeline(*args, **kwargs) -> "Pipeline":
     is returned depends on the value of the passed model_scheme argument.
     """
     return Pipeline.create("zero_shot_text_classification", *args, **kwargs)
+
+
+def _check_model_path_arg(*args, **kwargs):
+    if args:
+        if len(args) > 1 or "model_path" in kwargs or "model" in kwargs:
+            raise ValueError(
+                "Only the model path can be provided as a non-kwarg argument"
+            )
+        kwargs["model_path"] = args[0]
+    return kwargs
