@@ -15,7 +15,7 @@
 # flake8: noqa: F401
 
 
-def try_import_lm_evaluation_harness(raise_error=False):
+def try_import_lm_evaluation_harness(raise_error=True):
     try:
         import lm_eval
 
