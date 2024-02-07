@@ -249,13 +249,22 @@ def load_perplexity_dataset(
         dataset = HumanEvalIteratorWrapper(dataset)
         accumulate = False
     elif dataset_name in {"wikitext2", "c4"}:
+        # fetch max_sequence_length from pipeline if not provided
+        max_sequence_length = kwargs.pop("max_sequence_length", None)
+        if max_sequence_length is None and pipeline is not None:
+            max_sequence_length = pipeline.sequence_length
+
+        # fetch model_path from pipeline if not provided
+        model_path = kwargs.pop("model_path", None)
+        if model_path is None and pipeline is not None:
+            model_path = os.path.dirname(pipeline.model_path)
+
         dataset = process_concatenated_datasets(
             dataset_name,
-            model_path=kwargs.pop("model_path", os.path.dirname(pipeline.model_path)),
-            max_sequence_length=kwargs.pop(
-                "max_sequence_length", pipeline.sequence_length
-            ),
-            kwargs=kwargs,
+            model_path=model_path,
+            max_sequence_length=max_sequence_length,
+            split=splits,
+            **kwargs,
         )
         accumulate = True
     else:
