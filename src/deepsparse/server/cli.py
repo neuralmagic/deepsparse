@@ -79,6 +79,7 @@ HOT_RELOAD_OPTION = click.option(
     ),
 )
 
+MODEL_ARG = click.argument("model", type=str, default=None, required=False)
 MODEL_OPTION = click.option(
     "--model_path",
     type=str,
@@ -152,6 +153,7 @@ INTEGRATION_OPTION = click.option(
 @PORT_OPTION
 @LOG_LEVEL_OPTION
 @HOT_RELOAD_OPTION
+@MODEL_ARG
 @MODEL_OPTION
 @BATCH_OPTION
 @CORES_OPTION
@@ -167,6 +169,7 @@ def main(
     log_level: str,
     hot_reload_config: bool,
     model_path: str,
+    model: str,
     batch_size: int,
     num_cores: int,
     num_workers: int,
@@ -216,6 +219,17 @@ def main(
        ...
     ```
     """
+    # the server cli can take a model argument or --model_path option
+    # if the --model_path option is provided, use that
+    # otherwise if the argument is given and --model_path is not used, use the
+    # argument instead
+    if model and model_path == "default":
+        model_path = model
+
+    if integration == INTEGRATION_OPENAI:
+        if task is None or task != "text_generation":
+            task = "text_generation"
+
     if ctx.invoked_subcommand is not None:
         return
 
@@ -252,24 +266,6 @@ def main(
     if config_file is not None:
         server = _fetch_server(integration=integration, config=config_file)
         server.start_server(host, port, log_level, hot_reload_config=hot_reload_config)
-
-
-@main.command(
-    context_settings=dict(
-        token_normalize_func=lambda x: x.replace("-", "_"), show_default=True
-    ),
-)
-@click.argument("config-file", type=str)
-@HOST_OPTION
-@PORT_OPTION
-@LOG_LEVEL_OPTION
-@HOT_RELOAD_OPTION
-def openai(
-    config_file: str, host: str, port: int, log_level: str, hot_reload_config: bool
-):
-
-    server = OpenAIServer(server_config=config_file)
-    server.start_server(host, port, log_level, hot_reload_config=hot_reload_config)
 
 
 @main.command(
