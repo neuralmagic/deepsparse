@@ -16,12 +16,10 @@ from concurrent.futures import Future
 
 import numpy
 
-import pytest
 from deepsparse.operators import EngineOperator
 from deepsparse.schedulers import ContinuousBatchingScheduler
 
 
-@pytest.mark.skip("skip continuous batching tests")
 def test_continuous_batching_executor_thread():
     # simple test that ContinuousBatchingScheduler can be instantiated and return
     # a result from a request, for testing multi-batch execution, making enough

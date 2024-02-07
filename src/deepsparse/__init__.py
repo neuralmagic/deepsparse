@@ -40,5 +40,6 @@ from .analytics import deepsparse_analytics as _analytics
 from .subgraph_execute import *
 from .analyze import analyze
 from .evaluation.evaluator import evaluate
+from .benchmark import benchmark_model, benchmark_pipeline
 
 _analytics.send_event("python__init")
