@@ -56,7 +56,7 @@ def model_path():
 
 @pytest.fixture()
 def datasets():
-    return ["hellaswag"]
+    return ["hellaswag", "gsm8k"]
 
 
 @pytest.fixture()
@@ -121,7 +121,9 @@ def test_evaluation_llm_evaluation_harness_integration_name(
 ):
     assert evaluate(
         model=model_path,
-        datasets=datasets,
+        # testing only on hellaswag dataset
+        # to avoid long running time
+        datasets=datasets[0],
         limit=1,
         integration="lm_eval_harness",
     )
