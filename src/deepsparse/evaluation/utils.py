@@ -27,7 +27,7 @@ __all__ = [
     "resolve_integration",
 ]
 _LOGGER = logging.getLogger(__name__)
-LM_EVALUATION_HARNESS = "lm-eval-harness"
+LM_EVALUATION_HARNESS = "lm-evaluation-harness"
 
 
 def potentially_check_dependency_import(integration_name: str) -> bool:
