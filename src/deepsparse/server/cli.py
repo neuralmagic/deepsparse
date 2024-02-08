@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import os
 from tempfile import TemporaryDirectory
 from typing import Optional, Union
@@ -229,6 +228,10 @@ def main(
     if task is None and config_file is None:
         raise ValueError("Must specify either --task or --config_file. Found neither")
 
+    if config_file is not None:
+        server = _fetch_server(integration=integration, config=config_file)
+        server.start_server(host, port, log_level, hot_reload_config=hot_reload_config)
+
     if task is not None:
         cfg = ServerConfig(
             num_cores=num_cores,
@@ -255,10 +258,6 @@ def main(
             server.start_server(
                 host, port, log_level, hot_reload_config=hot_reload_config
             )
-
-    if config_file is not None:
-        server = _fetch_server(integration=integration, config=config_file)
-        server.start_server(host, port, log_level, hot_reload_config=hot_reload_config)
 
 
 def _fetch_server(integration: str, config: Union[ServerConfig, str]):
