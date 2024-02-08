@@ -61,7 +61,7 @@ The evaluation will be run using `lm-evaluation-harness` on `hellaswag` and `gsm
 deepsparse.eval zoo:mpt-7b-mpt_pretrain-base_quantized \
                 --dataset hellaswag \
                 --dataset gsm8k \
-                --integration lm-eval-harness \
+                --integration lm-evaluation-harness \
                 --limit 2 # limit the number of samples to evaluate on, specific to the integration
 
 """  # noqa: E501

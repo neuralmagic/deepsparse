@@ -39,7 +39,7 @@ _LOGGER = logging.getLogger(__name__)
 __all__ = ["integration_eval"]
 
 
-@EvaluationRegistry.register(name=LM_EVALUATION_HARNESS)
+@EvaluationRegistry.register(name=LM_EVALUATION_HARNESS, alias="lm-eval-harness")
 def integration_eval(
     pipeline: Pipeline,
     datasets: Union[List[str], str],
