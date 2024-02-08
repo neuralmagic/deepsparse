@@ -125,7 +125,7 @@ def test_evaluation_llm_evaluation_harness_integration_name(
         # to avoid long running time
         datasets=datasets[0],
         limit=1,
-        integration="lm_eval_harness",
+        integration="lm_evaluation_harness",
     )
 
 
