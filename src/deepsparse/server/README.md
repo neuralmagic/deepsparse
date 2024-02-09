@@ -18,15 +18,15 @@ Usage: deepsparse.server [OPTIONS] COMMAND [ARGS]...
 
       1. `deepsparse.server --config_file [OPTIONS] <config path>`
 
-      2. `deepsparse.server task [OPTIONS] <task>
+      2. `deepsparse.server --task [OPTIONS] <task>
 
   Examples for using the server:
 
       `deepsparse.server --config_file server-config.yaml`
 
-      `deepsparse.server task question_answering --batch-size 2`
+      `deepsparse.server --task question_answering --batch-size 2`
 
-      `deepsparse.server task question_answering --host "0.0.0.0"`
+      `deepsparse.server --task question_answering --host "0.0.0.0"`
 
   Example config.yaml for serving:
 
@@ -63,10 +63,6 @@ Usage: deepsparse.server [OPTIONS] COMMAND [ARGS]...
   
 Options:
   --help  Show this message and exit.
-
-Commands:
-  config  Run the server using configuration from a .yaml file.
-  task    Run the server using configuration with CLI options, which can...
 ```
 ---
 <h3>Note on the latest server release</h3>
@@ -104,7 +100,7 @@ Example CLI command for serving a single model for the **question answering** ta
 
 ```bash
 deepsparse.server \
-    task question_answering \
+    --task question_answering \
     --model_path "zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/12layer_pruned80_quant-none-vnni"
 ```
 
