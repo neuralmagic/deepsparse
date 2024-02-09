@@ -11,16 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-"""
-There are two sub-commands for the server:
-1. `deepsparse.server config [OPTIONS] <config path>`
-2. `deepsparse.server task [OPTIONS] <task>
-```
-"""
-
 import os
-import warnings
 from tempfile import TemporaryDirectory
 from typing import Optional, Union
 
@@ -223,6 +214,7 @@ def main(
     # if the --model_path option is provided, use that
     # otherwise if the argument is given and --model_path is not used, use the
     # argument instead
+
     if model and model_path == "default":
         model_path = model
 
@@ -235,6 +227,10 @@ def main(
 
     if task is None and config_file is None:
         raise ValueError("Must specify either --task or --config_file. Found neither")
+
+    if config_file is not None:
+        server = _fetch_server(integration=integration, config=config_file)
+        server.start_server(host, port, log_level, hot_reload_config=hot_reload_config)
 
     if task is not None:
         cfg = ServerConfig(
@@ -262,98 +258,6 @@ def main(
             server.start_server(
                 host, port, log_level, hot_reload_config=hot_reload_config
             )
-
-    if config_file is not None:
-        server = _fetch_server(integration=integration, config=config_file)
-        server.start_server(host, port, log_level, hot_reload_config=hot_reload_config)
-
-
-@main.command(
-    context_settings=dict(
-        token_normalize_func=lambda x: x.replace("-", "_"), show_default=True
-    ),
-)
-@click.argument("config-path", type=str)
-@HOST_OPTION
-@PORT_OPTION
-@LOG_LEVEL_OPTION
-@HOT_RELOAD_OPTION
-def config(
-    config_path: str, host: str, port: int, log_level: str, hot_reload_config: bool
-):
-    "[DEPRECATED] Run the server using configuration from a .yaml file."
-    warnings.simplefilter("always", DeprecationWarning)
-    warnings.warn(
-        "Using the `config` sub command is deprecated. "
-        "Use the `--config_file` argument instead.",
-        category=DeprecationWarning,
-    )
-
-
-@main.command(
-    context_settings=dict(
-        token_normalize_func=lambda x: x.replace("-", "_"), show_default=True
-    ),
-)
-@click.argument(
-    "task",
-    type=click.Choice(SupportedTasks.task_names(), case_sensitive=False),
-)
-@MODEL_OPTION
-@BATCH_OPTION
-@CORES_OPTION
-@WORKERS_OPTION
-@HOST_OPTION
-@PORT_OPTION
-@LOG_LEVEL_OPTION
-@HOT_RELOAD_OPTION
-@INTEGRATION_OPTION
-def task(
-    task: str,
-    model_path: str,
-    batch_size: int,
-    num_cores: int,
-    num_workers: int,
-    host: str,
-    port: int,
-    log_level: str,
-    hot_reload_config: bool,
-    integration: str,
-):
-    """
-    [DEPRECATED] Run the server using configuration with CLI options,
-    which can only serve a single model.
-    """
-
-    warnings.simplefilter("always", DeprecationWarning)
-    warnings.warn(
-        "Using the `task` sub command is deprecated. "
-        "Use the `--task` argument instead.",
-        category=DeprecationWarning,
-    )
-
-    cfg = ServerConfig(
-        num_cores=num_cores,
-        num_workers=num_workers,
-        integration=integration,
-        endpoints=[
-            EndpointConfig(
-                task=task,
-                name=f"{task}",
-                model=model_path,
-                batch_size=batch_size,
-            )
-        ],
-        loggers={},
-    )
-
-    with TemporaryDirectory() as tmp_dir:
-        config_path = os.path.join(tmp_dir, "server-config.yaml")
-        with open(config_path, "w") as fp:
-            yaml.dump(cfg.dict(), fp)
-
-        server = _fetch_server(integration=integration, config=config_path)
-        server.start_server(host, port, log_level, hot_reload_config=hot_reload_config)
 
 
 def _fetch_server(integration: str, config: Union[ServerConfig, str]):

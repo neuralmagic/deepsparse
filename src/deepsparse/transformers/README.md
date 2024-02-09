@@ -118,7 +118,7 @@ inference = qa_pipeline(question="What's my name?", context="My name is Snorlax"
 Spinning up:
 ```bash
 deepsparse.server \
-    task question-answering \
+    --task question-answering \
     --model_path "zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/12layer_pruned80_quant-none-vnni"
 ```
 
@@ -162,7 +162,7 @@ inference = opt_pipeline("Who is the president of the United States?")
 Spinning up:
 ```bash
 deepsparse.server \
-    task text-generation \
+    --task text-generation \
     --model_path zoo:opt-1.3b-opt_pretrain-pruned50_quantW8A8
 ```
 
@@ -210,7 +210,7 @@ inference = sa_pipeline("I hate it!")
 Spinning up:
 ```bash
 deepsparse.server \
-    task sentiment-analysis \
+    --task sentiment-analysis \
     --model_path "zoo:nlp/sentiment_analysis/bert-base/pytorch/huggingface/sst2/pruned80_quant-none-vnni"
 ```
 
@@ -263,7 +263,7 @@ inference = tc_pipeline(
 Spinning up:
 ```bash
 deepsparse.server \
-    task text-classification \
+    --task text-classification \
     --model_path "zoo:nlp/text_classification/distilbert-none/pytorch/huggingface/qqp/pruned80_quant-none-vnni"
 ```
 
@@ -316,7 +316,7 @@ inference = tc_pipeline("Drive from California to Texas!")
 Spinning up:
 ```bash
 deepsparse.server \
-    task token-classification \
+    --task token-classification \
     --model_path "zoo:nlp/token_classification/bert-base/pytorch/huggingface/conll2003/pruned90-none"
 ```
 
