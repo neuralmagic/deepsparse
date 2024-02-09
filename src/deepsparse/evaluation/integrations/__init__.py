@@ -31,3 +31,4 @@ def try_import_lm_evaluation_harness(raise_error=True):
 
 if try_import_lm_evaluation_harness(raise_error=False):
     from .lm_evaluation_harness import *
+from .perplexity import *

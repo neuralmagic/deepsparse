@@ -149,6 +149,7 @@ _transformers_integration_deps = [
     "datasets<2.16",
     "accelerate<0.26",
     "seqeval",
+    "evaluate",
 ]
 _sentence_transformers_integration_deps = ["optimum-deepsparse"] + _torch_deps
 

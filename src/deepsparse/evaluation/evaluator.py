@@ -16,6 +16,9 @@ from pathlib import Path
 from typing import List, Optional, Union
 
 from deepsparse import Pipeline
+from deepsparse.evaluation.integrations.perplexity import (  # noqa
+    integration_eval as integration_eval_perplexity,
+)
 from deepsparse.evaluation.registry import EvaluationRegistry
 from deepsparse.evaluation.results import Result
 from deepsparse.evaluation.utils import create_pipeline
