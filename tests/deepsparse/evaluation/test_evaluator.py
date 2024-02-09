@@ -115,16 +115,22 @@ def test_evaluate_pipeline_without_kv_cache(
     not try_import_lm_evaluation_harness(raise_error=False),
     reason="lm_evaluation_harness not installed",
 )
-def test_evaluation_llm_evaluation_harness_integration_name(
+def test_evaluation_llm_evaluation_harness(
     model_path,
-    datasets,
 ):
     assert evaluate(
         model=model_path,
-        datasets=datasets,
-        limit=2,
-        no_cache=True,
+        # testing only on hellaswag dataset
+        # to avoid long running time
+        datasets="hellaswag",
+        limit=1,
         integration="lm_evaluation_harness",
+    )
+
+
+def test_evaluation_perplexity(model_path):
+    assert evaluate(
+        model=model_path, datasets="openai_humaneval", limit=1, integration="perplexity"
     )
 
 
@@ -144,7 +150,6 @@ def test_cli(
     runner.invoke(
         main,
         [
-            "--model_path",
             model_path,
             "--dataset",
             datasets[0],
