@@ -42,10 +42,14 @@ def potentially_check_dependency_import(integration_name: str) -> bool:
     :return: True if the dependency is installed, False otherwise
     """
 
-    if integration_name.replace("_", "-") == LM_EVALUATION_HARNESS:
+    if integration_name == LM_EVALUATION_HARNESS:
         from deepsparse.evaluation.integrations import try_import_lm_evaluation_harness
 
         try_import_lm_evaluation_harness()
+    if integration_name == PERPLEXITY:
+        from deepsparse.evaluation.integrations.perplexity import (  # noqa F401
+            integration_eval,
+        )
 
     return True
 
