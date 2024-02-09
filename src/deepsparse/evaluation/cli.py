@@ -20,7 +20,7 @@ Usage: deepsparse.eval [OPTIONS] [INTEGRATION_ARGS]...
   Module for evaluating models on the various evaluation integrations
 
 OPTIONS:
-    --model_path MODEL_PATH
+    MODEL_PATH
                         A path to an ONNX model, local directory containing ONNX model
                         (including all the auxiliary files) or a SparseZoo stub
     -d DATASET, --dataset DATASET
@@ -72,7 +72,7 @@ import click
 
 from deepsparse.evaluation.evaluator import evaluate
 from deepsparse.evaluation.results import Result, save_result
-from deepsparse.evaluation.utils import args_to_dict, get_save_path
+from deepsparse.evaluation.utils import get_save_path, parse_kwarg_tuples
 from deepsparse.operators.engine_operator import (
     DEEPSPARSE_ENGINE,
     ORT_ENGINE,
@@ -88,12 +88,10 @@ _LOGGER = logging.getLogger(__name__)
         ignore_unknown_options=True,
     )
 )
-@click.option(
-    "--model_path",
+@click.argument(
+    "model_path",
     type=click.Path(dir_okay=True, file_okay=True),
     required=True,
-    help="A path to an ONNX model, local directory containing ONNX model"
-    "(including all the auxiliary files) or a SparseZoo stub",
 )
 @click.option(
     "-d",
@@ -178,7 +176,7 @@ def main(
     # join datasets to a list if multiple datasets are passed
     datasets = list(dataset) if not isinstance(dataset, str) else dataset
     # format kwargs to a  dict
-    integration_args = args_to_dict(integration_args)
+    integration_args = parse_kwarg_tuples(integration_args)
 
     _LOGGER.info(
         f"Creating {engine_type} pipeline to evaluate from model path: {model_path}"
@@ -203,7 +201,7 @@ def main(
         **integration_args,
     )
 
-    _LOGGER.info(f"Evaluation done. Results:\n{result}")
+    _LOGGER.info(f"Evaluation done. Results:\n{result.formatted}")
 
     save_path = get_save_path(
         save_path=save_path,

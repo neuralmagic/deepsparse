@@ -57,7 +57,7 @@ class EvaluationRegistry(RegistryMixin):
 
         if integration is None:
             _LOGGER.info(
-                "No integration specified, inferring the evaluation"
+                "No integration specified, inferring the evaluation "
                 "function from the input arguments..."
             )
             integration = resolve_integration(pipeline, datasets)
