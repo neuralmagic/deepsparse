@@ -20,6 +20,7 @@ from typing import Any, Dict, Optional
 
 import numpy
 
+from deepsparse.utils.data import numpy_log_softmax
 from scipy.special import log_softmax
 from sklearn.metrics import precision_recall_fscore_support
 
