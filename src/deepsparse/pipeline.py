@@ -91,7 +91,7 @@ class Pipeline(Operator):
         self.schedulers = schedulers
         self.pipeline_state = pipeline_state
         self._continuous_batching_scheduler = continuous_batching_scheduler
-        self.middleware_manager = middleware_manager
+        self.middleware_manager = middleware_manager or MiddlewareManager()
         self.timer_manager = timer_manager or TimerManager()
         self.validate()
 

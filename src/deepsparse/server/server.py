@@ -24,6 +24,8 @@ import yaml
 from pydantic import BaseModel
 
 import uvicorn
+from deepsparse.benchmark.benchmark_pipeline import benchmark_from_pipeline
+from deepsparse.benchmark.config import PipelineBenchmarkConfig
 from deepsparse.engine import Context
 from deepsparse.pipeline import Pipeline
 from deepsparse.server.config import ServerConfig, SystemLoggingConfig
@@ -273,6 +275,20 @@ class Server:
             _LOGGER.debug(f"Logging failed, {e}")
 
         return prep_for_serialization(pipeline_outputs)
+
+    @staticmethod
+    async def benchmark(
+        proxy_pipeline: ProxyPipeline,
+        system_logging_config: SystemLoggingConfig,
+        raw_request: Request,
+    ):
+        json_params = await raw_request.json()
+        benchmark_config = PipelineBenchmarkConfig(**json_params)
+        results = benchmark_from_pipeline(
+            pipeline=proxy_pipeline.pipeline, **benchmark_config.dict()
+        )
+
+        return results
 
     @staticmethod
     async def predict_from_files(
