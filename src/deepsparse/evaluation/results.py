@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Any, List, Optional
+from typing import Any, List, Optional, Union
 
 import yaml
 from pydantic import BaseModel, Field
@@ -32,7 +32,7 @@ __all__ = [
 
 class Metric(BaseModel):
     name: str = Field(description="Name of the metric")
-    value: float = Field(description="Value of the metric")
+    value: Union[float, List[float]] = Field(description="Value of the metric")
 
 
 class Dataset(BaseModel):
