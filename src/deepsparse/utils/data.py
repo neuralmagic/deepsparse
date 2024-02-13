@@ -28,6 +28,7 @@ __all__ = [
     "split_engine_inputs",
     "join_engine_outputs",
     "prep_for_serialization",
+    "numpy_log_softmax",
 ]
 
 from pydantic import BaseModel
