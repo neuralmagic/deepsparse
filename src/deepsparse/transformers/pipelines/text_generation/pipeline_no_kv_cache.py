@@ -127,3 +127,11 @@ class TextGenerationPipelineNoCache(Pipeline):
         out, orig_batch_size = split_engine_inputs(items, batch_size)
         combined_batches = [{"input_ids": b[0], "attention_mask": b[1]} for b in out]
         return combined_batches, orig_batch_size
+
+    @property
+    def batch_size(self) -> int:
+        return self.ops["engine_operator"].batch_size
+
+    @property
+    def engine_type(self) -> str:
+        return self.ops["engine_operator"]._engine_type
