@@ -16,7 +16,7 @@ import logging
 from functools import partial
 
 from deepsparse import Pipeline
-from deepsparse.middlewares import MiddlewareSpec, TimerMiddleware
+from deepsparse.middlewares import MiddlewareManager, MiddlewareSpec, TimerMiddleware
 from deepsparse.server.config import EndpointConfig
 from deepsparse.server.server import CheckReady, ModelMetaData, ProxyPipeline, Server
 from deepsparse.tasks import SupportedTasks
@@ -193,6 +193,8 @@ class DeepsparseServer(Server):
         endpoint_config: EndpointConfig,
         pipeline: Pipeline,
     ):
+        if not hasattr(pipeline, "middleware_mamanger"):
+            pipeline.middleware_manager = MiddlewareManager()
         if TimerMiddleware not in pipeline.middleware_manager.middlewares:
             pipeline.middleware_manager.add_middleware(
                 [MiddlewareSpec(TimerMiddleware)]
