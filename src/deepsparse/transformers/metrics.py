@@ -22,7 +22,6 @@ import numpy
 
 from deepsparse.utils.data import numpy_log_softmax
 from sklearn.metrics import precision_recall_fscore_support
-from deepsparse.utils import numpy_log_softmax
 
 
 __all__ = [
