@@ -225,14 +225,11 @@ def main(
     if ctx.invoked_subcommand is not None:
         return
 
-    if task is None and config_file is None:
-        raise ValueError("Must specify either --task or --config_file. Found neither")
-
     if config_file is not None:
         server = _fetch_server(integration=integration, config=config_file)
         server.start_server(host, port, log_level, hot_reload_config=hot_reload_config)
 
-    if task is not None:
+    elif task is not None:
         cfg = ServerConfig(
             num_cores=num_cores,
             num_workers=num_workers,
@@ -258,6 +255,8 @@ def main(
             server.start_server(
                 host, port, log_level, hot_reload_config=hot_reload_config
             )
+    else:
+        raise ValueError("Must specify either --task or --config_file. Found neither")
 
 
 def _fetch_server(integration: str, config: Union[ServerConfig, str]):
