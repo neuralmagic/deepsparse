@@ -29,6 +29,7 @@ from deepsparse.evaluation.results import (
     Metric,
     Result,
 )
+from deepsparse.pipeline import Pipeline
 
 
 @EvaluationRegistry.register()
@@ -49,7 +50,7 @@ def dummy_integration(*args, **kwargs):
 
 
 @pytest.fixture()
-def target():
+def model_path():
     return "hf:mgoin/TinyStories-1M-deepsparse"
 
 
@@ -68,18 +69,42 @@ def unknown_integration_name():
     return "unknown_integration"
 
 
-def test_evaluate_unknown_integration(target, datasets, unknown_integration_name):
+def test_evaluate_unknown_integration(model_path, datasets, unknown_integration_name):
     with pytest.raises(KeyError):
         evaluate(
-            target=target,
+            model=model_path,
             datasets=datasets,
             integration=unknown_integration_name,
         )
 
 
-def test_evaluate(target, datasets, dummy_integration_name):
+def test_evaluate(model_path, datasets, dummy_integration_name):
     result = evaluate(
-        target=target,
+        model=model_path,
+        datasets=datasets,
+        integration=dummy_integration_name,
+    )
+    assert isinstance(result, Result)
+
+
+def test_evaluate_pipeline_with_kv_cache(model_path, datasets, dummy_integration_name):
+    result = evaluate(
+        model=Pipeline.create(model_path=model_path, task="text-generation"),
+        datasets=datasets,
+        integration=dummy_integration_name,
+    )
+    assert isinstance(result, Result)
+
+
+def test_evaluate_pipeline_without_kv_cache(
+    model_path, datasets, dummy_integration_name
+):
+    result = evaluate(
+        model=Pipeline.create(
+            model_path=model_path,
+            task="text-generation",
+            onnx_model_name="model-orig.onnx",
+        ),
         datasets=datasets,
         integration=dummy_integration_name,
     )
@@ -90,16 +115,22 @@ def test_evaluate(target, datasets, dummy_integration_name):
     not try_import_lm_evaluation_harness(raise_error=False),
     reason="lm_evaluation_harness not installed",
 )
-def test_evaluation_llm_evaluation_harness_integration_name(
-    target,
-    datasets,
+def test_evaluation_llm_evaluation_harness(
+    model_path,
 ):
     assert evaluate(
-        target=target,
-        datasets=datasets,
-        limit=2,
-        no_cache=True,
+        model=model_path,
+        # testing only on hellaswag dataset
+        # to avoid long running time
+        datasets="hellaswag",
+        limit=1,
         integration="lm_evaluation_harness",
+    )
+
+
+def test_evaluation_perplexity(model_path):
+    assert evaluate(
+        model=model_path, datasets="openai_humaneval", limit=1, integration="perplexity"
     )
 
 
@@ -110,15 +141,16 @@ def test_evaluation_llm_evaluation_harness_integration_name(
     "with importing functions that are decorated with "
     "click option where multiple=True",
 )
-def test_cli(tmp_path, target, datasets, dummy_integration_name, type_serialization):
+def test_cli(
+    tmp_path, model_path, datasets, dummy_integration_name, type_serialization
+):
     from deepsparse.evaluation.cli import main
 
     runner = CliRunner()
     runner.invoke(
         main,
         [
-            "--target",
-            target,
+            model_path,
             "--dataset",
             datasets[0],
             "--dataset",

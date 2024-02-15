@@ -47,7 +47,8 @@ import argparse
 
 import numpy
 
-from deepsparse import benchmark_model, cpu
+from deepsparse import cpu
+from deepsparse.engine import benchmark_model
 
 
 CORES_PER_SOCKET, AVX_TYPE, VNNI = cpu.cpu_details()

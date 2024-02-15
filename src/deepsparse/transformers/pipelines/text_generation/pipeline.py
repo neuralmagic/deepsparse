@@ -360,6 +360,14 @@ class TextGenerationPipeline(Pipeline):
         """
         return self.ops["single_engine"].sequence_length
 
+    @property
+    def batch_size(self) -> int:
+        return self.ops["single_engine"].batch_size
+
+    @property
+    def engine_type(self) -> str:
+        return self.ops["single_engine"]._engine_type
+
     def _get_continuous_batching_scheduler(
         self, batch_sizes: List[int], engines: List[EngineOperator]
     ) -> ContinuousBatchingScheduler:

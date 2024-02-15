@@ -37,5 +37,9 @@ from .pipeline import *
 from .version import __version__, is_release
 from .analytics import deepsparse_analytics as _analytics
 from .subgraph_execute import *
+from .analyze import analyze
+from .evaluation.evaluator import evaluate
+from .benchmark.benchmark_model import benchmark_model
+from .benchmark.benchmark_pipeline import benchmark_pipeline
 
 _analytics.send_event("python__init")
