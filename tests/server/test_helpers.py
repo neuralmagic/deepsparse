@@ -18,10 +18,10 @@ import yaml
 from pydantic import BaseModel
 
 import pytest
-from deepsparse.loggers import AsyncLogger, MultiLogger, PythonLogger
+from deepsparse.legacy.loggers import AsyncLogger, MultiLogger, PythonLogger
 from deepsparse.server.config import ServerConfig
 from deepsparse.server.helpers import server_logger_from_config
-from tests.deepsparse.loggers.helpers import fetch_leaf_logger
+from tests.deepsparse.legacy.loggers.helpers import fetch_leaf_logger
 from tests.helpers import find_free_port
 
 
@@ -123,7 +123,7 @@ endpoints:
 yaml_config_8 = """
 loggers:
     custom_logger:
-        path: tests/deepsparse/loggers/helpers.py:CustomLogger
+        path: tests/deepsparse/legacy/loggers/helpers.py:CustomLogger
         arg1: 1
         arg2: some_string
 endpoints:

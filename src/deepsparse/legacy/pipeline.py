@@ -34,8 +34,8 @@ from deepsparse.legacy.base_pipeline import (
     BasePipeline,
     SupportedTasks,
 )
-from deepsparse.loggers.base_logger import BaseLogger
-from deepsparse.loggers.constants import MetricCategories, SystemGroups
+from deepsparse.legacy.loggers.base_logger import BaseLogger
+from deepsparse.legacy.loggers.constants import MetricCategories, SystemGroups
 from deepsparse.pipeline_config import PipelineConfig
 from deepsparse.utils import (
     InferenceStages,
