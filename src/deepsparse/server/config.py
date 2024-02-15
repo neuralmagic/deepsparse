@@ -17,13 +17,13 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 
 from pydantic import BaseModel, Field, validator
 
-from deepsparse.legacy.tasks import SupportedTasks
-from deepsparse.loggers.config import (
+from deepsparse.legacy.loggers.config import (
     MetricFunctionConfig,
     PipelineSystemLoggingConfig,
     SystemLoggingConfig,
     SystemLoggingGroup,
 )
+from deepsparse.legacy.tasks import SupportedTasks
 from deepsparse.operators.engine_operator import DEEPSPARSE_ENGINE
 from deepsparse.pipeline_config import PipelineConfig
 

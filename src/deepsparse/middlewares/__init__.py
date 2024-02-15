@@ -14,5 +14,6 @@
 
 # flake8: noqa
 
+from .logger_middleware import LoggerMiddleware
 from .middleware import MiddlewareCallable, MiddlewareManager, MiddlewareSpec
-from .timer_middleware import *
+from .timer_middleware import IS_NESTED_KEY, NAME_KEY, TimerMiddleware

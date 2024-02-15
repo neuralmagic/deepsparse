@@ -17,6 +17,7 @@ import os
 from pathlib import Path
 from typing import Any, AsyncGenerator, Callable, Dict, Generator, List, Optional, Union
 
+from deepsparse.loggers.logger_manager import LoggerManager
 from deepsparse.middlewares import IS_NESTED_KEY, NAME_KEY, MiddlewareManager
 from deepsparse.operators import EngineOperator, Operator
 from deepsparse.pipeline_config import PipelineConfig
@@ -83,6 +84,7 @@ class Pipeline(Operator):
         pipeline_state: Optional[PipelineState] = None,
         middleware_manager: Optional[MiddlewareManager] = None,
         timer_manager: Optional[TimerManager] = None,
+        logger_manager: Optional[LoggerManager] = None,
         benchmark: bool = False,
     ):
 
@@ -94,6 +96,7 @@ class Pipeline(Operator):
         self._continuous_batching_scheduler = continuous_batching_scheduler
         self.middleware_manager = middleware_manager
         self.timer_manager = timer_manager or TimerManager()
+        self.logger_manager = logger_manager or LoggerManager()
         self.validate()
 
         self._scheduler_group = SchedulerGroup(self.schedulers)
@@ -199,6 +202,11 @@ class Pipeline(Operator):
         ):
             timer = self.timer_manager.get_new_timer()
             inference_state.set_timer(timer)
+        if (
+            not hasattr(inference_state, "logger")
+            or getattr(inference_state, "logger") is None
+        ):
+            inference_state.set_logger(self.logger_manager.metric)
 
         with inference_state.time(id=InferenceStages.TOTAL_INFERENCE):
             while next_step != self.router.END_ROUTE:
@@ -429,13 +437,13 @@ class Pipeline(Operator):
             inference_state = kwargs.pop("inference_state")
         else:
             inference_state = InferenceState()
-            if self.timer_manager is not None:
-                timer = self.timer_manager.get_new_timer()
             inference_state.create_state({})
-            inference_state.set_timer(timer)
 
             timer = self.timer_manager.get_new_timer()
             inference_state.set_timer(timer)
+
+            inference_state.set_logger(self.logger_manager.metric)
+
             is_nested = False
 
         kwargs["inference_state"] = inference_state

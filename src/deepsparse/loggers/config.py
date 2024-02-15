@@ -12,129 +12,102 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
 
-from pydantic import BaseModel, Field, validator
-
-
-"""
-Implements schemas for the configs pertaining to logging
-"""
-
-__all__ = [
-    "MetricFunctionConfig",
-    "SystemLoggingGroup",
-    "SystemLoggingConfig",
-    "PipelineLoggingConfig",
-]
+import yaml
+from pydantic import BaseModel, Extra, Field, validator
 
 
-class MetricFunctionConfig(BaseModel):
-    """
-    Holds logging configuration for a metric function
-    """
+class LoggerConfig(BaseModel):
+    class Config:
+        extra = Extra.allow
 
-    func: str = Field(
-        description="The name that specifies the metric function to be applied. "
-        "It can be: "
-        "1) a built-in function name "
-        "2) a dynamic import function of the form "
-        "'<path_to_the_python_script>:<function_name>' "
-        "3) a framework function (e.g. np.mean or torch.mean)"
-    )
-
-    frequency: int = Field(
-        description="Specifies how often the function should be applied"
-        "(measured in numbers of inference calls).",
-        default=1,
-    )
-
-    target_loggers: List[str] = Field(
-        default=[],
-        description="Overrides the global logger configuration."
-        "If not an empty list, this configuration stops logging data "
-        "to globally specified loggers, and will only use "
-        "the subset of loggers (specified here by a list of their names).",
-    )
-
-    @validator("frequency")
-    def non_zero_frequency(cls, frequency: int) -> int:
-        if frequency <= 0:
-            raise ValueError(
-                f"Passed frequency: {frequency}, but "
-                "frequency must be a positive integer greater equal 1"
-            )
-        return frequency
-
-
-class SystemLoggingGroup(BaseModel):
-    """
-    Holds the configuration for a single system logging group.
-    """
-
-    enable: bool = Field(
-        default=False,
-        description="Whether to enable the system logging group. Defaults to False",
-    )
-
-    target_loggers: List[str] = Field(
-        default=[],
-        description="The list of target loggers to log to. "
-        "If None, logs to all the available loggers",
-    )
-
-
-class SystemLoggingConfig(BaseModel):
-    # Global Logging Config
-    enable: bool = Field(
-        default=True, description="Whether to enable system logging. Defaults to True"
-    )
-
-
-class PipelineSystemLoggingConfig(SystemLoggingConfig):
-    """
-    Holds the configuration for the system logging
-    in the context of a single pipeline
-    """
-
-    # Pipeline System Logging Groups
-    inference_details: SystemLoggingGroup = Field(
-        default=SystemLoggingGroup(enable=False),
-        description="The configuration group for the inference details "
-        "logging group. By default this group is disabled.",
-    )
-    prediction_latency: SystemLoggingGroup = Field(
-        default=SystemLoggingGroup(enable=True),
-        description="The configuration group for the prediction latency "
-        "logging group. By default this group is enabled.",
-    )
-
-
-class PipelineLoggingConfig(BaseModel):
-    """
-    Holds the complete configuration for the logging
-    in the context of a single pipeline
-    """
-
-    loggers: Dict[str, Optional[Dict[str, Any]]] = Field(
-        default={},
+    name: str = Field(
+        default="PythonLogger",
         description=(
-            "Optional dictionary of logger integration names to initialization kwargs."
-            "Set to {} for no loggers. Default is {}."
+            "Path (/path/to/file:FooLogger) or name of loggers in "
+            "deepsparse/loggers/registry/__init__ path"
+        ),
+    )
+    handler: Optional[Dict] = None
+
+
+class TargetConfig(BaseModel):
+    func: str = Field(
+        default="identity",
+        description=(
+            (
+                "Callable to apply to 'value' for dimensionality reduction. "
+                "func can be a path /path/to/file:func) or name of func in "
+                "deepsparse/loggers/registry/__init__ path"
+            )
         ),
     )
 
-    system_logging: PipelineSystemLoggingConfig = Field(
-        default=PipelineSystemLoggingConfig(),
-        description="A model that holds the system logging configuration. "
-        "If not specified explicitly in the yaml config, the "
-        "default SystemLoggingConfig model is used.",
+    freq: int = Field(
+        default=1,
+        description="The rate to log. Log every N occurances",
+    )
+    uses: List[str] = Field(default=["default"], description="")
+
+
+class MetricTargetConfig(TargetConfig):
+    capture: Optional[List[str]] = Field(
+        None,
+        description=(
+            "Key of the output dict. Corresponding value will be logged. "
+            "The value can be a regex pattern"
+        ),
     )
 
-    data_logging: Optional[Dict[str, List[MetricFunctionConfig]]] = Field(
-        default=None,
-        description="Specifies the rules for the data logging. "
-        "It relates a key (name of the logging target) "
-        "to a list of metric functions that are to be applied"
-        "to this target prior to logging.",
+
+class LoggingConfig(BaseModel):
+
+    loggers: Dict[str, LoggerConfig] = Field(
+        default=dict(default=LoggerConfig()),
+        description="Loggers to be Used",
     )
+
+    system: Dict[str, List[TargetConfig]] = Field(
+        default={"re:.*": [TargetConfig()]},
+        description="Default python logging module logger",
+    )
+
+    performance: Dict[str, List[TargetConfig]] = Field(
+        default={"cpu": [TargetConfig()]},
+        description="Performance level config",
+    )
+
+    metric: Dict[str, List[MetricTargetConfig]] = Field(
+        default={"re:(?i)operator": [MetricTargetConfig()]},
+        description="Metric level config",
+    )
+
+    @validator("loggers", always=True)
+    def always_include_python_logger(cls, value):
+        if "default" not in value:
+            value["default"] = LoggerConfig()
+        return value
+
+    @classmethod
+    def from_yaml(cls, yaml_path: str):
+        """Load from yaml file"""
+        with open(yaml_path, "r") as file:
+            yaml_content = yaml.safe_load(file)
+        return cls(**yaml_content)
+
+    @classmethod
+    def from_str(cls, stringified_yaml: str):
+        """Load from stringified yaml"""
+        yaml_content = yaml.safe_load(stringified_yaml)
+
+        return cls(**yaml_content)
+
+    @classmethod
+    def from_config(cls, config: Optional[str] = None):
+        """Helper to load from file or string"""
+        if config:
+            if config.endswith(".yaml"):
+                return cls.from_yaml(config)
+            return cls.from_str(config)
+        return LoggingConfig()
