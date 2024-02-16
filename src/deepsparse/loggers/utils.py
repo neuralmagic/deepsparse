@@ -17,7 +17,7 @@ import re
 from typing import Any, Type
 
 
-LOGGER_REGISTRY = "src.deepsparse.loggers.registry.__init__"
+LOGGER_REGISTRY = "deepsparse.loggers.registry.__init__"
 
 
 def import_from_registry(name: str) -> Type[Any]:
