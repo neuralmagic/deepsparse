@@ -151,7 +151,7 @@ class DeepSparseLM(LM):
         return self._max_gen_toks
 
     @property
-    def model(self) -> Any:
+    def model(self) -> Pipeline:
         return self.pipeline
 
     def loglikelihood(self, requests) -> List[Tuple[float, bool]]:
