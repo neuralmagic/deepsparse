@@ -24,14 +24,14 @@ from deepsparse import model_debug_analysis
 from deepsparse.benchmark.benchmark_model import benchmark_model
 from deepsparse.utils import generate_random_inputs, model_to_path
 from sparsezoo import convert_to_bool
-from sparsezoo.analyze import (
+from sparsezoo.analyze_v1 import (
     BenchmarkResult,
     BenchmarkScenario,
     ImposedSparsificationInfo,
     ModelAnalysis,
     NodeInferenceResult,
 )
-from sparsezoo.analyze.cli import (
+from sparsezoo.analyze_v1.cli import (
     DEEPSPARSE_ENGINE,
     analyze_options,
     analyze_performance_options,
