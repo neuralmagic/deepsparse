@@ -18,6 +18,7 @@ from typing import Dict, List, Optional, Union
 
 from deepsparse import Pipeline
 from deepsparse.operators.engine_operator import DEEPSPARSE_ENGINE
+from sparsezoo.utils.registry import standardize_lookup_name
 
 
 __all__ = [
@@ -29,20 +30,27 @@ __all__ = [
 _LOGGER = logging.getLogger(__name__)
 
 LM_EVALUATION_HARNESS = "lm-evaluation-harness"
+LM_EVALUATION_HARNESS_ALIASES = ["lm-eval-harness", "lm-eval"]
 PERPLEXITY = "perplexity"
 
 
 def potentially_check_dependency_import(integration_name: str) -> bool:
     """
     Check if the `integration_name` requires importing a dependency.
+    Checking involves comparing the `integration_name` to the known
+    integrations (e.g. 'lm-evaluation-harness') or their aliases.
     If so, check if the dependency is installed and return True if it is.
     Otherwise, return False.
 
-    :param integration_name: The name of the integration to check
+    :param integration_name: The name of the integration to check. The name
+        is standardized using `standardize_lookup_name` before checking.
     :return: True if the dependency is installed, False otherwise
     """
+    integration_name = standardize_lookup_name(integration_name)
 
-    if integration_name == LM_EVALUATION_HARNESS:
+    if integration_name == LM_EVALUATION_HARNESS or any(
+        integration_name == alias for alias in LM_EVALUATION_HARNESS_ALIASES
+    ):
         from deepsparse.evaluation.integrations import try_import_lm_evaluation_harness
 
         try_import_lm_evaluation_harness()
