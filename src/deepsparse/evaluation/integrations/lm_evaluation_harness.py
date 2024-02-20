@@ -25,7 +25,10 @@ from tqdm import tqdm
 from deepsparse import Pipeline
 from deepsparse.evaluation.registry import EvaluationRegistry
 from deepsparse.evaluation.results import Dataset, Evaluation, Metric, Result
-from deepsparse.evaluation.utils import LM_EVALUATION_HARNESS
+from deepsparse.evaluation.utils import (
+    LM_EVALUATION_HARNESS,
+    LM_EVALUATION_HARNESS_ALIASES,
+)
 from deepsparse.utils.data import numpy_log_softmax
 from lm_eval import evaluator, tasks, utils
 from lm_eval.api.instance import Instance
@@ -39,7 +42,9 @@ _LOGGER = logging.getLogger(__name__)
 __all__ = ["integration_eval"]
 
 
-@EvaluationRegistry.register(name=LM_EVALUATION_HARNESS, alias="lm-eval-harness")
+@EvaluationRegistry.register(
+    name=LM_EVALUATION_HARNESS, alias=LM_EVALUATION_HARNESS_ALIASES
+)
 def integration_eval(
     pipeline: Pipeline,
     datasets: Union[List[str], str],
