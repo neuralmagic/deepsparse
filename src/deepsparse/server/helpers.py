@@ -15,13 +15,13 @@
 from http import HTTPStatus
 from typing import Dict, List, Optional
 
-from deepsparse import (
+from deepsparse.legacy.loggers import (
     BaseLogger,
     build_logger,
     get_target_identifier,
     system_logging_config_to_groups,
 )
-from deepsparse.loggers.config import MetricFunctionConfig, SystemLoggingGroup
+from deepsparse.legacy.loggers.config import MetricFunctionConfig, SystemLoggingGroup
 from deepsparse.server.config import EndpointConfig, ServerConfig
 from deepsparse.server.protocol import ErrorResponse
 from fastapi.responses import JSONResponse
