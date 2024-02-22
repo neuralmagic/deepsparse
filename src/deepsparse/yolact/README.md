@@ -81,7 +81,7 @@ wget -O thailand.jpg https://raw.githubusercontent.com/neuralmagic/deepsparse/ma
 ```
 
 ```python
-from deepsparse.pipeline import Pipeline
+from deepsparse import Pipeline
 
 model_stub = "zoo:cv/segmentation/yolact-darknet53/pytorch/dbolya/coco/pruned82_quant-none"
 images = ["thailand.jpg"]
@@ -121,7 +121,7 @@ If a `--model_filepath` arg isn't provided, then `zoo:cv/segmentation/yolact-dar
 Spinning up:
 ```bash
 deepsparse.server \
-    task yolact \
+    --task yolact \
     --model_path "zoo:cv/segmentation/yolact-darknet53/pytorch/dbolya/coco/pruned82_quant-none"
 ```
 
@@ -130,7 +130,7 @@ Making a request:
 import requests
 import json
 
-url = 'http://0.0.0.0:5543/predict/from_files'
+url = 'http://0.0.0.0:5543/v2/models/yolact/infer/from_files'
 path = ['thailand.jpg'] # list of images for inference
 files = [('request', open(img, 'rb')) for img in path]
 resp = requests.post(url=url, files=files)

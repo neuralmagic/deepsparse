@@ -27,7 +27,7 @@ class DeepSparseSegmentationValidator(DeepSparseValidator, SegmentationValidator
         logger=None,
         args=None,
     ):
-        SegmentationValidator.__init__(self, dataloader, save_dir, pbar, logger, args)
+        SegmentationValidator.__init__(self, dataloader, save_dir, pbar, args)
         DeepSparseValidator.__init__(self, pipeline)
 
     # deepsparse edit: replaced argument `model` with `classes`

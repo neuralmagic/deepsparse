@@ -37,13 +37,14 @@ import collections
 import json
 import logging
 import os
+import warnings
 from typing import Any, Dict, List, Optional, Tuple, Type
 
 import numpy
 from pydantic import BaseModel, Field
 from transformers.data import SquadExample
 
-from deepsparse import Pipeline
+from deepsparse.legacy import Pipeline
 from deepsparse.transformers.pipelines import TransformersPipeline
 
 
@@ -80,10 +81,7 @@ class QuestionAnsweringOutput(BaseModel):
 @Pipeline.register(
     task="question_answering",
     task_aliases=["qa"],
-    default_model_path=(
-        "zoo:nlp/question_answering/bert-base/pytorch/huggingface/"
-        "squad/12layer_pruned80_quant-none-vnni"
-    ),
+    default_model_path=("zoo:bert-large-squad_wikipedia_bookcorpus-pruned90_quantized"),
 )
 class QuestionAnsweringPipeline(TransformersPipeline):
     """
@@ -250,6 +248,7 @@ class QuestionAnsweringPipeline(TransformersPipeline):
         span_engine_inputs = []
         span_extra_info = []
         num_spans = len(tokenized_example["input_ids"])
+
         for span in range(num_spans):
             span_input = [
                 numpy.array(tokenized_example[key][span])
@@ -259,7 +258,7 @@ class QuestionAnsweringPipeline(TransformersPipeline):
 
             span_extra_info.append(
                 {
-                    key: numpy.array(tokenized_example[key][span])
+                    key: _convert_to_numpy_array(tokenized_example[key][span])
                     for key in tokenized_example.keys()
                     if key not in self.onnx_input_names
                 }
@@ -492,7 +491,7 @@ class QuestionAnsweringPipeline(TransformersPipeline):
         :param pipelines: Different buckets to be used
         :return: The correct Pipeline object (or Bucket) to route input to
         """
-        tokenizer = pipelines[0].tokenizer
+        tokenizer = pipelines[-1].tokenizer
         tokens = tokenizer(
             " ".join((input_schema.context, input_schema.question)),
             add_special_tokens=True,
@@ -506,6 +505,20 @@ class QuestionAnsweringPipeline(TransformersPipeline):
     def _tokenize(self, example: SquadExample, *args):
         # The logic here closely matches the tokenization step performed
         # on evaluation dataset in the SparseML question answering training script
+
+        added_special_tokens = self.tokenizer.num_special_tokens_to_add()
+        effective_max_length = self.sequence_length - added_special_tokens
+        if self.doc_stride >= effective_max_length:
+            new_doc_stride = effective_max_length
+            warnings.warn(
+                f"Tokenizer stride set to {self.doc_stride}, "
+                f"which is greater than or equal to its effective max length "
+                f"of {effective_max_length} (= {self.sequence_length} "
+                f"original max length - {added_special_tokens} added special tokens). "
+                f"Capping the doc stride to {new_doc_stride}"
+            )
+            self._doc_stride = new_doc_stride
+
         if not self.tokenizer.is_fast:
             raise ValueError(
                 "This example script only works for models that have a fast tokenizer."
@@ -583,3 +596,18 @@ class QuestionAnsweringPipeline(TransformersPipeline):
             mode = "a" if os.path.exists(null_odds_file) else "w"
             with open(null_odds_file, mode) as writer:
                 writer.write(json.dumps(scores_diff_json, indent=4) + "\n")
+
+
+def _convert_to_numpy_array(array):
+    """
+    Convert a list to a numpy array. If the list contains non-numeric values,
+    convert to an array of objects.
+
+    :param array: The list to convert
+    :return: The converted numpy array
+    """
+    try:
+        return numpy.array(array)
+    except ValueError:
+        # If the array contains non-numeric values, convert to an array of objects
+        return numpy.array(array, dtype=object)

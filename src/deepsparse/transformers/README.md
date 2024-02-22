@@ -10,6 +10,7 @@ methods such as [pruning](https://neuralmagic.com/blog/pruning-overview/) and [q
 These techniques result in significantly more performant and smaller models with limited to no effect on the baseline metrics. 
 
 This integration currently supports several fundamental NLP tasks:
+- **Text Generation** - given the input prompt, generate an output text sequence (e.g. to fill in incomplete text, summarize or paraphrase a text paragraph)
 - **Question Answering** - posing questions about a document
 - **Sentiment Analysis** - assigning a sentiment to a piece of text
 - **Text Classification** - assigning a label or class to a piece of text (e.g duplicate question pairing)
@@ -32,9 +33,9 @@ This grants the engine the flexibility to serve any model in a framework-agnosti
 
 The DeepSparse pipelines require the following files within a folder on the local server to properly load a Transformers model:
 - `model.onnx`: The exported Transformers model in the [ONNX format](https://github.com/onnx/onnx).
-- `tokenizer.json`: The [HuggingFace compatible tokenizer configuration](https://huggingface.co/docs/transformers/fast_tokenizers) used with the model.
 - `config.json`: The [HuggingFace compatible configuration file](https://huggingface.co/docs/transformers/main_classes/configuration) used with the model.
-
+- `tokenizer_config.json`: The [HuggingFace compatible tokenizer configuration](https://huggingface.co/docs/transformers/fast_tokenizers) used with the model.
+- `tokenizer.json`, `special_tokens_map.json`, `vocab.json`, `merges.txt` (optional): Other files that may be required by a tokenizer
 Below we describe two possibilities to obtain the required structure.
 
 #### SparseML Export 
@@ -48,7 +49,7 @@ sparseml.transformers.export_onnx --task question-answering --model_path model_p
 ```
 
 This creates `model.onnx` file, in the directory of your `model_path`(e.g. `/trained_model/model.onnx`). 
-The `tokenizer.json` and `config.json` are stored under the `model_path` folder as well, so a DeepSparse pipeline ca be directly instantiated by using that folder after export (e.g. `/trained_model/`).
+Any additional, required files, such as e.g.`tokenizer.json` or `config.json`, are stored under the `model_path` folder as well, so a DeepSparse pipeline can be directly instantiated by using that folder after export (e.g. `/trained_model/`).
 
 ####  SparseZoo Stub
 Alternatively, you can skip the process of the ONNX model export by using Neural Magic's [SparseZoo](https://sparsezoo.neuralmagic.com/). The SparseZoo contains pre-sparsified models and SparseZoo stubs enable you to reference any model on the SparseZoo in a convenient and predictable way.
@@ -117,7 +118,7 @@ inference = qa_pipeline(question="What's my name?", context="My name is Snorlax"
 Spinning up:
 ```bash
 deepsparse.server \
-    task question-answering \
+    --task question-answering \
     --model_path "zoo:nlp/question_answering/bert-base/pytorch/huggingface/squad/12layer_pruned80_quant-none-vnni"
 ```
 
@@ -125,7 +126,7 @@ Making a request:
 ```python
 import requests
 
-url = "http://localhost:5543/predict" # Server's port default to 5543
+url = "http://localhost:5543/v2/models/question_answering/infer" # Server's port default to 5543
 
 obj = {
     "question": "Who is Mark?", 
@@ -136,6 +137,47 @@ response = requests.post(url, json=obj)
 response.text
 
 >> '{"score":0.9534820914268494,"start":8,"end":14,"answer":"batman"}'
+```
+
+### Text Generation
+The text generation task generates a sequence of tokens given the prompt. Popular text generation LLMs (Large Language Models) are used
+for the chatbots (the instruction models), code generation, text summarization, or filling out the missing text. The following example uses a sparsified text classification
+OPT model to complete the prompt
+
+[List of available SparseZoo Text Generation Models](
+https://sparsezoo.neuralmagic.com/?useCase=text_generation)
+
+#### Python Pipeline
+```python
+from deepsparse import Pipeline
+
+opt_pipeline = Pipeline.create(task="opt", model_path="zoo:opt-1.3b-opt_pretrain-quantW8A8")
+
+inference = opt_pipeline("Who is the president of the United States?")
+
+>> 'The president of the United States is the head of the executive branch of government...'
+```
+
+#### HTTP Server
+Spinning up:
+```bash
+deepsparse.server \
+    --task text-generation \
+    --model_path zoo:opt-1.3b-opt_pretrain-pruned50_quantW8A8
+```
+
+Making a request:
+```python
+import requests
+
+url = "http://localhost:5543/v2/models/text_generation/infer" # Server's port default to 5543
+
+obj = {"prompt": "Large language models are"}
+
+response = requests.post(url, json=obj)
+print(response.json()["generations"][0]["text"])
+
+>> ' often used to model the language of a large number of users...'
 ```
 
 ### Sentiment Analysis
@@ -150,30 +192,33 @@ https://sparsezoo.neuralmagic.com/?useCase=sentiment_analysis)
 ```python
 from deepsparse import Pipeline
 
-sa_pipeline = Pipeline.create(task="sentiment-analysis")
+sa_pipeline = Pipeline.create(
+    task="sentiment-analysis",
+    model_path="zoo:bert-large-sst2_wikipedia_bookcorpus-pruned90_quantized"
+)
 
-inference = sa_pipeline("Snorlax loves my Tesla!")
+inference = sa_pipeline("I love it!")
 
->> [{'label': 'LABEL_1', 'score': 0.9884248375892639}]  # positive sentiment
+>> TextClassificationOutput(labels=['positive'], scores=[0.9998450875282288])
 
-inference = sa_pipeline("Snorlax hates pineapple pizza!")
+inference = sa_pipeline("I hate it!")
 
->> [{'label': 'LABEL_0', 'score': 0.9981569051742554}]  # negative sentiment
+>> TextClassificationOutput(labels=['negative'], scores=[0.9985774755477905])
 ```
 
 #### HTTP Server
 Spinning up:
 ```bash
 deepsparse.server \
-    task sentiment-analysis \
-    --model_path "zoo:nlp/sentiment_analysis/bert-base/pytorch/huggingface/sst2/12layer_pruned80_quant-none-vnni"
+    --task sentiment-analysis \
+    --model_path "zoo:nlp/sentiment_analysis/bert-base/pytorch/huggingface/sst2/pruned80_quant-none-vnni"
 ```
 
 Making a request:
 ```python
 import requests
 
-url = "http://localhost:5543/predict" # Server's port default to 5543
+url = "http://localhost:5543/v2/models/sentiment_analysis/infer" # Server's port default to 5543
 
 obj = {"sequences": "Snorlax loves my Tesla!"}
 
@@ -218,7 +263,7 @@ inference = tc_pipeline(
 Spinning up:
 ```bash
 deepsparse.server \
-    task text-classification \
+    --task text-classification \
     --model_path "zoo:nlp/text_classification/distilbert-none/pytorch/huggingface/qqp/pruned80_quant-none-vnni"
 ```
 
@@ -226,7 +271,7 @@ Making a request:
 ```python
 import requests
 
-url = "http://localhost:5543/predict" # Server's port default to 5543
+url = "http://localhost:5543/v2/models/text_classification/infer" # Server's port default to 5543
 
 obj = {
     "sequences": [
@@ -243,7 +288,7 @@ response.text
 >> '{"labels": ["duplicate"], "scores": [0.9947025775909424]}'
 ```
 
-#### Token Classification Pipeline
+### Token Classification Pipeline
 The token classification task takes in sequences as inputs and assigns a class to each token.
 The following example uses a pruned and quantized token classification NER BERT model
 trained on the `CoNLL` dataset downloaded from the SparseZoo.
@@ -271,15 +316,15 @@ inference = tc_pipeline("Drive from California to Texas!")
 Spinning up:
 ```bash
 deepsparse.server \
-    task token-classification \
-    --model_path "zoo:nlp/token_classification/bert-base/pytorch/huggingface/conll2003/12layer_pruned80_quant-none-vnni"
+    --task token-classification \
+    --model_path "zoo:nlp/token_classification/bert-base/pytorch/huggingface/conll2003/pruned90-none"
 ```
 
 Making a request:
 ```python
 import requests
 
-url = "http://localhost:5543/predict" # Server's port default to 5543
+url = "http://localhost:5543/v2/models/token_classification/infer" # Server's port default to 5543
 
 obj = {"inputs": "Drive from California to Texas!"}
 
@@ -311,6 +356,7 @@ deepsparse.benchmark zoo:nlp/question_answering/bert-base/pytorch/huggingface/sq
 
 To learn more about benchmarking, refer to the appropriate documentation.
 Also, check out our [Benchmarking tutorial](https://github.com/neuralmagic/deepsparse/tree/main/src/deepsparse/benchmark)!
+
 
 ## Tutorials:
 For a deeper dive into using transformers within the Neural Magic ecosystem, refer to the detailed tutorials on our [website](https://neuralmagic.com/):

@@ -19,7 +19,7 @@ from typing import Callable, List, Type, Union
 import numpy
 
 import torch
-from deepsparse import Pipeline
+from deepsparse.legacy import Pipeline
 from deepsparse.yolo import YOLOOutput as YOLODetOutput
 from deepsparse.yolo import YOLOPipeline
 from deepsparse.yolov8.schemas import YOLOSegOutput
@@ -83,11 +83,12 @@ class YOLOv8Pipeline(YOLOPipeline):
         """
         if self.subtask == "segmentation":
             if len(engine_outputs) != 2:
-                raise ValueError(
-                    "Error: Segmentation pipeline "
-                    "expects 2 outputs from engine"
-                    "(detections and masks), got {}".format(len(engine_outputs))
+                warnings.warn(
+                    "YOLOv8 Segmentation pipeline expects 2 outputs from engine, "
+                    "got {}. Assuming first output is detection output, and last "
+                    "is segmentation output".format(len(engine_outputs))
                 )
+                engine_outputs = [engine_outputs[0], engine_outputs[5]]
             return self.process_engine_outputs_seg(
                 engine_outputs=engine_outputs, **kwargs
             )
@@ -107,32 +108,29 @@ class YOLOv8Pipeline(YOLOPipeline):
             )
 
     def process_engine_outputs_seg(
-        self, engine_outputs: List[numpy.ndarray], nm: int = 32, **kwargs
+        self,
+        engine_outputs: List[numpy.ndarray],
+        **kwargs,
     ) -> YOLOSegOutput:
         """
         The pathway for processing the outputs of the engine for YOLOv8 segmentation.
         :param engine_outputs: list of numpy arrays that are the output of the engine
             forward pass
-        :param nm: number of mask protos. It is information needed to perform NMS on the
-            segmentation output. It can be calculated in the following way:
-                dims = bboxes + classes + nm
-                where:
-                - bboxes = 4
-                - classes = 80 (explicit assumption -> we are using COCO dataset)
-                - dims = 116 (comes from the fact that
-                    detection.shape == [B, dims, 8400])
         :return: outputs of engine post-processed into an object in the `output_schema`
             format of this pipeline
         """
 
         detections, mask_protos = engine_outputs
 
+        # defined per ultralytics documentation
+        num_classes = detections.shape[1] - 4
+
         # NMS
         detections_output = self.nms_function(
             outputs=detections,
+            nc=num_classes,
             iou_thres=kwargs.get("iou_thres", 0.25),
             conf_thres=kwargs.get("conf_thres", 0.45),
-            nm=nm,
             multi_label=kwargs.get("multi_label", False),
         )
 
@@ -143,7 +141,6 @@ class YOLOv8Pipeline(YOLOPipeline):
         for idx, (detection_output, protos) in enumerate(
             zip(detections_output, mask_protos)
         ):
-
             original_image_shape = (
                 original_image_shapes[idx] if idx < len(original_image_shapes) else None
             )

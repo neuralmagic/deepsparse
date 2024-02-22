@@ -61,10 +61,14 @@ class AliasedTask:
         """
         :param task: the name of the task to check whether the given instance matches.
             Checks the current name as well as any aliases.
-            Everything is compared at lower case and "-" are replaced with "_".
+            Everything is compared at lower case and "-" and whitespace
+            are replaced with "_".
         :return: True if task does match the current instance, False otherwise
         """
         task = task.lower().replace("-", "_")
+
+        # replace whitespace with "_"
+        task = "_".join(task.split())
 
         return task == self.name or task in self.aliases
 
@@ -74,25 +78,21 @@ class SupportedTasks:
     The supported tasks in the DeepSparse pipeline and system
     """
 
-    nlp = namedtuple(
-        "nlp",
-        [
-            "question_answering",
-            "text_classification",
-            "token_classification",
-            "zero_shot_text_classification",
-            "transformers_embedding_extraction",
-        ],
+    text_generation = namedtuple(
+        "text_generation", ["text_generation", "opt", "mpt", "llama"]
     )(
-        question_answering=AliasedTask("question_answering", ["qa"]),
-        text_classification=AliasedTask(
-            "text_classification", ["glue", "sentiment_analysis"]
-        ),
-        token_classification=AliasedTask("token_classification", ["ner"]),
-        zero_shot_text_classification=AliasedTask("zero_shot_text_classification", []),
-        transformers_embedding_extraction=AliasedTask(
-            "transformers_embedding_extraction", []
-        ),
+        text_generation=AliasedTask("text_generation", []),
+        opt=AliasedTask("opt", []),
+        mpt=AliasedTask("mpt", []),
+        llama=AliasedTask("llama", []),
+    )
+
+    code_generation = namedtuple(
+        "code_generation", ["code_generation", "code_gen", "codegen"]
+    )(
+        code_generation=AliasedTask("code_generation", []),
+        code_gen=AliasedTask("code_gen", []),
+        codegen=AliasedTask("codegen", []),
     )
 
     image_classification = namedtuple("image_classification", ["image_classification"])(
@@ -102,40 +102,7 @@ class SupportedTasks:
         ),
     )
 
-    yolo = namedtuple("yolo", ["yolo"])(
-        yolo=AliasedTask("yolo", ["yolo"]),
-    )
-    yolov8 = namedtuple("yolov8", ["yolov8"])(
-        yolov8=AliasedTask("yolov8", ["yolov8"]),
-    )
-    yolact = namedtuple("yolact", ["yolact"])(
-        yolact=AliasedTask("yolact", ["yolact"]),
-    )
-
-    haystack = namedtuple("haystack", ["information_retrieval_haystack"])(
-        information_retrieval_haystack=AliasedTask(
-            "information_retrieval_haystack", ["haystack"]
-        ),
-    )
-    embedding_extraction = namedtuple("embedding_extraction", ["embedding_extraction"])(
-        embedding_extraction=AliasedTask(
-            "embedding_extraction", ["embedding_extraction"]
-        ),
-    )
-    open_pif_paf = namedtuple("open_pif_paf", ["open_pif_paf"])(
-        open_pif_paf=AliasedTask("open_pif_paf", ["open_pif_paf"]),
-    )
-
-    all_task_categories = [
-        nlp,
-        image_classification,
-        yolo,
-        yolov8,
-        yolact,
-        haystack,
-        embedding_extraction,
-        open_pif_paf,
-    ]
+    all_task_categories = [text_generation, code_generation, image_classification]
 
     @classmethod
     def check_register_task(
@@ -146,45 +113,16 @@ class SupportedTasks:
         :param extra_tasks: valid task names that are not included in supported tasks.
             i.e. tasks registered to Pipeline at runtime
         """
-        if task == "custom":
-            # custom task, register the CustomPipeline
-            import deepsparse.pipelines.custom_pipeline  # noqa: F401
+        if cls.is_text_generation(task):
+            import deepsparse.transformers.pipelines.text_generation  # noqa: F401
 
-        elif cls.is_nlp(task):
-            # trigger transformers pipelines to register with Pipeline.register
-            import deepsparse.transformers.pipelines  # noqa: F401
+        elif cls.is_code_generation(task):
+            import deepsparse.transformers.pipelines.code_generation  # noqa: F401
 
         elif cls.is_image_classification(task):
             # trigger image classification pipelines to
             # register with Pipeline.register
-            import deepsparse.image_classification.pipelines  # noqa: F401
-
-        elif cls.is_yolact(task):
-            # trigger yolo pipelines to register with Pipeline.register
-            import deepsparse.yolact.pipelines  # noqa: F401
-
-        elif cls.is_yolo(task):
-            # trigger yolo pipelines to register with Pipeline.register
-            import deepsparse.yolo.pipelines  # noqa: F401
-
-        elif cls.is_yolov8(task):
-            # trigger yolo pipelines to register with Pipeline.register
-            import deepsparse.yolov8.pipelines  # noqa: F401
-
-        elif cls.is_haystack(task):
-            # trigger haystack pipeline as well as transformers pipelines to
-            # register with Pipeline.register
-            import deepsparse.transformers.haystack  # noqa: F401
-
-        elif cls.is_embedding_extraction(task):
-            # trigger embedding_extraction pipelines to register with
-            #  Pipeline.register
-            import deepsparse.pipelines.embedding_extraction  # noqa :F401
-
-        elif cls.is_open_pif_paf(task):
-            # trigger embedding_extraction pipelines to register with
-            #  Pipeline.register
-            import deepsparse.open_pif_paf.pipelines  # noqa :F401
+            import deepsparse.image_classification.pipeline  # noqa: F401
 
         all_tasks = set(cls.task_names() + (list(extra_tasks or [])))
         if task not in all_tasks:
@@ -194,22 +132,15 @@ class SupportedTasks:
             )
 
     @classmethod
-    def is_nlp(cls, task: str) -> bool:
+    def is_text_generation(cls, task: str) -> bool:
         """
-        :param task: the name of the task to check whether it is an nlp task
-            such as question_answering
-        :return: True if it is an nlp task, False otherwise
+        :param task: the name of the task to check whether it is a text generation task
+            such as codegen
+        :return: True if it is a text generation task, False otherwise
         """
-        return any([nlp_task.matches(task) for nlp_task in cls.nlp])
-
-    @classmethod
-    def is_cv(cls, task: str) -> bool:
-        return (
-            cls.is_yolo(task)
-            or cls.is_yolov8(task)
-            or cls.is_yolact(task)
-            or cls.is_image_classification(task)
-            or cls.is_open_pif_paf(task)
+        return any(
+            text_generation_task.matches(task)
+            for text_generation_task in cls.text_generation
         )
 
     @classmethod
@@ -222,66 +153,8 @@ class SupportedTasks:
         return any([ic_task.matches(task) for ic_task in cls.image_classification])
 
     @classmethod
-    def is_yolo(cls, task: str) -> bool:
-        """
-        :param task: the name of the task to check whether it is an image
-            segmentation task using YOLO
-        :return: True if it is an segmentation task using YOLO, False otherwise
-        """
-        return any([yolo_task.matches(task) for yolo_task in cls.yolo])
-
-    @classmethod
-    def is_yolov8(cls, task: str) -> bool:
-        """
-        :param task: the name of the task to check whether it is an image
-            segmentation task using YOLOv8
-        :return: True if it is an segmentation task using YOLOv8, False otherwise
-        """
-        return any([yolov8_task.matches(task) for yolov8_task in cls.yolov8])
-
-    @classmethod
-    def is_yolact(cls, task: str) -> bool:
-        """
-        :param task: the name of the task to check whether it is an image
-            segmentation task using YOLO
-        :return: True if it is an segmentation task using YOLO, False otherwise
-        """
-        return any([yolact_task.matches(task) for yolact_task in cls.yolact])
-
-    @classmethod
-    def is_haystack(cls, task: str) -> bool:
-        """
-        :param task: the name of the task to check whether it is a haystack task
-        :return: True if it is a haystack task, False otherwise
-        """
-        return any([haystack_task.matches(task) for haystack_task in cls.haystack])
-
-    @classmethod
-    def is_embedding_extraction(cls, task):
-        """
-        :param task: the name of the task to check whether it is an
-            embedding_extraction task
-        :return: True if it is an embedding_extraction task, False otherwise
-        """
-        return any(
-            embedding_extraction_task.matches(task)
-            for embedding_extraction_task in cls.embedding_extraction
-        )
-
-    @classmethod
-    def is_open_pif_paf(cls, task):
-        """
-        :param task: the name of the task to check whether it is an
-            embedding_extraction task
-        :return: True if it is an open_pif_paf task, False otherwise
-        """
-        return any(
-            open_pif_paf_task.matches(task) for open_pif_paf_task in cls.open_pif_paf
-        )
-
-    @classmethod
     def task_names(cls):
-        task_names = ["custom"]
+        task_names = []
         for task_category in cls.all_task_categories:
             for task in task_category:
                 unique_aliases = (
@@ -289,6 +162,18 @@ class SupportedTasks:
                 )
                 task_names += (task._name, *unique_aliases)
         return task_names
+
+    @classmethod
+    def is_code_generation(cls, task: str) -> bool:
+        """
+        :param task: the name of the task to check whether it is a text generation task
+            such as codegen
+        :return: True if it is a text generation task, False otherwise
+        """
+        return any(
+            code_generation_task.matches(task)
+            for code_generation_task in cls.code_generation
+        )
 
 
 def dynamic_import_task(module_or_path: str) -> str:

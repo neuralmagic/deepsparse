@@ -38,7 +38,7 @@ import numpy
 from haystack.schema import Document
 from pydantic import BaseModel, Field
 
-from deepsparse import Pipeline
+from deepsparse.legacy.pipeline import Pipeline
 from deepsparse.transformers import haystack as DeepSparseHaystack
 
 

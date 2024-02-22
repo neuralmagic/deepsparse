@@ -1,0 +1,7 @@
+cadence: "commit"
+model_path: "hf:mgoin/TinyStories-1M-ds"
+torch_model_name: "roneneldan/TinyStories-1M"
+model_name_no_kv_cache: "model-orig.onnx"
+prompt: "Didn't know what time it was, the lights were low\n I leaned back on my radio"
+precision: 0.001
+internal_kv_cache: [True, False]

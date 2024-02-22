@@ -18,33 +18,14 @@ from re import escape
 from unittest.mock import patch
 
 import pytest
+from deepsparse.server.cli import _fetch_server
 from deepsparse.server.config import EndpointConfig, ServerConfig
-from deepsparse.server.server import _build_app
-
-
-def test_add_multiple_endpoints_with_no_route():
-    with pytest.raises(
-        ValueError,
-        match=(
-            "must specify `route` for all endpoints if multiple endpoints are used."
-        ),
-    ):
-        _build_app(
-            ServerConfig(
-                num_cores=1,
-                num_workers=1,
-                endpoints=[
-                    EndpointConfig(task="", model="", route=None),
-                    EndpointConfig(task="", model="", route=None),
-                ],
-                loggers={},
-            )
-        )
+from deepsparse.server.server import Server
 
 
 def test_add_multiple_endpoints_with_same_route():
     with pytest.raises(ValueError, match="asdf specified 2 times"):
-        _build_app(
+        server = Server(
             ServerConfig(
                 num_cores=1,
                 num_workers=1,
@@ -55,31 +36,32 @@ def test_add_multiple_endpoints_with_same_route():
                 loggers={},
             )
         )
+        server._build_app()
 
 
 def test_invalid_integration():
     with pytest.raises(
         ValueError,
         match=escape(
-            "Unknown integration field asdf. Expected one of ['local', 'sagemaker']"
+            "asdf is not a supported integration. Must be "
+            "one of ['local', 'sagemaker', 'openai']"
         ),
     ):
-        _build_app(
-            ServerConfig(
-                num_cores=1,
-                num_workers=1,
-                integration="asdf",
-                endpoints=[],
-                loggers={},
-            )
+        server = ServerConfig(
+            num_cores=1,
+            num_workers=1,
+            integration="asdf",
+            endpoints=[],
+            loggers={},
         )
+        _fetch_server("local", server)
 
 
 def test_pytorch_num_threads():
     torch = pytest.importorskip("torch")
 
     orig_num_threads = torch.get_num_threads()
-    _build_app(
+    server = Server(
         ServerConfig(
             num_cores=1,
             num_workers=1,
@@ -88,9 +70,10 @@ def test_pytorch_num_threads():
             loggers={},
         )
     )
+    server._build_app()
     assert torch.get_num_threads() == orig_num_threads
 
-    _build_app(
+    server = Server(
         ServerConfig(
             num_cores=1,
             num_workers=1,
@@ -99,6 +82,7 @@ def test_pytorch_num_threads():
             loggers={},
         )
     )
+    server._build_app()
     assert torch.get_num_threads() == 1
 
 
@@ -106,7 +90,7 @@ def test_pytorch_num_threads():
 def test_thread_pinning_none():
     os.environ.pop("NM_BIND_THREADS_TO_CORES", None)
     os.environ.pop("NM_BIND_THREADS_TO_SOCKETS", None)
-    _build_app(
+    server = Server(
         ServerConfig(
             num_cores=1,
             num_workers=1,
@@ -115,6 +99,7 @@ def test_thread_pinning_none():
             loggers={},
         )
     )
+    server._build_app()
     assert os.environ["NM_BIND_THREADS_TO_CORES"] == "0"
     assert os.environ["NM_BIND_THREADS_TO_SOCKETS"] == "0"
 
@@ -123,7 +108,7 @@ def test_thread_pinning_none():
 def test_thread_pinning_numa():
     os.environ.pop("NM_BIND_THREADS_TO_CORES", None)
     os.environ.pop("NM_BIND_THREADS_TO_SOCKETS", None)
-    _build_app(
+    server = Server(
         ServerConfig(
             num_cores=1,
             num_workers=1,
@@ -132,6 +117,7 @@ def test_thread_pinning_numa():
             loggers={},
         )
     )
+    server._build_app()
     assert os.environ["NM_BIND_THREADS_TO_CORES"] == "0"
     assert os.environ["NM_BIND_THREADS_TO_SOCKETS"] == "1"
 
@@ -140,7 +126,7 @@ def test_thread_pinning_numa():
 def test_thread_pinning_cores():
     os.environ.pop("NM_BIND_THREADS_TO_CORES", None)
     os.environ.pop("NM_BIND_THREADS_TO_SOCKETS", None)
-    _build_app(
+    server = Server(
         ServerConfig(
             num_cores=1,
             num_workers=1,
@@ -149,13 +135,14 @@ def test_thread_pinning_cores():
             loggers={},
         )
     )
+    server._build_app()
     assert os.environ["NM_BIND_THREADS_TO_CORES"] == "1"
     assert os.environ["NM_BIND_THREADS_TO_SOCKETS"] == "0"
 
 
 def test_invalid_thread_pinning():
     with pytest.raises(ValueError, match='Expected one of {"core","numa","none"}.'):
-        _build_app(
+        server = Server(
             ServerConfig(
                 num_cores=1,
                 num_workers=1,
@@ -164,3 +151,4 @@ def test_invalid_thread_pinning():
                 loggers={},
             )
         )
+        server._build_app()

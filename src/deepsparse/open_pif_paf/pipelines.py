@@ -22,12 +22,13 @@ import numpy
 
 import cv2
 import torch
+from deepsparse.legacy.pipeline import Pipeline
 from deepsparse.open_pif_paf.schemas import (
     OpenPifPafFields,
     OpenPifPafInput,
     OpenPifPafOutput,
 )
-from deepsparse.pipeline import Pipeline
+from deepsparse.utils import model_to_path
 from deepsparse.yolact.utils import preprocess_array
 from openpifpaf import decoder, network
 
@@ -100,7 +101,7 @@ class OpenPifPafPipeline(Pipeline):
 
         :return: file path to the ONNX file for the engine to compile
         """
-        return self.model_path
+        return model_to_path(self.model_path)
 
     def process_inputs(self, inputs: OpenPifPafInput) -> List[numpy.ndarray]:
 

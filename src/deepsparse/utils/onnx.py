@@ -16,6 +16,7 @@ import contextlib
 import logging
 import os
 import tempfile
+from pathlib import Path
 from tempfile import NamedTemporaryFile
 from typing import List, Optional, Tuple, Union
 
@@ -24,6 +25,7 @@ import onnx
 from onnx import ModelProto
 from onnx.mapping import TENSOR_TYPE_TO_NP_TYPE
 
+from deepsparse.utils import parse_input_shapes
 from deepsparse.utils.extractor import Extractor
 from sparsezoo.utils import save_onnx, validate_onnx
 
@@ -48,9 +50,20 @@ __all__ = [
     "override_onnx_input_shapes",
     "truncate_onnx_model",
     "truncate_onnx_embedding_model",
+    "overwrite_onnx_model_inputs_for_kv_cache_models",
+    "default_cached_outputs",
+    "infer_sequence_length",
+    "has_model_kv_cache",
+    "CACHE_INPUT_PREFIX",
+    "CACHE_OUTPUT_PREFIX",
+    "MODEL_ONNX_NAME",
 ]
 
 _LOGGER = logging.getLogger(__name__)
+
+MODEL_ONNX_NAME = "model.onnx"
+CACHE_INPUT_PREFIX = "past_key_values"
+CACHE_OUTPUT_PREFIX = "present"
 
 
 @contextlib.contextmanager
@@ -96,9 +109,10 @@ def translate_onnx_type_to_numpy(tensor_type: int):
 def model_to_path(model: Union[str, Model, File]) -> str:
     """
     Deals with the various forms a model can take. Either an ONNX file,
-    a SparseZoo model stub prefixed by 'zoo:', a SparseZoo Model object,
-    or a SparseZoo ONNX File object that defines the neural network. Noting
-    the model will be downloaded automatically if a SparseZoo stub is passed
+    a directory containing model.onnx, a SparseZoo model stub prefixed by
+    'zoo:', a SparseZoo Model object, or a SparseZoo ONNX File object that
+    defines the neural network. Noting the model will be downloaded automatically
+    if a SparseZoo stub is passed
 
     :param model: Either a local str path or SparseZoo stub to the model. Can
         also be a sparsezoo.Model or sparsezoo.File object
@@ -114,17 +128,40 @@ def model_to_path(model: Union[str, Model, File]) -> str:
         model = Model(model)
 
     if Model is not object and isinstance(model, Model):
+        # trigger download and unzipping of deployment directory if not cached
+        model.deployment.path
+
         # default to the main onnx file for the model
-        model = model.onnx_model.path
+        model = model.deployment.get_file(MODEL_ONNX_NAME).path
+
     elif File is not object and isinstance(model, File):
         # get the downloaded_path -- will auto download if not on local system
         model = model.path
+
+    if isinstance(model, str) and model.startswith("hf:"):
+        # load Hugging Face model from stub
+        from huggingface_hub import snapshot_download
+
+        deployment_path = snapshot_download(repo_id=model.replace("hf:", "", 1))
+        onnx_path = os.path.join(deployment_path, MODEL_ONNX_NAME)
+        if not os.path.isfile(onnx_path):
+            raise ValueError(
+                f"Could not find the ONNX model file '{MODEL_ONNX_NAME}' in the "
+                f"Hugging Face Hub repository located at {deployment_path}. Please "
+                f"ensure the model has been correctly exported to ONNX format and "
+                f"exists in the repository."
+            )
+        return onnx_path
 
     if not isinstance(model, str):
         raise ValueError("unsupported type for model: {}".format(type(model)))
 
     if not os.path.exists(model):
         raise ValueError("model path must exist: given {}".format(model))
+
+    model_path = Path(model)
+    if model_path.is_dir():
+        return str(model_path / MODEL_ONNX_NAME)
 
     return model
 
@@ -194,16 +231,21 @@ def generate_random_inputs(
     for i, external_input in enumerate(get_external_inputs(onnx_filepath)):
         input_tensor_type = external_input.type.tensor_type
         elem_type = translate_onnx_type_to_numpy(input_tensor_type.elem_type)
-        in_shape = [int(d.dim_value) for d in input_tensor_type.shape.dim]
+        in_shape = [max(int(d.dim_value), 1) for d in input_tensor_type.shape.dim]
 
         if batch_size is not None:
             in_shape[0] = batch_size
 
-        _LOGGER.info(
-            "Generating input '{}', type = {}, shape = {}".format(
-                external_input.name, numpy.dtype(elem_type).name, in_shape
-            )
+        input_string = "input '{}', type = {}, shape = {}".format(
+            external_input.name, numpy.dtype(elem_type).name, in_shape
         )
+
+        assert not any(dim < 1 for dim in in_shape), (
+            f"Dynamic shape found in {input_string}. "
+            "All shapes must be non-zero in order to generate random data"
+        )
+
+        _LOGGER.info(f"Generating {input_string}")
         input_data_list.append(numpy.random.rand(*in_shape).astype(elem_type))
     return input_data_list
 
@@ -230,6 +272,10 @@ def override_onnx_batch_size(
         model. Else the modified model will be saved to a
         temporary file.
     """
+
+    if batch_size is None:
+        return onnx_filepath
+
     model = onnx.load(onnx_filepath, load_external_data=not inplace)
     all_inputs = model.graph.input
     initializer_input_names = [node.name for node in model.graph.initializer]
@@ -240,7 +286,7 @@ def override_onnx_batch_size(
         external_input.type.tensor_type.shape.dim[0].dim_value = batch_size
 
     if inplace:
-        _LOGGER.info(
+        _LOGGER.debug(
             f"Overwriting in-place the batch size of the model at {onnx_filepath}"
         )
         save_onnx(model, onnx_filepath)
@@ -255,7 +301,7 @@ def override_onnx_batch_size(
 @contextlib.contextmanager
 def override_onnx_input_shapes(
     onnx_filepath: str,
-    input_shapes: Union[List[int], List[List[int]]],
+    input_shapes: Union[None, str, List[int], List[List[int]]],
     inplace: bool = True,
 ) -> str:
     """
@@ -283,6 +329,9 @@ def override_onnx_input_shapes(
     external_inputs = [
         input for input in all_inputs if input.name not in initializer_input_names
     ]
+
+    if isinstance(input_shapes, str):
+        input_shapes = parse_input_shapes(input_shapes)
 
     # Input shapes should be a list of lists, even if there is only one input
     if not all(isinstance(inp, list) for inp in input_shapes):
@@ -313,7 +362,7 @@ def override_onnx_input_shapes(
             dim.dim_value = input_shapes[input_idx][dim_idx]
 
     if inplace:
-        _LOGGER.info(
+        _LOGGER.debug(
             f"Overwriting in-place the input shapes of the model at {onnx_filepath}"
         )
         onnx.save(model, onnx_filepath)
@@ -466,3 +515,119 @@ def truncate_onnx_embedding_model(
     )
 
     return output_filepath, tmp_file
+
+
+def overwrite_onnx_model_inputs_for_kv_cache_models(
+    onnx_file_path: str,
+    sequence_length: int,
+    input_ids_length: int,
+    batch_size: int = 1,
+) -> Tuple[str, List[int], Optional[int]]:
+    """
+    Enforces the appropriate input shapes for the onnx model, as well as
+    checks whether kv cache is enabled or not.
+
+    :param onnx_file_path: The path to the onnx model file that will be
+        overwritten with the new input shapes
+    :param batch_size: The batch size to use for the input
+    :param sequence_length: The sequence length to use for the input
+    :param input_ids_length: The length of input_ids
+    :return: A tuple that contains:
+        -   the path to the onnx model file that has been overwritten
+            with the new input shapes
+        -   boolean list, where elements are set to True if the
+            corresponding model output should be cached or False
+            if not.
+        -   the data type of the kv cache. If the model does not
+            use kv cache, then the data type is None
+    """
+    model = onnx.load(onnx_file_path, load_external_data=False)
+    initializer_input_names = set(node.name for node in model.graph.initializer)
+    external_inputs = [
+        inp for inp in model.graph.input if inp.name not in initializer_input_names
+    ]
+    for external_input in external_inputs:
+        # overwrite the batch size for all the inputs
+        external_input.type.tensor_type.shape.dim[0].dim_value = batch_size
+
+        if external_input.name in ["input_ids", "positions"]:
+            external_input.type.tensor_type.shape.dim[1].dim_value = input_ids_length
+        elif external_input.name == "attention_mask":
+            external_input.type.tensor_type.shape.dim[1].dim_value = sequence_length
+        elif external_input.name.startswith("past_key_values"):
+            external_input.type.tensor_type.shape.dim[2].dim_value = (
+                sequence_length - input_ids_length
+            )
+        elif external_input.name.startswith("causal_mask"):
+            external_input.type.tensor_type.shape.dim[2].dim_value = input_ids_length
+            external_input.type.tensor_type.shape.dim[3].dim_value = sequence_length
+        else:
+            raise ValueError(f"Unexpected external input name: {external_input.name}")
+
+    _LOGGER.debug(
+        "Overwriting in-place the input shapes "
+        f"of the transformer model at {onnx_file_path}"
+    )
+    save_onnx(model, onnx_file_path)
+
+    output_indices_to_be_cached = [
+        1 if inp.name.startswith("present") else 0 for inp in model.graph.output
+    ]
+
+    kv_cache_data_type = None
+    if any(output_indices_to_be_cached):
+        kv_cache_elem_type = next(
+            inp for inp in model.graph.input if inp.name.startswith("past_key_values")
+        ).type.tensor_type.elem_type
+        kv_cache_data_type = translate_onnx_type_to_numpy(kv_cache_elem_type)
+
+    return onnx_file_path, output_indices_to_be_cached, kv_cache_data_type
+
+
+def default_cached_outputs(model_path: str) -> List[bool]:
+    """
+    Get a list of bools that indicate which outputs should be cached.
+    The elements that are set to True correspond to cached outputs,
+    the rest are set to False.
+
+    :param model_path: Path to the model.
+    :return A list of bools that indicate which outputs should be cached.
+    """
+
+    output_names = get_output_names(model_path)
+    assert len(output_names) > 0
+
+    return [name.startswith(CACHE_OUTPUT_PREFIX) for name in output_names]
+
+
+def has_model_kv_cache(model: Union[str, ModelProto]) -> bool:
+    """
+    Check whether a model has a KV cache support.
+
+    :param model_path: Path to a model or a model proto.
+    :return True if the model has a KV cache support, False otherwise.
+    """
+    return bool(any(default_cached_outputs(model)))
+
+
+def infer_sequence_length(model: Union[str, ModelProto]) -> int:
+    """
+    :param model: model
+    :return: inferred sequence length of the model.
+        If unable to infer, return 0
+    """
+    if not isinstance(model, ModelProto):
+        model = onnx.load(model, load_external_data=False)
+
+    # try to find attention mask dim, default to 0
+    target_input_idx = 0
+    for idx, inp in enumerate(model.graph.input):
+        if inp.name == "attention_mask":
+            target_input_idx = idx
+            break
+    try:
+        # return shape of second dim if possible
+        target_input = model.graph.input[target_input_idx]
+        return target_input.type.tensor_type.shape.dim[1].dim_value
+    except Exception:
+        return 0

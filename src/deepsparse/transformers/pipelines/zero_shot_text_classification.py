@@ -58,7 +58,7 @@ from typing import TYPE_CHECKING, Dict, List, Optional, Type, Union
 
 from pydantic import BaseModel, Field
 
-from deepsparse import Pipeline
+from deepsparse.legacy import Pipeline
 from deepsparse.transformers.pipelines import TransformersPipeline
 
 
@@ -299,7 +299,7 @@ class ZeroShotTextClassificationPipelineBase(TransformersPipeline):
         :param pipelines: Different buckets to be used
         :return: The correct Pipeline object (or Bucket) to route input to
         """
-        tokenizer = pipelines[0].tokenizer
+        tokenizer = pipelines[-1].tokenizer
         tokens = tokenizer(
             input_schema.sequences,
             add_special_tokens=True,

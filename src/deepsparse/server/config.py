@@ -17,14 +17,15 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 
 from pydantic import BaseModel, Field, validator
 
-from deepsparse import DEEPSPARSE_ENGINE, PipelineConfig
-from deepsparse.loggers.config import (
+from deepsparse.legacy.loggers.config import (
     MetricFunctionConfig,
     PipelineSystemLoggingConfig,
     SystemLoggingConfig,
     SystemLoggingGroup,
 )
-from deepsparse.tasks import SupportedTasks
+from deepsparse.legacy.tasks import SupportedTasks
+from deepsparse.operators.engine_operator import DEEPSPARSE_ENGINE
+from deepsparse.pipeline_config import PipelineConfig
 
 
 __all__ = [
@@ -39,7 +40,8 @@ __all__ = [
 # execution.
 INTEGRATION_LOCAL = "local"
 INTEGRATION_SAGEMAKER = "sagemaker"
-INTEGRATIONS = [INTEGRATION_LOCAL, INTEGRATION_SAGEMAKER]
+INTEGRATION_OPENAI = "openai"
+INTEGRATIONS = [INTEGRATION_LOCAL, INTEGRATION_SAGEMAKER, INTEGRATION_OPENAI]
 
 
 class SequenceLengthsConfig(BaseModel):
@@ -163,8 +165,8 @@ class ServerConfig(BaseModel):
     )
 
     integration: str = Field(
-        default=INTEGRATION_LOCAL,
-        description="The kind of integration to use. local|sagemaker",
+        default=None,
+        description=f"The kind of integration to use. {INTEGRATIONS}",
     )
 
     engine_thread_pinning: str = Field(

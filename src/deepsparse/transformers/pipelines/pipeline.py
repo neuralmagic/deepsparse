@@ -16,16 +16,19 @@
 Base Pipeline class for transformers inference pipeline
 """
 
+import logging
 import os
 import warnings
-from typing import Any, List, Mapping, Optional, Union
+from pathlib import Path
+from typing import Any, Dict, List, Mapping, Optional, Union
 
 import numpy
-from transformers.models.auto import AutoConfig, AutoTokenizer
+import transformers
+from transformers.models.auto import AutoTokenizer
 
-from deepsparse import Bucketable, Pipeline
+from deepsparse.legacy import Bucketable, Pipeline
 from deepsparse.transformers.helpers import (
-    get_onnx_path_and_configs,
+    get_deployment_path,
     overwrite_transformer_onnx_model_inputs,
 )
 
@@ -66,23 +69,42 @@ class TransformersPipeline(Pipeline, Bucketable):
         If a list of lengths is provided, then for each length, a model and
         tokenizer will be compiled capable of handling that sequence length
         (also known as a bucket). Default is 128
+    :param trust_remote_code: if True, will trust remote code. This option
+        should only be set to `True` for repositories you trust and in which
+        you have read the code, as it will execute possibly unsafe code
+        on your local machine. Default is False
+    :param config: hugging face transformers model config. Can be a path to the config,
+        a dictionary with the config values, a transformers.PretrainedConfig, or None.
+        If a directory is provided, it is assumed that the file is named config.json.
+        If None, an attempt is made to read the config file from the the model_path
+        directory provided. Default is None
+    :param tokenizer: hugging face transfromers tokenizer. Can be a path to the
+        a directory with the relevant tokenizer files, a
+        transformers.PreTrainedTokenizerBase, or None. If None, an attempt is made to
+        read the json file from the model_path directory provided. Default is None.
     """
 
     def __init__(
         self,
         *,
         sequence_length: Union[int, List[int]] = 128,
+        trust_remote_code: bool = False,
+        config: Union[str, Path, Dict, transformers.PretrainedConfig] = None,
+        tokenizer: Union[str, Path, transformers.PreTrainedTokenizerBase] = None,
         **kwargs,
     ):
 
         self._sequence_length = sequence_length
+        self._trust_remote_code = trust_remote_code
 
-        self.config = None
-        self.tokenizer = None
-        self.config_path = None
-        self.tokenizer_config_path = None  # path to 'tokenizer.json'
+        self.config = config
+        self.tokenizer = tokenizer
+
+        self._deployment_path = None
         self.onnx_input_names = None
-
+        self._delay_overwriting_inputs = (
+            kwargs.pop("_delay_overwriting_inputs", None) or False
+        )
         self._temp_model_directory = None
 
         super().__init__(**kwargs)
@@ -96,49 +118,69 @@ class TransformersPipeline(Pipeline, Bucketable):
 
     def setup_onnx_file_path(self) -> str:
         """
-        Parses ONNX, tokenizer, and config file paths from the given `model_path`.
-        Supports sparsezoo stubs
+        Parses ONNX model from the `model_path` provided. It additionally
+        creates config and tokenizer objects from the `deployment path`,
+        derived from the `model_path` provided.
 
         :return: file path to the processed ONNX file for the engine to compile
         """
-        onnx_path, config_path, tokenizer_path = get_onnx_path_and_configs(
-            self.model_path, require_configs=True
-        )
 
-        self.config = AutoConfig.from_pretrained(
-            config_path, finetuning_task=self.task if hasattr(self, "task") else None
+        deployment_path, onnx_path = get_deployment_path(self.model_path)
+        self._deployment_path = deployment_path
+
+        # temporarily set transformers logger to ERROR to avoid
+        # printing misleading warnings
+        hf_logger = logging.getLogger("transformers")
+        hf_logger_level = hf_logger.level
+        hf_logger.setLevel(logging.ERROR)
+        self.config = transformers.PretrainedConfig.from_pretrained(
+            deployment_path,
+            finetuning_task=self.task if hasattr(self, "task") else None,
         )
+        hf_logger.setLevel(hf_logger_level)
+
         self.tokenizer = AutoTokenizer.from_pretrained(
-            tokenizer_path, model_max_length=self.sequence_length
-        )
-        self.config_path = os.path.join(config_path, "config.json")
-        self.tokenizer_config_path = os.path.join(tokenizer_path, "tokenizer.json")
-
-        # overwrite onnx graph to given required input shape
-        (
-            onnx_path,
-            self.onnx_input_names,
-            self._temp_model_directory,
-        ) = overwrite_transformer_onnx_model_inputs(
-            onnx_path, max_length=self.sequence_length
+            deployment_path,
+            trust_remote_code=self._trust_remote_code,
+            model_max_length=self.sequence_length,
         )
 
+        if not self._delay_overwriting_inputs:
+            # overwrite onnx graph to given required input shape
+            (
+                onnx_path,
+                self.onnx_input_names,
+                self._temp_model_directory,
+            ) = overwrite_transformer_onnx_model_inputs(
+                onnx_path, max_length=self.sequence_length
+            )
+
+        if not self.config or not self.tokenizer:
+            raise RuntimeError(
+                "Invalid config or tokenizer provided. Please provide "
+                "paths to the files or ensure they exist in the `model_path` provided. "
+                "See `tokenizer` and `config` arguments for details."
+            )
         return onnx_path
 
     def tokens_to_engine_input(
-        self, tokens: Mapping[Any, numpy.ndarray]
+        self,
+        tokens: Mapping[Any, numpy.ndarray],
+        onnx_input_names: Optional[List[str]] = None,
     ) -> List[numpy.ndarray]:
         """
         :param tokens: outputs of the pipeline tokenizer
         :return: list of numpy arrays in expected order for model input
         """
-        if not all(name in tokens for name in self.onnx_input_names):
+        if onnx_input_names is None:
+            onnx_input_names = self.onnx_input_names
+        if not all(name in tokens for name in onnx_input_names):
             raise ValueError(
-                f"pipeline expected arrays with names {self.onnx_input_names}, "
+                f"pipeline expected arrays with names {onnx_input_names}, "
                 f"received inputs: {list(tokens.keys())}"
             )
 
-        return [tokens[name] for name in self.onnx_input_names]
+        return [tokens[name] for name in onnx_input_names]
 
     @staticmethod
     def should_bucket(*args, **kwargs) -> bool:
@@ -186,6 +228,34 @@ class TransformersPipeline(Pipeline, Bucketable):
         if len(valid_pipelines) == 0:
             return max(buckets, key=lambda bucket: bucket.sequence_length)
         return min(valid_pipelines, key=lambda bucket: bucket.sequence_length)
+
+    @property
+    def config_path(self) -> str:
+        """
+        :return: full path to config.json for this pipeline if it exists,
+            otherwise returns deployment directory path
+        """
+        config_path = os.path.join(self._deployment_path, "config.json")
+        if os.path.exists(config_path):
+            return config_path
+        else:
+            return self._deployment_path
+
+    @property
+    def tokenizer_config_path(self) -> str:
+        """
+        :return: full path to tokenizer.json for this pipeline if it exists,
+            otherwise returns deployment directory path
+        """
+        tokenizer_path = os.path.join(self._deployment_path, "tokenizer.json")
+        tokenizer_config_path = os.path.join(
+            self._deployment_path, "tokenizer_config.json"
+        )
+        if os.path.exists(tokenizer_path):
+            return tokenizer_path
+        elif os.path.exists(tokenizer_config_path):
+            return tokenizer_path
+        return self._deployment_path
 
 
 def pipeline(

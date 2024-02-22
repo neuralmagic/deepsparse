@@ -18,7 +18,7 @@ from typing import Dict, List, Optional, Tuple, Type, Union
 import numpy
 
 import torch
-from deepsparse import Pipeline
+from deepsparse.legacy import Pipeline
 from deepsparse.utils import model_to_path
 from deepsparse.yolact.schemas import YOLACTInputSchema, YOLACTOutputSchema
 from deepsparse.yolact.utils import (
@@ -166,24 +166,6 @@ class YOLACTPipeline(Pipeline):
         )
         return [image_batch], postprocessing_kwargs
 
-    @staticmethod
-    def join_engine_outputs(
-        batch_outputs: List[List[numpy.ndarray]],
-    ) -> List[numpy.ndarray]:
-        boxes, confidence, masks, priors, protos = Pipeline.join_engine_outputs(
-            batch_outputs
-        )
-
-        # priors never has a batch dimension
-        # so the above step doesn't concat along a batch dimension
-        # reshape into a batch dimension
-        num_priors = boxes.shape[1]
-        batch_priors = numpy.reshape(priors, (-1, num_priors, 4))
-
-        # all the priors should be equal, so only use the first one
-        assert (batch_priors == batch_priors[0]).all()
-        return [boxes, confidence, masks, batch_priors[0], protos]
-
     def _preprocess_image(self, image) -> numpy.ndarray:
         if isinstance(image, str):
             image = cv2.imread(image)
@@ -208,6 +190,15 @@ class YOLACTPipeline(Pipeline):
         masks = torch.from_numpy(masks).cpu()
         priors = torch.from_numpy(priors).cpu()
         protos = torch.from_numpy(protos).cpu()
+
+        # priors never has a batch dimension
+        # so the above step doesn't concat along a batch dimension
+        # reshape into a batch dimension
+        # all the priors should be equal, so only use the first one
+        num_priors = boxes.shape[1]
+        batch_priors = numpy.reshape(priors, (-1, num_priors, 4))
+        assert (batch_priors == batch_priors[0]).all()
+        priors = batch_priors[0]
 
         batch_size, num_priors, _ = boxes.size()
 

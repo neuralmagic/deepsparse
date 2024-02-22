@@ -39,13 +39,14 @@ def test_mock_engine_calls(engine_mock: MagicMock):
         os.path.join(
             os.path.expanduser("~"),
             ".cache/sparsezoo/neuralmagic/",
-            "resnet_v1-50-imagenet-pruned85.4block_quantized/model.onnx",
+            "resnet_v1-50-imagenet-pruned85.4block_quantized/deployment/model.onnx",
         ),
         3,
         1,
         1,
         "elastic",
         context.value,
+        None,
     )
 
 

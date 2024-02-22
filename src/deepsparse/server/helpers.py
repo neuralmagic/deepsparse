@@ -12,19 +12,32 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from http import HTTPStatus
 from typing import Dict, List, Optional
 
-from deepsparse import (
+from deepsparse.legacy.loggers import (
     BaseLogger,
     build_logger,
     get_target_identifier,
     system_logging_config_to_groups,
 )
-from deepsparse.loggers.config import MetricFunctionConfig, SystemLoggingGroup
+from deepsparse.legacy.loggers.config import MetricFunctionConfig, SystemLoggingGroup
 from deepsparse.server.config import EndpointConfig, ServerConfig
+from deepsparse.server.protocol import ErrorResponse
+from fastapi.responses import JSONResponse
 
 
-__all__ = ["server_logger_from_config"]
+__all__ = [
+    "create_error_response",
+    "server_logger_from_config",
+]
+
+
+def create_error_response(status_code: HTTPStatus, message: str) -> JSONResponse:
+    return JSONResponse(
+        ErrorResponse(message=message, type="invalid_request_error").dict(),
+        status_code=status_code.value,
+    )
 
 
 def server_logger_from_config(config: ServerConfig) -> BaseLogger:

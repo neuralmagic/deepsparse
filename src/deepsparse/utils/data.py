@@ -14,7 +14,7 @@
 
 import logging
 import re
-from typing import List
+from typing import List, Tuple, Union
 
 import numpy
 
@@ -25,7 +25,13 @@ __all__ = [
     "verify_outputs",
     "parse_input_shapes",
     "numpy_softmax",
+    "split_engine_inputs",
+    "join_engine_outputs",
+    "prep_for_serialization",
+    "numpy_log_softmax",
 ]
+
+from pydantic import BaseModel
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -99,7 +105,7 @@ def verify_outputs(
             raise Exception(
                 f"Output shapes don't match, {output.shape} != {gt_output.shape}"
             )
-        if type(output) != type(gt_output):
+        if type(output) is not type(gt_output):
             raise Exception(
                 f"Output types don't match, {type(output)} != {type(gt_output)}"
             )
@@ -162,3 +168,168 @@ def numpy_softmax(x: numpy.ndarray, axis: int = 0):
     e_x_sum = numpy.sum(e_x, axis=axis, keepdims=True)
     softmax_x = e_x / e_x_sum
     return softmax_x
+
+
+def numpy_log_softmax(x: numpy.ndarray, axis: int = 0):
+    """
+    Ref: https://github.com/scipy/scipy/blob/v1.12.0/scipy/special/_logsumexp.py
+
+    In principle: log_softmax(x) = log(softmax(x))
+    but using a more accurate implementation.
+
+    :param x: array containing values to be softmaxed
+    :param axis: axis across which to perform softmax
+    :return: x with values across axis softmaxed
+    """
+    x_max = numpy.max(x, axis=axis, keepdims=True)
+
+    if x_max.ndim > 0:
+        x_max[~numpy.isfinite(x_max)] = 0
+    elif not numpy.isfinite(x_max):
+        x_max = 0
+
+    tmp = x - x_max
+    exp_tmp = numpy.exp(tmp)
+
+    # suppress warnings about log of zero
+    with numpy.errstate(divide="ignore"):
+        s = numpy.sum(exp_tmp, axis=axis, keepdims=True)
+        out = numpy.log(s)
+
+    out = tmp - out
+    return out
+
+
+def split_engine_inputs(
+    items: List[numpy.ndarray], batch_size: int
+) -> Tuple[List[List[numpy.ndarray]], int]:
+    """
+    Splits each item into numpy arrays with the first dimension == `batch_size`.
+
+    For example, if `items` has three numpy arrays with the following
+    shapes: `[(4, 32, 32), (4, 64, 64), (4, 128, 128)]`
+
+    Then with `batch_size==4` the output would be:
+    ```
+    [[(4, 32, 32), (4, 64, 64), (4, 128, 128)]]
+    ```
+
+    Then with `batch_size==2` the output would be:
+    ```
+    [
+        [(2, 32, 32), (2, 64, 64), (2, 128, 128)],
+        [(2, 32, 32), (2, 64, 64), (2, 128, 128)],
+    ]
+    ```
+
+    Then with `batch_size==1` the output would be:
+    ```
+    [
+        [(1, 32, 32), (1, 64, 64), (1, 128, 128)],
+        [(1, 32, 32), (1, 64, 64), (1, 128, 128)],
+        [(1, 32, 32), (1, 64, 64), (1, 128, 128)],
+        [(1, 32, 32), (1, 64, 64), (1, 128, 128)],
+    ]
+    ```
+
+    In the case where the total input batch size isn't divisble by `batch_size`, it
+    will pad the last mini batch. Look at `padding_is_needed`
+
+    :param items: list of numpy arrays to split
+    :param batch_size: size of each batch to split into
+
+    :return: list of batches, where each batch is a list of numpy arrays,
+        as well as the total batch size
+    """
+    # The engine expects to recieve data in numpy format, so at this point it should be
+    assert all(isinstance(item, numpy.ndarray) for item in items)
+
+    # Check that all inputs have the same batch size
+    total_batch_size = items[0].shape[0]
+    if not all(arr.shape[0] == total_batch_size for arr in items):
+        raise ValueError("Not all inputs have matching batch size")
+
+    batches = []
+    for section_idx in range(0, total_batch_size, batch_size):
+        padding_is_needed = section_idx + batch_size > total_batch_size
+        if padding_is_needed:
+            # If we can't evenly divide with batch size, pad the last batch
+            input_sections = []
+            for arr in items:
+                pads = ((0, section_idx + batch_size - total_batch_size),) + (
+                    (0, 0),
+                ) * (arr.ndim - 1)
+                section = numpy.pad(
+                    arr[section_idx : section_idx + batch_size], pads, mode="edge"
+                )
+                input_sections.append(section)
+            batches.append(input_sections)
+        else:
+            # Otherwise we just take our slice as the batch
+            batches.append(
+                [arr[section_idx : section_idx + batch_size] for arr in items]
+            )
+
+    return batches, total_batch_size
+
+
+def join_engine_outputs(
+    batch_outputs: List[List[numpy.ndarray]], orig_batch_size: int
+) -> List[numpy.ndarray]:
+    """
+    Joins list of engine outputs together into one list using `numpy.stack`.
+    If the batch size doesn't evenly divide into the available batches, it will cut off
+    the remainder as padding.
+
+    This is the opposite of `split_engine_inputs` and is meant to be used in tandem.
+
+    :param batch_outputs: List of engine outputs
+    :param orig_batch_size: The original batch size of the inputs
+    :return: List of engine outputs joined together
+    """
+    assert all(isinstance(item, (List, Tuple)) for item in batch_outputs)
+
+    candidate_output = list(map(numpy.concatenate, zip(*batch_outputs)))
+
+    # If we can't evenly divide with batch size, remove the remainder as padding
+    if candidate_output[0].shape[0] > orig_batch_size:
+        for i in range(len(candidate_output)):
+            candidate_output[i] = candidate_output[i][:orig_batch_size]
+
+    return candidate_output
+
+
+def prep_for_serialization(
+    data: Union[BaseModel, numpy.ndarray, list]
+) -> Union[BaseModel, list]:
+    """
+    Prepares input data for JSON serialization by converting any numpy array
+    field to a list. For large numpy arrays, this operation will take a while to run.
+
+    :param data: data to that is to be processed before
+        serialization. Nested objects are supported.
+    :return: Pipeline_outputs with potential numpy arrays
+        converted to lists
+    """
+    if isinstance(data, BaseModel):
+        for field_name in data.__fields__.keys():
+            field_value = getattr(data, field_name)
+            if isinstance(field_value, (numpy.ndarray, BaseModel, list)):
+                setattr(
+                    data,
+                    field_name,
+                    prep_for_serialization(field_value),
+                )
+
+    elif isinstance(data, numpy.ndarray):
+        data = data.tolist()
+
+    elif isinstance(data, list):
+        for i, value in enumerate(data):
+            data[i] = prep_for_serialization(value)
+
+    elif isinstance(data, dict):
+        for key, value in data.items():
+            data[key] = prep_for_serialization(value)
+
+    return data

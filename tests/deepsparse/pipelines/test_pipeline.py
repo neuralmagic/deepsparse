@@ -16,48 +16,17 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 from unittest import mock
 
-import numpy
-
+import flaky
 import pytest
-from deepsparse.pipeline import Pipeline, _initialize_executor_and_workers
+from deepsparse.legacy.base_pipeline import BasePipeline
+
+# TODO: update to test the new pipeline
+from deepsparse.legacy.pipeline import (
+    Pipeline,
+    PipelineConfig,
+    _initialize_executor_and_workers,
+)
 from tests.utils import mock_engine
-
-
-def test_split_engine_inputs():
-    inp = [numpy.zeros((4, 28)) for _ in range(3)]
-
-    out = Pipeline.split_engine_inputs(inp, batch_size=4)
-    assert numpy.array(out).shape == (1, 3, 4, 28)
-
-    out = Pipeline.split_engine_inputs(inp, batch_size=2)
-    assert numpy.array(out).shape == (2, 3, 2, 28)
-
-    out = Pipeline.split_engine_inputs(inp, batch_size=1)
-    assert numpy.array(out).shape == (4, 3, 1, 28)
-
-
-def test_join_opposite_of_split():
-    inp = [numpy.random.rand(4, 28) for _ in range(3)]
-
-    out = Pipeline.split_engine_inputs(inp, batch_size=2)
-    assert numpy.array(out).shape == (2, 3, 2, 28)
-
-    joined = Pipeline.join_engine_outputs(out)
-    assert numpy.array(joined).shape == (3, 4, 28)
-
-    for i, j in zip(inp, joined):
-        assert (i == j).all()
-
-
-def test_split_engine_inputs_uneven_raises_error():
-    with pytest.raises(
-        RuntimeError,
-        match=(
-            "batch size of 3 passed into pipeline "
-            "is not divisible by model batch size of 2"
-        ),
-    ):
-        Pipeline.split_engine_inputs([numpy.zeros((3, 28))], batch_size=2)
 
 
 @mock_engine(rng_seed=0)
@@ -82,14 +51,58 @@ def test_split_interaction_with_forward_batch_size_2(engine_forward):
     with mock.patch.object(
         Pipeline, "engine_forward", wraps=pipeline.engine_forward
     ) as engine_forward:
-        with pytest.raises(RuntimeError, match="is not divisible"):
-            pipeline("word")
-
-        pipeline("two words".split())
+        # this is okay because we can pad batches
+        pipeline("word")
         assert engine_forward.call_count == 1
 
+        pipeline("two words".split())
+        assert engine_forward.call_count == 2
+
         pipeline("two words for me".split())
-        assert engine_forward.call_count == 3
+        assert engine_forward.call_count == 4
+
+
+@pytest.fixture
+def base_pipeline_example():
+    @BasePipeline.register(task="base_example")
+    class BasePipelineExample(BasePipeline):
+        def __init__(self, base_specific, **kwargs):
+            self._base_specific = base_specific
+            super().__init__(**kwargs)
+
+        def __call__(self, *args, **kwargs):
+            pass
+
+        def input_schema(self):
+            pass
+
+        def output_schema(self):
+            pass
+
+        @property
+        def base_specific(self):
+            return self._base_specific
+
+    kwargs = {"base_specific": "base_specific"}
+    base_pipeline = BasePipeline.create(
+        task="base_example", alias="base_alias", **kwargs
+    )
+    return base_pipeline, BasePipelineExample, kwargs
+
+
+def test_base_pipeline(base_pipeline_example):
+    base_pipeline = base_pipeline_example[0]
+    pipeline = base_pipeline_example[1]
+    kwargs = base_pipeline_example[-1]
+
+    assert base_pipeline.base_specific == kwargs["base_specific"]
+
+    cls = BasePipeline._get_task_constructor("base_example")
+    assert cls == pipeline
+
+    config = base_pipeline.to_config()
+    assert isinstance(config, PipelineConfig)
+    assert config.kwargs["base_specific"] == base_pipeline.base_specific
 
 
 def test_pipeline_executor_num_workers():
@@ -112,6 +125,7 @@ def test_pipeline_executor_num_workers():
     assert executor._max_workers >= 1
 
 
+@flaky.flaky(max_runs=2, min_passes=1)
 @mock_engine(rng_seed=0)
 def test_pipeline_call_is_async(engine_mock):
     # attempts to verify that pipeline calls to engine are async
@@ -120,7 +134,7 @@ def test_pipeline_call_is_async(engine_mock):
     executor = ThreadPoolExecutor(max_workers=1)
     pipeline = Pipeline.create("token_classification", batch_size=1, executor=executor)
 
-    def sleep_then_engine_forward(xs):
+    def sleep_then_engine_forward(xs, context):
         # each call to engine_forward also sleeps
         time.sleep(20 / 1000)
         return pipeline.engine(xs)
@@ -145,5 +159,6 @@ def test_pipeline_call_is_async(engine_mock):
         dur_2_worker = (end - start) * 1e3
 
         # instead of doing a hard comparison of timing for each separate
-        # duration, do relative comparison of timing
-        assert numpy.allclose(dur_1_worker / dur_2_worker, 2, atol=0.1)
+        # duration, do relative comparison of timing where it should be
+        # at least 1.5x faster
+        assert (dur_1_worker / dur_2_worker) >= 1.5

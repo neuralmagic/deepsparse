@@ -17,6 +17,7 @@ Code related to interfacing with a Neural Network in the DeepSparse Engine using
 """
 
 import logging
+import os
 import time
 from enum import Enum
 from typing import Dict, Iterable, List, Optional, Tuple, Union
@@ -28,9 +29,10 @@ from deepsparse.analytics import deepsparse_analytics as _analytics
 from deepsparse.benchmark import BenchmarkResults
 from deepsparse.utils import (
     generate_random_inputs,
-    get_output_names,
+    join_engine_outputs,
     model_to_path,
     override_onnx_input_shapes,
+    split_engine_inputs,
 )
 
 
@@ -54,8 +56,8 @@ __all__ = [
     "Scheduler",
     "Context",
     "MultiModelEngine",
-    "KVCacheEngine",
     "BaseEngine",
+    "KVCacheParams",
 ]
 
 _LOGGER = logging.getLogger(__name__)
@@ -103,9 +105,11 @@ class Scheduler(Enum):
             raise ValueError(f"unsupported Scheduler: {key}")
 
 
-def _validate_batch_size(batch_size: int) -> int:
-    if batch_size < 1:
-        raise ValueError("batch_size must be greater than 0")
+def _validate_batch_size(batch_size: Optional[int]) -> Optional[int]:
+    if batch_size is None or batch_size < 1:
+        _LOGGER.warn("batch_size < 1 so disabling batch size override")
+        os.environ["NM_DISABLE_BATCH_OVERRIDE"] = "1"
+        return None
 
     return batch_size
 
@@ -169,11 +173,7 @@ class Context(object):
         concurrently.
     """
 
-    def __init__(
-        self,
-        num_cores: int = None,
-        num_streams: int = None,
-    ):
+    def __init__(self, num_cores: int = None, num_streams: int = None):
         self._num_cores = _validate_num_cores(num_cores)
         self._scheduler = Scheduler.from_str("elastic")
         self._deepsparse_context = LIB.deepsparse_context(
@@ -205,15 +205,34 @@ class Context(object):
         return f"Context(num_cores={self.num_cores}, num_streams={self.num_streams}, scheduler={self.scheduler})"
 
 
+class KVCacheParams:
+    """
+    :param cached_outputs: A list of bools that indicates for each output
+        whether it is cached or not
+    :param prev_num_tokens: The amount of previous tokens that will be read
+        from the external KV cache on the first inference
+    :param num_frozen_tokens: The amount of first tokens that we want to keep
+        permanently in the KV cache.
+    """
+
+    def __init__(
+        self, cached_outputs: List[bool], prev_num_tokens: int, num_frozen_tokens: int
+    ):
+        self.cached_outputs = cached_outputs
+        self.prev_num_tokens = prev_num_tokens
+        self.num_frozen_tokens = num_frozen_tokens
+
+
 class BaseEngine(object):
     def construct(
         self,
         model: Union[str, "Model", "File"],
-        batch_size: int = 1,
-        num_cores: int = None,
-        num_streams: int = None,
-        scheduler: Scheduler = None,
-        input_shapes: List[List[int]] = None,
+        batch_size: Optional[int] = 1,
+        num_cores: Optional[int] = None,
+        num_streams: Optional[int] = None,
+        scheduler: Optional[Scheduler] = None,
+        input_shapes: Optional[List[List[int]]] = None,
+        kv_cache_params: Optional[KVCacheParams] = None,
     ):
         _analytics.send_event("python__engine__init")
         self._model_path = model_to_path(model)
@@ -222,15 +241,17 @@ class BaseEngine(object):
         self._num_streams = _validate_num_streams(num_streams, self._num_cores)
         self._scheduler = _validate_scheduler(scheduler)
         self._input_shapes = input_shapes
+        self._kv_cache_params = kv_cache_params
         self._cpu_avx_type = AVX_TYPE
         self._cpu_vnni = VNNI
 
     def construct_with_context(
         self,
         model: Union[str, "Model", "File"],
-        batch_size: int,
+        batch_size: Optional[int],
         context: Context,
-        input_shapes: List[List[int]] = None,
+        input_shapes: Optional[List[List[int]]] = None,
+        kv_cache_params: Optional[KVCacheParams] = None,
     ):
         _analytics.send_event("python__engine__init")
         self._model_path = model_to_path(model)
@@ -239,6 +260,7 @@ class BaseEngine(object):
         self._num_streams = context.num_streams
         self._scheduler = _validate_scheduler(context.scheduler)
         self._input_shapes = input_shapes
+        self._kv_cache_params = kv_cache_params
         self._cpu_avx_type = AVX_TYPE
         self._cpu_vnni = VNNI
 
@@ -266,20 +288,27 @@ class Engine(BaseEngine):
         concurrently.
     :param scheduler: The kind of scheduler to execute with. Pass None for the default.
     :param input_shapes: The list of shapes to set the inputs to. Pass None to use model as-is.
+    :param cached_outputs: List of bools corresponding to which model outputs are
+        included in KV cache
     """
 
     def __init__(
         self,
         model: Union[str, "Model", "File"],
-        batch_size: int = 1,
+        batch_size: Optional[int] = 1,
         num_cores: int = None,
         num_streams: int = None,
         scheduler: Scheduler = None,
-        input_shapes: List[List[int]] = None,
+        input_shapes: Optional[List[List[int]]] = None,
+        cached_outputs: Optional[List[bool]] = None,
     ):
         BaseEngine.construct(
             self, model, batch_size, num_cores, num_streams, scheduler, input_shapes
         )
+
+        # self._batch_size is allowed to be None to disable setting a batch size,
+        # but the engine needs to be passed an integer. The value is abitrary and ignored
+        engine_batch_size = self._batch_size if self._batch_size else 1
 
         if self._input_shapes:
             with override_onnx_input_shapes(
@@ -287,26 +316,29 @@ class Engine(BaseEngine):
             ) as model_path:
                 self._eng_net = LIB.deepsparse_engine(
                     model_path,
-                    self._batch_size,
+                    engine_batch_size,
                     self._num_cores,
                     self._num_streams,
                     self._scheduler.value,
                     None,
+                    cached_outputs,
                 )
         else:
             self._eng_net = LIB.deepsparse_engine(
                 self._model_path,
-                self._batch_size,
+                engine_batch_size,
                 self._num_cores,
                 self._num_streams,
                 self._scheduler.value,
                 None,
+                cached_outputs,
             )
 
+        if self._batch_size is None:
+            os.environ.pop("NM_DISABLE_BATCH_OVERRIDE", None)
+
     def __call__(
-        self,
-        inp: List[numpy.ndarray],
-        val_inp: bool = True,
+        self, inp: List[numpy.ndarray], val_inp: bool = True
     ) -> List[numpy.ndarray]:
         """
         Convenience function for Engine.run(), see @run for more details
@@ -440,10 +472,28 @@ class Engine(BaseEngine):
         """
         return generate_random_inputs(self.model_path, self.batch_size)
 
-    def run(
+    def batched_run(
         self,
         inp: List[numpy.ndarray],
-        val_inp: bool = True,
+    ) -> List[numpy.ndarray]:
+
+        if self.batch_size == 1:
+            _LOGGER.warn(
+                "Using batched_run with an Engine of batch_size=1 isn't recommended "
+                "for optimal performance."
+            )
+
+        # Split inputs into batches of size `self.batch_size`
+        batch_inputs, orig_batch_size = split_engine_inputs(inp, self.batch_size)
+
+        # Submit split batches to engine threadpool
+        batch_outputs = list(map(self.run, batch_inputs))
+
+        # Join together the batches of size `self.batch_size`
+        return join_engine_outputs(batch_outputs, orig_batch_size)
+
+    def run(
+        self, inp: List[numpy.ndarray], val_inp: bool = True
     ) -> List[numpy.ndarray]:
         """
         Run given inputs through the model for inference.
@@ -510,9 +560,7 @@ class Engine(BaseEngine):
         return out, end - start
 
     def mapped_run(
-        self,
-        inp: List[numpy.ndarray],
-        val_inp: bool = True,
+        self, inp: List[numpy.ndarray], val_inp: bool = True
     ) -> Dict[str, numpy.ndarray]:
         """
         Run given inputs through the model for inference.
@@ -661,7 +709,7 @@ class Engine(BaseEngine):
             raise ValueError("inp must be a list, given {}".format(type(inp)))
 
         for arr in inp:
-            if arr.shape[0] != self._batch_size:
+            if self._batch_size and arr.shape[0] != self._batch_size:
                 raise ValueError(
                     (
                         "array batch size of {} must match the batch size "
@@ -699,8 +747,6 @@ class DebugAnalysisEngine(Engine):
     :param num_cores: The number of physical cores to run the model on. If more
         cores are requested than are available on a single socket, the engine
         will try to distribute them evenly across as few sockets as possible.
-    :param num_streams: The max number of requests the model can handle
-        concurrently.
     :param scheduler: The kind of scheduler to execute with. Pass None for the default.
     :param input_shapes: The list of shapes to set the inputs to. Pass None to use model as-is.
     :param num_iterations: The number of iterations to run benchmarking for.
@@ -709,38 +755,77 @@ class DebugAnalysisEngine(Engine):
         benchmarking. These executions will not be counted in the benchmark
         results that are returned. Useful and recommended to bring
         the system to a steady state. Default is 5
-    :param include_inputs: If True, inputs from forward passes during benchmarking
-        will be added to the results. Default is False
-    :param include_outputs: If True, outputs from forward passes during benchmarking
-        will be added to the results. Default is False
-    :param show_progress: If True, will display a progress bar. Default is False
-    :param scheduler: The kind of scheduler to execute with. Pass None for the default.
+    :param optimization_level: The amount of graph optimizations to perform.
+        The current choices are either 0 (minimal) or 1 (all), default is 1
+    :param imposed_as: Imposed activation sparsity, defaults to None.
+        Will force the activation sparsity from all ReLu layers in the graph
+        to match this desired sparsity level (percentage of 0's in the tensor).
+        Beneficial for seeing how AS affects the performance of the model.
+    :param imposed_ks: Imposed kernel sparsity, defaults to None.
+        Will force all prunable layers in the graph to have weights with
+        this desired sparsity level (percentage of 0's in the tensor).
+        Beneficial for seeing how pruning affects the performance of the model.
+    :param kv_cache_params: KV cache execution params, defaults to None.
     """
 
     def __init__(
         self,
         model: Union[str, "Model", "File"],
-        batch_size: int = 1,
-        num_cores: int = None,
-        scheduler: Scheduler = None,
+        batch_size: Optional[int] = 1,
+        num_cores: Optional[int] = None,
+        scheduler: Optional[Scheduler] = None,
         input_shapes: List[List[int]] = None,
         num_iterations: int = 20,
         num_warmup_iterations: int = 5,
         optimization_level: int = 1,
         imposed_as: Optional[float] = None,
         imposed_ks: Optional[float] = None,
+        kv_cache_params: Optional[KVCacheParams] = None,
     ):
         BaseEngine.construct(
-            self, model, batch_size, num_cores, None, scheduler, input_shapes
+            self,
+            model,
+            batch_size,
+            num_cores,
+            None,
+            scheduler,
+            input_shapes,
+            kv_cache_params,
         )
 
-        if self._input_shapes:
-            with override_onnx_input_shapes(
-                self._model_path, self._input_shapes
-            ) as model_path:
+        # Helper
+        def make_engine(self, model_path):
+            # self._batch_size is allowed to be None to disable setting a batch size,
+            # but the engine needs to be passed an integer. The value is abitrary and ignored
+            engine_batch_size = self._batch_size if self._batch_size else 1
+
+            if self._kv_cache_params:
+                self._kv_cache = LIB.kv_cache(
+                    self._kv_cache_params.prev_num_tokens,
+                    self._kv_cache_params.num_frozen_tokens,
+                )
+
                 self._eng_net = LIB.deepsparse_engine(
                     model_path,
-                    self._batch_size,
+                    engine_batch_size,
+                    self._num_cores,
+                    self._num_streams,
+                    self._scheduler.value,
+                    None,
+                    self._kv_cache_params.cached_outputs,
+                    "external",
+                    num_iterations,
+                    num_warmup_iterations,
+                    optimization_level,
+                    imposed_as,
+                    imposed_ks,
+                )
+            else:
+                self._kv_cache = None
+
+                self._eng_net = LIB.deepsparse_engine(
+                    model_path,
+                    engine_batch_size,
                     self._num_cores,
                     self._num_streams,
                     self._scheduler.value,
@@ -752,26 +837,20 @@ class DebugAnalysisEngine(Engine):
                     imposed_as,
                     imposed_ks,
                 )
+
+        if self._input_shapes:
+            with override_onnx_input_shapes(
+                self._model_path, self._input_shapes
+            ) as model_path:
+                make_engine(self, model_path)
         else:
-            self._eng_net = LIB.deepsparse_engine(
-                self._model_path,
-                self._batch_size,
-                self._num_cores,
-                self._num_streams,
-                self._scheduler.value,
-                None,
-                "external",
-                num_iterations,
-                num_warmup_iterations,
-                optimization_level,
-                imposed_as,
-                imposed_ks,
-            )
+            make_engine(self, self._model_path)
+
+        if self._batch_size is None:
+            os.environ.pop("NM_DISABLE_BATCH_OVERRIDE", None)
 
     def analyze(
-        self,
-        inp: List[numpy.ndarray],
-        val_inp: bool = True,
+        self, inp: List[numpy.ndarray], val_inp: bool = True
     ) -> List[numpy.ndarray]:
         """
         Function to analyze a model's performance in the DeepSparse Engine.
@@ -784,10 +863,11 @@ class DebugAnalysisEngine(Engine):
             are setup correctly for the DeepSparse Engine
         :return: the analysis structure containing the performance details of each layer
         """
+
         if val_inp:
             self._validate_inputs(inp)
 
-        [out, bench_info] = self._eng_net.benchmark_execute(inp)
+        [_, bench_info] = self._eng_net.benchmark_execute(inp, self._kv_cache)
 
         return bench_info
 
@@ -809,18 +889,25 @@ class MultiModelEngine(Engine):
     :param context: See above. This object should be constructed with the desired number of
         cores and passed into each instance of the MultiModelEngine.
     :param input_shapes: The list of shapes to set the inputs to. Pass None to use model as-is.
+    :param cached_outputs: List of bools corresponding to which model outputs are
+        included in KV cache
     """
 
     def __init__(
         self,
         model: Union[str, "Model", "File"],
-        batch_size: int,
+        batch_size: Optional[int],
         context: Context,
-        input_shapes: List[List[int]] = None,
+        input_shapes: Optional[List[List[int]]] = None,
+        cached_outputs: Optional[List[bool]] = None,
     ):
         BaseEngine.construct_with_context(
             self, model, batch_size, context, input_shapes
         )
+
+        # self._batch_size is allowed to be None to disable setting a batch size,
+        # but the engine needs to be passed an integer. The value is abitrary and ignored
+        engine_batch_size = self._batch_size if self._batch_size else 1
 
         if self._input_shapes:
             with override_onnx_input_shapes(
@@ -828,76 +915,36 @@ class MultiModelEngine(Engine):
             ) as model_path:
                 self._eng_net = LIB.deepsparse_engine(
                     model_path,
-                    self._batch_size,
+                    engine_batch_size,
                     self._num_cores,
                     self._num_streams,
                     self._scheduler.value,
                     context.value,
+                    cached_outputs,
                 )
         else:
             self._eng_net = LIB.deepsparse_engine(
                 self._model_path,
-                self._batch_size,
+                engine_batch_size,
                 self._num_cores,
                 self._num_streams,
                 self._scheduler.value,
                 context.value,
+                cached_outputs,
             )
 
-
-class KVCacheEngine(Engine):
-    """
-    Engine that can do kv caching.
-    """
-
-    def __init__(
-        self,
-        model: Union[str, "Model", "File"],
-        batch_size: int = 1,
-        num_cores: int = None,
-        num_streams: int = None,
-        scheduler: Scheduler = None,
-        input_shapes: List[List[int]] = None,
-        kv_cache_bools: List[bool] = None,
-        prev_cache_length: int = 0,
-    ):
-        BaseEngine.construct(
-            self, model, batch_size, num_cores, num_streams, scheduler, input_shapes
-        )
-
-        if kv_cache_bools is None:
-            # If no list was provided, then we assume all outputs except for the first are KV caches
-            # Note: In the future we can look at the names of outputs to be more sure
-            #
-            # Create a boolean list of every output of the model
-            output_names = get_output_names(self._model_path)
-            kv_cache_bools = [True for i in range(len(output_names))]
-            # Assume first input is logits and logits ought not to be cached
-            kv_cache_bools[0] = False
-
-        num_streams = _validate_num_streams(num_streams, self._num_cores)
-        if self._input_shapes:
-            raise NotImplementedError("Don't do this yet :)")
-        else:
-            self._eng_net = LIB.deepsparse_engine(
-                self._model_path,
-                self._batch_size,
-                self._num_cores,
-                num_streams,
-                self._scheduler.value,
-                None,
-                kv_cache_bools,
-                prev_cache_length,
-            )
+        if self._batch_size is None:
+            os.environ.pop("NM_DISABLE_BATCH_OVERRIDE", None)
 
 
 def compile_model(
     model: Union[str, "Model", "File"],
-    batch_size: int = 1,
-    num_cores: int = None,
-    num_streams: int = None,
-    scheduler: Scheduler = None,
-    input_shapes: List[List[int]] = None,
+    batch_size: Optional[int] = 1,
+    num_cores: Optional[int] = None,
+    num_streams: Optional[int] = None,
+    scheduler: Optional[Scheduler] = None,
+    input_shapes: Optional[List[List[int]]] = None,
+    cached_outputs: Optional[List[bool]] = None,
 ) -> Engine:
     """
     Convenience function to compile a model in the DeepSparse Engine
@@ -917,6 +964,7 @@ def compile_model(
         default None
     :param scheduler: The kind of scheduler to execute with. Pass None for the default.
     :param input_shapes: The list of shapes to set the inputs to. Pass None to use model as-is.
+    :param cached_outputs: List of bools corresponding to which model outputs are
     :return: The created Engine after compiling the model
     """
     return Engine(
@@ -926,22 +974,23 @@ def compile_model(
         num_streams=num_streams,
         scheduler=scheduler,
         input_shapes=input_shapes,
+        cached_outputs=cached_outputs,
     )
 
 
 def benchmark_model(
     model: Union[str, "Model", "File"],
     inp: List[numpy.ndarray],
-    batch_size: int = 1,
-    num_cores: int = None,
-    num_streams: int = None,
+    batch_size: Optional[int] = 1,
+    num_cores: Optional[int] = None,
+    num_streams: Optional[int] = None,
     num_iterations: int = 20,
     num_warmup_iterations: int = 5,
     include_inputs: bool = False,
     include_outputs: bool = False,
     show_progress: bool = False,
-    scheduler: Scheduler = None,
-    input_shapes: List[List[int]] = None,
+    scheduler: Optional[Scheduler] = None,
+    input_shapes: Optional[List[List[int]]] = None,
 ) -> BenchmarkResults:
     """
     Convenience function to benchmark a model in the DeepSparse Engine
@@ -999,15 +1048,16 @@ def benchmark_model(
 def model_debug_analysis(
     model: Union[str, "Model", "File"],
     inp: List[numpy.ndarray],
-    batch_size: int = 1,
-    num_cores: int = None,
+    batch_size: Optional[int] = 1,
+    num_cores: Optional[int] = None,
     num_iterations: int = 20,
     num_warmup_iterations: int = 5,
     optimization_level: int = 1,
     imposed_as: Optional[float] = None,
     imposed_ks: Optional[float] = None,
-    scheduler: Scheduler = None,
-    input_shapes: List[List[int]] = None,
+    scheduler: Optional[Scheduler] = None,
+    input_shapes: Optional[List[List[int]]] = None,
+    kv_cache_params: Optional[KVCacheParams] = None,
 ) -> dict:
     """
     Function to analyze a model's performance in the DeepSparse Engine.
@@ -1022,7 +1072,8 @@ def model_debug_analysis(
         object that defines the neural network graph definition to analyze
     :param inp: The list of inputs to pass to the engine for analyzing inference.
         The expected order is the inputs order as defined in the ONNX graph.
-    :param batch_size: The batch size of the inputs to be used with the model
+    :param batch_size: The batch size of the inputs to be used with the model,
+        <1 disables it.
     :param num_cores: The number of physical cores to run the model on.
         Pass None or 0 to run on the max number of cores
         for the current machine; default None
@@ -1041,7 +1092,9 @@ def model_debug_analysis(
         this desired sparsity level (percentage of 0's in the tensor).
         Beneficial for seeing how pruning affects the performance of the model.
     :param scheduler: The kind of scheduler to execute with. Pass None for the default.
-    :return: the analysis structure containing the performance details of each layer
+    :param input_shapes: Overrides input shapes, default to None (no override).
+    :param kv_cache_params: KV cache execution params, defaults to None.
+    :return: The analysis structure containing the performance details of each layer
     """
     model = DebugAnalysisEngine(
         model=model,
@@ -1054,6 +1107,7 @@ def model_debug_analysis(
         optimization_level=optimization_level,
         imposed_as=imposed_as,
         imposed_ks=imposed_ks,
+        kv_cache_params=kv_cache_params,
     )
 
     return model.analyze(inp)

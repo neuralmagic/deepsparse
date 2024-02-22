@@ -143,17 +143,6 @@ def _parse_arch_bin() -> architecture:
         raise OSError(error_msg.format(ex))
 
 
-def allow_experimental_darwin() -> bool:
-    """
-    Check if experimental Darwin support is allowed.
-    """
-    try:
-        allow = int(os.getenv("NM_ALLOW_DARWIN", "0"))
-    except ValueError:
-        allow = False
-    return allow
-
-
 def get_darwin_version() -> str:
     """
     If we are running Darwin, get the current version.  Otherwise return None.
@@ -168,7 +157,7 @@ def check_darwin_support() -> bool:
     Check if the system is running Darwin and it meets the minimum version
     requirements.
     """
-    if sys.platform.startswith("darwin") and allow_experimental_darwin():
+    if sys.platform.startswith("darwin"):
         ver = get_darwin_version()
         return StrictVersion(ver) >= StrictVersion(MINIMUM_DARWIN_VERSION)
     return False
@@ -178,11 +167,7 @@ def platform_error_msg() -> str:
     """
     Generate unsupported platform error message.
     """
-    if allow_experimental_darwin():
-        darwin_str = f" or MacOS >= {MINIMUM_DARWIN_VERSION}"
-    else:
-        darwin_str = ""
-
+    darwin_str = f" or MacOS >= {MINIMUM_DARWIN_VERSION}"
     darwin_ver = get_darwin_version()
     if darwin_ver:
         current_os = f"MacOS {darwin_ver}"
