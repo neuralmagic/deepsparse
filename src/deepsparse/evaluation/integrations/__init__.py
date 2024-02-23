@@ -24,7 +24,7 @@ def try_import_lm_evaluation_harness(raise_error=True):
         if raise_error:
             raise ImportError(
                 "Unable to import lm_eval. "
-                "To install run 'pip install lm-eval==0.4.0'"
+                "To install run 'pip install lm-eval==0.4.1'"
             )
         return False
 
