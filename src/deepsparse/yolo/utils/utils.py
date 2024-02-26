@@ -465,6 +465,8 @@ def annotate_image(
     for idx in range(len(boxes)):
         label = labels[idx]
         if scores[idx] > score_threshold:
+            if label != "person":
+                continue
             num_ppl += 1 if label == "person" else 0
             annotation_text = f"{label}: {scores[idx]:.0%}"
 
@@ -591,4 +593,4 @@ def _draw_text(
         cv2.LINE_AA,
     )
 
-    return text_size
+    return img

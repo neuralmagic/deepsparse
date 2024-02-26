@@ -27,7 +27,7 @@ from typing import Any, Callable, Iterable, Iterator, List, Optional, Tuple, Uni
 
 import numpy
 
-from deepsparse.timing import InferencePhases
+from deepsparse.utils import InferenceStages
 from sparsezoo.utils import create_dirs
 
 
@@ -387,7 +387,7 @@ def annotate(
 
     if target_fps is None and calc_fps:
         delta_time = pipeline.timer_manager.latest.stage_times(
-            InferencePhases.ENGINE_FORWARD
+            InferenceStages.ENGINE_FORWARD
         )[0]
         afps.measure(1 / delta_time)
         target_fps = afps.calculate()
