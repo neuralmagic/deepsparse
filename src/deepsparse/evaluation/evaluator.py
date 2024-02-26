@@ -56,9 +56,10 @@ def evaluate(
 
     # if target is a string, turn it into an appropriate pipeline
     # otherwise assume it is a pipeline
-    pipeline = (
-        create_pipeline(model, engine_type) if isinstance(model, (Path, str)) else model
-    )
+    if isinstance(model, (Path, str)):
+        pipeline, kwargs = create_pipeline(model, engine_type, **kwargs)
+    else:
+        pipeline = model
 
     eval_integration = EvaluationRegistry.resolve(pipeline, datasets, integration)
 

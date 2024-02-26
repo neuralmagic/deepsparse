@@ -202,11 +202,13 @@ def create_pipeline(
     :return: The initialized pipeline
     """
     engine_type = engine_type or DEEPSPARSE_ENGINE
-    return Pipeline.create(
-        task=kwargs.pop("task", "text-generation"),
-        model_path=model_path,
-        sequence_length=kwargs.pop("sequence_length", 2048),
-        engine_type=engine_type,
-        batch_size=kwargs.pop("batch_size", 1),
-        **kwargs,
+    return (
+        Pipeline.create(
+            task=kwargs.pop("task", "text-generation"),
+            model_path=model_path,
+            sequence_length=kwargs.pop("sequence_length", 2048),
+            engine_type=engine_type,
+            batch_size=kwargs.pop("batch_size", 1),
+        ),
+        kwargs,
     )
