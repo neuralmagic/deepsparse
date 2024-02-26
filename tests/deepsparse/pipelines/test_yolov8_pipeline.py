@@ -21,10 +21,11 @@ from tests.helpers import run_command
 
 @pytest.mark.smoke
 def test_yolov8_annotate(cleanup: Dict[str, List]):
+    sample_img_path = f"{os.path.dirname(__file__)}/sample_images/basilica.jpg"
     cmd = [
         "deepsparse.yolov8.annotate",
         "--source",
-        "sample_images/basilica.jpg",
+        sample_img_path,
         "--model_filepath",
         "zoo:yolov8-n-coco-base_quantized",
     ]
