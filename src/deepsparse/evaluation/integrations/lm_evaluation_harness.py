@@ -68,16 +68,16 @@ def integration_eval(
     pipeline = DeepSparseLM(pipeline=pipeline, batch_size=batch_size)
 
     datasets = datasets if isinstance(datasets, list) else [datasets]
-    task_names = [
-        utils.pattern_match(dataset, tasks.ALL_TASKS)[0] for dataset in datasets
-    ]
-    for idx, task_name in enumerate(task_names):
+    task_names = []
+    for idx, dataset in enumerate(datasets):
+        task_name = utils.pattern_match(dataset, tasks.ALL_TASKS)
         if not task_name:
             raise ValueError(
                 f"could recognize the dataset: {datasets[idx]}. Make sure "
                 "that the requested dataset is compatible with the "
                 "llm-evaluation-harness"
             )
+        task_names.extend(task_name)
 
     _LOGGER.info(f"Selected Tasks: {task_names}")
 
