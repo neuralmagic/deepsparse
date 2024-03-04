@@ -23,7 +23,7 @@ OPTIONS:
     MODEL_PATH
                         A path to an ONNX model, local directory containing ONNX model
                         (including all the auxiliary files) or a SparseZoo stub
-    -d DATASET, --dataset DATASET
+    -d DATASETS, --datasets DATASETS
                         The dataset to evaluate on. The user may pass multiple datasets
                         by passing the option multiple times.
     -i INTEGRATION, --integration INTEGRATION
@@ -58,7 +58,7 @@ EXAMPLES
 ##########
 Example command for evaluating a quantized MPT model from SparseZoo using the Deepsparse Engine.
 The evaluation will be run using `lm-evaluation-harness` on `hellaswag` and `gsm8k` datasets:
-deepsparse.eval zoo:mpt-7b-mpt_pretrain-base_quantized \
+deepsparse.evaluate zoo:mpt-7b-mpt_pretrain-base_quantized \
                 --dataset hellaswag \
                 --dataset gsm8k \
                 --integration lm-evaluation-harness \
@@ -95,7 +95,7 @@ _LOGGER = logging.getLogger(__name__)
 )
 @click.option(
     "-d",
-    "--dataset",
+    "--datasets",
     type=str,
     multiple=True,
     help="The name of dataset to evaluate on. The user may pass multiple "
@@ -163,7 +163,7 @@ _LOGGER = logging.getLogger(__name__)
 @click.argument("integration_args", nargs=-1, type=click.UNPROCESSED)
 def main(
     model_path,
-    dataset,
+    datasets,
     integration,
     engine_type,
     save_path,
@@ -173,8 +173,16 @@ def main(
     metrics,
     integration_args,
 ):
+    """
+    Evaluate MODEL_PATH on the various evaluation integrations
+
+    - MODEL_PATH can be path to an ONNX model, local directory
+    containing ONNX model (including all the auxiliary files)
+    or a SparseZoo stub
+
+    """
     # join datasets to a list if multiple datasets are passed
-    datasets = list(dataset) if not isinstance(dataset, str) else dataset
+    datasets = list(datasets) if not isinstance(datasets, str) else datasets
     # format kwargs to a  dict
     integration_args = parse_kwarg_tuples(integration_args)
 
