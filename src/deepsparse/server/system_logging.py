@@ -18,7 +18,7 @@ from os import getpid
 from typing import Any, Dict, List, Optional, Union
 
 import psutil
-from deepsparse.loggers import BaseLogger, MetricCategories, SystemGroups
+from deepsparse.legacy.loggers import BaseLogger, MetricCategories, SystemGroups
 from deepsparse.server.config import SystemLoggingConfig, SystemLoggingGroup
 from fastapi import FastAPI, Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware

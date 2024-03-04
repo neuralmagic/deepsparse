@@ -346,6 +346,11 @@ def benchmark_pipeline(
             "Generated no batch timings, try extending benchmark time with '--time'"
         )
 
+    if SupportedTasks.is_text_generation(task) or SupportedTasks.is_code_generation(
+        task
+    ):
+        kwargs.pop("middleware_manager")
+
     return batch_times, total_run_time, num_streams
 
 

@@ -17,10 +17,9 @@ from typing import Any
 from deepsparse.middlewares.middleware import MiddlewareCallable
 
 
-__all__ = ["TimerMiddleware", "IS_NESTED_KEY", "NAME_KEY"]
-
 IS_NESTED_KEY = "is_nested"
 NAME_KEY = "name"
+INFERENCE_STATE_KEY = "inference_state"
 
 
 class TimerMiddleware(MiddlewareCallable):
@@ -34,7 +33,9 @@ class TimerMiddleware(MiddlewareCallable):
         name = kwargs.get(NAME_KEY)
         is_nested = kwargs.pop(IS_NESTED_KEY, False)
 
-        inference_state = kwargs.get("inference_state")
-        timer = inference_state.timer
-        with timer.time(id=name, enabled=not is_nested):
-            return self.call_next(*args, **kwargs)
+        inference_state = kwargs.get(INFERENCE_STATE_KEY)
+        if inference_state and hasattr(inference_state, "timer"):
+            timer = inference_state.timer
+            with timer.time(id=name, enabled=not is_nested):
+                return self.call_next(*args, **kwargs)
+        return self.call_next(*args, **kwargs)
