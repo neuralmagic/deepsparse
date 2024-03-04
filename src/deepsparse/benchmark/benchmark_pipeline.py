@@ -308,45 +308,16 @@ def benchmark_pipeline(
         num_streams=num_streams,
         **kwargs,
     )
-    inputs = create_input_schema(pipeline, input_type, batch_size, config)
-
-    def _clear_measurements():
-        # Helper method to handle variations between v1 and v2 timers
-        if hasattr(pipeline.timer_manager, "clear"):
-            pipeline.timer_manager.clear()
-        else:
-            pipeline.timer_manager.measurements.clear()
-
-    if scenario == "singlestream":
-        singlestream_benchmark(pipeline, inputs, warmup_time)
-        _clear_measurements()
-        start_time = time.perf_counter()
-        singlestream_benchmark(pipeline, inputs, seconds_to_run)
-    elif scenario == "multistream":
-        multistream_benchmark(pipeline, inputs, warmup_time, num_streams)
-        _clear_measurements()
-        start_time = time.perf_counter()
-        multistream_benchmark(pipeline, inputs, seconds_to_run, num_streams)
-    elif scenario == "elastic":
-        multistream_benchmark(pipeline, inputs, warmup_time, num_streams)
-        _clear_measurements()
-        start_time = time.perf_counter()
-        multistream_benchmark(pipeline, inputs, seconds_to_run, num_streams)
-    else:
-        raise Exception(f"Unknown scenario '{scenario}'")
-
-    end_time = time.perf_counter()
-    total_run_time = end_time - start_time
-    if hasattr(pipeline.timer_manager, "all_times"):
-        batch_times = pipeline.timer_manager.all_times
-    else:
-        batch_times = pipeline.timer_manager.measurements
-    if len(batch_times) == 0:
-        raise Exception(
-            "Generated no batch timings, try extending benchmark time with '--time'"
-        )
-
-    return batch_times, total_run_time, num_streams
+    return run(
+        pipeline,
+        input_type,
+        batch_size,
+        config,
+        warmup_time,
+        seconds_to_run,
+        num_streams,
+        scenario,
+    )
 
 
 def calculate_statistics(
@@ -421,6 +392,28 @@ def benchmark_from_pipeline(
         data_type=data_type,
         **kwargs,
     )
+    return run(
+        pipeline,
+        input_type,
+        batch_size,
+        config,
+        warmup_time,
+        seconds_to_run,
+        num_streams,
+        scenario,
+    )
+
+
+def run(
+    pipeline: Pipeline,
+    input_type: str,
+    batch_size: int,
+    config: PipelineBenchmarkConfig,
+    warmup_time: int,
+    seconds_to_run: int,
+    num_streams: int,
+    scenario: str,
+):
     inputs = create_input_schema(pipeline, input_type, batch_size, config)
 
     def _clear_measurements():
