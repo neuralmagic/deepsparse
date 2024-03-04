@@ -62,10 +62,10 @@ def pipeline_target():
 
 
 def test_initialize_model_from_target_pipeline_onnx(pipeline_target):
-    model = create_pipeline(pipeline_target, "onnxruntime")
+    model, _ = create_pipeline(pipeline_target, "onnxruntime")
     assert model.ops.get("single_engine")._engine_type == "onnxruntime"
 
 
 def test_initialize_model_from_target_pipeline_with_kwargs(pipeline_target):
-    model = create_pipeline(pipeline_target, "deepsparse", sequence_length=64)
+    model, _ = create_pipeline(pipeline_target, "deepsparse", sequence_length=64)
     assert model.ops.get("process_input").sequence_length == 64
