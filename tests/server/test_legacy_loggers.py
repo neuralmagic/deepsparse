@@ -16,6 +16,7 @@ import shutil
 from collections import Counter
 from unittest import mock
 
+import pytest
 from deepsparse.legacy.loggers import PythonLogger
 from deepsparse.legacy.loggers.config import (
     PipelineSystemLoggingConfig,
@@ -30,7 +31,6 @@ from deepsparse.server.config import (
 from deepsparse.server.deepsparse_server import DeepsparseServer
 from deepsparse.server.helpers import server_logger_from_config
 from fastapi.testclient import TestClient
-from flaky import flaky
 from tests.deepsparse.legacy.loggers.helpers import fetch_leaf_logger
 from tests.helpers import find_free_port
 from tests.test_data.server_test_data import SAMPLE_LOGS_DICT
@@ -106,7 +106,7 @@ def test_data_logging_from_predefined():
         assert log == expected_log
 
 
-@flaky(max_runs=4, min_passes=3)
+@pytest.mark.flaky(reruns=4, min_passes=3)
 def test_logging_only_system_info():
     server_config = ServerConfig(
         endpoints=[EndpointConfig(task=task, name=name, model=stub)],
@@ -195,7 +195,7 @@ def test_multiple_targets_logging():
     )
 
 
-@flaky(max_runs=3, min_passes=2)
+@pytest.mark.flaky(reruns=3, min_passes=2)
 def test_function_metric_with_target_loggers():
     server_config = ServerConfig(
         endpoints=[
