@@ -99,7 +99,7 @@ _dev_deps = [
     "black==22.12.0",
     "flake8>=3.8.3",
     "isort>=5.7.0",
-    "flaky~=3.7.0",
+    "pytest-rerunfailures>=13.0",
     "ndjson>=0.3.1",
     "wheel>=0.36.2",
     "pytest>=6.0.0",
