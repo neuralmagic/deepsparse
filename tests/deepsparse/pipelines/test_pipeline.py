@@ -16,7 +16,6 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 from unittest import mock
 
-import flaky
 import pytest
 from deepsparse.legacy.base_pipeline import BasePipeline
 
@@ -125,7 +124,7 @@ def test_pipeline_executor_num_workers():
     assert executor._max_workers >= 1
 
 
-@flaky.flaky(max_runs=2, min_passes=1)
+@pytest.mark.flaky(reruns=2, min_passes=1)
 @mock_engine(rng_seed=0)
 def test_pipeline_call_is_async(engine_mock):
     # attempts to verify that pipeline calls to engine are async
