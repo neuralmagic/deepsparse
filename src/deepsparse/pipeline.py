@@ -499,6 +499,16 @@ class Pipeline(Operator):
         elif isinstance(router_validation, str):
             raise ValueError(f"Invalid Router for operators: {router_validation}")
 
+        if (
+            self.middleware_manager is not None
+            and self._continuous_batching_scheduler is not None
+        ):
+            _LOGGER.warning(
+                "Middleware is yet to be supported using continous batching scheduler. "
+                "Either remove middleware or remove continous batching scheduler "
+                "in the instantiation of the Pipeline class"
+            )
+
     def run_func(
         self,
         *args,

@@ -17,6 +17,7 @@ from concurrent.futures import ThreadPoolExecutor
 from functools import partial
 
 from deepsparse import Pipeline
+from deepsparse.middlewares import MiddlewareManager, MiddlewareSpec, TimerMiddleware
 from deepsparse.server.config import EndpointConfig
 from deepsparse.server.server import CheckReady, ModelMetaData, ProxyPipeline, Server
 from deepsparse.tasks import SupportedTasks
@@ -101,6 +102,11 @@ class DeepsparseServer(Server):
 
         _LOGGER.info(f"Adding endpoints for '{endpoint_config.name}'")
         self._add_inference_endpoints(
+            app,
+            endpoint_config,
+            pipeline,
+        )
+        self._add_benchmark_endpoints(
             app,
             endpoint_config,
             pipeline,
@@ -198,4 +204,67 @@ class DeepsparseServer(Server):
             response_model=response_model,
             methods=["POST"],
             tags=["model", "inference"],
+        )
+
+    def _add_benchmark_endpoints(
+        self,
+        app: FastAPI,
+        endpoint_config: EndpointConfig,
+        pipeline: Pipeline,
+    ):
+        if not hasattr(pipeline, "middleware_mamanger"):
+            pipeline.middleware_manager = MiddlewareManager()
+        if TimerMiddleware not in pipeline.middleware_manager.middlewares:
+            pipeline.middleware_manager.add_middleware(
+                [MiddlewareSpec(TimerMiddleware)]
+            )
+
+        routes_and_fns = []
+        if endpoint_config.route:
+            endpoint_config.route = self.clean_up_route(endpoint_config.route)
+            route = f"/v2/models{endpoint_config.route}/benchmark"
+        else:
+            route = f"/v2/models/{endpoint_config.name}/benchmark"
+
+        routes_and_fns.append(
+            (
+                route,
+                partial(
+                    Server.benchmark,
+                    ProxyPipeline(pipeline),
+                    self.server_config.system_logging,
+                ),
+            )
+        )
+
+        legacy_pipeline = not isinstance(pipeline, Pipeline) and hasattr(
+            pipeline.input_schema, "from_files"
+        )
+        # New pipelines do not have to have an input_schema. Just checking task
+        # names for now but can keep a list of supported from_files tasks in
+        # SupportedTasks as more pipelines are migrated as well as output schemas.
+        new_pipeline = SupportedTasks.is_image_classification(endpoint_config.task)
+
+        if legacy_pipeline or new_pipeline:
+            routes_and_fns.append(
+                (
+                    route + "/from_files",
+                    partial(
+                        Server.predict_from_files,
+                        ProxyPipeline(pipeline),
+                        self.server_config.system_logging,
+                    ),
+                )
+            )
+        if isinstance(pipeline, Pipeline):
+            response_model = None
+        else:
+            response_model = pipeline.output_schema
+
+        self._update_routes(
+            app=app,
+            routes_and_fns=routes_and_fns,
+            response_model=response_model,
+            methods=["POST"],
+            tags=["model", "pipeline"],
         )
