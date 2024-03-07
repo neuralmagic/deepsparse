@@ -199,7 +199,7 @@ def create_pipeline(
         text generation model from. This can be a local
         or remote path to the model or a sparsezoo stub
     :param engine_type: The engine type to initialize the model with.
-    :return: The initialized pipeline
+    :return: The initialized pipeline and the mutated (potentially reduced number of) kwargs
     """
     engine_type = engine_type or DEEPSPARSE_ENGINE
     return (
