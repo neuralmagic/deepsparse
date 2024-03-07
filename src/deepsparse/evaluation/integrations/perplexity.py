@@ -34,6 +34,7 @@ from deepsparse.transformers.utils.eval_helpers import (
     HumanEvalIteratorWrapper,
     process_concatenated_datasets,
 )
+from deepsparse.transformers.utils.helpers import prepends_bos_token
 
 
 """
@@ -165,6 +166,7 @@ def run_perplexity(
                     return_input_tokens=True,
                 )
             else:
+                print(len(pipeline.tokenizer(batch[0]).input_ids))
                 out = pipeline(
                     prompt=batch,
                     output_scores=True,
@@ -252,7 +254,15 @@ def load_perplexity_dataset(
         # fetch max_sequence_length from pipeline if not provided
         max_sequence_length = kwargs.pop("max_sequence_length", None)
         if max_sequence_length is None and pipeline is not None:
-            max_sequence_length = pipeline.sequence_length
+            # max_sequence_length for the dataset concatenation needs to be
+            # smaller than the kv_cache.capacity
+            # (pipeline.sequence_length - pipeline.prompt_sequence_length)
+            max_sequence_length = (
+                pipeline.sequence_length - pipeline.prompt_sequence_length - 1
+            )
+            # account for potential additional BOS token
+            breakpoint()
+            max_sequence_length -= prepends_bos_token(pipeline.tokenizer)
 
         # fetch model_path from pipeline if not provided
         model_path = kwargs.pop("model_path", None)

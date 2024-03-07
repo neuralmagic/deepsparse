@@ -135,3 +135,7 @@ class TextGenerationPipelineNoCache(Pipeline):
     @property
     def engine_type(self) -> str:
         return self.ops["engine_operator"]._engine_type
+
+    @property
+    def prompt_sequence_length(self) -> int:
+        return 1
