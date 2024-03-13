@@ -20,9 +20,10 @@ Usage: deepsparse.eval [OPTIONS] [INTEGRATION_ARGS]...
   Module for evaluating models on the various evaluation integrations
 
 OPTIONS:
-    --target TARGET     A path to a remote or local directory containing ONNX/torch model
+    MODEL_PATH
+                        A path to an ONNX model, local directory containing ONNX model
                         (including all the auxiliary files) or a SparseZoo stub
-    -d DATASET, --dataset DATASET
+    -d DATASETS, --datasets DATASETS
                         The dataset to evaluate on. The user may pass multiple datasets
                         by passing the option multiple times.
     -i INTEGRATION, --integration INTEGRATION
@@ -30,9 +31,7 @@ OPTIONS:
                         integration name that is registered in the evaluation registry
     -e ENGINE_TYPE, --engine_type ENGINE_TYPE
                         Inference engine to use for the evaluation. The default
-                        is the DeepSparse engine. If the evaluation should be run
-                        without initializing a pipeline (e.g. for the evaluation
-                        of a torch model), the engine type should be set to None
+                        is the DeepSparse engine.
     -s SAVE_PATH, --save_path SAVE_PATH
                         The path to save the evaluation results.
                         By default the results will be saved in the
@@ -59,7 +58,7 @@ EXAMPLES
 ##########
 Example command for evaluating a quantized MPT model from SparseZoo using the Deepsparse Engine.
 The evaluation will be run using `lm-evaluation-harness` on `hellaswag` and `gsm8k` datasets:
-deepsparse.eval zoo:mpt-7b-mpt_pretrain-base_quantized \
+deepsparse.evaluate zoo:mpt-7b-mpt_pretrain-base_quantized \
                 --dataset hellaswag \
                 --dataset gsm8k \
                 --integration lm-evaluation-harness \
@@ -73,7 +72,7 @@ import click
 
 from deepsparse.evaluation.evaluator import evaluate
 from deepsparse.evaluation.results import Result, save_result
-from deepsparse.evaluation.utils import args_to_dict, get_save_path
+from deepsparse.evaluation.utils import get_save_path, parse_kwarg_tuples
 from deepsparse.operators.engine_operator import (
     DEEPSPARSE_ENGINE,
     ORT_ENGINE,
@@ -89,16 +88,14 @@ _LOGGER = logging.getLogger(__name__)
         ignore_unknown_options=True,
     )
 )
-@click.option(
-    "--target",
+@click.argument(
+    "model_path",
     type=click.Path(dir_okay=True, file_okay=True),
     required=True,
-    help="A path to a remote or local directory containing ONNX/torch model "
-    "(including all the auxiliary files) or a SparseZoo stub",
 )
 @click.option(
     "-d",
-    "--dataset",
+    "--datasets",
     type=str,
     multiple=True,
     help="The name of dataset to evaluate on. The user may pass multiple "
@@ -118,9 +115,7 @@ _LOGGER = logging.getLogger(__name__)
     type=click.Choice([DEEPSPARSE_ENGINE, ORT_ENGINE, TORCHSCRIPT_ENGINE]),
     default=DEEPSPARSE_ENGINE,
     help="The engine to use for the evaluation. The default is the "
-    "DeepSparse engine. If the evaluation should be run without "
-    "initializing a pipeline (e.g. for the evaluation of a torch "
-    "model), the engine type should be set to None",
+    "DeepSparse engine. ",
 )
 @click.option(
     "-s",
@@ -167,8 +162,8 @@ _LOGGER = logging.getLogger(__name__)
 )
 @click.argument("integration_args", nargs=-1, type=click.UNPROCESSED)
 def main(
-    target,
-    dataset,
+    model_path,
+    datasets,
     integration,
     engine_type,
     save_path,
@@ -178,19 +173,22 @@ def main(
     metrics,
     integration_args,
 ):
-    # join datasets to a list if multiple datasets are passed
-    datasets = list(dataset) if not isinstance(dataset, str) else dataset
-    # format kwargs to a  dict
-    integration_args = args_to_dict(integration_args)
+    """
+    Evaluate MODEL_PATH on the various evaluation integrations
 
-    _LOGGER.info(f"Target to evaluate: {target}")
-    if engine_type:
-        _LOGGER.info(f"A pipeline with the engine type: {engine_type} will be created")
-    else:
-        _LOGGER.info(
-            "No engine type specified. The target "
-            "will be evaluated using the native framework"
-        )
+    - MODEL_PATH can be path to an ONNX model, local directory
+    containing ONNX model (including all the auxiliary files)
+    or a SparseZoo stub
+
+    """
+    # join datasets to a list if multiple datasets are passed
+    datasets = list(datasets) if not isinstance(datasets, str) else datasets
+    # format kwargs to a  dict
+    integration_args = parse_kwarg_tuples(integration_args)
+
+    _LOGGER.info(
+        f"Creating {engine_type} pipeline to evaluate from model path: {model_path}"
+    )
 
     _LOGGER.info(
         f"Datasets to evaluate on: {datasets}\n"
@@ -201,7 +199,7 @@ def main(
     )
 
     result: Result = evaluate(
-        target=target,
+        model=model_path,
         datasets=datasets,
         integration=integration,
         engine_type=engine_type,
@@ -211,7 +209,7 @@ def main(
         **integration_args,
     )
 
-    _LOGGER.info(f"Evaluation done. Results:\n{result}")
+    _LOGGER.info(f"Evaluation done. Results:\n{result.formatted}")
 
     save_path = get_save_path(
         save_path=save_path,

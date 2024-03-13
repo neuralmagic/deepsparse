@@ -83,3 +83,37 @@ class PipelineBenchmarkConfig(BaseModel):
         default={},
         description=("Additional arguments passed to input schema creations "),
     )
+
+
+class PipelineBenchmarkServerConfig(PipelineBenchmarkConfig):
+    batch_size: int = Field(
+        default=1,
+        description="The batch size of the inputs to be used with the engine",
+    )
+    seconds_to_run: int = Field(
+        default=10,
+        description="The number of seconds to run benchmark for",
+    )
+    warmup_time: int = Field(
+        default=2,
+        description="The length to run pipeline before beginning benchmark",
+    )
+    thread_pinning: str = Field(
+        default="core",
+        description="To enable binding threads to cores",
+    )
+    scenario: str = Field(
+        default="sync",
+        description=(
+            "`BenchmarkScenario` object with specification for running "
+            "benchmark on an onnx model"
+        ),
+    )
+    num_streams: int = Field(
+        default=1,
+        description=(
+            " The max number of requests the model can handle "
+            "concurrently. None or 0 implies a scheduler-defined default value; "
+            "default None"
+        ),
+    )

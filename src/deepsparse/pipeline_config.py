@@ -73,6 +73,10 @@ class PipelineConfig(BaseModel):
             "with multiple models. Default is None"
         ),
     )
+    middlewares: Optional[List[str]] = Field(
+        default=None,
+        description="Middlewares to use",
+    )
     kwargs: Optional[Dict[str, Any]] = Field(
         default={},
         description=(

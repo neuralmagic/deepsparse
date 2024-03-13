@@ -15,7 +15,7 @@
 # flake8: noqa: F401
 
 
-def try_import_lm_evaluation_harness(raise_error=False):
+def try_import_lm_evaluation_harness(raise_error=True):
     try:
         import lm_eval
 
@@ -24,11 +24,11 @@ def try_import_lm_evaluation_harness(raise_error=False):
         if raise_error:
             raise ImportError(
                 "Unable to import lm_eval. "
-                "To install run 'pip install "
-                "git+https://github.com/EleutherAI/lm-evaluation-harness@b018a7d51'"
+                "To install run 'pip install lm-eval==0.4.1'"
             )
         return False
 
 
 if try_import_lm_evaluation_harness(raise_error=False):
     from .lm_evaluation_harness import *
+from .perplexity import *

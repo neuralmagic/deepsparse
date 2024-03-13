@@ -14,13 +14,20 @@
 import logging
 import pathlib
 import uuid
+from dataclasses import asdict
+from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 import numpy
 import onnx
 from transformers import AutoTokenizer, GenerationConfig
 
-from deepsparse.utils.onnx import CACHE_INPUT_PREFIX, CACHE_OUTPUT_PREFIX
+from deepsparse.transformers.schemas.text_generation_schemas import GenerationDefaults
+from deepsparse.utils.onnx import (
+    CACHE_INPUT_PREFIX,
+    CACHE_OUTPUT_PREFIX,
+    default_cached_outputs,
+)
 
 
 __all__ = [
@@ -37,9 +44,25 @@ __all__ = [
     "compute_engine_inputs",
     "set_generated_length",
     "causal_mask_input_present",
+    "verify_kv_cache_present",
 ]
 
 _LOGGER = logging.getLogger(__name__)
+
+
+def verify_kv_cache_present(model_path: Union[str, Path]) -> bool:
+    """
+    Verifies whether the ONNX model has
+    KV cache inputs/outputs present.
+    :return: True if compatible, False otherwise
+    """
+    is_kv_cache_present = any(default_cached_outputs(model_path))
+    if not is_kv_cache_present:
+        _LOGGER.debug(
+            f"The model: {model_path} has KV cache inputs/outputs present. "
+            "Please use the TextGenerationPipeline instead."
+        )
+    return is_kv_cache_present
 
 
 def causal_mask_input_present(model_path: str) -> bool:
@@ -81,8 +104,10 @@ def set_generated_length(
     :param max_new_tokens: the max_new_tokens attribute, which may be provided
     as part of the input during inference
     """
-    if max_length:
+    if max_length is not None:
         # if max_length provided, use that to cap total tokens generated
+        if max_length == 0:
+            raise ValueError("max_length must be greater than 0")
         max_tokens = max_length
         finish_reason = finish_reason_choices.LENGTH
     else:
@@ -325,8 +350,18 @@ def process_generation_config(
     if not generation_config:
         return None
 
+    # Create a generation config object
+    deepsparse_defaults = GenerationDefaults()
+    # override with deepsparse defaults
+    deepsparse_default_gen_config = GenerationConfig.from_dict(
+        asdict(deepsparse_defaults)
+    )
+
+    # Override with any defaults provided by the user in the form of a dictionary
     if isinstance(generation_config, dict):
-        return GenerationConfig.from_dict(generation_config)
+        for k, v in generation_config.items():
+            setattr(deepsparse_default_gen_config, k, v)
+        return deepsparse_default_gen_config
 
     if isinstance(generation_config, (str, pathlib.Path)):
         generation_config = pathlib.Path(generation_config)

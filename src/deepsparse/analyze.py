@@ -24,14 +24,18 @@ from deepsparse import model_debug_analysis
 from deepsparse.benchmark.benchmark_model import benchmark_model
 from deepsparse.utils import generate_random_inputs, model_to_path
 from sparsezoo import convert_to_bool
-from sparsezoo.analyze import (
+from sparsezoo.analyze_v1 import (
     BenchmarkResult,
     BenchmarkScenario,
     ImposedSparsificationInfo,
     ModelAnalysis,
     NodeInferenceResult,
 )
-from sparsezoo.analyze.cli import analyze_options, analyze_performance_options
+from sparsezoo.analyze_v1.cli import (
+    DEEPSPARSE_ENGINE,
+    analyze_options,
+    analyze_performance_options,
+)
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -74,21 +78,11 @@ def main(
             )
 
     _LOGGER.info("Starting Analysis ...")
-    analysis = ModelAnalysis.create(model_path)
-    _LOGGER.info("Analysis complete, collating results...")
-    scenario = BenchmarkScenario(
-        batch_size=batch_size_throughput,
-        num_cores=None,
-        engine=benchmark_engine,
-    )
-    performance_summary = run_benchmark_and_analysis(
-        onnx_model=model_to_path(model_path),
-        scenario=scenario,
-    )
+    analysis = analyze(model_path, batch_size_throughput, benchmark_engine)
+
     by_types: bool = convert_to_bool(by_types)
     by_layers: bool = convert_to_bool(by_layers)
 
-    analysis.benchmark_results = [performance_summary]
     summary = analysis.summary(
         by_types=by_types,
         by_layers=by_layers,
@@ -103,13 +97,9 @@ def main(
 
         print("Comparison Analysis:")
         for model_to_compare in compare:
-            compare_model_analysis = ModelAnalysis.create(model_to_compare)
-            _LOGGER.info(f"Running Performance Analysis on {model_to_compare}")
-            performance_summary = run_benchmark_and_analysis(
-                onnx_model=model_to_path(model_to_compare),
-                scenario=scenario,
+            compare_model_analysis = analyze(
+                model_to_compare, batch_size_throughput, benchmark_engine
             )
-            compare_model_analysis.benchmark_results = [performance_summary]
             summary_comparison_model = compare_model_analysis.summary(
                 by_types=by_types,
                 by_layers=by_layers,
@@ -122,6 +112,34 @@ def main(
     if save:
         _LOGGER.info(f"Writing results to {save}")
         analysis.yaml(file_path=save)
+
+
+def analyze(
+    model_path,
+    batch_size_throughput: int = 1,
+    benchmark_engine: str = DEEPSPARSE_ENGINE,
+) -> ModelAnalysis:
+    """
+    :param model_path: Local filepath to an ONNX model, or a SparseZoo stub
+    :param batch_size_throughput: Batch size for throughput benchmark
+    :param benchmark_engine: Benchmark engine to use, can be 'deepsparse' or
+        'onnxruntime', defaults to 'deepsparse'
+    :return: A `ModelAnalysis` object encapsulating the results of the analysis
+    """
+    analysis = ModelAnalysis.create(model_path)
+    _LOGGER.info("Analysis complete, collating results...")
+    scenario = BenchmarkScenario(
+        batch_size=batch_size_throughput,
+        num_cores=None,
+        engine=benchmark_engine,
+    )
+    performance_summary = run_benchmark_and_analysis(
+        onnx_model=model_to_path(model_path),
+        scenario=scenario,
+    )
+
+    analysis.benchmark_results = [performance_summary]
+    return analysis
 
 
 def run_benchmark_and_analysis(

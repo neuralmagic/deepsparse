@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import List, Mapping, Union
+from typing import List, Union
 
 import numpy
 from transformers import AutoTokenizer, PreTrainedTokenizerFast
@@ -27,7 +27,8 @@ def process_concatenated_datasets(
     dataset_name: str,
     model_path: str,
     max_sequence_length: int,
-    kwargs: Mapping,
+    split: str = "test",
+    **kwargs,
 ) -> list:
     """
     Concatenate text datasets and split them into chunks text that, after
@@ -38,6 +39,8 @@ def process_concatenated_datasets(
             Options: "wikitext2" or "c4".
         model_path (str): The path to a pretrained transformer model for tokenization.
         max_sequence_length (int): The maximum number of tokens in each sequence.
+        split (str, optional): The split of the dataset to use.
+            Default is "test".
         kwargs (mapping): Additional keyword arguments.
             - eos (str, optional): The end-of-sentence token.
                 Default is "\n\n" for wikitext2 and "" for c4.
@@ -65,13 +68,13 @@ def process_concatenated_datasets(
         eos = kwargs.get("eos", "\n\n")
         bos = kwargs.get("bos", "")
 
-        raw_dataset = load_dataset("wikitext", "wikitext-2-raw-v1", split="test")
+        raw_dataset = load_dataset("wikitext", "wikitext-2-raw-v1", split=split)
         raw_text = raw_dataset["text"]
     elif dataset_name == "c4":
         eos = kwargs.get("eos", "<|endoftext|>")
         bos = kwargs.get("bos", "")
         raw_samples = kwargs.get("raw_samples", None)
-        data_file = kwargs.get("data_file", 0)
+        data_file = kwargs.get("data_file", None)
         if data_file is not None:
             raw_dataset = load_dataset(
                 "allenai/c4",
@@ -79,13 +82,13 @@ def process_concatenated_datasets(
                 data_files={
                     "validation": f"en/c4-validation.{data_file:05d}-of-00008.json.gz"
                 },
-                split="validation",
+                split=split,
             )
         else:
             raw_dataset = load_dataset(
                 "allenai/c4",
                 "allenai--c4",
-                split="validation",
+                split=split,
             )
         if raw_samples is not None:
             raw_dataset = raw_dataset[:raw_samples]
@@ -181,3 +184,22 @@ def _split_text_by_tokens(
         )
 
     return split_text
+
+
+class HumanEvalIteratorWrapper:
+    """
+    Wrapper around the `openai_humaneval` dataset,
+    that joins the prompt and the canonical solution
+    into a single string during iteration.
+    """
+
+    def __init__(self, dataset):
+        self.iterator = iter(dataset)
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        # Get the next sample from the original iterator
+        sample = next(self.iterator)
+        return sample["prompt"] + sample["canonical_solution"]

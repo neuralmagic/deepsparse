@@ -20,7 +20,7 @@ from pydantic import BaseModel, Field
 
 from deepsparse.clip import CLIPTextInput, CLIPVisualInput
 from deepsparse.legacy.pipeline import BasePipeline, Pipeline
-from scipy.special import softmax
+from deepsparse.utils import numpy_softmax
 
 
 __all__ = ["CLIPZeroShotInput", "CLIPZeroShotOutput", "CLIPZeroShotPipeline"]
@@ -103,7 +103,7 @@ class CLIPZeroShotPipeline(BasePipeline):
         text_output /= lingalg.norm(text_output, axis=-1, keepdims=True)
 
         output_product = 100.0 * visual_output @ text_output.T
-        text_probs = softmax(output_product, axis=-1)
+        text_probs = numpy_softmax(output_product, axis=-1)
 
         return self.output_schema(text_scores=np.vsplit(text_probs, len(text_probs)))
 

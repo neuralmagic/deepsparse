@@ -11,6 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import numpy
+from transformers import AutoTokenizer
+
 import pytest
 from deepsparse import Pipeline
 from deepsparse.server.config import EndpointConfig, ServerConfig
@@ -21,14 +24,18 @@ from deepsparse.server.openai_server import (
     ModelPermission,
     OpenAIServer,
 )
+from deepsparse.utils import numpy_softmax
 from fastapi.testclient import TestClient
+
+
+TEST_MODEL_ID = "hf:mgoin/TinyStories-1M-ds"
 
 
 @pytest.fixture(scope="module")
 def endpoint_config():
     endpoint = EndpointConfig(
         task="text_generation",
-        model="hf:mgoin/TinyStories-1M-ds",
+        model=TEST_MODEL_ID,
     )
     return endpoint
 
@@ -172,3 +179,74 @@ def test_completions(client, model_card):
         == 'a was very happy and thanked the man. He said, "Thank you, Sara. You are a '
         + 'good friend."\n\nSara smiled and'
     )
+
+
+def test_completions_tokenized(client, model_card):
+    prompt = "The Boston Bruins are "
+    max_tokens = 30
+
+    # Test both passing in input_ids itself as a List[int],
+    # and inside of a "batch" as a List[List[int]]
+    # TODO: Multiple prompts/batching isn't supported yet
+    prefix = "hf:"
+    tokenizer = AutoTokenizer.from_pretrained(TEST_MODEL_ID[len(prefix) :])
+    input_ids = tokenizer(prompt).input_ids
+    num_prompt_tokens = len(input_ids)
+
+    # Testing both passing in a single prompt tokenized, and it wrapped in a list
+    for prompt in [input_ids, [input_ids]]:
+        request = CompletionRequest(
+            prompt=prompt, max_tokens=max_tokens, model=model_card.id
+        )
+        response = client.post("/v1/completions", json=request.dict())
+        assert response.status_code == 200
+
+        usage = response.json()["usage"]
+        assert usage["prompt_tokens"] == num_prompt_tokens
+        assert usage["prompt_tokens"] == 5
+        assert usage["completion_tokens"] == max_tokens
+        assert (
+            usage["total_tokens"] == usage["prompt_tokens"] + usage["completion_tokens"]
+        )
+
+        assert (
+            response.json()["choices"][0]["text"]
+            == 'a was very happy and thanked the man. He said, "Thank you, Sara. '
+            + 'You are a good friend."\n\nSara smiled and'
+        )
+
+
+def test_logprobs(client, model_card):
+    max_tokens = 30
+    prompt = "The Boston Bruins are "
+    request = CompletionRequest(
+        prompt=prompt,
+        max_tokens=max_tokens,
+        model=model_card.id,
+        logprobs=1,
+    )
+    response = client.post("/v1/completions", json=request.dict())
+    assert response.status_code == 200
+
+    usage = response.json()["usage"]
+    assert usage["prompt_tokens"] == 5
+    assert usage["completion_tokens"] == max_tokens
+    assert usage["total_tokens"] == usage["prompt_tokens"] + usage["completion_tokens"]
+
+    expected_response = (
+        'a was very happy and thanked the man. He said, "Thank you, '
+        'Sara. You are a good friend."\n\nSara smiled and'
+    )
+    assert response.json()["choices"][0]["text"] == expected_response
+
+    # Ensure that local pipeline produces the same text and logprobs
+    local_model = Pipeline.create(task="text-generation", model=model_card.id)
+    output = local_model(prompt=prompt, max_length=max_tokens, output_scores=True)
+    assert output.generations[0].text == expected_response
+
+    for local_gen, server_gen in zip(output.generations, response.json()["choices"]):
+        local_top1_logprobs = [
+            numpy.log(max(numpy_softmax(logits))) for logits in local_gen.score
+        ]
+        server_top1_logprobs = server_gen["logprobs"]["token_logprobs"]
+        assert numpy.allclose(local_top1_logprobs, server_top1_logprobs)

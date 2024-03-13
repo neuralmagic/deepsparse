@@ -16,7 +16,6 @@ import logging
 import os
 from abc import abstractmethod
 from collections import Counter
-from concurrent.futures import ThreadPoolExecutor
 from copy import deepcopy
 from typing import AsyncGenerator, List, Optional, Union
 
@@ -24,6 +23,8 @@ import yaml
 from pydantic import BaseModel
 
 import uvicorn
+from deepsparse.benchmark.benchmark_pipeline import benchmark_from_pipeline
+from deepsparse.benchmark.config import PipelineBenchmarkConfig
 from deepsparse.engine import Context
 from deepsparse.pipeline import Pipeline
 from deepsparse.server.config import ServerConfig, SystemLoggingConfig
@@ -76,10 +77,11 @@ class Server:
             self.server_config = server_config
 
         _LOGGER.info(f"Using config: {repr(self.server_config)}")
-
-        self.context = None
-        self.executor = None
         self.server_logger = server_logger_from_config(self.server_config)
+        self.context = Context(
+            num_cores=self.server_config.num_cores,
+            num_streams=self.server_config.num_workers,
+        )
 
     def start_server(
         self,
@@ -108,12 +110,6 @@ class Server:
             _ = start_config_watcher(
                 self.config_path, f"http://{host}:{port}/endpoints", 0.5
             )
-
-        self.context = Context(
-            num_cores=self.server_config.num_cores,
-            num_streams=self.server_config.num_workers,
-        )
-        self.executor = ThreadPoolExecutor(max_workers=self.context.num_streams)
 
         app = self._build_app()
 
@@ -273,6 +269,20 @@ class Server:
             _LOGGER.debug(f"Logging failed, {e}")
 
         return prep_for_serialization(pipeline_outputs)
+
+    @staticmethod
+    async def benchmark(
+        proxy_pipeline: ProxyPipeline,
+        system_logging_config: SystemLoggingConfig,
+        raw_request: Request,
+    ):
+        json_params = await raw_request.json()
+        benchmark_config = PipelineBenchmarkConfig(**json_params)
+        results = benchmark_from_pipeline(
+            pipeline=proxy_pipeline.pipeline, **benchmark_config.dict()
+        )
+
+        return results
 
     @staticmethod
     async def predict_from_files(

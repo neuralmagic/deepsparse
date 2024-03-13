@@ -17,6 +17,7 @@ import os
 from pathlib import Path
 from typing import Any, AsyncGenerator, Callable, Dict, Generator, List, Optional, Union
 
+from deepsparse.loggers.logger_manager import LoggerManager
 from deepsparse.middlewares import IS_NESTED_KEY, NAME_KEY, MiddlewareManager
 from deepsparse.operators import EngineOperator, Operator
 from deepsparse.pipeline_config import PipelineConfig
@@ -27,6 +28,7 @@ from deepsparse.schedulers import (
     SchedulerGroup,
 )
 from deepsparse.subgraph_execute import SubGraphExecutor
+from deepsparse.tasks import SupportedTasks
 from deepsparse.utils import InferenceState, PipelineState
 from deepsparse.utils.subgraph import SubGraph
 from deepsparse.utils.time import TIMER_KEY, InferenceStages, TimerManager
@@ -82,6 +84,7 @@ class Pipeline(Operator):
         pipeline_state: Optional[PipelineState] = None,
         middleware_manager: Optional[MiddlewareManager] = None,
         timer_manager: Optional[TimerManager] = None,
+        logger_manager: Optional[LoggerManager] = None,
         benchmark: bool = False,
     ):
 
@@ -93,6 +96,7 @@ class Pipeline(Operator):
         self._continuous_batching_scheduler = continuous_batching_scheduler
         self.middleware_manager = middleware_manager
         self.timer_manager = timer_manager or TimerManager()
+        self.logger_manager = logger_manager or LoggerManager()
         self.validate()
 
         self._scheduler_group = SchedulerGroup(self.schedulers)
@@ -139,7 +143,10 @@ class Pipeline(Operator):
                     "Pipeline was not created for the given task. The "
                     "provided task should be registered using the OperatorRegistry"
                 )
-        except Exception:
+        except Exception as e:
+            if SupportedTasks.is_text_generation(task):
+                raise e
+
             _LOGGER.warning(f"Could not create v2 '{task}' pipeline, trying legacy")
             from deepsparse.legacy import Pipeline
 
@@ -195,6 +202,11 @@ class Pipeline(Operator):
         ):
             timer = self.timer_manager.get_new_timer()
             inference_state.set_timer(timer)
+        if (
+            not hasattr(inference_state, "logger")
+            or getattr(inference_state, "logger") is None
+        ):
+            inference_state.set_logger(self.logger_manager.metric)
 
         with inference_state.time(id=InferenceStages.TOTAL_INFERENCE):
             while next_step != self.router.END_ROUTE:
@@ -206,6 +218,7 @@ class Pipeline(Operator):
                         operator_output=operator_output,
                         inference_state=inference_state,
                         next_step=next_step,
+                        loop=loop,
                     )
 
                 # Non Streaming/Generator pathway
@@ -269,7 +282,6 @@ class Pipeline(Operator):
 
         :param inference_state: inference_state for the pipeline.
         """
-
         next_step = self.router.START_ROUTE
         operator_output = None
         while next_step != self.router.END_ROUTE:
@@ -369,6 +381,7 @@ class Pipeline(Operator):
         operator_output: Any,
         inference_state: InferenceState,
         next_step: str,
+        loop: asyncio.AbstractEventLoop,
     ) -> AsyncGenerator:
 
         """
@@ -399,7 +412,7 @@ class Pipeline(Operator):
                 ]
 
             async for output in self._apply_split_generation_async(
-                operator_output, inference_state, step, end
+                operator_output, inference_state, step, end, loop
             ):
                 output_to_yield, next_step, operator_output, inference_state = output
                 yield output_to_yield
@@ -424,13 +437,13 @@ class Pipeline(Operator):
             inference_state = kwargs.pop("inference_state")
         else:
             inference_state = InferenceState()
-            if self.timer_manager is not None:
-                timer = self.timer_manager.get_new_timer()
             inference_state.create_state({})
-            inference_state.set_timer(timer)
 
             timer = self.timer_manager.get_new_timer()
             inference_state.set_timer(timer)
+
+            inference_state.set_logger(self.logger_manager.metric)
+
             is_nested = False
 
         kwargs["inference_state"] = inference_state
@@ -485,6 +498,16 @@ class Pipeline(Operator):
             raise ValueError(f"Invalid Router: {type(self.router)} for ops: {op_types}")
         elif isinstance(router_validation, str):
             raise ValueError(f"Invalid Router for operators: {router_validation}")
+
+        if (
+            self.middleware_manager is not None
+            and self._continuous_batching_scheduler is not None
+        ):
+            _LOGGER.warning(
+                "Middleware is yet to be supported using continous batching scheduler. "
+                "Either remove middleware or remove continous batching scheduler "
+                "in the instantiation of the Pipeline class"
+            )
 
     def run_func(
         self,
@@ -552,10 +575,7 @@ class Pipeline(Operator):
         return self.condense_inputs(outputs)
 
     async def _apply_split_async(
-        self,
-        inp: Any,
-        inference_state: InferenceState,
-        loop: Optional[asyncio.AbstractEventLoop] = None,
+        self, inp: Any, inference_state: InferenceState, loop: asyncio.AbstractEventLoop
     ):
         """
         Split the data provided into batch sizes of 1. Create subgraphs with each batch
@@ -570,7 +590,7 @@ class Pipeline(Operator):
         step = self.router.route[self.router.SPLIT_ROUTE]
         end = [self.router.JOIN_ROUTE]
         split_graphs = self._create_and_start_subgraph(
-            inference_state=inference_state, data=batches, step=step, end=end
+            inference_state=inference_state, data=batches, step=step, end=end, loop=loop
         )
         outputs = await self.subgraph_executor.run_sub_graphs_async(
             router=self.router,
@@ -582,7 +602,12 @@ class Pipeline(Operator):
         return self.condense_inputs(outputs)
 
     async def _apply_split_generation_async(
-        self, inp: Any, inference_state: InferenceState, step: str, end: List[str]
+        self,
+        inp: Any,
+        inference_state: InferenceState,
+        step: str,
+        end: List[str],
+        loop: asyncio.AbstractEventLoop,
     ) -> AsyncGenerator:
         """
         Applies the same logic as _apply_split_async but returns an AsycnGenerator.
@@ -591,13 +616,18 @@ class Pipeline(Operator):
 
         for i in range(len(batches)):
             split_graphs = self._create_and_start_subgraph(
-                inference_state=inference_state, data=[batches[i]], step=step, end=end
+                inference_state=inference_state,
+                data=[batches[i]],
+                step=step,
+                end=end,
+                loop=loop,
             )
             async for output in self.subgraph_executor.run_sub_graphs_async_generator(
                 router=self.generator_router,
                 ops=self.ops,
                 func=self._run_next,
                 sub_graphs=split_graphs,
+                loop=loop,
             ):
                 yield output
 
@@ -627,6 +657,7 @@ class Pipeline(Operator):
         data: List[Any],
         step: str,
         end: List[str],
+        loop: Optional[asyncio.AbstractEventLoop] = None,
     ) -> List[SubGraph]:
         """
         Create SubGraphs given a list of data and an InferenceState objects. A SubGraph
@@ -648,7 +679,7 @@ class Pipeline(Operator):
             for i in range(len(data))
         ]
         split_graphs = self.subgraph_executor.start_subgraphs(
-            func=self._run_next, sub_graph_inputs=data, sub_graphs=graphs
+            func=self._run_next, sub_graph_inputs=data, sub_graphs=graphs, loop=loop
         )
         return split_graphs
 
@@ -689,7 +720,8 @@ def text_generation_pipeline(*args, **kwargs) -> "Pipeline":
     :return: text generation pipeline with the given args and
         kwargs passed to Pipeline.create
     """
-    return Pipeline.create("text_generation", *args, **kwargs)
+    kwargs = _check_model_path_arg(*args, **kwargs)
+    return Pipeline.create("text_generation", **kwargs)
 
 
 def code_generation_pipeline(*args, **kwargs) -> "Pipeline":
@@ -697,7 +729,8 @@ def code_generation_pipeline(*args, **kwargs) -> "Pipeline":
     :return: text generation pipeline with the given args and
         kwargs passed to Pipeline.create
     """
-    return Pipeline.create("code_generation", *args, **kwargs)
+    kwargs = _check_model_path_arg(*args, **kwargs)
+    return Pipeline.create("code_generation", **kwargs)
 
 
 def chat_pipeline(*args, **kwargs) -> "Pipeline":
@@ -705,7 +738,8 @@ def chat_pipeline(*args, **kwargs) -> "Pipeline":
     :return: text generation pipeline with the given args and
         kwargs passed to Pipeline.create
     """
-    return Pipeline.create("chat", *args, **kwargs)
+    kwargs = _check_model_path_arg(*args, **kwargs)
+    return Pipeline.create("chat", **kwargs)
 
 
 TextGeneration = text_generation_pipeline
@@ -789,3 +823,13 @@ def zero_shot_text_classification_pipeline(*args, **kwargs) -> "Pipeline":
     is returned depends on the value of the passed model_scheme argument.
     """
     return Pipeline.create("zero_shot_text_classification", *args, **kwargs)
+
+
+def _check_model_path_arg(*args, **kwargs):
+    if args:
+        if len(args) > 1 or "model_path" in kwargs or "model" in kwargs:
+            raise ValueError(
+                "Only the model path can be provided as a non-kwarg argument"
+            )
+        kwargs["model_path"] = args[0]
+    return kwargs

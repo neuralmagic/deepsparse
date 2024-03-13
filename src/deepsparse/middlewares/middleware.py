@@ -112,7 +112,9 @@ class MiddlewareManager:
     :param _lock: lock for the state
     """
 
-    def __init__(self, middleware: Optional[Sequence[MiddlewareSpec]], *args, **kwargs):
+    def __init__(
+        self, middleware: Optional[Sequence[MiddlewareSpec]] = None, *args, **kwargs
+    ):
 
         self.middleware: Optional[
             Sequence[MiddlewareSpec]
@@ -172,3 +174,7 @@ class MiddlewareManager:
                 next_middleware.send = self.recieve
 
                 self.middleware.append(MiddlewareSpec(next_middleware, **init_args))
+
+    @property
+    def middlewares(self):
+        return [middleware.cls for middleware in self.middleware]

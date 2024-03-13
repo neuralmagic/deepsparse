@@ -143,6 +143,7 @@ def test_stop_inference_kv_cache_full(prompt):
         expected_generated_tokens_length=max_new_tokens_plus_one,
         expected_finished_reason="capacity",
     )
+
     """
     Check the following structure ok the kv cache:
     minus_one | full | plus_one | plus_two
@@ -152,6 +153,7 @@ def test_stop_inference_kv_cache_full(prompt):
      [row B] | [row C] | [row D] | [row D]
        ...   |   ...   |   ...   |  ...
     """
+
     # check for the "free" space in the kv cache
     assert kv_cache_state_full_minus_one["past_key_values.0.key"][:, :, 0, :].sum() == 0
     # check for the row A
@@ -272,3 +274,63 @@ def test_streaming_with_several_prompts(pipeline, prompt):
     assert sorted(bag_of_words_first_prompt + bag_of_words_second_prompt) == sorted(
         bag_of_words_shared
     )
+
+
+def test_streaming_non_streaming_generate_same_tokens(pipeline, prompt):
+    generator = pipeline(prompt=prompt, streaming=True)
+    output_1 = pipeline(prompt=prompt).generations[0].text
+    tokens = []
+    for g in generator:
+        tokens.append(g.generations[0].text)
+    output_2 = "".join(tokens)
+    assert output_1 == output_2
+
+
+def test_edge_cases(pipeline, prompt):
+    # total length of the generated sequence is just 1 token; this should just use
+    # the last prompt logit
+    output = pipeline(prompt=prompt, max_length=1, output_scores=True)
+    assert len(output.generations[0].score) == 1
+
+    output = pipeline(
+        prompt=prompt, max_length=1, output_scores=True, include_prompt_logits=True
+    )
+    assert len(output.generations[0].score) == 11
+
+    # max_new_tokens == 0 and max_length == 1 should result in the same behaviour
+    # the generation is only dependent on the prompt logit, not any new generated logit
+    output = pipeline(prompt=prompt, max_new_tokens=0, output_scores=True)
+    assert len(output.generations[0].score) == 1
+
+    output = pipeline(
+        prompt=prompt, max_new_tokens=0, output_scores=True, include_prompt_logits=True
+    )
+    assert len(output.generations[0].score) == 11
+
+    # expect total scores/length of the generation to be 2: 1 for the token generated
+    # from the last prompt logit and the rest generated from the value provided
+    # using the max_new_tokens argument (which in this case is 1)
+    output = pipeline(prompt=prompt, max_new_tokens=1, output_scores=True)
+    assert len(output.generations[0].score) == 2
+
+    output = pipeline(
+        prompt=prompt, max_new_tokens=1, output_scores=True, include_prompt_logits=True
+    )
+    assert len(output.generations[0].score) == 12
+
+    # dont support max_length == 0; raise value error
+    with pytest.raises(ValueError):
+        pipeline(prompt=prompt, max_length=0)
+
+
+def test_kv_cache_too_small_for_prefill(prompt):
+    for i in range(10):
+        prompt += prompt
+
+    pipeline = Pipeline.create(
+        task="text_generation",
+        model_path="hf:mgoin/TinyStories-1M-deepsparse",
+        sequence_length=25,
+    )
+    with pytest.raises(RuntimeError):
+        pipeline(prompt=prompt)

@@ -51,17 +51,24 @@ def test_prep_for_generation(
     assert prep_for_generation.can_operate(inputs)
 
     prompt_logits = [numpy.random.rand(1, len(mock_tokens_multiple), len(tokenizer))]
-    mock_inference_state.update_state({"prompt_logits": prompt_logits})
+    mock_inference_state.update_state(
+        {
+            "prompt_logits": prompt_logits,
+            "include_prompt_logits": True,
+            "max_tokens": 10,
+        }
+    )
     outputs, state = prep_for_generation.run(
         tokens=mock_tokens_multiple,
         kv_cache=mock_kv_cache_three_tokens_processed,
         inference_state=mock_inference_state,
     )
-    assert len(outputs.get("tokens")) == len(mock_tokens_multiple) + 1
     assert outputs.get("in_generation")
     assert numpy.array_equal(
-        state.get("generated_logits")[0],
-        numpy.expand_dims(prompt_logits[0][:, -1, :], 0),
+        numpy.concatenate(
+            (state.get("generated_logits")[0], outputs.get("prompt_logits")), axis=1
+        ),
+        prompt_logits[0],
     )
 
 

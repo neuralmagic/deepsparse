@@ -12,24 +12,32 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import copy
-from typing import Any
+from typing import Any, Optional
 
 import numpy
+from pydantic import BaseModel, Field
 
 from deepsparse.operators import Operator
 from deepsparse.transformers.pipelines.text_generation import TokenGeneratorOperator
-from deepsparse.transformers.schemas.text_generation_schemas import (
-    FinishReason,
-    PromptLogitsNoKVCacheInference,
-)
+from deepsparse.transformers.schemas.text_generation_schemas import FinishReason
 from deepsparse.transformers.utils.helpers import set_generated_length
 from deepsparse.utils import InferenceState
 
 
-__all__ = ["PrepareGeneration"]
+__all__ = ["PrepareGeneration", "PrepareForGenerationOutput"]
+
+
+class PrepareForGenerationOutput(BaseModel):
+    prompt_logits: Any = Field(
+        description="A set of prompt logits generated during prefill"
+    )
+    kv_cache: Optional[Any] = Field(description="kv cache")
+    in_generation: Optional[bool] = Field(description="in_generation flag")
 
 
 class PrepareGeneration(Operator):
+    output_schema = PrepareForGenerationOutput
+
     def __init__(
         self,
         token_generator: TokenGeneratorOperator,
@@ -74,7 +82,6 @@ class PrepareGeneration(Operator):
             **inference_state.current_state,
         )
         token_generator = token_generator_creator_output.get("token_generator")
-        token_generator.generate(prompt_logits[0, -1, :])
 
         max_tokens, length_finish_reason = set_generated_length(
             max_length=generation_config.max_length,
@@ -84,22 +91,25 @@ class PrepareGeneration(Operator):
             prompt_sequence_length=self.prompt_sequence_length,
             finish_reason_choices=FinishReason,
         )
+
         state_update = {
             "max_tokens": max_tokens,
             "length_finish_reason": length_finish_reason,
-            "generated_tokens": [token_generator.tokens[-1]],
-            "generated_logits": [prompt_logits]
+            "generated_tokens": [],
+            "generated_logits": [prompt_logits[:, 0:-1, :]]
             if include_prompt_logits
-            else [numpy.expand_dims(prompt_logits[:, -1, :], 0)],
+            else [],
             "finished_reason": [],
             "token_generator": token_generator,
         }
+
         if kv_cache is None:
-            output = PromptLogitsNoKVCacheInference(prompt_logits=prompt_logits)
+            output = {"prompt_logits": numpy.expand_dims(prompt_logits[:, -1, :], 0)}
         else:
             output = {
-                "tokens": token_generator.tokens,
                 "kv_cache": kv_cache,
                 "in_generation": True,
+                "prompt_logits": numpy.expand_dims(prompt_logits[:, -1, :], 0),
             }
+
         return output, state_update

@@ -17,13 +17,13 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 
 from pydantic import BaseModel, Field, validator
 
-from deepsparse.legacy.tasks import SupportedTasks
-from deepsparse.loggers.config import (
+from deepsparse.legacy.loggers.config import (
     MetricFunctionConfig,
     PipelineSystemLoggingConfig,
     SystemLoggingConfig,
     SystemLoggingGroup,
 )
+from deepsparse.legacy.tasks import SupportedTasks
 from deepsparse.operators.engine_operator import DEEPSPARSE_ENGINE
 from deepsparse.pipeline_config import PipelineConfig
 
@@ -127,6 +127,9 @@ class EndpointConfig(BaseModel):
             "```\n"
         ),
     )
+    middlewares: Optional[List[str]] = Field(
+        default=None, description=("Middleware to use")
+    )
 
     kwargs: Dict[str, Any] = Field(
         default={}, description="Additional arguments to pass to the Pipeline"
@@ -147,6 +150,7 @@ class EndpointConfig(BaseModel):
             num_cores=None,  # this will be set from Context
             alias=self.name,
             input_shapes=input_shapes,
+            middlewares=self.middlewares,
             kwargs=kwargs,
         )
 

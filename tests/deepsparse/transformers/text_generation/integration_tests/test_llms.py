@@ -41,10 +41,7 @@ import numpy
 
 import pytest
 from deepsparse.pipeline import Pipeline
-from deepsparse.transformers.pipelines.text_generation import (
-    TextGenerationPipeline,
-    TextGenerationPipelineNoCache,
-)
+from deepsparse.transformers.pipelines.text_generation import TextGenerationPipeline
 from deepsparse.transformers.schemas.text_generation_schemas import TextGenerationOutput
 from tests.deepsparse.transformers.text_generation.integration_tests.helpers import (
     TorchGroundTruthSource,
@@ -74,7 +71,7 @@ class TestsIntegrationLLMsPipelines:
     the text generation pipeline.
     """
 
-    def get_pipeline(self, kv_cache_support=True, **kwargs) -> Pipeline:
+    def get_pipeline(self, **kwargs) -> Pipeline:
         """
         If no kwargs provided, returns the cached "default"
         pipeline that is used for most of the tests.
@@ -87,17 +84,10 @@ class TestsIntegrationLLMsPipelines:
             "default" pipeline is returned)
         :return: the appropriate pipeline
         """
-        # TODO: This if statement should disappear once
-        # the TextGenerationPipeline contains the
-        # non-kv-cache version of the pipeline
-        text_generation_pipeline_class = (
-            TextGenerationPipeline
-            if kv_cache_support
-            else TextGenerationPipelineNoCache
-        )
+
         if not kwargs:
             if self.default_pipeline is None:
-                self.default_pipeline = text_generation_pipeline_class(
+                self.default_pipeline = TextGenerationPipeline(
                     **self.default_pipeline_kwargs
                 )
             return self.default_pipeline
@@ -105,7 +95,15 @@ class TestsIntegrationLLMsPipelines:
         # return a pipeline with the updated default kwargs
         updated_kwargs = self.default_pipeline_kwargs.copy()
         updated_kwargs.update(kwargs)
-        return text_generation_pipeline_class(**updated_kwargs)
+
+        # weak assumption, but if onnx_model_name is specified,
+        # then we are running non-kv cache version of the pipeline
+        # so we should remove all kv cache specific arguments
+        if updated_kwargs.get("onnx_model_name"):
+            updated_kwargs.pop("internal_kv_cache")
+            updated_kwargs.pop("force_max_tokens")
+
+        return TextGenerationPipeline(**updated_kwargs)
 
     @pytest.fixture
     def setup(self, params_dict, max_new_tokens, internal_kv_cache):
@@ -133,6 +131,29 @@ class TestsIntegrationLLMsPipelines:
         )
         self.default_pipeline = None
         self.max_new_tokens = max_new_tokens
+
+    def test_continuous_batching_pipeline(self, setup):
+
+        pipeline = self.get_pipeline(
+            prompt_sequence_length=4, continuous_batch_sizes=[2, 4]
+        )
+
+        assert pipeline._continuous_batching_scheduler
+
+        output = pipeline(
+            prompt=self.prompt,
+            include_prompt_logits=True,
+            generation_kwargs=dict(
+                max_new_tokens=self.max_new_tokens,
+                output_scores=True,
+                num_return_sequences=8,
+            ),
+        )
+
+        self._test_output(
+            output=output,
+            torch_ground_truth=self.torch_ground_truth,
+        )
 
     def test_ort_single_token_prefill(self, setup):
         # Test the pipeline that uses ORT engine. The test covers the
@@ -247,7 +268,6 @@ class TestsIntegrationLLMsPipelines:
     def _test_inference_no_kv_cache(self, engine_type):
         pipeline = self.get_pipeline(
             onnx_model_name=self.model_name_no_kv_cache,
-            kv_cache_support=False,
             engine_type=engine_type,
         )
 
@@ -282,13 +302,28 @@ class TestsIntegrationLLMsPipelines:
         # concatenate target prompt_logits and generated_logits
         target_logits = numpy.concatenate([prompt_logits, generated_logits], axis=1)
         # get the logits of the generated sequence
-        score = output.generations[0].score
+
+        if isinstance(output.generations[0], list):
+            generations = output.generations[0]
+            old_score = None
+            old_text = None
+            for generation in generations:
+                score = generation.score
+                text = generation.text
+                if old_score is not None:
+                    assert numpy.allclose(old_score, score, atol=0.001)
+                    assert old_text == text
+                old_score = score
+                old_text = text
+        else:
+            score = output.generations[0].score
+            text = output.generations[0].text
 
         # we expect the logits to be exactly the same
         # as the target logits; the generated sequence should
         # also be the same as the target sequence
         assert numpy.allclose(score, target_logits[0], atol=self.precision)
-        assert self.prompt + output.generations[0].text == generated_text
+        assert self.prompt + text == generated_text
 
         if hasattr(output, "kv_cache_state") and run_kv_cache_validation:
             # (if applicable) the kv cache should be the same as the

@@ -99,7 +99,7 @@ _dev_deps = [
     "black==22.12.0",
     "flake8>=3.8.3",
     "isort>=5.7.0",
-    "flaky~=3.7.0",
+    "pytest-rerunfailures>=13.0",
     "ndjson>=0.3.1",
     "wheel>=0.36.2",
     "pytest>=6.0.0",
@@ -107,6 +107,7 @@ _dev_deps = [
     "flask>=1.0.0",
     "flask-cors>=3.0.0",
     "Pillow>=8.3.2",
+    "openai",
 ]
 _docs_deps = [
     "m2r2~=0.2.7",
@@ -147,8 +148,8 @@ _transformers_integration_deps = [
     "transformers<4.37",
     "datasets<2.16",
     "accelerate<0.26",
-    "scikit-learn",
     "seqeval",
+    "evaluate",
 ]
 _sentence_transformers_integration_deps = ["optimum-deepsparse"] + _torch_deps
 
@@ -165,8 +166,7 @@ _haystack_requirements_file_path = os.path.join(
 _haystack_integration_deps = _parse_requirements_file(_haystack_requirements_file_path)
 _clip_deps = [
     "open_clip_torch==2.20.0",
-    "scipy<1.10,>=1.8",
-    "transformers<4.35",
+    "transformers<4.37",
 ]
 
 
@@ -309,7 +309,7 @@ def _setup_entry_points() -> Dict:
             f"deepsparse.image_classification.eval={ic_eval}",
             "deepsparse.license=deepsparse.license:main",
             "deepsparse.validate_license=deepsparse.license:validate_license_cli",
-            "deepsparse.eval=deepsparse.evaluation.cli:main",
+            "deepsparse.evaluate=deepsparse.evaluation.cli:main",
         ]
     }
 
