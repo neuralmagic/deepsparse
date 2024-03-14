@@ -97,7 +97,7 @@ class ProcessOutputs(Operator):
         if isinstance(
             self.tokenizer,
             (transformers.LlamaTokenizer, transformers.LlamaTokenizerFast),
-        ):
+        ) and inference_state.current_state.get("streaming"):
             past_tokens_queue = inference_state.current_state.get("past_tokens_queue")
             sequences = self._generate_streamed_text_from_past_tokens(
                 generated_tokens, past_tokens_queue
