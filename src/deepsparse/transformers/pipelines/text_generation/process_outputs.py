@@ -94,6 +94,9 @@ class ProcessOutputs(Operator):
 
         import transformers
 
+        # Fix for LLAMA-specific models when running streaming
+        # TODO: make streaming a conditional input to this operator. using inference
+        # state is a quick fix.
         if isinstance(
             self.tokenizer,
             (transformers.LlamaTokenizer, transformers.LlamaTokenizerFast),
