@@ -1,0 +1,8 @@
+numpy
+scikit-learn
+pymilvus==2.0.1
+pymysql
+fastapi
+uvicorn
+requests
+python-multipart
