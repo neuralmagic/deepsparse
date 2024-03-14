@@ -1,0 +1,18 @@
+loggers:
+  prometheus:     # logs to prometheus on port 6100
+    port: 6100
+
+endpoints:
+  - task: image_classification
+    route: /image_classification/predict
+    model: zoo:cv/classification/resnet_v1-50/pytorch/sparseml/imagenet/pruned95_quant-none
+    data_logging:      
+      pipeline_inputs.images[0]: # applies to the first image (of the form stage.property[idx])
+        - func: fraction_zeros   # built-in function
+          frequency: 1
+          target_loggers:
+            - prometheus
+        - func: custom-fn.py:mean_pixel_red # custom function
+          frequency: 1
+          target_loggers:
+            - prometheus
