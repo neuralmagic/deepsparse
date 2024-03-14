@@ -79,7 +79,7 @@ class ProcessOutputs(Operator):
             past_tokens_queue, skip_special_tokens=True
         )
         past_tokens_queue.pop(0)
-        return string_from_n_plus_1_tokens[len(string_from_n_tokens) :]
+        return [string_from_n_plus_1_tokens[len(string_from_n_tokens) :]]
 
     def run(
         self,
@@ -93,7 +93,11 @@ class ProcessOutputs(Operator):
         generated_logits = generated_logits if generation_config.output_scores else None
 
         import transformers
-        if isinstance(self.tokenizer, (transformers.LlamaTokenizer, transformers.LlamaTokenizerFast)):
+
+        if isinstance(
+            self.tokenizer,
+            (transformers.LlamaTokenizer, transformers.LlamaTokenizerFast),
+        ):
             past_tokens_queue = inference_state.current_state.get("past_tokens_queue")
             sequences = self._generate_streamed_text_from_past_tokens(
                 generated_tokens, past_tokens_queue
