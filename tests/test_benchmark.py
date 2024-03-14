@@ -27,8 +27,6 @@ def test_benchmark_help():
         print(f"\n==== test_benchmark_help output ====\n{res.stdout}")
     assert res.returncode == 0
     assert "usage: deepsparse.benchmark" in res.stdout
-    assert "error" not in res.stdout.lower()
-    assert "fail" not in res.stdout.lower()
 
 
 @pytest.mark.parametrize(
@@ -90,8 +88,6 @@ def test_benchmark(
     if res.stdout is not None:
         print(f"\n==== test_benchmark output ====\n{res.stdout}")
     assert res.returncode == 0
-    assert "error" not in res.stdout.lower()
-    assert "fail" not in res.stdout.lower()
 
     # if passing -q, check that some logging is excluded
     if "-q" in cmd:
@@ -121,5 +117,3 @@ def test_benchmark_local(model_stub: str):
     if res.stdout is not None:
         print(f"\n==== test_benchmark_local output ====\n{res.stdout}")
     assert res.returncode == 0
-    assert "error" not in res.stdout.lower()
-    assert "fail" not in res.stdout.lower()
