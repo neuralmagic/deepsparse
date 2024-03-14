@@ -87,7 +87,6 @@ class Pipeline(Operator):
         logger_manager: Optional[LoggerManager] = None,
         benchmark: bool = False,
     ):
-
         self.ops = ops
         self.router = router
         self.generator_router = generator_router
