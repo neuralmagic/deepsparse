@@ -101,6 +101,7 @@ class PrepareGeneration(Operator):
             else [],
             "finished_reason": [],
             "token_generator": token_generator,
+            "past_tokens_queue": copy.copy(tokens),
         }
 
         if kv_cache is None:
