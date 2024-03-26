@@ -145,7 +145,7 @@ _openpifpaf_integration_deps = [
 ]
 _yolov8_integration_deps = _computer_vision_deps + ["ultralytics==8.0.124"]
 _transformers_integration_deps = [
-    "transformers<4.37",
+    "transformers<4.40",
     "datasets<2.16",
     "accelerate<0.26",
     "seqeval",
@@ -166,7 +166,7 @@ _haystack_requirements_file_path = os.path.join(
 _haystack_integration_deps = _parse_requirements_file(_haystack_requirements_file_path)
 _clip_deps = [
     "open_clip_torch==2.20.0",
-    "transformers<4.37",
+    "transformers<4.40",
 ]
 
 
