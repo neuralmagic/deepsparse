@@ -16,13 +16,13 @@ jobs:
       - name: Set up Docker Buildx
         if: ${{ startsWith(github.ref, 'refs/tags/v') }}
         id: buildx
-        uses: docker/setup-buildx-action@v2
+        uses: docker/setup-buildx-action@v3
         with:
           buildkitd-flags: --debug
 
       - name: Login to Github Packages
         if: ${{ startsWith(github.ref, 'refs/tags/v') }}
-        uses: docker/login-action@v2
+        uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -30,7 +30,7 @@ jobs:
 
       - name: Checkout code
         if: ${{ startsWith(github.ref, 'refs/tags/v') }}
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 1
 
@@ -45,7 +45,7 @@ jobs:
 
       - name: Build and push deepsparse latest with all dependencies
         if: ${{ startsWith(github.ref, 'refs/tags/v') }}
-        uses: docker/build-push-action@v2
+        uses: docker/build-push-action@v5
         with:
           context: ./docker
           build-args: |
@@ -57,7 +57,7 @@ jobs:
 
       - name: Build and push deepsparse with all dependencies
         if: ${{ startsWith(github.ref, 'refs/tags/v') }}
-        uses: docker/build-push-action@v2
+        uses: docker/build-push-action@v5
         with:
           context: ./docker
           build-args: |
@@ -69,7 +69,7 @@ jobs:
 
       - name: Build and push deepsparse-base
         if: ${{ startsWith(github.ref, 'refs/tags/v') }}
-        uses: docker/build-push-action@v2
+        uses: docker/build-push-action@v5
         with:
           context: ./docker
           build-args: |

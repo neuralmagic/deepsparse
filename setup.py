@@ -86,7 +86,7 @@ def _parse_requirements_file(file_path):
 
 _deps = [
     "numpy>=1.16.3",
-    "onnx>=1.5.0,<1.15.0",
+    "onnx>=1.5.0,<1.17.0",
     "pydantic>=1.8.2,<2.0.0",
     "requests>=2.0.0",
     "tqdm>=4.0.0",
@@ -200,7 +200,7 @@ def _check_supported_system():
 
 def _check_supported_python_version():
     supported_major = 3
-    supported_minor = [8, 9, 10, 11]
+    supported_minor = [8, 9, 10, 11, 12]
 
     if (
         sys.version_info[0] != supported_major
@@ -344,7 +344,7 @@ setup(
     install_requires=_setup_install_requires(),
     extras_require=_setup_extras(),
     entry_points=_setup_entry_points(),
-    python_requires=">=3.8, <3.12",
+    python_requires=">=3.8, <3.13",
     classifiers=[
         "Development Status :: 5 - Production/Stable",
         "Programming Language :: Python :: 3",
@@ -353,6 +353,7 @@ setup(
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11",
+        "Programming Language :: Python :: 3.12",
         "Intended Audience :: Developers",
         "Intended Audience :: Education",
         "Intended Audience :: Information Technology",
