@@ -146,8 +146,8 @@ _openpifpaf_integration_deps = [
 _yolov8_integration_deps = _computer_vision_deps + ["ultralytics==8.0.124"]
 _transformers_integration_deps = [
     "transformers<4.40",
-    "datasets<2.16",
-    "accelerate<0.26",
+    "datasets<2.19",
+    "accelerate<0.29",
     "seqeval",
     "evaluate",
 ]
