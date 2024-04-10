@@ -25,7 +25,7 @@ limitations under the License.
   <a href="https://docs.neuralmagic.com/deepsparse/">
     <img alt="Documentation" src="https://img.shields.io/badge/documentation-darkred?&style=for-the-badge&logo=read-the-docs" height="20" />
   </a>
-  <a href="https://join.slack.com/t/discuss-neuralmagic/shared_invite/zt-q1a1cnvo-YBoICSIw3L1dmQpjBeDurQ/">
+  <a href="https://neuralmagic.com/community/">
     <img alt="Slack" src="https://img.shields.io/badge/slack-purple?style=for-the-badge&logo=slack" height="20" />
   </a>
   <a href="https://github.com/neuralmagic/deepsparse/issues/">
@@ -213,7 +213,7 @@ Confirm that telemetry is shut off through info logs streamed with engine invoca
 ### Get In Touch
 
 - [Contribution Guide](https://github.com/neuralmagic/deepsparse/blob/main/CONTRIBUTING.md)
-- [Community Slack](https://join.slack.com/t/discuss-neuralmagic/shared_invite/zt-q1a1cnvo-YBoICSIw3L1dmQpjBeDurQ)
+- [Community Slack](https://neuralmagic.com/community/)
 - [GitHub Issue Queue](https://github.com/neuralmagic/deepsparse/issues) 
 - [Subscribe To Our Newsletter](https://neuralmagic.com/subscribe/)
 - [Blog](https://www.neuralmagic.com/blog/) 
