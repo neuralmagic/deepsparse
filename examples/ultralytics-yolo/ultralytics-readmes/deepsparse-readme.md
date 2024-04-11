@@ -145,8 +145,8 @@ import requests, json
 path = ['basilica.jpg'] 
 files = [('request', open(img, 'rb')) for img in path]
 
-# send request over HTTP to /predict/from_files endpoint
-url = 'http://0.0.0.0:5543/predict/from_files'
+# send request over HTTP to /v2/models/yolo/infer/from_files endpoint
+url = 'http://0.0.0.0:5543/v2/models/yolo/infer/from_files'
 resp = requests.post(url=url, files=files)
 
 # response is returned in JSON

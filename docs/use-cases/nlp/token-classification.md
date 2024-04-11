@@ -228,7 +228,7 @@ Here is an example client request, using the Python requests library for formatt
 import requests
 
 # Uvicorn is running on this port
-url = 'http://0.0.0.0:5543/predict'
+url = 'http://0.0.0.0:5543/v2/models/token_classification/infer'
 # send the data
 obj = {"inputs": "Mary is flying from Nairobi to New York to attend a conference"}
 resp = requests.post(url=url, json=obj)
@@ -261,7 +261,7 @@ Making a request:
 import requests
 
 # Uvicorn is running on this port
-url = 'http://0.0.0.0:5543/predict'
+url = 'http://0.0.0.0:5543/v2/models/token_classification/infer'
 
 # send the data
 obj = {"inputs": "Mary is flying from Nairobi to New York to attend a conference",}

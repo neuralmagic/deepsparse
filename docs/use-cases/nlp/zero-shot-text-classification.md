@@ -199,7 +199,7 @@ Making a request:
 import requests
 
 # Uvicorn is running on this port
-url = 'http://0.0.0.0:5543/predict'
+url = 'http://0.0.0.0:5543/v2/models/zero_shot_text_classification/infer'
 
 # send the data
 obj = {
@@ -238,7 +238,7 @@ Making a request:
 import requests
 
 # Uvicorn is running on this port
-url = 'http://0.0.0.0:5543/predict'
+url = 'http://0.0.0.0:5543/v2/models/zero_shot_text_classification/infer'
 
 # send the data
 obj =  {"sequences": ["The Boston Red Sox are my favorite baseball team!"]}

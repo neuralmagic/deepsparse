@@ -230,7 +230,7 @@ Here is an example client request, using the Python requests library for formatt
 import requests
 
 # Uvicorn is running on this port
-url = 'http://0.0.0.0:5543/predict'
+url = 'http://0.0.0.0:5543/v2/models/question_answering/infer'
 
 # send the data
 obj = {
