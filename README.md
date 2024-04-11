@@ -16,9 +16,9 @@ limitations under the License.
 
 
 <div style="display: flex; flex-direction: column; align-items: center;">
-  <h1>
-    <img alt="tool icon" src="https://raw.githubusercontent.com/neuralmagic/deepsparse/main/docs/old/source/icon-deepsparse.png" />
-    &nbsp;&nbsp;DeepSparse
+  <h1 style="display: flex; align-items: center;" >
+     <img width="60" height="60" alt="tool icon" src="https://neuralmagic.com/wp-content/uploads/2024/03/icon_DeepSparse-005.png" />
+      <span>&nbsp;&nbsp;DeepSparse</span>
   </h1>
   <h4>Sparsity-aware deep learning inference runtime for CPUs</h4>
   <div align="center">
