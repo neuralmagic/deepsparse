@@ -74,7 +74,7 @@ print(pipeline(prompt, max_new_tokens=75).generations[0].text)
 # Sparsity is the property of a matrix or other data structure in which a large number of elements are zero and a smaller number of elements are non-zero. In the context of machine learning, sparsity can be used to improve the efficiency of training and prediction.
 ```
 
-> [Check out the `TextGeneration` documentation for usage details.](https://github.com/neuralmagic/deepsparse/blob/main/docs/llms/text-generation-pipeline.md)
+Check out the [`TextGeneration` documentation for usage details](https://github.com/neuralmagic/deepsparse/blob/main/docs/llms/text-generation-pipeline.md) and get the [latest sparsified LLMs on our HF Collection](https://huggingface.co/collections/neuralmagic/deepsparse-sparse-llms-659d61e81774dd48343642bf).
 
 ### Sparsity :handshake: Performance
 
