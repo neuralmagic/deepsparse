@@ -16,16 +16,16 @@ limitations under the License.
 
 
 <div style="display: flex; flex-direction: column; align-items: center;">
-  <h1>
-    <img alt="tool icon" src="https://raw.githubusercontent.com/neuralmagic/deepsparse/main/docs/old/source/icon-deepsparse.png" />
-    &nbsp;&nbsp;DeepSparse
+  <h1 style="display: flex; align-items: center;" >
+     <img width="60" height="60" alt="tool icon" src="https://neuralmagic.com/wp-content/uploads/2024/03/icon_DeepSparse-005.png" />
+      <span>&nbsp;&nbsp;DeepSparse</span>
   </h1>
   <h4>Sparsity-aware deep learning inference runtime for CPUs</h4>
   <div align="center">
   <a href="https://docs.neuralmagic.com/deepsparse/">
     <img alt="Documentation" src="https://img.shields.io/badge/documentation-darkred?&style=for-the-badge&logo=read-the-docs" height="20" />
   </a>
-  <a href="https://join.slack.com/t/discuss-neuralmagic/shared_invite/zt-q1a1cnvo-YBoICSIw3L1dmQpjBeDurQ/">
+  <a href="https://neuralmagic.com/community/">
     <img alt="Slack" src="https://img.shields.io/badge/slack-purple?style=for-the-badge&logo=slack" height="20" />
   </a>
   <a href="https://github.com/neuralmagic/deepsparse/issues/">
@@ -74,7 +74,7 @@ print(pipeline(prompt, max_new_tokens=75).generations[0].text)
 # Sparsity is the property of a matrix or other data structure in which a large number of elements are zero and a smaller number of elements are non-zero. In the context of machine learning, sparsity can be used to improve the efficiency of training and prediction.
 ```
 
-> [Check out the `TextGeneration` documentation for usage details.](https://github.com/neuralmagic/deepsparse/blob/main/docs/llms/text-generation-pipeline.md)
+Check out the [`TextGeneration` documentation for usage details](https://github.com/neuralmagic/deepsparse/blob/main/docs/llms/text-generation-pipeline.md) and get the [latest sparsified LLMs on our HF Collection](https://huggingface.co/collections/neuralmagic/deepsparse-sparse-llms-659d61e81774dd48343642bf).
 
 ### Sparsity :handshake: Performance
 
@@ -213,7 +213,7 @@ Confirm that telemetry is shut off through info logs streamed with engine invoca
 ### Get In Touch
 
 - [Contribution Guide](https://github.com/neuralmagic/deepsparse/blob/main/CONTRIBUTING.md)
-- [Community Slack](https://join.slack.com/t/discuss-neuralmagic/shared_invite/zt-q1a1cnvo-YBoICSIw3L1dmQpjBeDurQ)
+- [Community Slack](https://neuralmagic.com/community/)
 - [GitHub Issue Queue](https://github.com/neuralmagic/deepsparse/issues) 
 - [Subscribe To Our Newsletter](https://neuralmagic.com/subscribe/)
 - [Blog](https://www.neuralmagic.com/blog/) 

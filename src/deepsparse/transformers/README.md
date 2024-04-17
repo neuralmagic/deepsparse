@@ -151,9 +151,12 @@ https://sparsezoo.neuralmagic.com/?useCase=text_generation)
 ```python
 from deepsparse import Pipeline
 
-opt_pipeline = Pipeline.create(task="opt", model_path="zoo:opt-1.3b-opt_pretrain-quantW8A8")
+llama_pipeline = Pipeline.create(
+    task="text-generation",
+    model_path="zoo:llama2-7b-ultrachat200k_llama2_pretrain-pruned50_quantized"
+)
 
-inference = opt_pipeline("Who is the president of the United States?")
+inference = llama_pipeline("Who is the president of the United States?")
 
 >> 'The president of the United States is the head of the executive branch of government...'
 ```
@@ -163,7 +166,7 @@ Spinning up:
 ```bash
 deepsparse.server \
     --task text-generation \
-    --model_path zoo:opt-1.3b-opt_pretrain-pruned50_quantW8A8
+    --model_path zoo:llama2-7b-ultrachat200k_llama2_pretrain-pruned50_quantized
 ```
 
 Making a request:
