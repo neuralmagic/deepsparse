@@ -93,7 +93,7 @@ deepsparse.server --config_file config.yaml
 Make requests to the server: 
 ```python
 import requests, json
-url = "http://0.0.0.0:5543/predict/from_files"
+url = "http://0.0.0.0:5543/v2/models/embedding_extraction-0/infer/from_files"
 paths = ["lion.jpeg"]
 files = [("request", open(img, 'rb')) for img in paths]
 resp = requests.post(url=url, files=files)

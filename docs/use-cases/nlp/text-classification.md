@@ -325,7 +325,7 @@ Making a request:
 import requests
 
 # Uvicorn is running on this port
-url = 'http://0.0.0.0:5543/predict'
+url = 'http://0.0.0.0:5543/v2/models/text_classification/infer'
 
 # send the data
 obj = {"sequences": "Sending requests to DeepSparse Server is fast and easy!"}
@@ -351,14 +351,15 @@ Making a request:
 import requests
 
 # Uvicorn is running on this port
-url = 'http://0.0.0.0:5543/predict'
+url = "http://0.0.0.0:5543/v2/models/text_classification/infer"
 
 # send the data
 obj = {
-  "sequences": [[
-      "The text classification pipeline is fast and easy to use!",
-      "The pipeline for text classification makes it simple to get started"
-]]}
+    "sequences": [
+        ["The pipeline for text classification makes it simple to get started"],
+        ["The text classification pipeline is fast and easy to use!"],
+    ]
+}
 resp = requests.post(url=url, json=obj)
 
 # recieve the post-processed output
@@ -391,7 +392,7 @@ Making a request:
 import requests
 
 # Uvicorn is running on this port
-url = 'http://0.0.0.0:5543/predict'
+url = 'http://0.0.0.0:5543/v2/models/text_classification/infer'
 
 # send the data
 obj = {"sequences": "Sending requests to DeepSparse Server is fast and easy!"}

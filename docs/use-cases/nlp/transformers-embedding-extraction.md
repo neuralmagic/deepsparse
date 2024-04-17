@@ -155,7 +155,7 @@ Here is an example client request, using the Python `requests` library for forma
 import requests
 
 # Uvicorn is running on this port
-url = 'http://0.0.0.0:5543/predict'
+url = 'http://0.0.0.0:5543/v2/models/transformers_embedding_extraction/infer'
 
 # send the data
 obj = {"inputs": "The transformers embedding extraction Pipeline is the best!"}
@@ -191,7 +191,7 @@ Making requests:
 ```python 
 import requests, json
 # Uvicorn is running on this port
-url = 'http://0.0.0.0:5543/predict'
+url = 'http://0.0.0.0:5543/v2/models/transformers_embedding_extraction/infer'
 
 # send the data
 obj = {"inputs": "The transformers embedding extraction Pipeline is the best!"}

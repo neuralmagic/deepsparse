@@ -259,7 +259,7 @@ Here is an example client request, using the Python `requests` library for forma
 import requests
 
 # Uvicorn is running on this port
-url = 'http://0.0.0.0:5543/predict'
+url = 'http://0.0.0.0:5543/v2/models/sentiment_analysis/infer'
 
 # send the data
 obj = {"sequences": "Sending requests to DeepSparse Server is fast and easy!"}
@@ -297,7 +297,7 @@ Making a request:
 import requests
 
 # Uvicorn is running on this port
-url = 'http://0.0.0.0:5543/predict'
+url = 'http://0.0.0.0:5543/v2/models/sentiment_analysis/infer'
 
 # send the data
 obj = {"sequences": "Sending requests to DeepSparse Server is fast and easy!"}

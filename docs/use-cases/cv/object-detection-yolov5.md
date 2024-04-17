@@ -230,7 +230,7 @@ Making a request.
 import requests
 import json
 
-url = 'http://0.0.0.0:5543/predict/from_files'
+url = 'http://0.0.0.0:5543/v2/models/yolo/infer/from_files'
 path = ['basilica.jpg'] # list of images for inference
 files = [('request', open(img, 'rb')) for img in path]
 resp = requests.post(url=url, files=files)
@@ -271,7 +271,7 @@ Making a request:
 ```python
 import requests, json
 
-url = 'http://0.0.0.0:5543/predict/from_files'
+url = 'http://0.0.0.0:5543/v2/models/yolo/infer/from_files'
 path = ['basilica.jpg'] # list of images for inference
 files = [('request', open(img, 'rb')) for img in path]
 resp = requests.post(url=url, files=files)
