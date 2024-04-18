@@ -14,10 +14,10 @@ pip install deepsparse[haystack]
 After this is done, importing assets from `deepsparse.transformers.haystack` will trigger an auto-installation of Neural Magic's fork of `transformers` as well as `farm-haystack[all]==1.4.0`. These auto-installations can be controlled by setting the environment variables `NM_NO_AUTOINSTALL_TRANSFORMERS` and `NM_NO_AUTOINSTALL_HAYSTACK` respectively.
 
 ## Haystack ##
-[Haystack](https://haystack.deepset.ai/overview/intro) is an open source framework developed by Deepset for building document search systems. The library implements classes that handle operations such as document storage, index search, embedding generation, and document search (formally known as information retrieval).
+[Haystack](https://haystack.deepset.ai/overview/intro) is an open source framework developed by Deepset for building document search systems. The library implements classes that handle operations such as document storage, index search, embedding generation, and information retrieval.
 
 ### Document Retrieval with Haystack ###
-A typical a document retrieval script in Haystack might look something like this:
+A typical document retrieval script in Haystack might look something like this:
 
 First initialize a document store. The document store is responsible for handling the storage of document texts, their embeddings, as well as indexing those embeddings. The simplest document store provided by Haystack is the `InMemoryDocumentStore`, but more complex document stores such as `ElasticDocumentStore`, `FAISSDocumentStore`, or `WeaviateDocumentStore` may require more set up but provide more robust indexing capabilities.
 ``` python3
@@ -30,7 +30,7 @@ document_store = InMemoryDocumentStore(
 )
 ```
 
-Next, create a retriever. The retriever houses the deep model and is responsible for, given a document or query, generating an embedding such that query embeddings have a high similarity to their relevant document embeddings.
+Next, create a retriever. The retriever houses the embedding model and is responsible for, given a document or query, generating an embedding such that query embeddings have a high similarity to their relevant document embeddings.
 ``` python3
 from haystack.nodes import EmbeddingRetriever
 
@@ -46,7 +46,7 @@ array([-0.00331814, -0.16311326, -0.64788855, -0.35724441, -0.26155273,
        -0.76656055,  0.35976224, -0.6578757 , -0.15693564, -0.1927543 ])
 ```
 
-Next, write some files to your document store. These documents can be instances of Haystack's `Document` class or dictionaries containing a `content`. Remember to update the documents' embeddings with `document_store.update_embeddings(retriever)`
+Next, write some files to your document store. These documents can be instances of Haystack's `Document` class or dictionaries containing `content`. Remember to update the documents' embeddings with `document_store.update_embeddings(retriever)`.
 ``` python3
 document_store.write_documents([
     {
@@ -94,7 +94,7 @@ retriever = DeepSparseEmbeddingRetriever(
 DeepSparse Nodes are a set of classes that leverage the embedding extraction pipeline to generate document embeddings using the DeepSparse engine. These embeddings can then be used for information retrieval and other haystack tasks.
 
 ### DeepSparseEmbeddingRetriever ###
-This class implements Haystack's `EmbeddingRetriever` class with DeepSparse inference using the `TransformersEmbeddingExtractionPipeline`. The embedding extraction pipeline takes the passed model path, truncates the ONNX to a transformer layer, then uses those model outputs as embeddings. The embedded representation of the document can be then compared to the embedded representation of the query. Query embeddings and document embeddings that have a high dot_product/cosine similiarity are deemed to be relevant by the `DocumentSearchPipeline`
+This class implements Haystack's `EmbeddingRetriever` class with DeepSparse inference using the `TransformersEmbeddingExtractionPipeline`. The embedding extraction pipeline takes the passed model path, truncates the ONNX to a transformer layer, then uses those model outputs as embeddings. The embedded representation of the document can then be compared to the embedded representation of the query. Query embeddings and document embeddings that have a high dot product/cosine similiarity are deemed to be relevant by the `DocumentSearchPipeline`.
 ``` python3
 from haystack.document_stores import InMemoryDocumentStore
 from haystack.pipelines import DocumentSearchPipeline
@@ -131,7 +131,7 @@ results = pipeline.run(query="Where does my lover stand?", params={"Retriever": 
 ### DeepSparseDensePassageRetriever ###
 This class implements Haystack's `DensePassageRetriever` class with DeepSparse inference using two instances of the  `TransformersEmbeddingExtractionPipeline` with shared context. This node takes `query_model_path` and `passage_model_path` as arguments and produces document and query embeddings using their respective models.
 
-Dense passage retrieval requires biencoder models to use. For more support, contact support@neuralmagic.com.
+Dense passage retrieval requires biencoder models to use. For more information, contact support@neuralmagic.com.
 
 ``` python3
 from haystack.document_stores import InMemoryDocumentStore
@@ -296,7 +296,7 @@ pruned80-vnni-untied|0.7817174515|97.92%|0.8509695291|98.56%|0.8717|98.59%|
 |pruned80-vnni-untied|0.3124041479|97.01%|0.5918338109|98.29%|0.6802292264|97.45%|0.8319484241|97.55%|0.8780802292|98.10%|
 
 ## Performance Evaluation ##
-Retrievers were also evaluated on their run time. This table compares the run time of generating query embeddings using `DenseEmbeddingRetriever` with Pytorch and `DeepSparseEmbeddingRetriever` with the DeepSparse Engine. Both retrievers were evaluated with the same 80% [sparse quantized 3 layer BERT](https://sparsezoo.neuralmagic.com/models/nlp%2Fmasked_language_modeling%2Fbert-base%2Fpytorch%2Fhuggingface%2Fwikipedia_bookcorpus%2F3layer_pruned80_quant-none-vnni) model on the same CPU hardware.
+Retrievers were also evaluated on their run time. This table compares the run time of generating query embeddings using `DenseEmbeddingRetriever` with Pytorch and `DeepSparseEmbeddingRetriever` with the DeepSparse Engine. Both retrievers were evaluated with the same [80% sparse quantized 3 layer BERT](https://sparsezoo.neuralmagic.com/models/nlp%2Fmasked_language_modeling%2Fbert-base%2Fpytorch%2Fhuggingface%2Fwikipedia_bookcorpus%2F3layer_pruned80_quant-none-vnni) model on the same CPU hardware.
 
 |Number of Queries|DenseEmbeddingRetriever (sec)|DeepSparseEmbeddingRetriever (sec)|
 |-|-|-|
