@@ -18,24 +18,24 @@ env:
 
 jobs:
   local-install-test:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
         with:
           repository: "neuralmagic/sparsezoo"
           path: "sparsezoo"
       - name: "⚙️ Install sparsezoo dependencies"
         run: pip install sparsezoo/
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - name: "⚙️ Install local deepsparse"
         run: pip3 install .
       - name: "deepsparse.benchmark"
         run: deepsparse.benchmark zoo:cv/classification/mobilenet_v1-1.0/pytorch/sparseml/imagenet/pruned_quant-moderate -w 1 -t 1
   local-develop-test:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           repository: "neuralmagic/sparsezoo"
           path: "sparsezoo"
