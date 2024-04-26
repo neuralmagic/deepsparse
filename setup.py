@@ -87,7 +87,7 @@ def _parse_requirements_file(file_path):
 _deps = [
     "numpy>=1.16.3",
     "onnx>=1.5.0,<1.15.0",
-    "pydantic>=1.8.2,<2.0.0",
+    "pydantic>=2.0.0,<2.8.0",
     "requests>=2.0.0",
     "tqdm>=4.0.0",
     "protobuf>=3.12.2",
@@ -122,7 +122,7 @@ _docs_deps = [
 ]
 _server_deps = [
     "uvicorn>=0.15.0",
-    "fastapi>=0.70.0,<0.87.0",
+    "fastapi",
     "requests>=2.26.0",
     "python-multipart>=0.0.5",
     "prometheus-client>=0.14.1",
