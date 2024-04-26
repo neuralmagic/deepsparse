@@ -67,7 +67,7 @@ class TestStatusEndpoints:
     def test_home_redirects_to_docs(self, client):
         response = client.get("/")
         assert response.status_code == 200
-        assert response.request.path_url == "/docs"
+        assert str(response.request.url).endswith("/docs")
         assert len(response.history) > 0
         assert response.history[-1].is_redirect
 
@@ -295,13 +295,14 @@ def test_dynamic_add_and_remove_endpoint(engine_mock):
     assert response.status_code == 200
 
     # remove /predict
-    response = client.delete(
+    response = client.request(
+        "DELETE",
         "/endpoints",
         json=EndpointConfig(
             route="/v2/models/test_model/infer",
             task="text-classification",
             model="default",
-        ).dict(),
+        ).model_dump(),
     )
     assert response.status_code == 200
     assert 404 == client.post("/predict", json=dict(sequences="asdf")).status_code

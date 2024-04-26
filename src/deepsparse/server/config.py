@@ -168,7 +168,7 @@ class ServerConfig(BaseModel):
         default=None,
     )
 
-    integration: str = Field(
+    integration: Optional[str] = Field(
         default=None,
         description=f"The kind of integration to use. {INTEGRATIONS}",
     )
