@@ -85,7 +85,7 @@ def test_prep_for_serialization(unserialized_output, target_serialized_output):
     def check_dict_equality(dict_1, dict_2):
         for key, value in dict_1.items():
             if isinstance(value, BaseModel):
-                value = value.dict()
+                value = value.model_dump()
                 check_dict_equality(value, dict_2[key].dict())
             elif isinstance(value, dict):
                 check_dict_equality(value, dict_2[key])
@@ -97,6 +97,6 @@ def test_prep_for_serialization(unserialized_output, target_serialized_output):
                 assert value == dict_2[key]
 
     serialized_output = prep_for_serialization(unserialized_output)
-    serialized_output = serialized_output.dict()
-    target_serialized_output = target_serialized_output.dict()
+    serialized_output = serialized_output.model_dump()
+    target_serialized_output = target_serialized_output.model_dump()
     check_dict_equality(target_serialized_output, serialized_output)

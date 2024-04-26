@@ -233,7 +233,7 @@ def response_to_json(response: Any):
     elif isinstance(response, dict):
         return {key: response_to_json(val) for key, val in response.items()}
     elif isinstance(response, BaseModel):
-        return response.dict()
+        return response.model_dump()
     return json.dumps(response)
 
 

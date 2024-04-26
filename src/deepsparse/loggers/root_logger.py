@@ -38,7 +38,7 @@ class RootLogger(FrequencyFilter):
     its own FrequencyFilter
 
     :param config: config with respect to
-     the log_type (LoggerConfig().dict().get(log_type))
+     the log_type (LoggerConfig().model_dump().get(log_type))
     :param leaf_logger: leaf logger singleton shared among other RootLogger
 
     """

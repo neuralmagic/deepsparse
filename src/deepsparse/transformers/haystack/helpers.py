@@ -34,8 +34,9 @@ def print_pipeline_documents(
     if isinstance(haystack_pipeline_output.query, list):
         for i in range(len(haystack_pipeline_output.query)):
             results_dict = {
-                key: value[i] for key, value in haystack_pipeline_output.dict().items()
+                key: value[i]
+                for key, value in haystack_pipeline_output.model_dump().items()
             }
             print_documents(results_dict)
     else:
-        print_documents(haystack_pipeline_output.dict())
+        print_documents(haystack_pipeline_output.model_dump())

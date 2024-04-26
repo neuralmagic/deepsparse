@@ -98,7 +98,7 @@ def _save_to_json(result: Result, save_path: str):
 
 
 def _save_to_yaml(result: Result, save_path: str):
-    _save(yaml.dump(result.dict()), save_path, expected_ext=".yaml")
+    _save(yaml.dump(result.model_dump()), save_path, expected_ext=".yaml")
 
 
 def _save(data: str, save_path: str, expected_ext: str):

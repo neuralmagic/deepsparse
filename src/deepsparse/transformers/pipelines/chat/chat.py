@@ -55,8 +55,6 @@ class ChatInput(TextGenerationInput):
         "will be set to a random uuid.",
     )
 
-    # TODO[pydantic]: We couldn't refactor the `validator`, please replace it by `field_validator` manually.
-    # Check https://docs.pydantic.dev/dev-v2/migration/#changes-to-validators for more information.
     @validator("session_ids")
     def validate_session_ids(cls, value, values) -> Union[None, List[str]]:
         # make sure that the that format session_ids confirms with the

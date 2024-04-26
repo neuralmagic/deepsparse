@@ -82,8 +82,6 @@ class LoggingConfig(BaseModel):
         description="Metric level config",
     )
 
-    # TODO[pydantic]: We couldn't refactor the `validator`, please replace it by `field_validator` manually.
-    # Check https://docs.pydantic.dev/dev-v2/migration/#changes-to-validators for more information.
     @validator("loggers", always=True)
     def always_include_python_logger(cls, value):
         if "default" not in value:

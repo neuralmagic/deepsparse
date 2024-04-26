@@ -18,7 +18,7 @@ Input/Output Schemas for Object Detection with YOLO
 """
 
 from collections import namedtuple
-from typing import Any, Iterable, List, Optional, TextIO
+from typing import Any, Iterable, List, Optional, TextIO, Union
 
 import numpy
 from PIL import Image
@@ -106,7 +106,7 @@ class YOLOOutput(BaseModel):
     scores: List[List[float]] = Field(
         description="List of scores, one for each prediction"
     )
-    labels: List[List[str]] = Field(
+    labels: List[Union[List[str], List[float]]] = Field(
         description="List of labels, one for each prediction"
     )
     intermediate_outputs: Optional[Any] = Field(

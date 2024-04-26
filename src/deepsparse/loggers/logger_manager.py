@@ -65,7 +65,7 @@ class LoggerManager(AsyncExecutor, LoggerFactory):
     """
 
     def __init__(self, config: str = ""):
-        self.config = LoggingConfig.from_config(config).dict()
+        self.config = LoggingConfig.from_config(config).model_dump()
         super().__init__(config=self.config)
 
     def log(

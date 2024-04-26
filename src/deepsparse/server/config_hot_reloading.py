@@ -114,7 +114,7 @@ def _diff_generator(
         timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
         with open(old_path, "w") as fp:
             fp.write(f"# Version {version} saved at {timestamp} by deepsparse.server\n")
-            yaml.safe_dump(old_config.dict(), fp)
+            yaml.safe_dump(old_config.model_dump(), fp)
         _LOGGER.info(f"Saved old version of config to {old_path}")
         version += 1
 
@@ -147,10 +147,10 @@ def _update_endpoints(
 
     for endpoint in removed:
         _LOGGER.info(f"Requesting removal of endpoint '{endpoint.route}'")
-        requests.delete(url, json=endpoint.dict()).raise_for_status()
+        requests.delete(url, json=endpoint.model_dump()).raise_for_status()
 
     for endpoint in added:
         _LOGGER.info(f"Requesting addition of endpoint '{endpoint.route}'")
-        requests.post(url, json=endpoint.dict()).raise_for_status()
+        requests.post(url, json=endpoint.model_dump()).raise_for_status()
 
     return added, removed

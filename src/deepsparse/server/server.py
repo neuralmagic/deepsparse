@@ -279,7 +279,7 @@ class Server:
         json_params = await raw_request.json()
         benchmark_config = PipelineBenchmarkConfig(**json_params)
         results = benchmark_from_pipeline(
-            pipeline=proxy_pipeline.pipeline, **benchmark_config.dict()
+            pipeline=proxy_pipeline.pipeline, **benchmark_config.model_dump()
         )
 
         return results
