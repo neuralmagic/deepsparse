@@ -15,12 +15,11 @@
 from typing import Dict, List, Optional
 
 import yaml
-from pydantic import BaseModel, Extra, Field, validator
+from pydantic import BaseModel, ConfigDict, Field, validator
 
 
 class LoggerConfig(BaseModel):
-    class Config:
-        extra = Extra.allow
+    model_config = ConfigDict(extra="allow")
 
     name: str = Field(
         default="PythonLogger",
@@ -83,6 +82,8 @@ class LoggingConfig(BaseModel):
         description="Metric level config",
     )
 
+    # TODO[pydantic]: We couldn't refactor the `validator`, please replace it by `field_validator` manually.
+    # Check https://docs.pydantic.dev/dev-v2/migration/#changes-to-validators for more information.
     @validator("loggers", always=True)
     def always_include_python_logger(cls, value):
         if "default" not in value:

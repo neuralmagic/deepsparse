@@ -18,7 +18,7 @@ from pathlib import Path
 from typing import Any, List, Optional, Tuple, Union
 
 import numpy
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from deepsparse.operators.engine_operator import (
     DEEPSPARSE_ENGINE,
@@ -37,7 +37,7 @@ __all__ = ["NLEngineOperator", "NLEngineInputs", "NLEngineOutputs"]
 
 class NLEngineInputs(BaseModel):
     engine_inputs: List = Field(description="engine_inputs")
-    kv_cache: Any = Field(description="kv_cache object")
+    kv_cache: Any = Field(None, description="kv_cache object")
     tokens: List = Field(description="tokens")
     in_generation: Any = Field(description="in_generation", default=None)
     engine: Optional[Any] = Field(
@@ -75,13 +75,12 @@ class NLEngineInputs(BaseModel):
             kv_cache=all_kv_cache,
         )
 
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
 class NLEngineOutputs(BaseModel):
-    engine_outputs: Any = Field(description="engine_outputs")
-    kv_cache: Any = Field(description="kv_cache object")
+    engine_outputs: Any = Field(None, description="engine_outputs")
+    kv_cache: Any = Field(None, description="kv_cache object")
     tokens: List = Field(description="tokens")
     in_generation: Any = Field(description="in_generation", default=None)
 

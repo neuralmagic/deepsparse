@@ -28,13 +28,13 @@ __all__ = ["KVCacheCreator", "KVCacheCreatorInput"]
 
 
 class KVCacheCreatorOutput(BaseModel):
-    kv_cache: Any = Field(description="KV Cache Created")  # DecoderKVCache
+    kv_cache: Any = Field(None, description="KV Cache Created")  # DecoderKVCache
 
 
 class KVCacheCreatorInput(BaseModel):
-    cache_shape: Any = Field(description="shape")
-    kv_cache_data_type: Any = Field(description="data type")
-    output_names: Any = Field(description="output names")
+    cache_shape: Any = Field(None, description="shape")
+    kv_cache_data_type: Any = Field(None, description="data type")
+    output_names: Any = Field(None, description="output names")
 
 
 class KVCacheCreator(Operator):

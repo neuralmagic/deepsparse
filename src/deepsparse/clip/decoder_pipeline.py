@@ -30,10 +30,10 @@ class CLIPDecoderInput(BaseModel):
     """
 
     text_embeddings: Any = Field(
-        description="np.array of text emebddings from the " "text branch"
+        None, description="np.array of text emebddings from the " "text branch"
     )
     image_embeddings: Any = Field(
-        description="np.array of image embeddings from the " "visual branch"
+        None, description="np.array of image embeddings from the " "visual branch"
     )
 
 

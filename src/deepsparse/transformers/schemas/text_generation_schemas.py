@@ -18,7 +18,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Callable, Dict, List, Optional, Sequence, Union
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from transformers import GenerationConfig
 
 
@@ -50,8 +50,7 @@ class FinishReason(Enum):
 
 
 class TextGenerationInput(BaseModel):
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
     sequences: Union[str, List[str]] = Field(
         alias="prompt",
@@ -162,7 +161,4 @@ class TextGenerationOutput(BaseModel):
         "Dictionary containing token_ids and attention_mask, "
         "both mapping to arrays of size [batch_size, sequence_length]",
     )
-
-    class Config:
-        arbitrary_types_allowed = True
-        extra = "allow"
+    model_config = ConfigDict(arbitrary_types_allowed=True, extra="allow")

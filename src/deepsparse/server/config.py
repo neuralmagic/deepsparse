@@ -15,7 +15,7 @@
 
 from typing import Any, Dict, List, Optional, Tuple, Union
 
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 
 from deepsparse.legacy.loggers.config import (
     MetricFunctionConfig,
@@ -207,7 +207,8 @@ class ServerConfig(BaseModel):
         "default SystemLoggingConfig model is used.",
     )
 
-    @validator("endpoints")
+    @field_validator("endpoints")
+    @classmethod
     def assert_unique_endpoint_names(
         cls, endpoints: List[EndpointConfig]
     ) -> List[EndpointConfig]:
@@ -224,7 +225,8 @@ class ServerConfig(BaseModel):
             name_list.append(name)
         return endpoints
 
-    @validator("endpoints")
+    @field_validator("endpoints")
+    @classmethod
     def set_unique_endpoint_names(
         cls, endpoints: List[EndpointConfig]
     ) -> List[EndpointConfig]:

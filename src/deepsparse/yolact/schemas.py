@@ -21,7 +21,7 @@ from typing import Any, Iterable, List, Optional, TextIO, Union
 
 import numpy
 from PIL import Image
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from deepsparse.pipelines.computer_vision import ComputerVisionSchema
 
@@ -98,8 +98,7 @@ class YOLACTInputSchema(ComputerVisionSchema):
         )
         return input_schema
 
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
 class YOLACTOutputSchema(BaseModel):
@@ -117,11 +116,9 @@ class YOLACTOutputSchema(BaseModel):
         description="List of bounding boxes, one for each prediction"
     )
     masks: Optional[List[Any]] = Field(
-        description="List of masks, one for each prediction"
+        None, description="List of masks, one for each prediction"
     )
-
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
     def __getitem__(self, index):
         if index >= len(self.classes):

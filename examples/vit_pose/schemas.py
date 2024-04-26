@@ -15,7 +15,7 @@
 from typing import List
 
 import numpy
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from deepsparse.pipelines.computer_vision import ComputerVisionSchema
 
@@ -32,6 +32,4 @@ class VitPoseInput(ComputerVisionSchema):
 
 class VitPoseOutput(BaseModel):
     out: List[numpy.ndarray]
-
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)

@@ -29,10 +29,10 @@ __all__ = ["PrepareGeneration", "PrepareForGenerationOutput"]
 
 class PrepareForGenerationOutput(BaseModel):
     prompt_logits: Any = Field(
-        description="A set of prompt logits generated during prefill"
+        None, description="A set of prompt logits generated during prefill"
     )
-    kv_cache: Optional[Any] = Field(description="kv cache")
-    in_generation: Optional[bool] = Field(description="in_generation flag")
+    kv_cache: Optional[Any] = Field(None, description="kv cache")
+    in_generation: Optional[bool] = Field(None, description="in_generation flag")
 
 
 class PrepareGeneration(Operator):

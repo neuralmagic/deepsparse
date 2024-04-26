@@ -36,15 +36,15 @@ class Metric(BaseModel):
 
 
 class Dataset(BaseModel):
-    type: Optional[str] = Field(description="Type of dataset")
+    type: Optional[str] = Field(None, description="Type of dataset")
     name: str = Field(description="Name of the dataset")
-    config: Any = Field(description="Configuration for the dataset")
-    split: Optional[str] = Field(description="Split of the dataset")
+    config: Any = Field(None, description="Configuration for the dataset")
+    split: Optional[str] = Field(None, description="Split of the dataset")
 
 
 class EvalSample(BaseModel):
-    input: Any = Field(description="Sample input to the model")
-    output: Any = Field(description="Sample output from the model")
+    input: Any = Field(None, description="Sample input to the model")
+    output: Any = Field(None, description="Sample output from the model")
 
 
 class Evaluation(BaseModel):
@@ -55,7 +55,7 @@ class Evaluation(BaseModel):
     dataset: Dataset = Field(description="Dataset that the evaluation was performed on")
     metrics: List[Metric] = Field(description="List of metrics for the evaluation")
     samples: Optional[List[EvalSample]] = Field(
-        description="List of samples for the evaluation"
+        None, description="List of samples for the evaluation"
     )
 
 
@@ -64,8 +64,9 @@ class Result(BaseModel):
         description="Evaluation result represented in the unified, structured format"
     )
     raw: Any = Field(
+        None,
         description="Evaluation result represented in the raw format "
-        "(characteristic for the specific evaluation integration)"
+        "(characteristic for the specific evaluation integration)",
     )
 
 

@@ -35,7 +35,7 @@ class YOLOSegOutput(BaseModel):
         description="List of labels, one for each prediction"
     )
     masks: Optional[List[Any]] = Field(
-        description="List of masks, one for each prediction"
+        None, description="List of masks, one for each prediction"
     )
 
     intermediate_outputs: Optional[Tuple[Any, Any]] = Field(

@@ -22,7 +22,7 @@ from typing import Any, Iterable, List, Optional, TextIO
 
 import numpy
 from PIL import Image
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from deepsparse.pipelines.computer_vision import ComputerVisionSchema
 
@@ -92,8 +92,7 @@ class YOLOInput(ComputerVisionSchema):
         )
         return input_schema
 
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
 class YOLOOutput(BaseModel):

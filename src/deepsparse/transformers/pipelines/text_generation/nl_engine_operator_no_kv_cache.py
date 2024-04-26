@@ -28,8 +28,8 @@ __all__ = [
 
 
 class NLEngineInputsNoCache(BaseModel):
-    input_ids: Any
-    attention_mask: Any
+    input_ids: Any = None
+    attention_mask: Any = None
 
 
 class NLEngineOperatorNoCache(EngineOperator):

@@ -15,6 +15,7 @@
 from typing import Any, Iterable, List, TextIO, Union
 
 import numpy
+from pydantic import ConfigDict
 
 
 try:
@@ -42,9 +43,7 @@ class ComputerVisionSchema(BaseModel):
     images: Union[str, List[str], List[Any], Any] = Field(
         description="List of Images to process"
     )  # List[Any] to accept List[numpy.ndarray], Any to accept numpy.ndarray
-
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
     @classmethod
     def from_files(

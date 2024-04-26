@@ -15,7 +15,7 @@
 from copy import deepcopy
 from typing import Dict, List, Optional, Union
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from deepsparse.benchmark import ORTEngine
 from deepsparse.engine import Context as EngineContext
@@ -69,8 +69,7 @@ class EngineOperatorInputs(BaseModel):
 
         return cls(engine_inputs=joined_engine_inputs)
 
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
 class EngineOperatorOutputs(BaseModel):

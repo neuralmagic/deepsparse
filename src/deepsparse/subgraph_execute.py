@@ -33,9 +33,12 @@ class StreamingOutput(BaseModel):
     """
 
     data_to_return: Any = Field(
-        description="Data that should be returned to be used in the next pipeline step"
+        None,
+        description="Data that should be returned to be used in the next pipeline step",
     )
-    data_to_yield: Any = Field(description="Data that should be yielded to the user")
+    data_to_yield: Any = Field(
+        None, description="Data that should be yielded to the user"
+    )
 
 
 class SubGraphExecutor:
