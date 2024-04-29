@@ -122,7 +122,7 @@ _docs_deps = [
 ]
 _server_deps = [
     "uvicorn>=0.15.0",
-    "fastapi",
+    "fastapi>=0.100.0,<0.111",
     "requests>=2.26.0",
     "python-multipart>=0.0.5",
     "prometheus-client>=0.14.1",
