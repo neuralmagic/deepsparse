@@ -90,7 +90,8 @@ class MnliTextClassificationInput(ZeroShotTextClassificationInputBase):
     labels: Optional[Union[List[str], str]] = Field(
         description="The set of possible class labels to classify each "
         "sequence into. Can be a single label, a string of comma-separated "
-        "labels, or a list of labels."
+        "labels, or a list of labels.",
+        default=None,
     )
     hypothesis_template: Optional[str] = Field(
         description="A formattable template for wrapping around the provided "
