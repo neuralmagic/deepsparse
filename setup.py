@@ -77,13 +77,6 @@ license_files = [
 ]
 
 
-def _parse_requirements_file(file_path):
-    with open(file_path, "r") as requirements_file:
-        lines = requirements_file.read().splitlines()
-
-    return [line for line in lines if len(line) > 0 and line[0] != "#"]
-
-
 _deps = [
     "numpy>=1.16.3",
     "onnx>=1.5.0,<1.15.0",
@@ -153,17 +146,6 @@ _transformers_integration_deps = [
 ]
 _sentence_transformers_integration_deps = ["optimum-deepsparse"] + _torch_deps
 
-# haystack dependencies are installed from a requirements file to avoid
-# conflicting versions with NM's deepsparse/transformers
-_haystack_requirements_file_path = os.path.join(
-    os.path.dirname(os.path.realpath(__file__)),
-    "src",
-    "deepsparse",
-    "transformers",
-    "haystack",
-    "haystack_reqs.txt",
-)
-_haystack_integration_deps = _parse_requirements_file(_haystack_requirements_file_path)
 _clip_deps = [
     "open_clip_torch==2.20.0",
     "transformers<4.40",
@@ -270,7 +252,6 @@ def _setup_extras() -> Dict:
         "image_classification": _computer_vision_deps,
         "yolo": _computer_vision_deps,
         "yolov5": _computer_vision_deps,
-        "haystack": _haystack_integration_deps,
         "openpifpaf": _openpifpaf_integration_deps,
         "yolov8": _yolov8_integration_deps,
         "transformers": _transformers_integration_deps,
