@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import numpy
-from pydantic import BaseModel, ValidationError
+from pydantic.v1 import BaseModel, ValidationError
 
 import pytest
 from deepsparse.pipelines.numpy_schemas import Float32, NumpyArray, UInt8
