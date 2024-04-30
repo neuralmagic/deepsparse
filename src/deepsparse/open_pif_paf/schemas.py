@@ -16,7 +16,7 @@ from typing import Iterable, List, TextIO, Tuple
 
 import numpy
 from PIL import Image
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from deepsparse.pipelines.computer_vision import ComputerVisionSchema
 
@@ -76,8 +76,7 @@ class OpenPifPafFields(BaseModel):
         input_schema = cls(*args, images=files_numpy, **kwargs)
         return input_schema
 
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
 class OpenPifPafOutput(BaseModel):
@@ -105,6 +104,4 @@ class OpenPifPafOutput(BaseModel):
         "For every prediction, it is a list of tuples of body "
         "part indices. "
     )
-
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)

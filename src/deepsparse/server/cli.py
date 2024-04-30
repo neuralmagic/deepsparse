@@ -249,7 +249,7 @@ def main(
         with TemporaryDirectory() as tmp_dir:
             config_path = os.path.join(tmp_dir, "server-config.yaml")
             with open(config_path, "w") as fp:
-                yaml.dump(cfg.dict(), fp)
+                yaml.dump(cfg.model_dump(), fp)
 
             server = _fetch_server(integration=integration, config=config_path)
             server.start_server(

@@ -38,7 +38,7 @@ from enum import Enum
 from typing import Any, List, Type, Union
 
 import numpy
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from transformers.tokenization_utils_base import PaddingStrategy, TruncationStrategy
 
 from deepsparse.legacy import Pipeline
@@ -77,9 +77,7 @@ class EmbeddingExtractionOutput(BaseModel):
         description="The output of the model which is an embedded "
         "representation of the input"
     )
-
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
 class ExtractionStrategy(str, Enum):

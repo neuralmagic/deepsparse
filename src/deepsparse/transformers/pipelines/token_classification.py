@@ -95,16 +95,18 @@ class TokenClassificationResult(BaseModel):
     score: float = Field(description="The corresponding probability for `entity`")
     word: str = Field(description="token/word classified")
     start: Optional[int] = Field(
+        None,
         description=(
             "index of the start of the corresponding entity in the sentence. "
             "Only exists if the offsets are available within the tokenizer"
-        )
+        ),
     )
     end: Optional[int] = Field(
+        None,
         description=(
             "index of the end of the corresponding entity in the sentence. "
             "Only exists if the offsets are available within the tokenizer"
-        )
+        ),
     )
     index: Optional[int] = Field(
         description=(

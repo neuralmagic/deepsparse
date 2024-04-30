@@ -71,15 +71,15 @@ def test_check_identifier_match(template, identifier, expected_output):
 
 
 class MockModel__(BaseModel):
-    key_3: Any
+    key_3: Any = None
 
 
 class MockModel_(BaseModel):
-    key_2: Any
+    key_2: Any = None
 
 
 class MockModel(BaseModel):
-    key_1: Any
+    key_1: Any = None
 
 
 value_1 = MockModel(key_1=MockModel_(key_2=[0, 1, 2, 3]))

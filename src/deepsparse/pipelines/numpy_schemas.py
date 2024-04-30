@@ -15,7 +15,7 @@
 from typing import Generic, Type, TypeVar
 
 import numpy
-from pydantic.fields import ModelField
+from pydantic.v1.fields import ModelField
 
 
 Dtype = TypeVar("Dtype")

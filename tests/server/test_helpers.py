@@ -26,9 +26,9 @@ from tests.helpers import find_free_port
 
 
 class DummyOutputSchema(BaseModel):
-    field_1: Any
-    field_2: Any
-    field_3: Any
+    field_1: Any = None
+    field_2: Any = None
+    field_3: Any = None
 
 
 yaml_config_1 = """

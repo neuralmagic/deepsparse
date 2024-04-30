@@ -24,9 +24,9 @@ __all__ = ["CompileGenerations", "CompileGenerationsOutput"]
 
 
 class CompileGenerationsOutput(BaseModel):
-    generated_tokens: Any = Field(description="generated_tokens")
-    generated_logits: Any = Field(description="generated_logits")
-    finished_reason: Any = Field(description="finished_reason")
+    generated_tokens: Any = Field(None, description="generated_tokens")
+    generated_logits: Any = Field(None, description="generated_logits")
+    finished_reason: Any = Field(None, description="finished_reason")
 
 
 class CompileGenerations(Operator):

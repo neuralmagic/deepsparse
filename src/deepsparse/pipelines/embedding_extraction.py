@@ -21,7 +21,7 @@ import inspect
 from typing import Any, List, Type, Union
 
 import numpy
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from deepsparse.legacy import Pipeline
 from deepsparse.log import get_main_logger
@@ -47,9 +47,7 @@ class EmbeddingExtractionOutput(BaseModel):
         description="The output of the model which is an embedded "
         "representation of the input"
     )
-
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
 @Pipeline.register(

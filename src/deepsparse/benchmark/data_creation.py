@@ -17,7 +17,7 @@ import logging
 import random
 import string
 from os import path
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, get_args
 
 import numpy
 
@@ -58,15 +58,11 @@ def get_input_schema_type(pipeline: Pipeline) -> str:
     if SchemaType.TEXT_SEQ in input_schema_requirements:
         if input_schema_fields.get(SchemaType.TEXT_SEQ).alias == SchemaType.TEXT_PROMPT:
             return SchemaType.TEXT_PROMPT
-        sequence_types = [
-            f.outer_type_ for f in input_schema_fields[SchemaType.TEXT_SEQ].sub_fields
-        ]
+        sequence_types = get_args(input_schema_fields[SchemaType.TEXT_SEQ].annotation)
         if List[str] in sequence_types:
             return SchemaType.TEXT_SEQ
     elif SchemaType.TEXT_INPUT in input_schema_requirements:
-        sequence_types = [
-            f.outer_type_ for f in input_schema_fields[SchemaType.TEXT_INPUT].sub_fields
-        ]
+        sequence_types = get_args(input_schema_fields[SchemaType.TEXT_INPUT].annotation)
         if List[str] in sequence_types:
             return SchemaType.TEXT_INPUT
     elif SchemaType.QUESTION in input_schema_requirements:

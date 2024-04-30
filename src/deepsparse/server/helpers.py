@@ -35,7 +35,7 @@ __all__ = [
 
 def create_error_response(status_code: HTTPStatus, message: str) -> JSONResponse:
     return JSONResponse(
-        ErrorResponse(message=message, type="invalid_request_error").dict(),
+        ErrorResponse(message=message, type="invalid_request_error").model_dump(),
         status_code=status_code.value,
     )
 

@@ -15,12 +15,11 @@
 from typing import Dict, List, Optional
 
 import yaml
-from pydantic import BaseModel, Extra, Field, validator
+from pydantic import BaseModel, ConfigDict, Field, validator
 
 
 class LoggerConfig(BaseModel):
-    class Config:
-        extra = Extra.allow
+    model_config = ConfigDict(extra="allow")
 
     name: str = Field(
         default="PythonLogger",

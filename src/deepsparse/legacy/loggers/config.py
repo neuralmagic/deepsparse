@@ -14,7 +14,7 @@
 
 from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 
 
 """
@@ -57,7 +57,8 @@ class MetricFunctionConfig(BaseModel):
         "the subset of loggers (specified here by a list of their names).",
     )
 
-    @validator("frequency")
+    @field_validator("frequency")
+    @classmethod
     def non_zero_frequency(cls, frequency: int) -> int:
         if frequency <= 0:
             raise ValueError(

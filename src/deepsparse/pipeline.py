@@ -800,8 +800,13 @@ def haystack_pipeline(*args, **kwargs) -> "Pipeline":
     Neural Magic pipeline for running Haystack DocumentSearchPipeline.
     Supports selected Haystack Nodes as well as Haystack nodes integrated
     with the Neural Magic DeepSparse Engine
+
+    Note: Deprecated due to lack of pydanticV2 support in Haystack v1
     """
-    return Pipeline.create("information_retrieval_haystack", *args, **kwargs)
+    raise DeprecationWarning(
+        "Haystack support with deepsparse has been deprecated, "
+        "kindly use deepsparse-nightly==1.8.20240404 or older"
+    )
 
 
 def embedding_extraction_pipeline(*args, **kwargs) -> "Pipeline":

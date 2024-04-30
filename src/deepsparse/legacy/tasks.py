@@ -206,7 +206,10 @@ class SupportedTasks:
         elif cls.is_haystack(task):
             # trigger haystack pipeline as well as transformers pipelines to
             # register with Pipeline.register
-            import deepsparse.transformers.haystack  # noqa: F401
+            raise DeprecationWarning(
+                "Haystack support with deepsparse has been deprecated, "
+                "kindly use deepsparse-nightly==1.8.20240404 or older"
+            )
 
         elif cls.is_embedding_extraction(task):
             # trigger embedding_extraction pipelines to register with
