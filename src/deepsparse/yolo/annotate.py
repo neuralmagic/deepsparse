@@ -219,8 +219,11 @@ def main(
         )
 
         if is_webcam:
+            cv2.namedWindow("annotated", cv2.WINDOW_NORMAL)
             cv2.imshow("annotated", annotated_image)
-            cv2.waitKey(1)
+            ch = cv2.waitKey(1)
+            if ch == 27 or ch == ord("q") or ch == ord("Q"):
+                break
 
         # save
         if saver:
