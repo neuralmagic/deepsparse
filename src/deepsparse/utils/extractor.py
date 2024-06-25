@@ -21,7 +21,7 @@ https://github.com/onnx/onnx/blob/main/onnx/helper.py
 """
 
 import os
-from typing import Any, List, Optional, Sequence, Tuple
+from typing import Any, List, Optional, Sequence, Tuple, Set
 
 import onnx.helper
 import onnx.shape_inference
@@ -84,8 +84,8 @@ class Extractor:
     def _dfs_search_reachable_nodes(
         self,
         node_output_name: str,
-        graph_input_names: List[str],
-        reachable_nodes: List[NodeProto],
+        graph_input_names: Set[str],
+        reachable_nodes: Set[NodeProto],
     ) -> None:
         if node_output_name in graph_input_names:
             return
@@ -95,7 +95,7 @@ class Extractor:
                 continue
             if node in reachable_nodes:
                 continue
-            reachable_nodes.append(node)
+            reachable_nodes.add(node)
             for name in node.input:
                 self._dfs_search_reachable_nodes(
                     name, graph_input_names, reachable_nodes
@@ -106,9 +106,9 @@ class Extractor:
         input_names: List[str],
         output_names: List[str],
     ) -> List[NodeProto]:
-        reachable_nodes = list()  # type: ignore
+        reachable_nodes = set()  # type: ignore
         for name in output_names:
-            self._dfs_search_reachable_nodes(name, input_names, reachable_nodes)
+            self._dfs_search_reachable_nodes(name, set(input_names), reachable_nodes)
         # needs to be topology sorted.
         nodes = [n for n in self.graph.node if n in reachable_nodes]
         return nodes
