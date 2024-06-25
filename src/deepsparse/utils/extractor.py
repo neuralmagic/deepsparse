@@ -94,7 +94,7 @@ class Extractor:
         nodes_to_search = [
             node
             for node in unreachable_nodes
-            if node_output_name in node.output and node not in reachable_nodes
+            if node_output_name in node.output
         ]
 
         for node in nodes_to_search:
