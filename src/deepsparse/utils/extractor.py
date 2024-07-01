@@ -21,7 +21,7 @@ https://github.com/onnx/onnx/blob/main/onnx/helper.py
 """
 
 import os
-from typing import Any, List, Optional, Sequence, Tuple, Set
+from typing import Any, List, Optional, Sequence, Set, Tuple
 
 import onnx.helper
 import onnx.shape_inference
@@ -85,26 +85,25 @@ class Extractor:
         self,
         node_output_name: str,
         graph_input_names: Set[str],
-        reachable_nodes: Set[NodeProto],
-        unreachable_nodes: Set[NodeProto]
+        nodes: List[NodeProto],
+        reachable: Set[int],
+        unreachable: Set[int],
     ) -> None:
         if node_output_name in graph_input_names:
             return
-        
+
         nodes_to_search = [
-            node
-            for node in unreachable_nodes
-            if node_output_name in node.output
+            index for index in unreachable if node_output_name in nodes[index].output
         ]
 
-        for node in nodes_to_search:
-            reachable_nodes.add(node)
-            unreachable_nodes.remove(node)
+        for node_index in nodes_to_search:
+            reachable.add(node_index)
+            unreachable.remove(node_index)
 
-        for node in nodes_to_search:
-            for name in node.input:
+        for node_index in nodes_to_search:
+            for name in nodes[node_index].input:
                 self._dfs_search_reachable_nodes(
-                    name, graph_input_names, reachable_nodes, unreachable_nodes
+                    name, graph_input_names, nodes, reachable, unreachable
                 )
 
     def _collect_reachable_nodes(
@@ -113,14 +112,16 @@ class Extractor:
         output_names: List[str],
     ) -> List[NodeProto]:
         input_names = set(input_names)
-        reachable_nodes = set()  # type: ignore
-        unreachable_nodes = set(self.graph.node)  # type: ignore
+        nodes = [node for node in self.graph.node]
+        reachable = set()
+        unreachable = set(range(len(nodes)))
         for name in output_names:
             self._dfs_search_reachable_nodes(
-                name, input_names, reachable_nodes, unreachable_nodes
+                name, input_names, nodes, reachable, unreachable
             )
-        # needs to be topology sorted.
-        nodes = [n for n in self.graph.node if n in reachable_nodes]
+        # needs to be topologically sorted
+        reachable = sorted(list(reachable))
+        nodes = [nodes[node_index] for node_index in reachable]
         return nodes
 
     def _collect_referred_local_functions(
