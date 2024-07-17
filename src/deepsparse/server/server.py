@@ -53,9 +53,7 @@ class ModelMetaData(BaseModel):
     model_path: str
 
     # override name spaces due to model_ warnings in pydantic 2.X
-    model_config = ConfigDict(
-        protected_namespaces=()
-    )
+    model_config = ConfigDict(protected_namespaces=())
 
 
 # For deepsparse endpoints, we bind the `predict`` and `predict_from_files` functions to

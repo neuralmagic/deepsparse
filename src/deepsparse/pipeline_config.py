@@ -14,7 +14,7 @@
 
 from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from deepsparse.operators.engine_operator import DEEPSPARSE_ENGINE
 
@@ -86,6 +86,4 @@ class PipelineConfig(BaseModel):
     )
 
     # override name spaces due to model_ warnings in pydantic 2.X
-    model_config = ConfigDict(
-        protected_namespaces=()
-    )
+    model_config = ConfigDict(protected_namespaces=())
