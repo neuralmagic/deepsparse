@@ -14,7 +14,7 @@
 
 from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 from deepsparse.operators.engine_operator import DEEPSPARSE_ENGINE
 
@@ -83,4 +83,9 @@ class PipelineConfig(BaseModel):
             "Additional arguments for inference with the model that will be passed "
             "into the pipeline as kwargs"
         ),
+    )
+
+    # override name spaces due to model_ warnings in pydantic 2.X
+    model_config = ConfigDict(
+        protected_namespaces=()
     )

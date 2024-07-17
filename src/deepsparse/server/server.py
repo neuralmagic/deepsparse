@@ -20,7 +20,7 @@ from copy import deepcopy
 from typing import AsyncGenerator, List, Optional, Union
 
 import yaml
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 import uvicorn
 from deepsparse.benchmark.benchmark_pipeline import benchmark_from_pipeline
@@ -51,6 +51,11 @@ class CheckReady(BaseModel):
 
 class ModelMetaData(BaseModel):
     model_path: str
+
+    # override name spaces due to model_ warnings in pydantic 2.X
+    model_config = ConfigDict(
+        protected_namespaces=()
+    )
 
 
 # For deepsparse endpoints, we bind the `predict`` and `predict_from_files` functions to
