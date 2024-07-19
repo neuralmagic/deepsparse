@@ -79,7 +79,20 @@ from deepsparse.transformers.utils.eval_helpers import process_concatenated_data
 _LOGGER = logging.getLogger(__name__)
 
 
-PPL_DATASETS = ["wikitext2", "c4", "openai_humaneval"]
+DEFAULT_ULTRACHAT200K_TEMPLATE = (
+    "{% for message in messages %}\n"
+    "{% if message['role'] == 'user' %}\n"
+    "{{ '<|user|>\n' + message['content'] + eos_token }}\n"
+    "{% elif message['role'] == 'system' %}\n"
+    "{{ '<|system|>\n' + message['content'] + eos_token }}\n"
+    "{% elif message['role'] == 'assistant' %}\n"
+    "{{ '<|assistant|>\n'  + message['content'] + eos_token }}\n"
+    "{% endif %}\n"
+    "{% if loop.last and add_generation_prompt %}\n"
+    "{{ '<|assistant|>' }}\n{% endif %}\n{% endfor %}"
+)
+
+PPL_DATASETS = ["wikitext2", "c4", "openai_humaneval", "ultrachat200k"]
 
 
 def perplexity_eval(args, dataset_name="openai_humaneval"):
@@ -97,6 +110,11 @@ def perplexity_eval(args, dataset_name="openai_humaneval"):
         # Set perplexity computation to accumulate negative log-likelihood across
         # sections
         accumulate = True
+    elif dataset_name == "ultrachat200k":
+        dataset = load_dataset(
+            "HuggingFaceH4/ultrachat_200k", name="default", split="test_sft"
+        )
+        accumulate = False
     else:
         dataset = load_dataset(dataset_name, split="test")
         accumulate = False
@@ -112,6 +130,13 @@ def perplexity_eval(args, dataset_name="openai_humaneval"):
         trust_remote_code=args.trust_remote_code,
     )
 
+    if dataset_name == "ultrachat200k":
+        if (
+            not hasattr(text_generation.tokenizer, "chat_template")
+            or text_generation.tokenizer.chat_template is None
+        ):
+            text_generation.tokenizer.chat_template = DEFAULT_ULTRACHAT200K_TEMPLATE
+
     # Instantiate perplexity metric
     perplexity_metrics = Perplexity(accumulate=accumulate)
 
@@ -124,6 +149,18 @@ def perplexity_eval(args, dataset_name="openai_humaneval"):
         # Collect input sequence
         if dataset_name == "openai_humaneval":
             sample = sample["prompt"] + sample["canonical_solution"]
+        elif dataset_name == "ultrachat200k":
+            messages = sample["messages"]
+            # We add an empty system message if there is none
+            if messages[0]["role"] != "system":
+                messages.insert(0, {"role": "system", "content": ""})
+
+            sample = text_generation.tokenizer.apply_chat_template(
+                messages,
+                tokenize=False,
+                add_generation_prompt=False,
+            )
+
         batch_samples.append(sample)
 
         if args.max_samples and idx == args.max_samples - 1:
@@ -548,6 +585,10 @@ SUPPORTED_DATASETS = {
     "c4": lambda args: perplexity_eval(
         args,
         dataset_name="c4",
+    ),
+    "ultrachat200k": lambda args: perplexity_eval(
+        args,
+        dataset_name="ultrachat200k",
     ),
 }
 
