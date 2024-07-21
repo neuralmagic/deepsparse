@@ -1,0 +1,18 @@
+# server-config-roboflow-logging.yaml
+loggers:
+  roboflow_logger:
+    path: server/roboflow-logger.py:RoboflowLogger
+    api_key: YOUR_API_KEY
+    dataset_name: YOUR_DATASET_NAME
+
+endpoints:
+  - task: yolo
+    model: zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/pruned_quant-aggressive_94
+    name: yolov5-s-coco
+    route: /yolov5-s-coco/predict
+    data_logging:
+      pipeline_inputs:
+        - func: identity
+          frequency: 1
+          target_loggers:
+            - roboflow_logger

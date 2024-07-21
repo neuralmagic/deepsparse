@@ -1,0 +1,9 @@
+## server-config-no-roboflow-logging.yaml
+loggers: 
+    python:
+
+endpoints:
+  - task: yolo
+    model: zoo:cv/detection/yolov5-s/pytorch/ultralytics/coco/pruned_quant-aggressive_94
+    name: yolov5-s-coco
+    route: /yolov5-s-coco/predict
