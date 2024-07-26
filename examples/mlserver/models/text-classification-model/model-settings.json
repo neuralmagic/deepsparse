@@ -1,0 +1,10 @@
+{
+    "name": "text-classification-model",
+    "implementation": "models.DeepSparseRuntime",
+    "parameters": {
+        "task": "text-classification",
+        "model_path": "zoo:nlp/sentiment_analysis/obert-base/pytorch/huggingface/sst2/pruned90_quant-none",
+        "batch_size": 1,
+        "sequence_length": 128
+    }
+}
