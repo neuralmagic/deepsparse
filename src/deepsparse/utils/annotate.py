@@ -20,12 +20,14 @@ import logging
 import os
 import shutil
 import time
+from collections import deque
 from copy import copy
 from pathlib import Path
 from typing import Any, Callable, Iterable, Iterator, List, Optional, Tuple, Union
 
 import numpy
 
+from deepsparse.timing import InferencePhases
 from sparsezoo.utils import create_dirs
 
 
@@ -40,6 +42,23 @@ except ModuleNotFoundError as cv2_import_error:
 _LOGGER = logging.getLogger(__name__)
 
 __all__ = ["get_image_loader_and_saver", "get_annotations_save_dir", "annotate"]
+
+
+class AverageFPS:
+    def __init__(self, num_samples=20):
+        self.frame_times = deque(maxlen=num_samples)
+
+    def measure(self, duration):
+        self.frame_times.append(duration)
+
+    def calculate(self):
+        if len(self.frame_times) > 1:
+            return numpy.average(self.frame_times)
+        else:
+            return 0.0
+
+
+afps = AverageFPS()
 
 
 def get_image_loader_and_saver(
@@ -61,6 +80,19 @@ def get_image_loader_and_saver(
         image_batch, video, or web-cam based on path given, and a boolean value
         that is True is the returned objects load videos
     """
+    # webcam
+    if path.isnumeric():
+        loader = WebcamLoader(int(path), image_shape)
+        saver = (
+            VideoSaver(save_dir, 30, loader.original_frame_size, None)
+            if not no_save
+            else None
+        )
+        return loader, saver, True
+
+    if no_save:
+        print("no_save ignored since not using webcam")
+
     # video
     if path.endswith(".mp4"):
         loader = VideoLoader(path, image_shape)
@@ -71,15 +103,7 @@ def get_image_loader_and_saver(
             target_fps,
         )
         return loader, saver, True
-    # webcam
-    if path.isnumeric():
-        loader = WebcamLoader(int(path), image_shape)
-        saver = (
-            VideoSaver(save_dir, 30, loader.original_frame_size, None)
-            if not no_save
-            else None
-        )
-        return loader, saver, True
+
     # image file(s)
     return ImageLoader(path, image_shape), ImageSaver(save_dir), False
 
@@ -364,13 +388,11 @@ def annotate(
     if isinstance(original_image, str):
         original_image = cv2.imread(image)
 
-    if target_fps is None and calc_fps:
-        start = time.perf_counter()
-
     pipeline_output = pipeline(images=[image])
 
     if target_fps is None and calc_fps:
-        target_fps = 1 / (time.perf_counter() - start)
+        afps.measure(1 / pipeline._timer.time_delta(InferencePhases.ENGINE_FORWARD))
+        target_fps = afps.calculate()
 
     result = annotation_func(
         image=original_image,
