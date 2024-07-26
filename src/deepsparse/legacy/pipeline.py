@@ -16,6 +16,7 @@
 Classes and registry for end to end inference pipelines that wrap an underlying
 inference engine and include pre/postprocessing
 """
+import logging
 import os
 from abc import ABC, abstractmethod
 from concurrent.futures import ThreadPoolExecutor
@@ -74,6 +75,8 @@ ORT_ENGINE = "onnxruntime"
 TORCHSCRIPT_ENGINE = "torchscript"
 
 SUPPORTED_PIPELINE_ENGINES = [DEEPSPARSE_ENGINE, ORT_ENGINE]
+
+_LOGGER = logging.getLogger(__name__)
 
 
 class Pipeline(BasePipeline):
@@ -192,10 +195,14 @@ class Pipeline(BasePipeline):
                 )
 
         self._engine_args = dict(
-            batch_size=self._batch_size or 1,  # bs=1 for dynamic batch
+            batch_size=self._batch_size,
             num_cores=num_cores,
             input_shapes=input_shapes,
         )
+        if self._engine_args["batch_size"] == 0:
+            _LOGGER.warning("Overriding batch_size from 0 to 1 for dynamic batch")
+            self._engine_args["batch_size"] = 1
+
         if engine_type.lower() == DEEPSPARSE_ENGINE:
             self._engine_args["scheduler"] = scheduler
             self._engine_args["num_streams"] = num_streams
