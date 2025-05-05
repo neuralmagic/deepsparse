@@ -21,31 +21,32 @@ limitations under the License.
       <span>&nbsp;&nbsp;DeepSparse</span>
   </h1>
   <h4>Sparsity-aware deep learning inference runtime for CPUs</h4>
-  <div align="center">
-  <a href="https://docs.neuralmagic.com/deepsparse/">
-    <img alt="Documentation" src="https://img.shields.io/badge/documentation-darkred?&style=for-the-badge&logo=read-the-docs" height="20" />
-  </a>
-  <a href="https://neuralmagic.com/community/">
-    <img alt="Slack" src="https://img.shields.io/badge/slack-purple?style=for-the-badge&logo=slack" height="20" />
-  </a>
-  <a href="https://github.com/neuralmagic/deepsparse/issues/">
-    <img alt="Support" src="https://img.shields.io/badge/support%20forums-navy?style=for-the-badge&logo=github" height="20" />
-  </a>
-  <a href="https://www.youtube.com/channel/UCo8dO_WMGYbWCRnj_Dxr4EA">
-    <img alt="YouTube" src="https://img.shields.io/badge/-YouTube-red?&style=for-the-badge&logo=youtube&logoColor=white" height="20" />
-  </a>
-  <a href="https://twitter.com/neuralmagic">
-    <img alt="Twitter" src="https://img.shields.io/twitter/follow/neuralmagic?color=darkgreen&label=Follow&style=social" height="20" />
-  </a>
-</div>
 
-[DeepSparse](https://github.com/neuralmagic/deepsparse) is a CPU inference runtime that takes advantage of sparsity to accelerate neural network inference. Coupled with [SparseML](https://github.com/neuralmagic/sparseml), our optimization library for pruning and quantizing your models, DeepSparse delivers exceptional inference performance on CPU hardware.
+## 🚨 2025 End of Life Announcement: DeepSparse, SparseML, SparseZoo, and Sparsify
+
+Dear Community,
+
+We’re reaching out with heartfelt thanks and important news. Following [Neural Magic’s acquisition by Red Hat in January 2025](https://www.redhat.com/en/about/press-releases/red-hat-completes-acquisition-neural-magic-fuel-optimized-generative-ai-innovation-across-hybrid-cloud), we’re shifting our focus to commercial and open-source offerings built around [vLLM (virtual large language models)](https://www.redhat.com/en/topics/ai/what-is-vllm).
+
+As part of this transition, we have ceased development and will deprecate the community versions of **DeepSparse (including DeepSparse Enterprise), SparseML, SparseZoo, and Sparsify on June 2, 2025**. After that, these tools will no longer receive updates or support.
+
+From day one, our mission was to democratize AI through efficient, accessible tools. We’ve learned so much from your feedback, creativity, and collaboration—watching these tools become vital parts of your ML journeys has meant the world to us.
+
+Though we’re winding down the community editions, we remain committed to our original values. Now as part of Red Hat, we’re excited to evolve our work around vLLM and deliver even more powerful solutions to the ML community.
+
+To learn more about our next chapter, visit [ai.redhat.com](ai.redhat.com). Thank you for being part of this incredible journey.
+
+_With gratitude, The Neural Magic Team (now part of Red Hat)_
+
+## Overview
+
+DeepSparse is a CPU inference runtime that takes advantage of sparsity to accelerate neural network inference. Coupled with [SparseML](https://github.com/neuralmagic/sparseml), our optimization library for pruning and quantizing your models, DeepSparse delivers exceptional inference performance on CPU hardware.
 
 <p align="center">
    <img alt="NM Flow" src="https://github.com/neuralmagic/deepsparse/assets/3195154/51e62fe7-9d9a-4fa5-a774-877158da1e29" width="60%" />
 </p>
 
-## ✨NEW✨ DeepSparse LLMs
+## DeepSparse LLMs
 
 Neural Magic is excited to announce initial support for performant LLM inference in DeepSparse with:
 - sparse kernels for speedups and memory savings from unstructured sparse weights.
@@ -208,26 +209,12 @@ export NM_DISABLE_ANALYTICS=True
 
 Confirm that telemetry is shut off through info logs streamed with engine invocation by looking for the phrase "Skipping Neural Magic's latest package version check."
 
-## Community
+## License
 
-### Get In Touch
-
-- [Contribution Guide](https://github.com/neuralmagic/deepsparse/blob/main/CONTRIBUTING.md)
-- [Community Slack](https://neuralmagic.com/community/)
-- [GitHub Issue Queue](https://github.com/neuralmagic/deepsparse/issues) 
-- [Subscribe To Our Newsletter](https://neuralmagic.com/subscribe/)
-- [Blog](https://www.neuralmagic.com/blog/) 
-
-For more general questions about Neural Magic, [complete this form.](http://neuralmagic.com/contact/)
-
-### License
-
-- **DeepSparse Community** is free to use and is licensed under the [Neural Magic DeepSparse Community License.](https://github.com/neuralmagic/deepsparse/blob/main/LICENSE)
+**DeepSparse Community** is free to use and is licensed under the [Neural Magic DeepSparse Community License.](https://github.com/neuralmagic/deepsparse/blob/main/LICENSE)
 Some source code, example files, and scripts included in the DeepSparse GitHub repository or directory are licensed under the [Apache License Version 2.0](https://www.apache.org/licenses/LICENSE-2.0) as noted.
 
-- **DeepSparse Enterprise** requires a Trial License or [can be fully licensed](https://neuralmagic.com/legal/master-software-license-and-service-agreement/) for production, commercial applications.
-
-### Cite
+## Cite
 
 Find this project useful in your research or other communications? Please consider citing:
 
